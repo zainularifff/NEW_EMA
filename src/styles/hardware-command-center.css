@@ -1,0 +1,1386 @@
+/* =========================================================
+   EMA SYSTEM - HARDWARE COMMAND CENTER UI
+   True JSX refactor companion CSS.
+   Import AFTER app-global.css.
+   ========================================================= */
+
+.hardware-command-console {
+  --hc-bg: #071014;
+  --hc-panel: rgba(10, 24, 28, 0.78);
+  --hc-panel-strong: rgba(11, 31, 36, 0.92);
+  --hc-panel-soft: rgba(16, 54, 60, 0.54);
+  --hc-border: rgba(94, 234, 212, 0.16);
+  --hc-border-strong: rgba(94, 234, 212, 0.34);
+  --hc-text: #ecfeff;
+  --hc-text-soft: #b6d7dc;
+  --hc-muted: #7d9ca3;
+  --hc-cyan: #22d3ee;
+  --hc-teal: #2dd4bf;
+  --hc-green: #22c55e;
+  --hc-yellow: #eab308;
+  --hc-red: #ef4444;
+  --hc-purple: #a78bfa;
+  --hc-radius: 1.35rem;
+  --hc-radius-lg: 1.8rem;
+  --hc-shadow: 0 22px 70px rgba(0, 0, 0, 0.28);
+  --hc-glow: 0 0 0 1px rgba(94, 234, 212, 0.16), 0 24px 80px rgba(45, 212, 191, 0.08);
+
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "hero"
+    "strip"
+    "workbench";
+  gap: 1rem;
+  color: var(--hc-text);
+  padding-bottom: 1rem;
+}
+
+.hardware-command-console.has-selected-device {
+  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-areas:
+    "hero hero"
+    "strip strip"
+    "workbench inspector";
+}
+
+.hardware-command-console::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(45, 212, 191, 0.18), transparent 28rem),
+    radial-gradient(circle at 80% 20%, rgba(167, 139, 250, 0.12), transparent 24rem),
+    linear-gradient(135deg, #050b0f 0%, #071014 45%, #0f172a 100%);
+}
+
+.hardware-command-hero,
+.hardware-command-strip,
+.hardware-command-workbench,
+.hardware-command-inspector,
+.hardware-command-statistics,
+.hardware-modal,
+.hardware-detail-drawer {
+  border: 1px solid var(--hc-border);
+  border-radius: var(--hc-radius-lg);
+  background:
+    linear-gradient(145deg, rgba(15, 35, 41, 0.88), rgba(8, 21, 26, 0.84));
+  box-shadow: var(--hc-glow);
+  backdrop-filter: blur(18px);
+}
+
+.hardware-command-hero {
+  grid-area: hero;
+  min-height: 156px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.5rem;
+}
+
+.hardware-command-hero::before,
+.hardware-command-workbench::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(94, 234, 212, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(94, 234, 212, 0.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at 50% 0%, black, transparent 75%);
+}
+
+.hardware-command-hero-copy,
+.hardware-command-hero-actions,
+.hardware-command-workbench > *,
+.hardware-command-strip > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hardware-command-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.65rem;
+  padding: 0.38rem 0.72rem;
+  color: #99f6e4;
+  border: 1px solid rgba(45, 212, 191, 0.22);
+  border-radius: 999px;
+  background: rgba(45, 212, 191, 0.1);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+}
+
+.hardware-command-hero h2 {
+  max-width: 780px;
+  margin: 0;
+  color: var(--hc-text);
+  font-size: clamp(2.25rem, 1.5rem + 2.2vw, 4.75rem);
+  font-weight: 900;
+  line-height: 0.96;
+  letter-spacing: -0.075em;
+}
+
+.hardware-command-hero p {
+  max-width: 680px;
+  margin: 0.9rem 0 0;
+  color: var(--hc-text-soft);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.hardware-command-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.hardware-command-search,
+.hardware-command-mini-search {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: min(420px, 36vw);
+  padding: 0 0.85rem;
+  color: var(--hc-muted);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.36);
+}
+
+.hardware-command-mini-search {
+  min-width: min(330px, 100%);
+  width: 100%;
+}
+
+.hardware-command-search input,
+.hardware-command-mini-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--hc-text);
+  background: transparent;
+  font-weight: 650;
+}
+
+.hardware-command-search input::placeholder,
+.hardware-command-mini-search input::placeholder {
+  color: rgba(182, 215, 220, 0.58);
+}
+
+.hardware-command-search button {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  color: var(--hc-muted);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.hardware-command-icon-btn,
+.hardware-command-primary-btn,
+.hardware-command-reset-btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  font-weight: 850;
+}
+
+.hardware-command-icon-btn {
+  width: 44px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  color: var(--hc-text-soft);
+  background: rgba(2, 6, 23, 0.36);
+}
+
+.hardware-command-primary-btn {
+  padding: 0 1rem;
+  border: 0;
+  color: #041416;
+  background: linear-gradient(135deg, #2dd4bf, #a7f3d0);
+  box-shadow: 0 16px 34px rgba(45, 212, 191, 0.2);
+}
+
+.hardware-command-strip {
+  grid-area: strip;
+  display: grid;
+  grid-template-columns: 220px 240px minmax(0, 1fr);
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.hardware-command-tabs {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.4rem;
+  padding: 0.35rem;
+  border-radius: 1.2rem;
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.hardware-command-tabs button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 0.95rem;
+  color: var(--hc-muted);
+  background: transparent;
+  font-weight: 850;
+}
+
+.hardware-command-tabs button.is-active {
+  color: #031819;
+  background: linear-gradient(135deg, #2dd4bf, #c4b5fd);
+}
+
+.hardware-command-scope {
+  padding: 0.85rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 1.2rem;
+  background: rgba(2, 6, 23, 0.22);
+}
+
+.hardware-command-scope span,
+.hardware-command-scope small {
+  display: block;
+  color: var(--hc-muted);
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.hardware-command-scope strong {
+  display: block;
+  margin: 0.2rem 0;
+  color: var(--hc-text);
+  font-weight: 900;
+}
+
+.hardware-command-organization,
+.hardware-command-stat-nav {
+  min-width: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.hardware-command-folder-rail {
+  display: flex;
+  align-content: flex-start;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-height: 128px;
+  overflow: auto;
+  padding-right: 0.15rem;
+}
+
+/* Transform existing FolderTree/Statistic nodes into command chips */
+.hardware-command-console .hardware-tree-node,
+.hardware-command-console .ema-sidebar-tree-node,
+.hardware-command-console .hardware-stat-tree-node {
+  width: auto;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.72rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  color: var(--hc-text-soft);
+  background: rgba(2, 6, 23, 0.32);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.hardware-command-console .hardware-tree-node:hover,
+.hardware-command-console .ema-sidebar-tree-node:hover,
+.hardware-command-console .hardware-stat-tree-node:hover {
+  color: #99f6e4;
+  border-color: rgba(45, 212, 191, 0.34);
+  background: rgba(45, 212, 191, 0.08);
+}
+
+.hardware-command-console .hardware-tree-node.is-active,
+.hardware-command-console .ema-sidebar-tree-node.is-active,
+.hardware-command-console .hardware-stat-tree-node.is-active,
+.hardware-command-console .hardware-stat-tree-node.is-current {
+  color: #031819;
+  border-color: transparent;
+  background: linear-gradient(135deg, #2dd4bf, #a7f3d0);
+}
+
+.hardware-command-console .hardware-tree-node-count,
+.hardware-command-console .ema-sidebar-tree-count {
+  margin-left: 0.25rem;
+  padding: 0.1rem 0.42rem;
+  border-radius: 999px;
+  color: #031819;
+  background: rgba(255, 255, 255, 0.44);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.hardware-command-workbench {
+  grid-area: workbench;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hardware-command-workbench-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.hardware-command-workbench-head h3 {
+  margin: 0;
+  color: var(--hc-text);
+  font-size: clamp(1.5rem, 1.05rem + 1vw, 2.5rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.06em;
+}
+
+.hardware-command-workbench-head p {
+  margin: 0.55rem 0 0;
+  color: var(--hc-muted);
+  font-size: 0.88rem;
+}
+
+.hardware-command-filter-row {
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.hardware-command-filter {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 172px;
+}
+
+.hardware-command-filter label {
+  color: var(--hc-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.hardware-command-reset-btn {
+  padding: 0 0.9rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  color: var(--hc-muted);
+  background: rgba(2, 6, 23, 0.32);
+}
+
+.hardware-command-reset-btn:disabled {
+  opacity: 0.48;
+}
+
+/* Existing custom dropdown restyle */
+.hardware-command-console .hardware-custom-select {
+  position: relative;
+}
+
+.hardware-command-console .hardware-custom-select-trigger {
+  min-height: 44px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0 0.85rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  color: var(--hc-text);
+  background: rgba(2, 6, 23, 0.32);
+  font-weight: 800;
+}
+
+.hardware-command-console .hardware-custom-select-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  min-width: 100%;
+  max-height: 260px;
+  overflow: auto;
+  padding: 0.35rem;
+  border: 1px solid var(--hc-border-strong);
+  border-radius: 1rem;
+  background: #071014;
+  box-shadow: var(--hc-shadow);
+}
+
+.hardware-command-console .hardware-custom-select-option {
+  width: 100%;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 0;
+  border-radius: 0.75rem;
+  color: var(--hc-text-soft);
+  background: transparent;
+  font-weight: 750;
+  text-align: left;
+}
+
+.hardware-command-console .hardware-custom-select-option:hover,
+.hardware-command-console .hardware-custom-select-option.is-active {
+  color: #031819;
+  background: linear-gradient(135deg, #2dd4bf, #a7f3d0);
+}
+
+.hardware-command-table-wrap {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 420px;
+  overflow: auto;
+}
+
+.hardware-command-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--hc-text-soft);
+  font-size: 0.86rem;
+}
+
+.hardware-command-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.95rem 1rem;
+  color: #85a8af;
+  background: rgba(6, 18, 23, 0.96);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.hardware-command-table td {
+  padding: 0.95rem 1rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.11);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.hardware-command-table tbody tr {
+  cursor: pointer;
+  transition: background 0.16s ease;
+}
+
+.hardware-command-table tbody tr:hover,
+.hardware-command-table tbody tr.is-selected {
+  background: rgba(45, 212, 191, 0.08);
+}
+
+.hardware-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-weight: 900;
+  text-transform: inherit;
+  letter-spacing: inherit;
+}
+
+.hardware-command-row-no {
+  display: inline-flex;
+  min-width: 2.2rem;
+  justify-content: center;
+  padding: 0.22rem 0.45rem;
+  border-radius: 999px;
+  color: #031819;
+  background: #99f6e4;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.hardware-command-device-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hardware-command-status-dot {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #64748b;
+  box-shadow: 0 0 0 5px rgba(100, 116, 139, 0.12);
+}
+
+.hardware-command-status-dot.is-online,
+.hardware-command-status-dot.is-connected {
+  background: #22c55e;
+  box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.12);
+}
+
+.hardware-command-status-dot.is-locked {
+  background: #ef4444;
+  box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.12);
+}
+
+.hardware-command-status-dot.is-stale {
+  background: #eab308;
+  box-shadow: 0 0 0 5px rgba(234, 179, 8, 0.12);
+}
+
+.hardware-command-device-link {
+  display: block;
+  padding: 0;
+  border: 0;
+  color: var(--hc-text);
+  background: transparent;
+  font-weight: 900;
+  text-align: left;
+}
+
+.hardware-command-device-link:hover {
+  color: #5eead4;
+}
+
+.hardware-command-device-cell small {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--hc-muted);
+  font-size: 0.76rem;
+}
+
+.hardware-command-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.hardware-command-status-pill.is-online,
+.hardware-command-status-pill.is-connected {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.13);
+}
+
+.hardware-command-status-pill.is-locked {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.13);
+}
+
+.hardware-command-status-pill.is-stale {
+  color: #fde68a;
+  background: rgba(234, 179, 8, 0.13);
+}
+
+.hardware-command-status-pill.is-offline {
+  color: #cbd5e1;
+  background: rgba(148, 163, 184, 0.13);
+}
+
+.hardware-command-empty {
+  padding: 2.5rem 1rem;
+  color: var(--hc-muted);
+  text-align: center;
+  font-weight: 750;
+}
+
+.hardware-command-pagination {
+  position: relative;
+  z-index: 1;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  color: var(--hc-muted);
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.hardware-command-pagination > div {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.hardware-command-pagination button,
+.hardware-command-pagination strong {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  color: var(--hc-text-soft);
+  background: rgba(2, 6, 23, 0.32);
+}
+
+.hardware-command-pagination strong {
+  color: #031819;
+  background: #99f6e4;
+}
+
+.hardware-command-pagination button:disabled {
+  opacity: 0.4;
+}
+
+/* Inspector */
+.hardware-command-inspector {
+  grid-area: inspector;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--hc-border);
+  border-radius: var(--hc-radius-lg);
+  background:
+    radial-gradient(circle at top right, rgba(167, 139, 250, 0.12), transparent 16rem),
+    linear-gradient(145deg, rgba(15, 35, 41, 0.92), rgba(8, 21, 26, 0.86));
+  box-shadow: var(--hc-glow);
+  backdrop-filter: blur(18px);
+}
+
+.hardware-command-inspector-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  padding: 1.15rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.hardware-command-inspector-icon {
+  width: 44px;
+  height: 44px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 1rem;
+  color: #031819;
+  background: linear-gradient(135deg, #2dd4bf, #c4b5fd);
+}
+
+.hardware-command-inspector-head span,
+.hardware-command-inspector-grid span,
+.hardware-command-note span {
+  display: block;
+  color: var(--hc-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.hardware-command-inspector-head h3 {
+  margin: 0.2rem 0 0;
+  color: var(--hc-text);
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.hardware-command-inspector-head p {
+  margin: 0.15rem 0 0;
+  color: var(--hc-muted);
+  font-size: 0.8rem;
+}
+
+.hardware-command-close-btn {
+  width: 34px;
+  height: 34px;
+  margin-left: auto;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 999px;
+  color: var(--hc-muted);
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.hardware-command-inspector-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+  padding: 1rem 1.15rem;
+}
+
+.hardware-command-inspector-grid > div,
+.hardware-command-note {
+  padding: 0.85rem;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 1rem;
+  background: rgba(2, 6, 23, 0.26);
+}
+
+.hardware-command-inspector-grid strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--hc-text);
+  font-weight: 850;
+}
+
+.hardware-command-note {
+  margin: 0 1.15rem 1rem;
+}
+
+.hardware-command-note p {
+  margin: 0.35rem 0 0;
+  color: var(--hc-text-soft);
+  font-size: 0.84rem;
+}
+
+.hardware-command-actions {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0 1.15rem 1.15rem;
+  overflow: auto;
+}
+
+.hardware-command-action-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.82rem;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 1rem;
+  color: var(--hc-text);
+  background: rgba(2, 6, 23, 0.28);
+  text-align: left;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.hardware-command-action-item:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(45, 212, 191, 0.34);
+  background: rgba(45, 212, 191, 0.08);
+}
+
+.hardware-command-action-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.hardware-command-action-item > svg {
+  width: 38px;
+  height: 38px;
+  padding: 0.6rem;
+  flex: 0 0 auto;
+  color: #031819;
+  border-radius: 0.9rem;
+  background: linear-gradient(135deg, #2dd4bf, #a7f3d0);
+}
+
+.hardware-command-action-item strong {
+  display: block;
+  color: var(--hc-text);
+  font-size: 0.84rem;
+  font-weight: 850;
+}
+
+.hardware-command-action-item span {
+  display: block;
+  margin-top: 0.12rem;
+  color: var(--hc-muted);
+  font-size: 0.73rem;
+}
+
+/* Statistics content from existing renderer */
+.hardware-command-statistics {
+  grid-area: workbench;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.hardware-command-console .hardware-stat-workbench,
+.hardware-command-console .hardware-stat-summary-card,
+.hardware-command-console .hardware-stat-top-card {
+  color: var(--hc-text);
+  border-color: rgba(148, 163, 184, 0.14);
+  background: transparent;
+}
+
+.hardware-command-console .hardware-stat-summary-grid,
+.hardware-command-console .hardware-stat-top-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+  padding: 1rem 1.25rem;
+}
+
+.hardware-command-console .hardware-stat-summary-card,
+.hardware-command-console .hardware-stat-top-card {
+  padding: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 1rem;
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.hardware-command-console .hardware-stat-summary-card span,
+.hardware-command-console .hardware-stat-top-card span,
+.hardware-command-console .hardware-stat-section-title span {
+  color: var(--hc-muted);
+}
+
+.hardware-command-console .hardware-stat-summary-card strong,
+.hardware-command-console .hardware-stat-top-card strong,
+.hardware-command-console .hardware-stat-section-title strong {
+  color: var(--hc-text);
+}
+
+.hardware-command-console .hardware-stat-section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 1.25rem;
+}
+
+.hardware-command-console .hardware-table-wrap,
+.hardware-command-console .hardware-stat-table-wrap {
+  overflow: auto;
+}
+
+.hardware-command-console .hardware-table,
+.hardware-command-console .hardware-stat-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.hardware-command-console .hardware-table th,
+.hardware-command-console .hardware-stat-table th {
+  color: #85a8af;
+  background: rgba(6, 18, 23, 0.96);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.hardware-command-console .hardware-table td,
+.hardware-command-console .hardware-stat-table td {
+  color: #cbd5e1;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.11);
+}
+
+.hardware-command-console .ema-row-no {
+  display: inline-flex;
+  min-width: 2.2rem;
+  justify-content: center;
+  padding: 0.22rem 0.45rem;
+  border-radius: 999px;
+  color: #031819;
+  background: #99f6e4;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.hardware-empty-state {
+  padding: 2.5rem 1rem;
+  color: var(--hc-muted);
+  text-align: center;
+  font-weight: 750;
+}
+
+/* Legacy modal/detail classes get command visual treatment */
+.hardware-modal-overlay,
+.hardware-detail-drawer-overlay,
+.hardware-detail-form-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(2, 6, 23, 0.68);
+  backdrop-filter: blur(12px);
+}
+
+.hardware-modal {
+  width: min(780px, 100%);
+  max-height: min(88vh, 860px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--hc-text);
+}
+
+.hardware-modal-geo,
+.hardware-modal-geo-v2 {
+  width: min(1180px, 100%);
+}
+
+.hardware-modal-header,
+.hardware-modal-header.green,
+.hardware-modal-header.blue,
+.hardware-modal-header.red {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  color: #ecfeff;
+  background:
+    radial-gradient(circle at top right, rgba(45, 212, 191, 0.22), transparent 14rem),
+    linear-gradient(135deg, #08151a, #0f766e);
+}
+
+.hardware-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hardware-modal-title strong,
+.hardware-modal-title span {
+  display: block;
+}
+
+.hardware-modal-title strong {
+  color: #ecfeff;
+  font-weight: 900;
+}
+
+.hardware-modal-title span {
+  color: rgba(236, 254, 255, 0.7);
+  font-size: 0.82rem;
+}
+
+.hardware-modal-close {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 999px;
+  color: #ecfeff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.hardware-modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 1.25rem;
+}
+
+.hardware-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(8, 21, 26, 0.92);
+}
+
+.hardware-btn {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  color: var(--hc-text);
+  background: rgba(2, 6, 23, 0.32);
+  font-weight: 850;
+}
+
+.hardware-btn.primary {
+  color: #031819;
+  border-color: transparent;
+  background: linear-gradient(135deg, #2dd4bf, #a7f3d0);
+}
+
+.hardware-btn.danger {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, #ef4444, #991b1b);
+}
+
+.hardware-btn.link {
+  color: var(--hc-muted);
+  background: transparent;
+}
+
+.hardware-form-group {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.hardware-form-group label {
+  color: var(--hc-text);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.hardware-form-group input,
+.hardware-form-group textarea,
+.hardware-form-group select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 0.9rem;
+  outline: 0;
+  color: var(--hc-text);
+  background: rgba(2, 6, 23, 0.32);
+  font: inherit;
+}
+
+.hardware-form-group textarea {
+  resize: vertical;
+}
+
+.hardware-form-error,
+.hardware-stat-error {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.8rem 1rem;
+  margin: 1rem 0;
+  border-radius: 1rem;
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.13);
+  font-weight: 750;
+}
+
+.hardware-info-banner,
+.hardware-preview-card,
+.hardware-last-update-box,
+.hardware-device-target-card,
+.hardware-option-card,
+.hardware-check,
+.hardware-note-box,
+.hardware-right-info > div {
+  padding: 0.95rem;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 1rem;
+  color: var(--hc-text-soft);
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.hardware-info-banner {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.hardware-info-banner.blue {
+  color: #bae6fd;
+  background: rgba(14, 165, 233, 0.12);
+}
+
+.hardware-info-banner.yellow {
+  color: #fde68a;
+  background: rgba(234, 179, 8, 0.12);
+}
+
+.hardware-info-banner.red {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.hardware-session-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.hardware-session-grid button {
+  min-height: 82px;
+  display: grid;
+  place-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 1rem;
+  color: var(--hc-text-soft);
+  background: rgba(2, 6, 23, 0.28);
+  font-weight: 850;
+}
+
+.hardware-session-grid button.is-active {
+  color: #031819;
+  border-color: transparent;
+  background: linear-gradient(135deg, #2dd4bf, #a7f3d0);
+}
+
+/* Geo/detail broad support */
+.hardware-geo-redesign-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  gap: 1rem;
+}
+
+.hardware-geo-current-card,
+.hardware-geo-map-shell,
+.hardware-geo-history-modern,
+.hardware-detail-card,
+.hardware-detail-summary-card,
+.hardware-storage-hero {
+  padding: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 1.25rem;
+  color: var(--hc-text);
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.hardware-geo-current-grid,
+.hardware-detail-summary-grid,
+.hardware-detail-section-grid,
+.hardware-storage-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.hardware-geo-current-grid > div {
+  padding: 0.8rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.hardware-geo-current-grid .is-wide {
+  grid-column: span 2;
+}
+
+.hardware-geo-map-frame {
+  position: relative;
+  min-height: 360px;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: #0f172a;
+}
+
+.hardware-geo-map-frame iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+  border: 0;
+}
+
+.hardware-detail-drawer-overlay {
+  justify-content: flex-end;
+  align-items: stretch;
+  padding: 1rem;
+}
+
+.hardware-detail-drawer {
+  width: min(920px, 100%);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: var(--hc-text);
+}
+
+.hardware-detail-drawer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.hardware-detail-body {
+  overflow: auto;
+  padding: 1.25rem;
+}
+
+.hardware-detail-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.hardware-detail-tabs button {
+  min-height: 38px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  color: var(--hc-text-soft);
+  background: rgba(2, 6, 23, 0.28);
+  font-weight: 800;
+}
+
+.hardware-detail-tabs button.is-active {
+  color: #031819;
+  border-color: transparent;
+  background: linear-gradient(135deg, #2dd4bf, #a7f3d0);
+}
+
+.hardware-toast {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 1200;
+  min-width: 320px;
+  max-width: 420px;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--hc-border);
+  border-radius: 1.1rem;
+  color: var(--hc-text);
+  background: rgba(8, 21, 26, 0.96);
+  box-shadow: var(--hc-shadow);
+}
+
+.hardware-toast-icon {
+  color: var(--hc-teal);
+}
+
+.hardware-toast strong,
+.hardware-toast span {
+  display: block;
+}
+
+.hardware-toast span {
+  margin-top: 0.2rem;
+  color: var(--hc-muted);
+  font-size: 0.82rem;
+}
+
+.hardware-toast button {
+  margin-left: auto;
+  border: 0;
+  color: var(--hc-muted);
+  background: transparent;
+}
+
+/* Existing old class compatibility hidden/restyled */
+.hardware-inventory-page .ema-kpi-grid,
+.hardware-command-console .ema-kpi-grid {
+  display: none !important;
+}
+
+/* Responsive */
+@media (max-width: 1399.98px) {
+  .hardware-command-console.has-selected-device {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "hero"
+      "strip"
+      "workbench"
+      "inspector";
+  }
+
+  .hardware-command-inspector {
+    min-height: auto;
+  }
+
+  .hardware-command-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1199.98px) {
+  .hardware-command-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .hardware-command-hero {
+    flex-direction: column;
+  }
+
+  .hardware-command-hero-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .hardware-command-search {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .hardware-command-workbench-head,
+  .hardware-command-filter-row,
+  .hardware-command-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .hardware-command-filter,
+  .hardware-command-reset-btn {
+    width: 100%;
+  }
+
+  .hardware-command-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .hardware-session-grid,
+  .hardware-geo-redesign-body,
+  .hardware-geo-current-grid,
+  .hardware-detail-summary-grid,
+  .hardware-detail-section-grid,
+  .hardware-storage-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hardware-geo-current-grid .is-wide {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .hardware-command-hero,
+  .hardware-command-strip,
+  .hardware-command-workbench-head {
+    padding: 1rem;
+  }
+
+  .hardware-command-hero h2 {
+    font-size: 2.2rem;
+  }
+
+  .hardware-modal-overlay {
+    padding: 0.75rem;
+  }
+
+  .hardware-toast {
+    left: 0.75rem;
+    right: 0.75rem;
+    min-width: 0;
+  }
+}

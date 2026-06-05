@@ -7,6 +7,7 @@ import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import "./index.css";
 import "./styles/bootstrap-theme.css";
 import "./styles/app-global.css";
+import "./styles/hardware-command-center.css";
 
 import App from "./App.tsx";
 
