@@ -841,3 +841,507 @@
 .settings-module-root .risk-grid:has(.risk-simple-card) {
   display: block !important;
 }
+
+/* =========================================================
+   PC Aging Rule Revamp
+   Global style only. No page-level Settings.css required.
+========================================================= */
+
+.settings-module-root[data-section="aging"] .content-body {
+  padding-top: 0.9rem !important;
+}
+
+.pc-aging-revamp {
+  display: grid;
+  gap: 0.95rem;
+  align-content: start;
+}
+
+.pc-aging-command-card,
+.pc-aging-overview-card,
+.pc-aging-panel {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 1.15rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 254, 0.95));
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.045);
+}
+
+.pc-aging-command-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.05rem;
+  overflow: hidden;
+}
+
+.pc-aging-command-card::before {
+  content: "";
+  position: absolute;
+}
+
+.pc-aging-command-copy h3 {
+  margin: 0.35rem 0 0.25rem;
+  color: var(--ema-control-text-strong, #0f2746);
+  font-size: clamp(1.2rem, 1.5vw, 1.65rem);
+  font-weight: 950;
+  letter-spacing: -0.045em;
+}
+
+.pc-aging-command-copy p {
+  max-width: 58rem;
+  margin: 0;
+  color: var(--ema-control-muted, #64748b);
+  font-size: 0.74rem;
+  font-weight: 680;
+  line-height: 1.52;
+}
+
+.pc-aging-command-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  white-space: nowrap;
+}
+
+.pc-aging-overview-grid {
+  display: grid;
+  grid-template-columns: 1.35fr repeat(3, minmax(0, 0.88fr));
+  gap: 0.82rem;
+}
+
+.pc-aging-overview-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 8.4rem;
+  padding: 0.96rem;
+}
+
+.pc-aging-overview-card::after {
+  content: "";
+  position: absolute;
+  right: -3rem;
+  top: -3.2rem;
+  width: 9rem;
+  height: 9rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.12), transparent 65%);
+  pointer-events: none;
+}
+
+.pc-aging-status-card {
+  background:
+    radial-gradient(circle at 92% 0%, rgba(37, 99, 235, 0.13), transparent 16rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 253, 0.96));
+}
+
+.pc-aging-card-head,
+.pc-aging-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.pc-aging-kicker {
+  display: block;
+  color: var(--ema-control-muted, #64748b);
+  font-size: 0.64rem;
+  font-weight: 930;
+  text-transform: uppercase;
+  letter-spacing: 0.075em;
+}
+
+.pc-aging-overview-card h4,
+.pc-aging-panel h4 {
+  margin: 0.28rem 0 0.18rem;
+  color: var(--ema-control-text-strong, #0f2746);
+  font-size: clamp(1.02rem, 1.25vw, 1.34rem);
+  font-weight: 950;
+  letter-spacing: -0.045em;
+}
+
+.pc-aging-overview-card p,
+.pc-aging-panel p {
+  margin: 0;
+  color: var(--ema-control-muted, #64748b);
+  font-size: 0.7rem;
+  font-weight: 680;
+  line-height: 1.46;
+}
+
+.pc-aging-status-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-top: 1rem;
+  padding: 0.68rem 0.74rem;
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  border-radius: 0.9rem;
+  background: rgba(37, 99, 235, 0.055);
+}
+
+.pc-aging-status-strip span,
+.pc-aging-status-strip b {
+  color: var(--ema-control-text-strong, #0f2746);
+  font-size: 0.7rem;
+  font-weight: 850;
+}
+
+.pc-aging-status-strip b {
+  color: var(--ema-control-primary, #2558e8);
+}
+
+.pc-aging-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(22rem, 0.8fr);
+  gap: 0.82rem;
+}
+
+.pc-aging-secondary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 0.82rem;
+}
+
+.pc-aging-panel {
+  padding: 1rem;
+}
+
+.pc-aging-threshold-panel {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(8, 126, 164, 0.1), transparent 17rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 251, 254, 0.95));
+}
+
+.pc-aging-threshold-stack {
+  display: grid;
+  gap: 0.72rem;
+  margin-top: 0.9rem;
+}
+
+.pc-aging-revamp .aging-threshold-line {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.35fr) minmax(16rem, 1fr) minmax(9rem, 0.28fr);
+  align-items: center;
+  gap: 0.9rem;
+  min-height: 4.6rem;
+  padding: 0.86rem 0.95rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 1rem;
+  background: rgba(244, 248, 253, 0.8);
+}
+
+.pc-aging-revamp .threshold-label-block {
+  display: grid;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+.pc-aging-revamp .threshold-label-block span {
+  color: var(--ema-control-text-strong, #0f2746);
+  font-size: 0.78rem;
+  font-weight: 920;
+}
+
+.pc-aging-revamp .threshold-label-block small {
+  color: var(--ema-control-muted, #64748b);
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.pc-aging-revamp input[type="range"] {
+  width: 100%;
+  height: 1.4rem;
+  accent-color: var(--ema-control-primary, #2558e8);
+}
+
+.pc-aging-revamp .threshold-number-wrap {
+  display: grid;
+  grid-template-columns: 3.6rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.58rem;
+}
+
+.pc-aging-revamp .threshold-number-wrap input {
+  width: 3.6rem;
+  height: 2.34rem;
+  padding: 0 0.45rem;
+  border: 1px solid var(--ema-control-border, #d9e5f2);
+  border-radius: 0.78rem;
+  outline: 0;
+  background: var(--ema-control-surface, #fff);
+  color: var(--ema-control-text-strong, #0f2746);
+  font-size: 0.78rem;
+  font-weight: 920;
+  text-align: center;
+}
+
+.pc-aging-revamp .threshold-number-wrap b {
+  color: var(--ema-control-primary, #2558e8);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pc-aging-action-list {
+  margin-top: 0.88rem;
+}
+
+.pc-aging-revamp .aging-action-row {
+  display: grid;
+  grid-template-columns: 5.7rem minmax(0, 1fr) 5.7rem;
+  align-items: center;
+  gap: 0.62rem;
+  min-height: 3.22rem;
+  padding: 0.68rem 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 0.95rem;
+  background: rgba(244, 248, 253, 0.78);
+}
+
+.pc-aging-revamp .aging-action-row span {
+  color: var(--ema-control-text-strong, #0f2746);
+  font-size: 0.72rem;
+  font-weight: 920;
+}
+
+.pc-aging-revamp .aging-action-row small {
+  color: var(--ema-control-muted, #64748b);
+  font-size: 0.66rem;
+  font-weight: 720;
+  line-height: 1.35;
+}
+
+.pc-aging-revamp .aging-action-row b {
+  min-height: 1.72rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.62rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 930;
+}
+
+.pc-aging-revamp .aging-action-blue b {
+  color: var(--ema-control-primary, #2558e8);
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.pc-aging-revamp .aging-action-amber b {
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.pc-aging-revamp .aging-action-red b {
+  color: #e11d48;
+  border: 1px solid rgba(225, 29, 72, 0.22);
+  background: rgba(225, 29, 72, 0.08);
+}
+
+.pc-aging-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.72rem;
+  margin-top: 0.9rem;
+}
+
+.pc-aging-basis-note {
+  margin-top: 0.82rem;
+  padding: 0.75rem 0.82rem;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 0.9rem;
+  background: rgba(37, 99, 235, 0.055);
+  color: var(--ema-control-muted, #64748b);
+  font-size: 0.72rem;
+  font-weight: 720;
+  line-height: 1.46;
+}
+
+.pc-aging-basis-note strong {
+  color: var(--ema-control-primary, #2558e8);
+  font-weight: 940;
+}
+
+.pc-aging-basis-note span {
+  margin-left: 0.22rem;
+}
+
+.pc-aging-notes-panel .aging-notes-input {
+  width: 100%;
+  min-height: 8.6rem;
+  margin-top: 0.9rem;
+  resize: vertical;
+  padding: 0.86rem;
+  border: 1px solid var(--ema-control-border, #d9e5f2);
+  border-radius: 0.95rem;
+  outline: 0;
+  background: var(--ema-control-soft, #f5f8fc);
+  color: var(--ema-control-text, #173154);
+  font-size: 0.76rem;
+  font-weight: 720;
+  line-height: 1.55;
+}
+
+.pc-aging-notes-panel .aging-notes-input:focus {
+  border-color: rgba(37, 99, 235, 0.52);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.09);
+  background: var(--ema-control-surface, #fff);
+}
+
+@media (max-width: 1280px) {
+  .pc-aging-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pc-aging-main-grid,
+  .pc-aging-secondary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .pc-aging-command-card {
+    grid-template-columns: 1fr;
+  }
+
+  .pc-aging-command-actions {
+    justify-content: flex-start;
+  }
+
+  .pc-aging-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pc-aging-revamp .aging-threshold-line {
+    grid-template-columns: 1fr;
+  }
+
+  .pc-aging-revamp .threshold-number-wrap {
+    grid-template-columns: 3.6rem auto;
+    justify-content: start;
+  }
+
+  .pc-aging-revamp .threshold-number-wrap b {
+    text-align: left;
+  }
+
+  .pc-aging-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pc-aging-revamp .aging-action-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .pc-aging-revamp .aging-action-row b {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 640px) {
+  .pc-aging-command-actions,
+  .pc-aging-command-actions .soft-btn,
+  .pc-aging-command-actions .primary-btn {
+    width: 100%;
+  }
+}
+
+/* =========================================================
+   PC Aging UI Fine Tune
+   Fix cramped threshold labels and oversized action panel.
+========================================================= */
+
+.pc-aging-main-grid {
+  grid-template-columns: minmax(0, 1.85fr) minmax(20rem, 0.72fr) !important;
+  align-items: stretch !important;
+}
+
+.pc-aging-threshold-panel,
+.pc-aging-decision-panel {
+  min-height: auto !important;
+}
+
+.pc-aging-decision-panel {
+  align-self: stretch !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.pc-aging-decision-panel .pc-aging-action-list {
+  flex: 1 1 auto !important;
+  align-content: start !important;
+}
+
+.pc-aging-revamp .aging-threshold-line {
+  grid-template-columns: minmax(10.5rem, 0.32fr) minmax(18rem, 1fr) minmax(9.8rem, 0.26fr) !important;
+  gap: 1.05rem !important;
+  overflow: hidden !important;
+}
+
+.pc-aging-revamp .threshold-number-wrap {
+  grid-template-columns: 3.6rem minmax(4.7rem, max-content) !important;
+  justify-content: end !important;
+  min-width: 0 !important;
+}
+
+.pc-aging-revamp .threshold-number-wrap b {
+  max-width: 5.9rem !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  text-align: right !important;
+  font-size: 0.7rem !important;
+}
+
+.pc-aging-revamp input[type="range"] {
+  min-width: 0 !important;
+}
+
+.pc-aging-revamp .aging-action-row {
+  grid-template-columns: 5.4rem minmax(0, 1fr) 5.2rem !important;
+  min-height: 3.02rem !important;
+  padding: 0.62rem 0.7rem !important;
+}
+
+.pc-aging-revamp .aging-action-row b {
+  min-height: 1.6rem !important;
+  padding: 0 0.58rem !important;
+}
+
+/* On narrower screens, keep threshold text readable instead of clipping. */
+@media (max-width: 1180px) {
+  .pc-aging-main-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .pc-aging-revamp .aging-threshold-line {
+    grid-template-columns: minmax(9.5rem, 0.34fr) minmax(14rem, 1fr) minmax(8.8rem, 0.28fr) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .pc-aging-revamp .aging-threshold-line {
+    grid-template-columns: 1fr !important;
+  }
+
+  .pc-aging-revamp .threshold-number-wrap {
+    justify-content: start !important;
+  }
+
+  .pc-aging-revamp .threshold-number-wrap b {
+    text-align: left !important;
+    max-width: none !important;
+  }
+}

@@ -303,7 +303,6 @@ type PcAgingApiResponse = {
 };
 
 type AgingContentProps = {
-  search: string;
   rule: PcAgingRule;
   loading: boolean;
   saving: boolean;
@@ -311,6 +310,7 @@ type AgingContentProps = {
   onChange: (patch: Partial<PcAgingRule>) => void;
   onReload: () => void;
   onSave: () => void;
+  onReset: () => void;
 };
 
 const sections: Record<SectionKey, SectionItem> = {
@@ -2014,7 +2014,7 @@ export default function Settings() {
               </div>
             )}
 
-            {activeSection !== "users" && activeSection !== "access" && activeSection !== "audit" && (
+            {activeSection !== "users" && activeSection !== "access" && activeSection !== "audit" && activeSection !== "aging" && (
               <div className={`content-toolbar ${activeSection === "users" ? "users-toolbar" : activeSection === "roles" ? "roles-toolbar" : activeSection === "modules" ? "modules-toolbar" : ""}`}>
                 <label className="section-search">
                   <SearchSvg />
@@ -2092,7 +2092,18 @@ export default function Settings() {
                 />
               )}
               {activeSection === "pricing" && <PricingContent search={filteredContentTerm} rows={pricingRows} categoryOptions={categoryOptions} brandOptionsByCategory={brandOptionsByCategory} modelOptionsByKey={modelOptionsByKey} loading={pricingLoading} saving={pricingSaving} savingRowId={pricingRowSavingId} error={pricingError} onAdd={addPricingRow} onChange={updatePricingRow} onSaveRow={savePricingRow} onRequestDelete={requestDeletePricingRow} />}
-              {activeSection === "aging" && <AgingContent search={filteredContentTerm} rule={pcAgingRule} loading={pcAgingLoading} saving={pcAgingSaving} error={pcAgingError} onChange={(patch) => setPcAgingRule((current) => normalizePcAgingRule({ ...current, ...patch }))} onReload={loadPcAgingRule} onSave={savePcAgingRule} />}
+              {activeSection === "aging" && (
+                <AgingContent
+                  rule={pcAgingRule}
+                  loading={pcAgingLoading}
+                  saving={pcAgingSaving}
+                  error={pcAgingError}
+                  onChange={(patch) => setPcAgingRule((current) => normalizePcAgingRule({ ...current, ...patch }))}
+                  onReload={loadPcAgingRule}
+                  onSave={savePcAgingRule}
+                  onReset={resetSection}
+                />
+              )}
               {activeSection === "risk" && <RiskContent search={filteredContentTerm} />}
             </div>
           </div>
@@ -2979,6 +2990,9 @@ function AuditContent({
 
       <div className="uam-pagination global-style audit-pagination">
         <div className="uam-page-summary">Page {safePage} / {totalPages}</div>
+        <div className="uam-pagination-info">
+          Showing <strong>{pageRows.length ? startIndex + 1 : 0}-{startIndex + pageRows.length}</strong> of <strong>{logs.length}</strong> records
+        </div>
         <div className="uam-pagination-controls global-style">
           <button className="uam-page-icon" type="button" disabled={safePage <= 1} onClick={() => setPage(1)}>«</button>
           <button className="uam-page-icon" type="button" disabled={safePage <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>‹</button>
@@ -3182,7 +3196,6 @@ function PricingContent({
 }
 
 function AgingContent({
-  search,
   rule,
   loading,
   saving,
@@ -3190,173 +3203,225 @@ function AgingContent({
   onChange,
   onReload,
   onSave,
+  onReset,
 }: AgingContentProps) {
-  const searchable = `${rule.enabled} ${rule.ageSource} ${rule.healthyMaxYears} ${rule.monitorMaxYears} ${rule.agingMinYears} ${rule.replacementWindowMonths} ${rule.notes}`.toLowerCase();
-  const shouldShow = !search || searchable.includes(search) || "pc aging threshold lifecycle action mapping calculation basis rule control".includes(search);
-
-  if (!shouldShow) {
-    return (
-      <div className="aging-empty-state">
-        <strong>No aging rule matched your search.</strong>
-        <span>Clear the search box to view and update PC aging settings.</span>
-      </div>
-    );
-  }
-
   return (
-    <div className="aging-editor">
-      {loading && <div className="settings-inline-alert aging-info-alert">Loading PC aging rule from AssetSettings...</div>}
+    <div className="pc-aging-revamp">
+      {loading && (
+        <div className="settings-inline-alert aging-info-alert">
+          Loading PC aging rule from AssetSettings...
+        </div>
+      )}
       {error && <div className="settings-inline-alert">{error}</div>}
 
-      <article className="aging-card main-aging aging-threshold-card">
-        <div className="aging-top">
-          <div>
-            <h4>PC Aging Threshold</h4>
-            <p>Live rule loaded from AssetSettings. Adjust the values and save to update dashboard/report calculation.</p>
-          </div>
+      <section className="pc-aging-command-card">
+        <div className="pc-aging-command-copy">
+          <span className="section-tag">LIFECYCLE CONTROL</span>
+          <h3>PC Aging Configuration</h3>
+          <p>
+            Configure endpoint lifecycle thresholds, replacement planning and calculation basis.
+            These settings are saved as the master rule for future hardware aging and refresh reporting.
+          </p>
+        </div>
+
+        <div className="pc-aging-command-actions">
+          <button className="soft-btn" type="button" onClick={onReload} disabled={loading || saving}>
+            Reload
+          </button>
+          <button className="soft-btn" type="button" onClick={onReset} disabled={saving}>
+            Reset
+          </button>
           <button className="primary-btn" type="button" onClick={onSave} disabled={saving || loading}>
-            {saving ? "Applying..." : "Apply Rule"}
+            {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
+      </section>
 
-        <AgingThresholdLine
-          label="Standard Device"
-          help="Healthy endpoint lifecycle window"
-          value={rule.healthyMaxYears}
-          display={`< ${rule.healthyMaxYears} years`}
-          onChange={(value) => onChange({ healthyMaxYears: value })}
-        />
-        <AgingThresholdLine
-          label="Aging Device"
-          help="Endpoint requires review and refresh planning"
-          value={rule.monitorMaxYears}
-          display={`≥ ${rule.monitorMaxYears} years`}
-          onChange={(value) => onChange({ monitorMaxYears: value })}
-        />
-        <AgingThresholdLine
-          label="Critical Aging"
-          help="Replacement candidate or high lifecycle exposure"
-          value={rule.agingMinYears}
-          display={`≥ ${rule.agingMinYears} years`}
-          onChange={(value) => onChange({ agingMinYears: value })}
-        />
-      </article>
+      <section className="pc-aging-overview-grid">
+        <article className="pc-aging-overview-card pc-aging-status-card">
+          <div className="pc-aging-card-head">
+            <div>
+              <span className="pc-aging-kicker">Rule Status</span>
+              <h4>{rule.enabled ? "Enabled" : "Disabled"}</h4>
+              <p>Turn lifecycle calculation on or off without deleting the saved configuration.</p>
+            </div>
 
-      <article className="aging-card aging-rule-status-card">
-        <div className="aging-top">
-          <div>
-            <h4>Rule Control</h4>
-            <p>Turn lifecycle calculation on or off without deleting the saved configuration.</p>
+            <button
+              className={`toggle aging-toggle ${rule.enabled ? "on" : ""}`}
+              aria-label="Toggle PC aging rule"
+              type="button"
+              onClick={() => onChange({ enabled: !rule.enabled })}
+            />
           </div>
-          <button
-            className={`toggle aging-toggle ${rule.enabled ? "on" : ""}`}
-            aria-label="Toggle PC aging rule"
-            type="button"
-            onClick={() => onChange({ enabled: !rule.enabled })}
+
+          <div className="pc-aging-status-strip">
+            <span>{rule.enabled ? "Active lifecycle rule" : "Lifecycle rule paused"}</span>
+            <b>{formatAgeSourceLabel(rule.ageSource)}</b>
+          </div>
+        </article>
+
+        <article className="pc-aging-overview-card">
+          <span className="pc-aging-kicker">Review Threshold</span>
+          <h4>{rule.monitorMaxYears} years</h4>
+          <p>Devices at or above this age are marked for lifecycle review.</p>
+        </article>
+
+        <article className="pc-aging-overview-card">
+          <span className="pc-aging-kicker">Critical Reference</span>
+          <h4>{rule.agingMinYears} years</h4>
+          <p>Devices at or above this age become replacement candidates.</p>
+        </article>
+
+        <article className="pc-aging-overview-card">
+          <span className="pc-aging-kicker">Refresh Window</span>
+          <h4>{rule.replacementWindowMonths} months</h4>
+          <p>Planning window used for refresh forecast and CAPEX preparation.</p>
+        </article>
+      </section>
+
+      <section className="pc-aging-main-grid">
+        <article className="pc-aging-panel pc-aging-threshold-panel">
+          <div className="pc-aging-panel-head">
+            <div>
+              <span className="section-tag">THRESHOLD BUILDER</span>
+              <h4>Lifecycle Age Bands</h4>
+              <p>Set the year thresholds used to classify every endpoint into standard, aging and critical groups.</p>
+            </div>
+          </div>
+
+          <div className="pc-aging-threshold-stack">
+            <AgingThresholdLine
+              label="Standard Device"
+              help="Healthy lifecycle window before review is required."
+              value={rule.healthyMaxYears}
+              display={`< ${rule.healthyMaxYears} years`}
+              onChange={(value) => onChange({ healthyMaxYears: value })}
+            />
+
+            <AgingThresholdLine
+              label="Aging Device"
+              help="Device should be reviewed and considered for refresh planning."
+              value={rule.monitorMaxYears}
+              display={`≥ ${rule.monitorMaxYears} years`}
+              onChange={(value) => onChange({ monitorMaxYears: value })}
+            />
+
+            <AgingThresholdLine
+              label="Critical Aging"
+              help="Device is a high-priority replacement candidate."
+              value={rule.agingMinYears}
+              display={`≥ ${rule.agingMinYears} years`}
+              onChange={(value) => onChange({ agingMinYears: value })}
+            />
+          </div>
+        </article>
+
+        <aside className="pc-aging-panel pc-aging-decision-panel">
+          <div className="pc-aging-panel-head">
+            <div>
+              <span className="section-tag">DECISION GUIDE</span>
+              <h4>Lifecycle Actions</h4>
+              <p>Operational action generated from the current threshold rule.</p>
+            </div>
+          </div>
+
+          <div className="aging-action-list pc-aging-action-list">
+            <AgingActionRow
+              status="Standard"
+              condition={`< ${rule.healthyMaxYears} years`}
+              action="Monitor"
+              tone="blue"
+            />
+            <AgingActionRow
+              status="Aging"
+              condition={`≥ ${rule.monitorMaxYears} years`}
+              action="Review"
+              tone="amber"
+            />
+            <AgingActionRow
+              status="Critical"
+              condition={`≥ ${rule.agingMinYears} years`}
+              action="Replace"
+              tone="red"
+            />
+          </div>
+        </aside>
+      </section>
+
+      <section className="pc-aging-secondary-grid">
+        <article className="pc-aging-panel">
+          <div className="pc-aging-panel-head">
+            <div>
+              <span className="section-tag">CALCULATION BASIS</span>
+              <h4>Aging Reference</h4>
+              <p>Choose how the system determines device age when generating lifecycle results.</p>
+            </div>
+          </div>
+
+          <div className="pc-aging-form-grid">
+            <label className="form-field">
+              Primary Date
+              <SettingSelect
+                value={rule.ageSource}
+                options={AGE_SOURCE_OPTIONS}
+                onChange={(value) => onChange({ ageSource: value })}
+                ariaLabel="PC aging primary date source"
+              />
+            </label>
+
+            <label className="form-field">
+              Missing Date
+              <SettingSelect
+                value={rule.includeUnknownAge ? "include" : "exclude"}
+                options={[
+                  { value: "exclude", label: "Flag as data gap" },
+                  { value: "include", label: "Include in aging report" },
+                ]}
+                onChange={(value) => onChange({ includeUnknownAge: value === "include" })}
+                ariaLabel="PC aging missing date handling"
+              />
+            </label>
+
+            <label className="form-field">
+              Replacement Window
+              <input
+                className="setting-input"
+                type="number"
+                min="0"
+                max="36"
+                value={rule.replacementWindowMonths}
+                onChange={(event) => onChange({ replacementWindowMonths: Number(event.target.value) })}
+              />
+            </label>
+          </div>
+
+          <div className="aging-basis-note pc-aging-basis-note">
+            <strong>{formatAgeSourceLabel(rule.ageSource)}</strong>
+            <span>is currently used as the main lifecycle reference date.</span>
+          </div>
+        </article>
+
+        <article className="pc-aging-panel pc-aging-notes-panel">
+          <div className="pc-aging-panel-head">
+            <div>
+              <span className="section-tag">ADMIN NOTE</span>
+              <h4>Operational Note</h4>
+              <p>Store an internal note with this lifecycle configuration.</p>
+            </div>
+          </div>
+
+          <textarea
+            className="aging-notes-input"
+            value={rule.notes}
+            onChange={(event) => onChange({ notes: event.target.value })}
+            placeholder="Example: This lifecycle rule is used for annual endpoint refresh planning."
           />
-        </div>
-
-        <div className="aging-kpi-grid">
-          <div><span>Status</span><b>{rule.enabled ? "Enabled" : "Disabled"}</b></div>
-          <div><span>Aging Threshold</span><b>{rule.monitorMaxYears} years</b></div>
-          <div><span>Critical Reference</span><b>{rule.agingMinYears} years</b></div>
-        </div>
-      </article>
-
-      <article className="aging-card aging-rule-status-card">
-        <div className="aging-top">
-          <div>
-            <h4>Replacement Planning</h4>
-            <p>Use this rule to support CAPEX planning and hardware refresh forecast.</p>
-          </div>
-        </div>
-
-        <div className="aging-kpi-grid">
-          <div><span>Refresh Window</span><b>{rule.replacementWindowMonths} months</b></div>
-          <div><span>Unknown Age</span><b>{rule.includeUnknownAge ? "Included" : "Data Gap"}</b></div>
-          <div><span>Age Source</span><b>{formatAgeSourceLabel(rule.ageSource)}</b></div>
-        </div>
-      </article>
-
-      <article className="aging-card">
-        <div className="aging-top">
-          <div>
-            <h4>Lifecycle Action Mapping</h4>
-            <p>Map each age category to an operational decision used by dashboards and reports.</p>
-          </div>
-        </div>
-        <div className="aging-action-list">
-          <AgingActionRow status="Standard" condition={`Less than ${rule.healthyMaxYears} years`} action="Monitor" tone="blue" />
-          <AgingActionRow status="Aging" condition={`${rule.monitorMaxYears} years and above`} action="Review" tone="amber" />
-          <AgingActionRow status="Critical" condition={`${rule.agingMinYears} years and above`} action="Replace" tone="red" />
-        </div>
-      </article>
-
-      <article className="aging-card">
-        <div className="aging-top">
-          <div>
-            <h4>Calculation Basis</h4>
-            <p>Select which source date should determine device aging.</p>
-          </div>
-        </div>
-        <div className="form-grid aging-form-grid">
-          <label className="form-field">
-            Primary Date
-            <SettingSelect
-              value={rule.ageSource}
-              options={AGE_SOURCE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-              onChange={(value) => onChange({ ageSource: value })}
-              ariaLabel="Primary age source"
-            />
-          </label>
-          <label className="form-field">
-            Missing Date
-            <SettingSelect
-              value={rule.includeUnknownAge ? "include" : "exclude"}
-              options={[
-                { value: "exclude", label: "Flag as data gap" },
-                { value: "include", label: "Include in aging report" },
-              ]}
-              onChange={(value) => onChange({ includeUnknownAge: value === "include" })}
-              ariaLabel="Missing age date handling"
-            />
-          </label>
-          <label className="form-field">
-            Replacement Window
-            <input
-              className="setting-input"
-              type="number"
-              min="0"
-              max="36"
-              value={rule.replacementWindowMonths}
-              onChange={(event) => onChange({ replacementWindowMonths: Number(event.target.value) })}
-            />
-          </label>
-        </div>
-        <div className="aging-basis-note">
-          <strong>{formatAgeSourceLabel(rule.ageSource)}</strong>
-          <span>is currently used as the main reference date for lifecycle calculation.</span>
-        </div>
-      </article>
-
-      <article className="aging-card aging-notes-card">
-        <div className="aging-top">
-          <div>
-            <h4>Operational Note</h4>
-            <p>This note is stored together with the PC aging configuration.</p>
-          </div>
-          <button className="soft-btn" type="button" onClick={onReload} disabled={loading || saving}>Reload</button>
-        </div>
-        <textarea
-          className="aging-notes-input"
-          value={rule.notes}
-          onChange={(event) => onChange({ notes: event.target.value })}
-          placeholder="Example: PC aging rule used for dashboard and replacement planning."
-        />
-      </article>
+        </article>
+      </section>
     </div>
   );
 }
+
 
 function AgingThresholdLine({ label, help, value, display, onChange }: { label: string; help: string; value: number; display: string; onChange: (value: number) => void }) {
   return (
