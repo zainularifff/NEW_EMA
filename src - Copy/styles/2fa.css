@@ -1,0 +1,413 @@
+/* =========================================================
+   EMA Login 2FA Styles
+   File name: 2fa.css
+
+   Use this single file for Login.tsx 2FA styles.
+   This file targets the working Login.tsx classes:
+   - .login-2fa-setup
+   - .login-2fa-qr
+   - .login-2fa-secret
+   - .login-secondary-btn
+   - .login-authenticator-panel
+
+   Safe to use with existing app-global.css.
+========================================================= */
+
+/* =========================================================
+   Login 2FA / Authenticator UI Polish
+   File: src/styles/login-2fa-append.css
+
+   IMPORTANT:
+   - CSS only.
+   - No Login.tsx function/API/token logic changed.
+   - Keep your existing working Login.tsx.
+   - Import this file OR paste it at the bottom of src/styles/app-global.css.
+========================================================= */
+
+/* =========================================================
+   2FA Setup Block
+========================================================= */
+
+.login-2fa-setup {
+  display: grid;
+  gap: 0.95rem;
+  margin: 0 0 1.15rem;
+  padding: 1.1rem;
+  border: 1px solid #dbe4f0;
+  border-radius: 1.35rem;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(37, 99, 235, 0.07), transparent 16rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.96));
+  box-shadow:
+    0 18px 34px rgba(15, 23, 42, 0.055),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.login-page-dark .login-2fa-setup {
+  border-color: rgba(148, 163, 184, 0.14);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(37, 99, 235, 0.12), transparent 16rem),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.72), rgba(10, 18, 34, 0.82));
+  box-shadow:
+    0 22px 40px rgba(2, 6, 23, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.login-2fa-text {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.62;
+}
+
+.login-2fa-text:first-child {
+  position: relative;
+  padding-left: 0.95rem;
+}
+
+.login-2fa-text:first-child::before {
+  position: absolute;
+  top: 0.38rem;
+  left: 0;
+  width: 4px;
+  height: calc(100% - 0.72rem);
+  min-height: 28px;
+  content: "";
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2563eb, #38bdf8);
+}
+
+.login-page-dark .login-2fa-text {
+  color: #94a3b8;
+}
+
+/* =========================================================
+   QR Card
+========================================================= */
+
+.login-2fa-qr {
+  width: fit-content;
+  min-width: 204px;
+  min-height: 204px;
+  display: grid;
+  place-items: center;
+  margin: 0.15rem auto 0.05rem;
+  padding: 0.85rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow:
+    0 18px 36px rgba(15, 23, 42, 0.075),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.login-2fa-qr img {
+  width: 180px;
+  height: 180px;
+  display: block;
+  object-fit: contain;
+  border-radius: 0.55rem;
+}
+
+.login-page-dark .login-2fa-qr {
+  border-color: rgba(148, 163, 184, 0.18);
+  background: #ffffff;
+  box-shadow:
+    0 20px 38px rgba(2, 6, 23, 0.35),
+    0 0 0 1px rgba(37, 99, 235, 0.08);
+}
+
+/* =========================================================
+   Manual Secret / Manual Key
+========================================================= */
+
+.login-2fa-secret {
+  margin: 0;
+  padding: 0.85rem 0.95rem;
+  border: 1px dashed #bfdbfe;
+  border-radius: 1rem;
+  color: #334155;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(37, 99, 235, 0.08), transparent 14rem),
+    #f8fafc;
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    monospace;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.55;
+  word-break: break-all;
+}
+
+.login-2fa-secret strong,
+.login-2fa-secret b {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #64748b;
+  font-family:
+    Manrope,
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.login-page-dark .login-2fa-secret {
+  border-color: rgba(96, 165, 250, 0.26);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(37, 99, 235, 0.12), transparent 14rem),
+    rgba(15, 23, 42, 0.58);
+  color: #e2e8f0;
+}
+
+.login-page-dark .login-2fa-secret strong,
+.login-page-dark .login-2fa-secret b {
+  color: #94a3b8;
+}
+
+/* =========================================================
+   2FA Code Input Support
+   These selectors are broad but only affect login panel numeric OTP inputs.
+========================================================= */
+
+.login-form-panel input[inputmode="numeric"],
+.login-form-panel input[autocomplete="one-time-code"] {
+  letter-spacing: 0.08em;
+  font-weight: 850;
+}
+
+.login-form-panel input[inputmode="numeric"]::placeholder,
+.login-form-panel input[autocomplete="one-time-code"]::placeholder {
+  letter-spacing: normal;
+}
+
+/* =========================================================
+   Secondary / Back Button
+   Converts ugly default button into clean text action.
+========================================================= */
+
+.login-secondary-btn {
+  width: fit-content;
+  min-height: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0.75rem auto 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: #2563eb;
+  background: transparent;
+  box-shadow: none;
+  font-size: 0.92rem;
+  font-weight: 850;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.login-secondary-btn:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+  transform: translateY(-1px);
+}
+
+.login-secondary-btn:active {
+  transform: translateY(0);
+}
+
+.login-page-dark .login-secondary-btn {
+  color: #93c5fd;
+  background: transparent;
+  border: 0;
+}
+
+.login-page-dark .login-secondary-btn:hover {
+  color: #bfdbfe;
+}
+
+/* In case browser/default CSS still leaks into the back button */
+button.login-secondary-btn {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* =========================================================
+   Authenticator Info Panel
+========================================================= */
+
+.login-authenticator-panel {
+  margin-top: 1.35rem;
+  text-align: center;
+}
+
+.login-authenticator-divider {
+  width: 100%;
+  height: 1px;
+  margin-bottom: 1.2rem;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(148, 163, 184, 0.32),
+    transparent
+  );
+}
+
+.login-authenticator-title {
+  margin-bottom: 0.8rem;
+  color: #94a3b8;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+}
+
+.login-authenticator-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.login-authenticator-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  border: 0;
+  padding: 0;
+  color: #334155;
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 850;
+  cursor: default;
+  opacity: 1;
+}
+
+.login-authenticator-brand:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.login-provider-logo,
+.login-authenticator-brand svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+
+.login-authenticator-separator {
+  width: 1px;
+  height: 22px;
+  background: #dbe3ef;
+}
+
+.login-authenticator-badge {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  margin-top: 0.85rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  color: #2563eb;
+  background: #eff6ff;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.login-page-dark .login-authenticator-divider {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(148, 163, 184, 0.18),
+    transparent
+  );
+}
+
+.login-page-dark .login-authenticator-brand {
+  color: #e2e8f0;
+}
+
+.login-page-dark .login-authenticator-separator {
+  background: rgba(148, 163, 184, 0.22);
+}
+
+.login-page-dark .login-authenticator-badge {
+  border-color: rgba(96, 165, 250, 0.32);
+  color: #93c5fd;
+  background: rgba(37, 99, 235, 0.12);
+}
+
+/* =========================================================
+   Verify-only state polish
+   Works even when there is no QR.
+========================================================= */
+
+.login-form-panel:not(:has(.login-2fa-qr)) .login-secondary-btn {
+  margin-top: 0.25rem;
+}
+
+.login-form-panel:has(.login-2fa-setup) .login-security-note {
+  margin-top: 1rem;
+}
+
+/* Add breathing room around MFA form area without changing markup */
+.login-2fa-setup + .login-field,
+.login-2fa-setup + .login-field-group,
+.login-2fa-setup + form,
+.login-2fa-setup ~ .login-field,
+.login-2fa-setup ~ .login-field-group {
+  margin-top: 1rem;
+}
+
+/* =========================================================
+   Responsive
+========================================================= */
+
+@media (max-width: 575.98px) {
+  .login-2fa-setup {
+    padding: 1rem;
+    border-radius: 1.15rem;
+  }
+
+  .login-2fa-qr {
+    min-width: 176px;
+    min-height: 176px;
+    padding: 0.75rem;
+  }
+
+  .login-2fa-qr img {
+    width: 152px;
+    height: 152px;
+  }
+
+  .login-authenticator-row {
+    gap: 0.65rem;
+  }
+
+  .login-authenticator-separator {
+    display: none;
+  }
+
+  .login-authenticator-brand {
+    width: 100%;
+  }
+}

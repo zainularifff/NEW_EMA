@@ -1,0 +1,860 @@
+/* =========================================================
+   Global Settings Layout - Locked, Compact, Low-lag
+========================================================= */
+
+.settings-module-root {
+  --ema-control-bg: #eef3f8;
+  --ema-control-bg-2: #f7fafc;
+  --ema-control-surface: rgba(255, 255, 255, 0.98);
+  --ema-control-surface-strong: #ffffff;
+  --ema-control-soft: #f4f7fb;
+  --ema-control-border: rgba(124, 139, 161, 0.26);
+  --ema-control-line-soft: rgba(156, 171, 190, 0.34);
+  --ema-control-text: #173154;
+  --ema-control-text-strong: #0f2746;
+  --ema-control-muted: #64748b;
+  --ema-control-muted-2: #8a9ab1;
+  --ema-control-primary: #2558e8;
+  --ema-control-cyan: #087ea4;
+  --ema-control-radius-lg: 1.28rem;
+
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: 14px;
+  color: var(--ema-control-text);
+  font-family: var(--ema-font-sans);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(37, 99, 235, 0.075), transparent 24rem),
+    radial-gradient(circle at 100% 6%, rgba(8, 126, 164, 0.055), transparent 24rem),
+    linear-gradient(135deg, #f6f8fb 0%, #edf2f7 54%, #e5ecf4 100%);
+}
+
+body.ema-settings-page-active,
+html.ema-settings-page-active {
+  height: 100%;
+  overflow: hidden;
+}
+
+body.ema-settings-page-active .ema-main,
+body.ema-settings-page-active .ema-shell,
+body.ema-settings-page-active #root {
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.ema-settings-page-active .ema-page {
+  min-height: 0;
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+
+html[data-theme="dark"] .settings-module-root,
+body[data-theme="dark"] .settings-module-root,
+.dark .settings-module-root,
+.dark-theme .settings-module-root {
+  --ema-control-bg: #07111f;
+  --ema-control-bg-2: #020617;
+  --ema-control-surface: rgba(15, 23, 42, 0.94);
+  --ema-control-surface-strong: rgba(15, 23, 42, 0.98);
+  --ema-control-soft: rgba(30, 41, 59, 0.74);
+  --ema-control-border: rgba(148, 163, 184, 0.16);
+  --ema-control-line-soft: rgba(148, 163, 184, 0.10);
+  --ema-control-text: #dbeafe;
+  --ema-control-text-strong: #f8fafc;
+  --ema-control-muted: #94a3b8;
+  --ema-control-muted-2: #64748b;
+  --ema-control-primary: #60a5fa;
+  --ema-control-cyan: #22d3ee;
+
+  background:
+    radial-gradient(circle at 8% 0%, rgba(37, 99, 235, 0.14), transparent 28rem),
+    radial-gradient(circle at 98% 8%, rgba(6, 182, 212, 0.10), transparent 24rem),
+    linear-gradient(135deg, #020617 0%, #07111f 52%, #0f172a 100%);
+}
+
+.settings-module-root *,
+.settings-module-root *::before,
+.settings-module-root *::after {
+  box-sizing: border-box;
+}
+
+.settings-layout {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: 14px;
+  overflow: hidden;
+}
+
+.ema-panel-surface,
+.settings-menu,
+.settings-hero,
+.content-shell,
+.side-card,
+.settings-helper-card,
+.policy-card,
+.pricing-card,
+.risk-card,
+.aging-card,
+.role-card,
+.module-role-manager {
+  border: 1px solid var(--ema-control-border) !important;
+  border-radius: var(--ema-control-radius-lg) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(250, 252, 255, 0.96)) !important;
+  box-shadow:
+    0 10px 28px rgba(15, 23, 42, 0.052),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84) !important;
+}
+
+.settings-menu {
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-head {
+  flex: 0 0 auto;
+  padding: 1rem 1rem 0.82rem;
+  border-bottom: 1px solid var(--ema-control-line-soft);
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ema-control-primary) 10%, transparent), transparent 14rem),
+    transparent;
+}
+
+.panel-head span,
+.eyebrow,
+.section-tag {
+  display: block;
+  color: var(--ema-control-primary);
+  font-size: var(--ema-fs-xxs, 0.64rem);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.panel-head strong {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--ema-control-text-strong);
+  font-size: 1rem;
+  font-weight: 850;
+  letter-spacing: -0.035em;
+}
+
+.panel-head small {
+  display: block;
+  margin-top: 0.24rem;
+  color: var(--ema-control-muted);
+  font-size: var(--ema-fs-xs, 0.72rem);
+  font-weight: 680;
+}
+
+.settings-menu-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden auto;
+  display: grid;
+  align-content: start;
+  gap: 0.42rem;
+  padding: 0.65rem;
+  overscroll-behavior: contain;
+}
+
+.setting-btn {
+  position: relative;
+  width: 100%;
+  min-height: 3.36rem;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 0.96rem;
+  color: var(--ema-control-text);
+  background: transparent;
+  text-align: left;
+  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.setting-btn:hover {
+  border-color: var(--ema-control-border);
+  background: color-mix(in srgb, var(--ema-control-primary) 6%, transparent);
+}
+
+.setting-btn.active {
+  color: #fff;
+  border-color: transparent;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.22), transparent 9rem),
+    linear-gradient(135deg, #2558e8 0%, #087ea4 100%);
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.18);
+}
+
+.setting-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 0.84rem;
+  color: var(--ema-control-primary);
+  background: color-mix(in srgb, var(--ema-control-primary) 10%, transparent);
+}
+
+.setting-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.setting-btn.active .setting-icon {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.20);
+}
+
+.setting-btn strong {
+  display: block;
+  color: inherit;
+  font-size: 0.77rem;
+  font-weight: 820;
+  line-height: 1.12;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setting-btn small {
+  display: block;
+  margin-top: 0.18rem;
+  color: var(--ema-control-muted);
+  font-size: 0.64rem;
+  font-weight: 650;
+  line-height: 1.22;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setting-btn.active small {
+  color: rgba(255, 255, 255, 0.80);
+}
+
+.setting-btn b {
+  min-width: 1.55rem;
+  height: 1.55rem;
+  display: grid;
+  place-items: center;
+  padding: 0 0.42rem;
+  border-radius: 999px;
+  color: var(--ema-control-primary);
+  background: color-mix(in srgb, var(--ema-control-primary) 10%, transparent);
+  font-size: 0.64rem;
+  font-weight: 850;
+}
+
+.setting-btn.active b {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.20);
+}
+
+.settings-content {
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 14px;
+  overflow: hidden;
+}
+
+.settings-hero {
+  position: relative;
+  min-height: 6.6rem;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.56fr);
+  align-items: center;
+  gap: 1rem;
+  padding: 0.96rem 1.12rem;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(246, 249, 253, 0.96)) !important;
+}
+
+.settings-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.34;
+  background:
+    radial-gradient(circle at 82% 0%, rgba(37, 99, 235, 0.10), transparent 18rem),
+    linear-gradient(90deg, rgba(100, 116, 139, 0.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(100, 116, 139, 0.06) 1px, transparent 1px);
+  background-size: auto, 34px 34px, 34px 34px;
+}
+
+.settings-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.settings-hero h2 {
+  margin: 0.32rem 0 0.25rem;
+  color: var(--ema-control-text-strong);
+  font-size: var(--ema-fs-3xl, clamp(1.65rem, 2.1vw, 2.28rem));
+  font-weight: 850;
+  line-height: 1.04;
+  letter-spacing: -0.06em;
+}
+
+.settings-hero p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--ema-control-muted);
+  font-size: var(--ema-fs-xs, 0.72rem);
+  font-weight: 660;
+  line-height: 1.45;
+}
+
+.settings-score {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.settings-score.users-hero-score {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.score-box {
+  min-height: 3.95rem;
+  overflow: hidden;
+  padding: 0.6rem 0.68rem;
+  border: 1px solid var(--ema-control-line-soft);
+  border-radius: 0.9rem;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--ema-control-primary) 7%, transparent), transparent 7rem),
+    color-mix(in srgb, var(--ema-control-surface-strong) 88%, transparent);
+}
+
+.score-box span {
+  display: block;
+  color: var(--ema-control-muted);
+  font-size: 0.56rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.score-box strong {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--ema-control-text-strong);
+  font-size: 1.4rem;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: -0.055em;
+}
+
+.score-box small {
+  display: block;
+  margin-top: 0.26rem;
+  color: var(--ema-control-muted-2);
+  font-size: 0.56rem;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.content-shell {
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(250, 252, 255, 0.97)) !important;
+}
+
+.users-content-shell,
+.roles-content-shell,
+.modules-content-shell,
+.access-content-shell,
+.audit-content-shell {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.content-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.82rem;
+  padding: 0.86rem 1rem;
+  border-bottom: 1px solid var(--ema-control-line-soft);
+  background: color-mix(in srgb, var(--ema-control-surface-strong) 82%, transparent);
+}
+
+.content-head h3 {
+  margin: 0.22rem 0 0.16rem;
+  color: var(--ema-control-text-strong);
+  font-size: 1.08rem;
+  font-weight: 850;
+  line-height: 1.14;
+  letter-spacing: -0.038em;
+}
+
+.content-head p {
+  margin: 0;
+  color: var(--ema-control-muted);
+  font-size: var(--ema-fs-xs, 0.72rem);
+  font-weight: 660;
+  line-height: 1.42;
+}
+
+.content-actions,
+.toolbar-actions,
+.uam-actions-right {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.44rem;
+  flex-wrap: wrap;
+}
+
+.content-body {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0.9rem 1rem 1rem;
+  scroll-behavior: auto;
+}
+
+.settings-inline-alert {
+  padding: 0.74rem 0.82rem;
+  border: 1px solid color-mix(in srgb, #ef4444 22%, transparent);
+  border-radius: 0.9rem;
+  color: #dc2626;
+  background: color-mix(in srgb, #ef4444 9%, transparent);
+  font-size: var(--ema-fs-xs, 0.72rem);
+  font-weight: 800;
+}
+
+.settings-helper-card {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.68rem 0.78rem;
+  color: var(--ema-control-muted);
+  font-size: var(--ema-fs-xs, 0.72rem);
+  font-weight: 680;
+}
+
+.settings-helper-card strong {
+  color: var(--ema-control-text-strong);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.content-body::-webkit-scrollbar,
+.settings-menu-list::-webkit-scrollbar,
+.user-access-table::-webkit-scrollbar,
+.module-control-table::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.content-body::-webkit-scrollbar-thumb,
+.settings-menu-list::-webkit-scrollbar-thumb,
+.user-access-table::-webkit-scrollbar-thumb,
+.module-control-table::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ema-control-muted) 38%, transparent);
+  border-radius: 999px;
+}
+
+@media (max-height: 780px) {
+  .settings-hero {
+    min-height: 5.6rem;
+  }
+
+  .score-box {
+    min-height: 3.5rem;
+  }
+}
+
+@media (max-width: 1280px) {
+  .settings-layout {
+    grid-template-columns: 226px minmax(0, 1fr);
+  }
+
+  .settings-hero,
+  .settings-hero.users-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-score,
+  .settings-score.users-hero-score {
+    grid-template-columns: repeat(4, minmax(112px, 1fr));
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  body.ema-settings-page-active,
+  html.ema-settings-page-active {
+    overflow: auto;
+  }
+
+  body.ema-settings-page-active .ema-page {
+    overflow: auto !important;
+  }
+
+  .settings-module-root {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+    padding: 0.75rem;
+  }
+
+  .settings-layout {
+    height: auto;
+    min-height: 100%;
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .settings-menu,
+  .settings-content,
+  .content-shell {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .settings-menu-list {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.65rem;
+  }
+
+  .setting-btn {
+    min-width: 216px;
+  }
+
+  .content-body {
+    overflow: visible;
+  }
+
+  .settings-score,
+  .settings-score.users-hero-score {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+
+/* =========================================================
+   REVAMP V2 - Settings layout lock + premium canvas
+   Purpose:
+   - remove scroll lag caused by heavy glass/backdrop
+   - lock only the Settings shell
+   - allow content-body/table areas to scroll when long
+========================================================= */
+
+html.ema-settings-page-active,
+body.ema-settings-page-active,
+body.ema-settings-page-active #root,
+body.ema-settings-page-active .ema-shell,
+body.ema-settings-page-active .ema-main {
+  height: 100vh !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+}
+
+body.ema-settings-page-active .ema-topbar {
+  flex: 0 0 76px !important;
+}
+
+body.ema-settings-page-active .ema-page {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: calc(100vh - 76px) !important;
+  max-height: calc(100vh - 76px) !important;
+  overflow: hidden !important;
+  padding: 0.9rem !important;
+  background:
+    radial-gradient(circle at 16% 0%, rgba(37, 99, 235, 0.08), transparent 26rem),
+    radial-gradient(circle at 100% 0%, rgba(8, 126, 164, 0.07), transparent 24rem),
+    linear-gradient(135deg, #e9eff7 0%, #f5f8fc 48%, #e7eef6 100%) !important;
+}
+
+.settings-module-root {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(124, 139, 161, 0.22);
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.065), transparent 26rem),
+    radial-gradient(circle at 100% 10%, rgba(8, 126, 164, 0.055), transparent 26rem),
+    linear-gradient(135deg, #eef3f9 0%, #f9fbfd 45%, #e8eff7 100%) !important;
+  box-shadow:
+    0 24px 70px rgba(15, 23, 42, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.80);
+}
+
+.settings-module-root,
+.settings-module-root * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.settings-module-root::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.34;
+  background:
+    linear-gradient(to right, rgba(100, 116, 139, 0.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(100, 116, 139, 0.07) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(180deg, black 0%, transparent 85%);
+}
+
+.settings-layout {
+  position: relative !important;
+  z-index: 1 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: 248px minmax(0, 1fr) !important;
+  gap: 0.9rem !important;
+  overflow: hidden !important;
+  padding: 0.9rem !important;
+}
+
+.settings-menu,
+.settings-content,
+.content-shell {
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+}
+
+.settings-content {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  gap: 0.9rem !important;
+}
+
+.content-shell {
+  display: grid !important;
+  grid-template-rows: auto auto minmax(0, 1fr) !important;
+}
+
+.users-content-shell,
+.roles-content-shell,
+.modules-content-shell,
+.access-content-shell,
+.audit-content-shell {
+  grid-template-rows: auto minmax(0, 1fr) !important;
+}
+
+.settings-module-root .content-body {
+  min-height: 0 !important;
+  overflow: auto !important;
+  overscroll-behavior: contain !important;
+  padding-bottom: 1rem !important;
+}
+
+.settings-module-root[data-section="modules"] .content-body,
+.settings-module-root[data-section="aging"] .content-body,
+.settings-module-root[data-section="risk"] .content-body,
+.settings-module-root[data-section="access"] .content-body {
+  overflow-y: auto !important;
+}
+
+.ema-panel-surface,
+.settings-menu,
+.settings-hero,
+.content-shell {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,251,255,0.96)) !important;
+  border: 1px solid rgba(124, 139, 161, 0.22) !important;
+  box-shadow:
+    0 16px 36px rgba(15, 23, 42, 0.075),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88) !important;
+}
+
+.settings-hero {
+  min-height: 6.5rem !important;
+  border-radius: 1.35rem !important;
+  background:
+    radial-gradient(circle at 76% 0%, rgba(37, 99, 235, 0.08), transparent 18rem),
+    linear-gradient(135deg, rgba(255,255,255,0.98), rgba(243,248,253,0.96)) !important;
+}
+
+.settings-hero h2 {
+  font-size: clamp(1.55rem, 1.8vw, 2.05rem) !important;
+  letter-spacing: -0.065em !important;
+}
+
+.content-head {
+  min-height: 5.2rem;
+  align-items: center !important;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.96), rgba(248,251,255,0.96)) !important;
+}
+
+.settings-menu-list {
+  overflow: auto !important;
+  overscroll-behavior: contain !important;
+}
+
+/* Desktop content scroll should be smooth and not fight browser/page scroll. */
+.settings-module-root .content-body,
+.settings-module-root .settings-menu-list,
+.settings-module-root .module-control-table,
+.settings-module-root .user-access-table {
+  scrollbar-gutter: stable;
+  scroll-behavior: auto !important;
+}
+
+/* Mobile/tablet can still page-scroll naturally. */
+@media (max-width: 900px) {
+  html.ema-settings-page-active,
+  body.ema-settings-page-active,
+  body.ema-settings-page-active #root,
+  body.ema-settings-page-active .ema-shell,
+  body.ema-settings-page-active .ema-main,
+  body.ema-settings-page-active .ema-page {
+    height: auto !important;
+    max-height: none !important;
+    overflow: auto !important;
+  }
+
+  .settings-module-root,
+  .settings-layout,
+  .settings-menu,
+  .settings-content,
+  .content-shell {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .settings-layout {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* =========================================================
+   V3 single scroll and canvas polish
+   Content sections can scroll, but the entire app page stays locked.
+========================================================= */
+
+html.ema-settings-lock,
+body.ema-settings-lock,
+html.ema-settings-lock body,
+body.ema-settings-lock #root {
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+body.ema-settings-lock .ema-main,
+body.ema-settings-lock .ema-content,
+body.ema-settings-lock .app-main,
+body.ema-settings-lock .app-content,
+body.ema-settings-lock main {
+  min-height: 0 !important;
+}
+
+.settings-module-root {
+  position: relative !important;
+  height: calc(100vh - 86px) !important;
+  max-height: calc(100vh - 86px) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(37, 99, 235, 0.07), transparent 22rem),
+    radial-gradient(circle at 100% 4%, rgba(14, 165, 233, 0.07), transparent 26rem),
+    linear-gradient(135deg, #eef3f8 0%, #e8eef5 46%, #dde6ef 100%) !important;
+}
+
+.settings-layout,
+.settings-content,
+.content-shell {
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.content-body {
+  min-height: 0 !important;
+  overflow: auto !important;
+  overscroll-behavior: contain !important;
+}
+
+/* Module Control should have ONE vertical scrollbar only: the content body. */
+.modules-content-shell .content-body {
+  overflow: auto !important;
+}
+
+.modules-content-shell .module-control-table {
+  max-height: none !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+}
+
+.modules-content-shell .module-control-table .module-control-row.head {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+}
+
+/* Keep modal internals clean and avoid huge internal scrollbars unless needed. */
+.user-modal.advanced,
+.role-modal {
+  max-height: min(82vh, 780px) !important;
+}
+
+.user-modal-body,
+.role-modal-body {
+  scrollbar-gutter: stable !important;
+}
+
+@media (max-height: 780px) {
+  .settings-module-root {
+    height: calc(100vh - 74px) !important;
+    max-height: calc(100vh - 74px) !important;
+  }
+}
+
+/* =========================================================
+   V4 remove sidebar badges and duplicate headings
+========================================================= */
+
+.settings-module-root .setting-btn {
+  grid-template-columns: 38px minmax(0, 1fr) !important;
+}
+
+.settings-module-root .setting-btn b,
+.settings-module-root .settings-menu-list .setting-btn > b {
+  display: none !important;
+}
+
+.settings-module-root .content-head.audit-export-only-head {
+  display: none !important;
+}

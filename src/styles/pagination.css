@@ -1,0 +1,186 @@
+/* =========================================================
+   Global Pagination
+========================================================= */
+
+.uam-pagination,
+.uam-pagination.global-style {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  margin-top: 0.8rem;
+  padding: 0 0.1rem;
+  color: var(--ema-control-muted, #64748b);
+  font-size: 0.72rem;
+  font-weight: 720;
+}
+
+.uam-page-summary,
+.uam-pagination-controls.global-style,
+.uam-page-status {
+  min-height: 2.25rem;
+  border: 1px solid var(--ema-control-border, #d9e5f2);
+  border-radius: 999px;
+  background: var(--ema-control-surface, #fff);
+  color: var(--ema-control-text, #173154);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.uam-page-summary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.9rem;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.uam-pagination-controls.global-style {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.22rem 0.45rem;
+}
+
+.uam-page-icon {
+  width: 1.82rem;
+  height: 1.82rem;
+  border: 0;
+  border-radius: 999px;
+  color: var(--ema-control-muted, #64748b);
+  background: transparent;
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+.uam-page-icon:hover:not(:disabled) {
+  color: #2558e8;
+  background: rgba(37, 99, 235, 0.09);
+}
+
+.uam-page-icon:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.uam-page-current {
+  width: 1.95rem;
+  height: 1.95rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(135deg, #2558e8, #087ea4);
+  font-size: 0.76rem;
+  font-weight: 900;
+  box-shadow: 0 10px 18px rgba(37, 99, 235, 0.17);
+}
+
+@media (max-width: 760px) {
+  .uam-pagination,
+  .uam-pagination.global-style {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+
+/* =========================================================
+   REVAMP V2 - pagination consistency
+========================================================= */
+
+.uam-pagination.global-style,
+.uam-pagination {
+  margin-top: 0.8rem !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+}
+
+.uam-page-status {
+  min-height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.9rem;
+  border: 1px solid rgba(142, 160, 186, 0.26);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.74);
+  color: var(--ema-control-muted, #64748b);
+  font-size: 0.72rem;
+  font-weight: 760;
+}
+
+@media (max-width: 900px) {
+  .uam-pagination.global-style,
+  .uam-pagination {
+    grid-template-columns: 1fr !important;
+    justify-items: start !important;
+  }
+}
+
+/* =========================================================
+   V3 compact pagination
+   Prevents the pagination control pill from stretching full width.
+========================================================= */
+
+.settings-module-root .uam-pagination.global-style {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  margin-top: 0.78rem !important;
+}
+
+.settings-module-root .uam-pagination-controls.global-style {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: max-content !important;
+  justify-self: end !important;
+  flex: 0 0 auto !important;
+}
+
+.settings-module-root .uam-page-summary {
+  justify-self: start !important;
+}
+
+.settings-module-root .uam-page-status,
+.settings-module-root .uam-pagination-info {
+  justify-self: center !important;
+  text-align: center !important;
+  color: var(--ema-control-muted, #64748b) !important;
+  font-size: 0.72rem !important;
+  font-weight: 760 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  min-height: 0 !important;
+}
+
+@media (max-width: 800px) {
+  .settings-module-root .uam-pagination.global-style {
+    grid-template-columns: 1fr !important;
+  }
+
+  .settings-module-root .uam-pagination-controls.global-style,
+  .settings-module-root .uam-page-summary,
+  .settings-module-root .uam-page-status,
+  .settings-module-root .uam-pagination-info {
+    justify-self: start !important;
+  }
+}
+
+/* =========================================================
+   V4 pagination width guard
+========================================================= */
+
+.settings-module-root .uam-pagination-controls.global-style {
+  width: fit-content !important;
+  max-width: fit-content !important;
+  justify-self: end !important;
+}
+
+.settings-module-root .uam-pagination.global-style {
+  width: 100% !important;
+}

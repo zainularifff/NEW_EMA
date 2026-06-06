@@ -1,0 +1,107 @@
+/* =========================================================
+   Global Toast
+========================================================= */
+
+.settings-toast-layer {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important;
+  isolation: isolate !important;
+}
+
+.settings-toast,
+.settings-toast-layer .settings-toast {
+  position: fixed !important;
+  top: 86px !important;
+  right: 24px !important;
+  bottom: auto !important;
+  z-index: 2147483647 !important;
+  width: min(400px, calc(100vw - 32px));
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 28px;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid var(--ema-control-border, #d9e5f2) !important;
+  border-radius: 1rem !important;
+  background: var(--ema-control-surface, #fff) !important;
+  color: var(--ema-control-text, #173154) !important;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.22) !important;
+  pointer-events: auto !important;
+  animation: settingsToastSlideIn 0.18s ease-out;
+}
+
+@keyframes settingsToastSlideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.settings-toast-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 0.82rem;
+  font-size: 0.96rem;
+  font-weight: 900;
+}
+
+.settings-toast strong {
+  display: block;
+  color: var(--ema-control-text-strong, #0f2746);
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.settings-toast span {
+  display: block;
+  margin-top: 0.18rem;
+  color: var(--ema-control-muted, #64748b);
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.settings-toast button {
+  width: 1.65rem;
+  height: 1.65rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: var(--ema-control-soft, #f5f8fc);
+  color: var(--ema-control-muted, #64748b);
+  font-size: 1rem;
+  font-weight: 800;
+  pointer-events: auto !important;
+}
+
+.settings-toast-success .settings-toast-icon {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.settings-toast-info .settings-toast-icon {
+  color: #2558e8;
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.settings-toast-warning .settings-toast-icon {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.settings-toast-error .settings-toast-icon {
+  color: #dc2626;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+@media (max-width: 720px) {
+  .settings-toast,
+  .settings-toast-layer .settings-toast {
+    top: 18px !important;
+    right: 16px !important;
+    left: 16px !important;
+    width: auto !important;
+  }
+}

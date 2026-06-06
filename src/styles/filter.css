@@ -1,0 +1,480 @@
+/* =========================================================
+   Global Filter / Toolbar
+========================================================= */
+
+.content-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 9.5rem;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--ema-control-line-soft, rgba(203, 213, 225, 0.58));
+  background: color-mix(in srgb, var(--ema-control-surface, #fff) 84%, transparent);
+  align-items: center;
+}
+
+.content-toolbar.users-toolbar,
+.content-toolbar.roles-toolbar,
+.content-toolbar.modules-toolbar,
+.content-toolbar.access-toolbar {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.section-search {
+  height: 2.42rem;
+  min-height: 2.42rem;
+  max-height: 2.42rem;
+  display: flex;
+  align-items: center;
+  gap: 0.58rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--ema-control-border, #d9e5f2);
+  border-radius: 0.86rem;
+  color: var(--ema-control-muted, #64748b);
+  background: var(--ema-control-soft, #f5f8fc);
+  overflow: hidden;
+}
+
+.section-search > svg,
+.section-search .lucide {
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
+  flex: 0 0 15px !important;
+  stroke-width: 2.2 !important;
+  color: var(--ema-control-muted, #64748b);
+}
+
+.section-search input {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  color: var(--ema-control-text, #173154);
+  background: transparent;
+  font-size: 0.74rem;
+  font-weight: 720;
+  line-height: 1;
+}
+
+.user-action-bar.advanced.clean {
+  position: relative;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.72rem;
+  margin: 0;
+  overflow: visible;
+}
+
+.uam-filter-grid.clean.compact {
+  display: grid;
+  grid-template-columns: minmax(210px, 260px) minmax(230px, 300px);
+  gap: 0.58rem;
+  align-items: center;
+}
+
+.uam-filter-dropdown,
+.setting-select-dropdown {
+  position: relative;
+  min-width: 0;
+}
+
+.uam-filter-dropdown.disabled,
+.setting-select-dropdown.disabled {
+  opacity: 0.62;
+}
+
+.uam-filter-trigger,
+.setting-select-trigger {
+  width: 100%;
+  height: 2.42rem;
+  min-height: 2.42rem;
+  max-height: 2.42rem;
+  border: 1px solid color-mix(in srgb, #2558e8 20%, var(--ema-control-border, #d9e5f2));
+  border-radius: 0.86rem;
+  background: var(--ema-control-soft, #f5f8fc);
+  color: var(--ema-control-text, #173154);
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0 0.78rem;
+  overflow: hidden;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.uam-filter-dropdown.open .uam-filter-trigger,
+.setting-select-dropdown.open .setting-select-trigger {
+  border-color: rgba(37, 99, 235, 0.52);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.09);
+  background: var(--ema-control-surface, #fff);
+}
+
+.uam-filter-trigger svg,
+.uam-filter-trigger .lucide,
+.setting-select-trigger svg,
+.setting-select-trigger .lucide {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  max-width: 14px !important;
+  min-height: 14px !important;
+  max-height: 14px !important;
+  flex: 0 0 14px !important;
+  stroke-width: 2.35 !important;
+}
+
+.uam-filter-trigger > *,
+.setting-select-trigger > * {
+  min-width: 0;
+}
+
+.uam-filter-trigger span,
+.setting-select-trigger span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.uam-filter-menu,
+.uam-filter-menu.uam-filter-menu-portal,
+.setting-select-menu {
+  overflow: hidden auto !important;
+  border: 1px solid var(--ema-control-border, #d9e5f2);
+  border-radius: 0.95rem;
+  background: var(--ema-control-surface, #fff) !important;
+  box-shadow: 0 20px 46px rgba(15, 23, 42, 0.15);
+  padding: 0.38rem;
+  z-index: 2147483600 !important;
+}
+
+.uam-filter-menu.uam-filter-menu-portal,
+.setting-select-menu {
+  position: fixed !important;
+}
+
+.uam-filter-option {
+  width: 100%;
+  min-height: 2.26rem;
+  border: 0;
+  border-radius: 0.72rem;
+  background: transparent;
+  color: var(--ema-control-text, #173154);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0 0.68rem;
+  font-size: 0.73rem;
+  font-weight: 800;
+  text-align: left;
+}
+
+.uam-filter-option:hover,
+.uam-filter-option.selected {
+  color: #2558e8;
+  background: rgba(37, 99, 235, 0.09);
+}
+
+.uam-filter-check {
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 999px;
+  background: #2558e8;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 900;
+  flex: 0 0 auto;
+}
+
+.section-filter-select {
+  min-width: 150px;
+}
+
+@media (max-width: 900px) {
+  .content-toolbar,
+  .content-toolbar.users-toolbar,
+  .content-toolbar.roles-toolbar,
+  .content-toolbar.modules-toolbar,
+  .content-toolbar.access-toolbar,
+  .user-action-bar.advanced.clean {
+    grid-template-columns: 1fr;
+  }
+
+  .uam-filter-grid.clean.compact {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =========================================================
+   REVAMP V2 - unified dropdown / search controls
+========================================================= */
+
+.settings-module-root .section-search,
+.settings-module-root .uam-filter-trigger,
+.settings-module-root .setting-select-trigger {
+  height: 2.42rem !important;
+  min-height: 2.42rem !important;
+  max-height: 2.42rem !important;
+  border-radius: 0.9rem !important;
+  border: 1px solid rgba(142, 160, 186, 0.34) !important;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.82), rgba(242,246,251,0.92)) !important;
+  color: var(--ema-control-text, #173154) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.85),
+    0 8px 18px rgba(15,23,42,0.035) !important;
+}
+
+.settings-module-root .section-search {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.58rem !important;
+  padding: 0 0.75rem !important;
+  overflow: hidden !important;
+}
+
+.settings-module-root .section-search > svg,
+.settings-module-root .section-search .lucide,
+.settings-module-root .uam-filter-trigger svg,
+.settings-module-root .uam-filter-trigger .lucide,
+.settings-module-root .setting-select-trigger svg,
+.settings-module-root .setting-select-trigger .lucide {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  max-width: 14px !important;
+  min-height: 14px !important;
+  max-height: 14px !important;
+  flex: 0 0 14px !important;
+  stroke-width: 2.35 !important;
+  color: #64748b !important;
+}
+
+.settings-module-root .section-search input {
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  font-size: 0.74rem !important;
+  line-height: 1 !important;
+  color: var(--ema-control-text, #173154) !important;
+}
+
+.settings-module-root .content-toolbar {
+  align-items: center !important;
+  background: rgba(248, 251, 255, 0.76) !important;
+}
+
+.settings-module-root .setting-select-dropdown.disabled {
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+.uam-filter-menu.uam-filter-menu-portal,
+.setting-select-menu {
+  border: 1px solid rgba(142, 160, 186, 0.32) !important;
+  border-radius: 1rem !important;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+  box-shadow:
+    0 24px 60px rgba(15, 23, 42, 0.20),
+    inset 0 1px 0 rgba(255,255,255,0.90) !important;
+  padding: 0.4rem !important;
+  overflow: hidden auto !important;
+}
+
+.uam-filter-option {
+  min-height: 2.28rem !important;
+  border-radius: 0.76rem !important;
+  font-size: 0.73rem !important;
+  font-weight: 820 !important;
+}
+
+.uam-filter-option:hover,
+.uam-filter-option.selected {
+  color: #2558e8 !important;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.11), rgba(8, 126, 164, 0.08)) !important;
+}
+
+.uam-filter-check {
+  width: 1.28rem !important;
+  height: 1.28rem !important;
+  background: linear-gradient(135deg, #2558e8, #087ea4) !important;
+}
+
+.setting-select-trigger span,
+.uam-filter-trigger span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* =========================================================
+   V3 command bar and icon lock
+   Fixes giant search icons and aligns User Access controls.
+========================================================= */
+
+.settings-module-root .user-access-commandbar {
+  display: grid !important;
+  grid-template-columns: minmax(320px, 1fr) minmax(390px, auto) auto !important;
+  align-items: center !important;
+  gap: 0.65rem !important;
+  padding: 0.86rem 1rem !important;
+  border-bottom: 1px solid var(--ema-control-line-soft, rgba(156, 171, 190, 0.28)) !important;
+  background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(247,250,253,0.82)) !important;
+}
+
+.settings-module-root .user-search-inline {
+  width: 100% !important;
+}
+
+.settings-module-root .section-search,
+.settings-module-root .role-picker-search-wrap {
+  height: 2.42rem !important;
+  min-height: 2.42rem !important;
+  max-height: 2.42rem !important;
+  overflow: hidden !important;
+}
+
+.settings-module-root .section-search svg,
+.settings-module-root .section-search .lucide,
+.settings-module-root .role-picker-search-wrap svg,
+.settings-module-root .role-picker-search-wrap .lucide,
+.settings-module-root .setting-select-trigger svg,
+.settings-module-root .setting-select-trigger .lucide,
+.settings-module-root .uam-filter-trigger svg,
+.settings-module-root .uam-filter-trigger .lucide {
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
+  max-width: 15px !important;
+  min-height: 15px !important;
+  max-height: 15px !important;
+  flex: 0 0 15px !important;
+  stroke-width: 2.2 !important;
+  transform: none !important;
+}
+
+.settings-module-root .role-picker-search-wrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.58rem !important;
+}
+
+.settings-module-root .role-picker-search {
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  font-size: 0.74rem !important;
+  line-height: 1 !important;
+}
+
+.settings-module-root .uam-filter-grid.clean.compact {
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) !important;
+  align-items: center !important;
+}
+
+.settings-module-root .uam-actions-right {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 0.5rem !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 1280px) {
+  .settings-module-root .user-access-commandbar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .settings-module-root .uam-actions-right {
+    justify-content: flex-start !important;
+  }
+}
+
+/* =========================================================
+   V4 aligned toolbars
+   Pricing/Aging filters now sit beside Reset/Save actions.
+   Audit filters sit beside Export CSV.
+========================================================= */
+
+.settings-module-root .content-toolbar {
+  grid-template-columns: minmax(280px, 1fr) auto !important;
+  align-items: center !important;
+}
+
+.settings-module-root .settings-toolbar-right {
+  display: inline-grid !important;
+  grid-template-columns: minmax(150px, 170px) auto !important;
+  align-items: center !important;
+  gap: 0.65rem !important;
+  justify-content: end !important;
+}
+
+.settings-module-root .settings-primary-actions {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 0.5rem !important;
+  white-space: nowrap !important;
+}
+
+.settings-module-root .audit-commandbar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: end !important;
+  gap: 0.75rem !important;
+  padding: 0.9rem 1rem !important;
+  border-bottom: 1px solid var(--ema-control-line-soft, rgba(156, 171, 190, 0.28)) !important;
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(248,251,254,0.82)) !important;
+}
+
+.settings-module-root .audit-commandbar .audit-filter-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(190px, 1fr)) !important;
+  gap: 0.65rem !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.settings-module-root .audit-export-btn {
+  min-width: 112px !important;
+  height: 2.42rem !important;
+  align-self: end !important;
+}
+
+@media (max-width: 1180px) {
+  .settings-module-root .content-toolbar,
+  .settings-module-root .audit-commandbar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .settings-module-root .settings-toolbar-right {
+    grid-template-columns: 1fr !important;
+    justify-content: stretch !important;
+  }
+
+  .settings-module-root .settings-primary-actions {
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+  }
+
+  .settings-module-root .audit-commandbar .audit-filter-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .settings-module-root .audit-export-btn {
+    justify-self: start !important;
+  }
+}

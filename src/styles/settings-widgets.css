@@ -1,0 +1,679 @@
+/* =========================================================
+   Global Settings Widgets
+   Domain widgets: pricing, aging, audit, risk, cards.
+========================================================= */
+
+.pricing-editor,
+.aging-editor,
+.audit-log-panel,
+.role-control-panel,
+.access-control-panel,
+.module-control-panel,
+.policy-list,
+.risk-grid,
+.aging-grid {
+  display: grid;
+  gap: 0.78rem;
+}
+
+.role-grid,
+.pricing-grid,
+.risk-grid,
+.aging-grid,
+.pricing-notes-grid,
+.aging-kpi-grid,
+.audit-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.74rem;
+}
+
+.audit-kpi-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.policy-card,
+.pricing-card,
+.risk-card,
+.aging-card,
+.role-card,
+.pricing-info-card,
+.audit-kpi-strip div,
+.aging-kpi-grid div,
+.price-number div {
+  padding: 0.82rem;
+  border: 1px solid var(--ema-control-border, #d9e5f2);
+  border-radius: 1rem;
+  background: var(--ema-control-surface, #fff);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.035);
+}
+
+.policy-top,
+.pricing-top,
+.risk-top,
+.aging-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.76rem;
+  align-items: start;
+  margin-bottom: 0.65rem;
+}
+
+.policy-top h4,
+.pricing-top h4,
+.risk-top h4,
+.aging-top h4,
+.role-top h4 {
+  margin: 0;
+  color: var(--ema-control-text-strong, #0f2746);
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.policy-top p,
+.pricing-top p,
+.risk-top p,
+.aging-top p,
+.role-top p,
+.pricing-info-card p {
+  margin: 0.24rem 0 0;
+  color: var(--ema-control-muted, #64748b);
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1.42;
+}
+
+/* Pricing table - aligned and compact */
+.pricing-table-card {
+  width: 100%;
+  overflow: visible;
+}
+
+.pricing-row {
+  display: grid;
+  grid-template-columns:
+    minmax(170px, 1fr)
+    minmax(165px, 1fr)
+    minmax(170px, 1fr)
+    160px
+    150px
+    128px;
+  gap: 0.75rem;
+  align-items: center;
+  min-height: 3.72rem;
+  padding: 0.68rem 0.82rem;
+}
+
+.pricing-head-row {
+  min-height: 2.75rem;
+  color: var(--ema-control-muted);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pricing-row:not(.pricing-head-row) .pricing-field-label {
+  display: none;
+}
+
+.pricing-select,
+.pricing-row .setting-select-dropdown,
+.pricing-row .setting-select-trigger {
+  width: 100%;
+  min-width: 0;
+}
+
+.price-input-shell {
+  height: 2.42rem;
+  display: grid;
+  grid-template-columns: 2.35rem minmax(0, 1fr);
+  align-items: center;
+  overflow: hidden;
+  border-radius: 0.86rem;
+}
+
+.price-input-shell span {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--ema-control-muted, #64748b);
+  background: var(--ema-control-soft, #f5f8fc);
+  border-right: 1px solid var(--ema-control-border, #d9e5f2);
+  font-size: 0.66rem;
+  font-weight: 850;
+}
+
+.pricing-price-input {
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0 0.72rem;
+}
+
+.pricing-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.pricing-save-btn {
+  min-height: 2.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.78rem;
+  border: 1px solid rgba(37, 99, 235, 0.24);
+  border-radius: 0.78rem;
+  color: #2558e8;
+  background: rgba(37, 99, 235, 0.075);
+  font-size: 0.7rem;
+  font-weight: 850;
+}
+
+.pricing-empty-row {
+  min-height: 8rem;
+  display: grid;
+  place-items: center;
+  gap: 0.35rem;
+  padding: 1rem;
+  color: var(--ema-control-muted);
+  text-align: center;
+}
+
+.pricing-notes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.74rem;
+}
+
+/* Aging */
+.aging-editor {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.aging-threshold-card,
+.aging-notes-card,
+.aging-editor .settings-inline-alert {
+  grid-column: 1 / -1;
+}
+
+.threshold-line {
+  display: grid;
+  grid-template-columns: 155px minmax(0, 1fr) 120px;
+  align-items: center;
+  gap: 0.66rem;
+  padding: 0.65rem;
+  margin-top: 0.56rem;
+}
+
+.threshold-label-block {
+  display: grid;
+  gap: 0.16rem;
+}
+
+.threshold-label-block span {
+  color: var(--ema-control-text-strong, #0f2746);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.threshold-label-block small {
+  color: var(--ema-control-muted, #64748b);
+  font-size: 0.62rem;
+  font-weight: 650;
+}
+
+.threshold-number-wrap {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.46rem;
+}
+
+.threshold-number-wrap input {
+  width: 40px;
+  height: 30px;
+  border-radius: 0.65rem;
+  border: 1px solid var(--ema-control-border, #d9e5f2);
+  background: var(--ema-control-surface, #fff);
+  color: var(--ema-control-text-strong, #0f2746);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-align: center;
+}
+
+.threshold-number-wrap b {
+  text-align: right;
+  color: #2558e8;
+  font-size: 0.72rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.aging-action-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.aging-action-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 82px;
+  gap: 0.58rem;
+  align-items: center;
+  min-height: 2.52rem;
+  padding: 0.54rem 0.62rem;
+}
+
+.aging-action-row span {
+  color: var(--ema-control-text-strong, #0f2746);
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.aging-action-row small {
+  color: var(--ema-control-muted, #64748b);
+  font-size: 0.62rem;
+  font-weight: 680;
+}
+
+.aging-action-row b {
+  min-height: 1.45rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 850;
+}
+
+.audit-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(170px, 1fr));
+  align-items: end;
+  gap: 0.58rem;
+  padding: 0.75rem;
+}
+
+.risk-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.risk-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 0.22rem;
+  background: var(--risk-color, #2558e8);
+}
+
+.risk-score-line {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr) 64px;
+  align-items: center;
+  gap: 0.58rem;
+  margin-top: 0.66rem;
+  font-size: 0.66rem;
+  color: var(--ema-control-muted, #64748b);
+  font-weight: 700;
+}
+
+.risk-track {
+  height: 0.58rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ema-control-muted, #64748b) 18%, transparent);
+  overflow: hidden;
+}
+
+.risk-track i {
+  display: block;
+  height: 100%;
+  width: var(--w);
+  border-radius: inherit;
+  background: var(--risk-color, #2558e8);
+}
+
+@media (max-width: 980px) {
+  .role-grid,
+  .pricing-grid,
+  .risk-grid,
+  .aging-grid,
+  .pricing-notes-grid,
+  .aging-kpi-grid,
+  .audit-kpi-strip,
+  .aging-editor,
+  .pricing-notes-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .threshold-line,
+  .aging-action-row,
+  .audit-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pricing-table-card,
+  .audit-standard-table {
+    min-width: 840px;
+    overflow-x: auto;
+  }
+
+  .pricing-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pricing-row:not(.pricing-head-row) .pricing-field-label {
+    display: block;
+  }
+
+  .pricing-head-row {
+    display: none;
+  }
+}
+
+
+/* =========================================================
+   REVAMP V2 - section widgets that look newly designed
+========================================================= */
+
+.audit-kpi-strip div,
+.aging-kpi-grid div,
+.price-number div {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 0.24rem !important;
+  min-height: 3.6rem !important;
+  padding: 0.78rem 0.9rem !important;
+  border-radius: 1.05rem !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(37, 99, 235, 0.07), transparent 10rem),
+    linear-gradient(135deg, rgba(255,255,255,0.98), rgba(246,249,253,0.96)) !important;
+}
+
+.audit-kpi-strip div span,
+.aging-kpi-grid div span,
+.price-number div span {
+  color: var(--ema-control-muted, #64748b);
+  font-size: 0.66rem;
+  font-weight: 820;
+}
+
+.audit-kpi-strip div strong,
+.aging-kpi-grid div strong,
+.price-number div strong {
+  color: var(--ema-control-text-strong, #0f2746);
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+/* Pricing highlight cards */
+.pricing-highlight-grid {
+  margin-top: 0.82rem !important;
+}
+
+.pricing-info-card {
+  position: relative;
+  min-height: 5.25rem;
+  display: grid !important;
+  grid-template-columns: 44px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  overflow: hidden !important;
+}
+
+.pricing-info-card::after {
+  content: "";
+  position: absolute;
+  inset: auto -24px -36px auto;
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  opacity: 0.13;
+}
+
+.pricing-info-card.blue {
+  border-color: rgba(37, 99, 235, 0.25) !important;
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, 0.98), rgba(255,255,255,0.98)) !important;
+}
+
+.pricing-info-card.blue::after {
+  background: #2558e8;
+}
+
+.pricing-info-card.green {
+  border-color: rgba(16, 185, 129, 0.25) !important;
+  background:
+    linear-gradient(135deg, rgba(236, 253, 245, 0.98), rgba(255,255,255,0.98)) !important;
+}
+
+.pricing-info-card.green::after {
+  background: #10b981;
+}
+
+.pricing-info-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 0.95rem;
+  color: #fff;
+  background: linear-gradient(135deg, #2558e8, #087ea4);
+  font-size: 1rem;
+  font-weight: 900;
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.18);
+}
+
+.pricing-info-card.green .pricing-info-icon {
+  background: linear-gradient(135deg, #059669, #10b981);
+  box-shadow: 0 14px 28px rgba(16, 185, 129, 0.16);
+}
+
+/* Aging cards */
+.aging-editor {
+  align-items: start;
+}
+
+.aging-card {
+  border-radius: 1.18rem !important;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.98), rgba(248,251,255,0.95)) !important;
+}
+
+.threshold-line {
+  grid-template-columns: 170px minmax(0, 1fr) 128px !important;
+  min-height: 4.25rem !important;
+  background:
+    linear-gradient(135deg, rgba(248,251,255,0.95), rgba(241,246,252,0.92)) !important;
+}
+
+.threshold-number-wrap input {
+  background: #fff !important;
+}
+
+/* Risk section: redesigned into stronger strategy cards */
+.risk-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-items: start !important;
+}
+
+.risk-card {
+  min-height: 10.2rem;
+  border-radius: 1.22rem !important;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.98), rgba(248,251,255,0.95)) !important;
+  box-shadow:
+    0 16px 36px rgba(15, 23, 42, 0.065),
+    inset 0 1px 0 rgba(255,255,255,0.86) !important;
+}
+
+.risk-card::before {
+  height: 0.28rem !important;
+  background: linear-gradient(90deg, var(--risk-color, #2558e8), color-mix(in srgb, var(--risk-color, #2558e8) 35%, white)) !important;
+}
+
+.risk-level-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 1.8rem !important;
+  padding: 0.32rem 0.62rem !important;
+  border-radius: 0.7rem !important;
+  font-size: 0.72rem !important;
+  font-weight: 850 !important;
+}
+
+.risk-track {
+  height: 0.68rem !important;
+  background: #e2e8f0 !important;
+}
+
+.config-summary {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.6rem;
+}
+
+.config-summary .summary-row {
+  min-height: 2.45rem !important;
+  padding: 0.55rem 0.72rem !important;
+  border-radius: 0.82rem !important;
+  background: rgba(248, 251, 255, 0.95) !important;
+}
+
+/* If risk/aging content is longer than screen, content-body scrolls without moving page shell. */
+.settings-module-root[data-section="risk"] .content-body,
+.settings-module-root[data-section="aging"] .content-body,
+.settings-module-root[data-section="pricing"] .content-body {
+  overflow-y: auto !important;
+}
+
+/* =========================================================
+   V3 pricing insights and revamp cards
+========================================================= */
+
+.settings-module-root .pricing-top-insights {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.75rem !important;
+  margin-bottom: 0.82rem !important;
+}
+
+.settings-module-root .pricing-top-insights .pricing-disclaimer-card {
+  grid-column: 1 / -1 !important;
+}
+
+.settings-module-root .pricing-info-card {
+  position: relative !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-columns: 44px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 0.8rem !important;
+  padding: 1rem !important;
+  border-radius: 1.1rem !important;
+  min-height: 5.2rem !important;
+}
+
+.settings-module-root .pricing-info-card.blue {
+  border-color: rgba(37, 99, 235, 0.28) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(37, 99, 235, 0.16), transparent 10rem),
+    linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%) !important;
+}
+
+.settings-module-root .pricing-info-card.green {
+  border-color: rgba(16, 185, 129, 0.26) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(16, 185, 129, 0.16), transparent 10rem),
+    linear-gradient(135deg, #fbfffd 0%, #ebfbf5 100%) !important;
+}
+
+.settings-module-root .pricing-info-icon {
+  width: 42px !important;
+  height: 42px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 0.95rem !important;
+  color: #ffffff !important;
+  font-size: 0.72rem !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.03em !important;
+  background: linear-gradient(135deg, #2558e8, #087ea4) !important;
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.18) !important;
+}
+
+.settings-module-root .pricing-info-card.green .pricing-info-icon {
+  background: linear-gradient(135deg, #059669, #10b981) !important;
+  box-shadow: 0 14px 28px rgba(16, 185, 129, 0.18) !important;
+}
+
+.settings-module-root .pricing-disclaimer-card {
+  padding: 0.9rem 1rem !important;
+  border: 1px solid rgba(148, 163, 184, 0.24) !important;
+  border-radius: 1rem !important;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.92), rgba(247,250,253,0.88)) !important;
+  color: var(--ema-control-text, #173154) !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04) !important;
+}
+
+.settings-module-root .pricing-disclaimer-card strong {
+  display: block !important;
+  margin-bottom: 0.24rem !important;
+  color: var(--ema-control-text-strong, #0f2746) !important;
+  font-size: 0.78rem !important;
+  font-weight: 900 !important;
+}
+
+.settings-module-root .pricing-disclaimer-card p {
+  margin: 0 !important;
+  color: var(--ema-control-muted, #64748b) !important;
+  font-size: 0.7rem !important;
+  font-weight: 650 !important;
+  line-height: 1.48 !important;
+}
+
+/* Risk and aging cards get a stronger revamp feel, not just recoloured old UI. */
+.settings-module-root .risk-card,
+.settings-module-root .aging-card,
+.settings-module-root .policy-card {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.98), rgba(249,251,254,0.94)) !important;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.045) !important;
+}
+
+@media (max-width: 980px) {
+  .settings-module-root .pricing-top-insights {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* =========================================================
+   V4 pricing note placement polish
+========================================================= */
+
+.settings-module-root .pricing-top-insights {
+  margin-top: 0 !important;
+}
+
+.settings-module-root .pricing-disclaimer-card {
+  order: 3 !important;
+}
+
+.settings-module-root .pricing-info-card strong {
+  color: var(--ema-control-text-strong, #0f2746) !important;
+  font-size: 0.82rem !important;
+}
+
+.settings-module-root .pricing-info-card p {
+  color: var(--ema-control-muted, #64748b) !important;
+  font-size: 0.7rem !important;
+  line-height: 1.42 !important;
+}

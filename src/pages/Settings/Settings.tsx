@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import "./Settings.css";
 
 type SectionKey = "roles" | "users" | "modules" | "access" | "audit" | "pricing" | "aging" | "risk";
 type RoleStatus = "Active" | "Review" | "Locked" | "Inactive";
@@ -48,10 +47,6 @@ type UserAccess = {
   isActive?: boolean;
   requireMFA?: boolean;
   mfa?: boolean;
-  twoFactorEnabled?: boolean;
-  hasTwoFactorSecret?: boolean;
-  twoFactorVerifiedAt?: string | null;
-  twoFactorResetAt?: string | null;
   accountLocked?: boolean;
   lockReason?: string;
   accessStartDate?: string | null;
@@ -80,10 +75,6 @@ type UserApiRow = Partial<UserAccess> & {
   Position?: string;
   PhoneNo?: string;
   RequireMFA?: boolean | number;
-  TwoFactorEnabled?: boolean | number;
-  HasTwoFactorSecret?: boolean | number;
-  TwoFactorVerifiedAt?: string | null;
-  TwoFactorResetAt?: string | null;
   AccountLocked?: boolean | number;
   LockReason?: string;
   AccessStartDate?: string | null;
@@ -747,10 +738,6 @@ function mapUserApiRow(row: UserApiRow = {}): UserAccess {
     isActive: boolFromApi(row.isActive, status !== "Inactive"),
     requireMFA,
     mfa: requireMFA,
-    twoFactorEnabled: boolFromApi(row.twoFactorEnabled ?? row.TwoFactorEnabled, false),
-    hasTwoFactorSecret: boolFromApi(row.hasTwoFactorSecret ?? row.HasTwoFactorSecret, false),
-    twoFactorVerifiedAt: row.twoFactorVerifiedAt ?? row.TwoFactorVerifiedAt ?? null,
-    twoFactorResetAt: row.twoFactorResetAt ?? row.TwoFactorResetAt ?? null,
     accountLocked,
     lockReason: String(row.lockReason ?? row.LockReason ?? "").trim(),
     accessStartDate: row.accessStartDate ?? row.AccessStartDate ?? null,
@@ -1825,36 +1812,6 @@ export default function Settings() {
     }
   };
 
-
-  const resetUserTwoFactor = async (index: number) => {
-    const user = users[index];
-    if (!user) return;
-
-    const userId = user.id || user.userID;
-    if (!userId) {
-      showToast("error", "2FA reset failed", "User ID is missing. Please reload the user list.");
-      return;
-    }
-
-    const ok = window.confirm(`Reset 2FA for ${user.name}? The user will need to scan a new QR code on next login.`);
-    if (!ok) return;
-
-    try {
-      const response = await apiRequest<{ success?: boolean; data?: UserApiRow; message?: string }>(`/api/settings/users/${userId}/2fa/reset`, {
-        method: "PUT",
-        body: JSON.stringify({ requireMFA: true }),
-      });
-
-      const updatedUser = mapUserApiRow(response.data || { ...user, requireMFA: true, mfa: true, twoFactorEnabled: false, hasTwoFactorSecret: false });
-      setUsers((current) => sortUsersByCreatedDate(current.map((item, itemIndex) => (itemIndex === index ? updatedUser : item))));
-      addActivity("Reset user 2FA", `${updatedUser.name} must scan a new QR code on next login · just now`);
-      showToast("success", "2FA reset", `${updatedUser.name} must setup authenticator again on next login.`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to reset 2FA.";
-      showToast("error", "2FA reset failed", message);
-    }
-  };
-
   const requestDeleteUser = (index: number) => {
     const user = users[index];
     if (!user) return;
@@ -1887,24 +1844,35 @@ export default function Settings() {
   // Module Control by Role uses EMA_Roles from Role Based Control.
   // Roles are created in Role Based Control, then access is toggled here per module.
 
+
+  useEffect(() => {
+    document.documentElement.classList.add("ema-settings-page-active");
+    document.body.classList.add("ema-settings-page-active");
+
+    return () => {
+      document.documentElement.classList.remove("ema-settings-page-active");
+      document.body.classList.remove("ema-settings-page-active");
+    };
+  }, []);
+
   const visibleUsers = users.filter((user) => !filteredContentTerm || `${user.name} ${user.username || ""} ${user.email} ${user.role} ${user.status}`.toLowerCase().includes(filteredContentTerm));
 
   return (
-    <main className="settings-module-root">
+    <main className="settings-module-root ema-settings-pro container-fluid p-3 p-xl-4" data-section={activeSection}>
       <input aria-hidden="true" id="globalSearch" type="hidden" />
       <button hidden id="themeBtn" type="button">
         <span id="themeLabel">Dark Mode</span>
       </button>
 
-      <div className="settings-layout">
-        <aside className="settings-menu">
+      <div className="settings-layout d-grid gap-3">
+        <aside className="settings-menu ema-panel-surface">
           <div className="panel-head">
             <span>SETTINGS CENTER</span>
             <strong>Configuration Area</strong>
             <small>Select system setup domain</small>
           </div>
 
-          <div className="settings-menu-list" id="settingsMenu">
+          <div className="settings-menu-list" id="settingsMenu" role="tablist" aria-label="Settings navigation">
             {sectionOrder.map((key) => {
               const item = sections[key];
               return (
@@ -1920,15 +1888,14 @@ export default function Settings() {
                 >
                   <span className="setting-icon"><Icon name={item.icon} /></span>
                   <span><strong>{item.title}</strong><small>{item.desc}</small></span>
-                  <b>{key === "users" ? (usersLoaded ? users.length : "...") : key === "roles" ? (rolesLoaded ? accessRoles.length : "...") : key === "modules" ? (moduleLoaded ? moduleCatalog.length : "...") : key === "access" ? (accessPoliciesLoaded ? accessPolicies.length : item.count) : item.count}</b>
                 </button>
               );
             })}
           </div>
         </aside>
 
-        <section className="settings-content">
-          <div className={`settings-hero ${active.key === "users" ? "users-hero" : ""}`}>
+        <section className="settings-content d-grid gap-3">
+          <div className={`settings-hero ema-panel-surface ${active.key === "users" ? "users-hero" : ""}`}>
             <div>
               <span className="eyebrow">ADMINISTRATION CONTROL</span>
               <h2 id="heroTitle">{active.title}</h2>
@@ -2014,8 +1981,8 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className={`content-shell ${activeSection === "users" ? "users-content-shell" : activeSection === "roles" ? "roles-content-shell" : activeSection === "modules" ? "modules-content-shell" : activeSection === "access" ? "access-content-shell" : activeSection === "audit" ? "audit-content-shell" : ""}`}>
-            {activeSection !== "users" && activeSection !== "roles" && activeSection !== "modules" && activeSection !== "access" && (
+          <div className={`content-shell ema-panel-surface ${activeSection === "users" ? "users-content-shell" : activeSection === "roles" ? "roles-content-shell" : activeSection === "modules" ? "modules-content-shell" : activeSection === "access" ? "access-content-shell" : activeSection === "audit" ? "audit-content-shell" : ""}`}>
+            {activeSection !== "users" && activeSection !== "roles" && activeSection !== "modules" && activeSection !== "access" && activeSection !== "audit" && activeSection !== "pricing" && activeSection !== "aging" && (
               <div className={`content-head ${activeSection === "audit" ? "audit-export-only-head" : ""}`}>
                 {activeSection !== "audit" && (
                   <div>
@@ -2047,7 +2014,7 @@ export default function Settings() {
               </div>
             )}
 
-            {activeSection !== "access" && activeSection !== "audit" && (
+            {activeSection !== "users" && activeSection !== "access" && activeSection !== "audit" && (
               <div className={`content-toolbar ${activeSection === "users" ? "users-toolbar" : activeSection === "roles" ? "roles-toolbar" : activeSection === "modules" ? "modules-toolbar" : ""}`}>
                 <label className="section-search">
                   <SearchSvg />
@@ -2070,19 +2037,39 @@ export default function Settings() {
                   </div>
                 )}
                 {activeSection !== "users" && activeSection !== "roles" && activeSection !== "modules" && activeSection !== "audit" && (
-                  <select id="sectionFilter">
-                    <option value="all">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="review">Review</option>
-                    <option value="locked">Locked</option>
-                  </select>
+                  <div className="settings-toolbar-right">
+                    <SettingSelect
+                      className="section-filter-select"
+                      value="all"
+                      options={[
+                        { value: "all", label: "All Status" },
+                        { value: "active", label: "Active" },
+                        { value: "review", label: "Review" },
+                        { value: "locked", label: "Locked" },
+                      ]}
+                      onChange={() => undefined}
+                      ariaLabel="Section filter"
+                    />
+
+                    {(activeSection === "pricing" || activeSection === "aging") && (
+                      <div className="content-actions toolbar-actions settings-primary-actions">
+                        <button className="soft-btn" id="resetBtn" type="button" onClick={resetSection} disabled={(activeSection === "pricing" && pricingSaving) || (activeSection === "aging" && pcAgingSaving)}>Reset</button>
+                        {activeSection === "pricing" && (
+                          <button className="soft-btn" type="button" onClick={addPricingRow}>+ Add Custom Pricing</button>
+                        )}
+                        <button className="primary-btn" id="saveBtn" type="button" onClick={saveSection} disabled={(activeSection === "pricing" && pricingSaving) || (activeSection === "aging" && pcAgingSaving)}>
+                          {activeSection === "pricing" ? (pricingSaving ? "Saving..." : "Save Pricing") : activeSection === "aging" ? (pcAgingSaving ? "Saving..." : "Save Changes") : "Save Changes"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}
 
             <div className="content-body" id="contentBody">
               {activeSection === "roles" && <RoleContent roles={accessRoles} loading={rolesLoading} error={rolesError} search={filteredContentTerm} onEdit={openAccessRoleModal} onDelete={requestDeleteAccessRole} />}
-              {activeSection === "users" && <UserAccessContent users={visibleUsers} sourceUsers={users} loading={usersLoading} error={usersError} onReload={loadUsers} onAdd={() => openUserModal(null)} onEdit={openUserModal} onDelete={requestDeleteUser} />}
+              {activeSection === "users" && <UserAccessContent users={visibleUsers} sourceUsers={users} loading={usersLoading} error={usersError} search={sectionSearch} onSearchChange={setSectionSearch} onReload={loadUsers} onAdd={() => openUserModal(null)} onEdit={openUserModal} onDelete={requestDeleteUser} />}
               {activeSection === "modules" && <ModuleMatrixContent roles={accessRoles.filter((role) => role.status === "Active")} modules={moduleCatalog} permissions={modulePermissions} loading={moduleLoading} error={moduleError} search={filteredContentTerm} savingKey={moduleSavingKey} onReload={loadModuleAccess} onToggle={toggleRoleModuleAccess} />}
               {activeSection === "access" && <AccessControlContent policies={accessPolicies} loading={accessPoliciesLoading} error={accessPoliciesError} onReload={loadAccessPolicies} onAdd={() => openAccessPolicyModal(null)} onEdit={openAccessPolicyModal} />}
               {activeSection === "audit" && (
@@ -2100,6 +2087,8 @@ export default function Settings() {
                   onSeverityFilterChange={setAuditSeverityFilter}
                   onDateFilterChange={setAuditDateFilter}
                   onReload={loadAuditLogs}
+                  onExport={exportAuditLogs}
+                  exportDisabled={auditLoading || filteredAuditLogs.length === 0}
                 />
               )}
               {activeSection === "pricing" && <PricingContent search={filteredContentTerm} rows={pricingRows} categoryOptions={categoryOptions} brandOptionsByCategory={brandOptionsByCategory} modelOptionsByKey={modelOptionsByKey} loading={pricingLoading} saving={pricingSaving} savingRowId={pricingRowSavingId} error={pricingError} onAdd={addPricingRow} onChange={updatePricingRow} onSaveRow={savePricingRow} onRequestDelete={requestDeletePricingRow} />}
@@ -2359,7 +2348,152 @@ function FilterDropdown({ label, value, options, open, onToggle, onSelect, onClo
   );
 }
 
-function UserAccessContent({ users, sourceUsers, loading, error, onReload, onAdd, onEdit, onDelete, onReset2FA }: { users: UserAccess[]; sourceUsers: UserAccess[]; loading: boolean; error: string; onReload: () => void; onAdd: () => void; onEdit: (index: number) => void; onDelete: (index: number) => void; onReset2FA: (index: number) => void }) {
+
+type DropdownOption = string | { value: string; label: string };
+
+function dropdownOptionValue(option: DropdownOption) {
+  return typeof option === "string" ? option : option.value;
+}
+
+function dropdownOptionLabel(option: DropdownOption) {
+  return typeof option === "string" ? option : option.label;
+}
+
+function SettingSelect({
+  value,
+  options,
+  onChange,
+  disabled = false,
+  placeholder = "Select option",
+  className = "",
+  ariaLabel,
+}: {
+  value: string;
+  options: DropdownOption[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+  className?: string;
+  ariaLabel?: string;
+}) {
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
+
+  const selected = options.find((option) => dropdownOptionValue(option) === value);
+  const selectedLabel = selected ? dropdownOptionLabel(selected) : placeholder;
+
+  const updateMenuPosition = () => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const viewportPadding = 16;
+    const gap = 8;
+    const menuWidth = Math.max(rect.width, 210);
+    const optionHeight = 36;
+    const estimatedHeight = Math.min(288, Math.max(44, options.length * optionHeight + 10));
+    const availableBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const availableAbove = rect.top - viewportPadding;
+    const openAbove = availableBelow < estimatedHeight && availableAbove > availableBelow;
+    const maxHeight = Math.max(96, Math.min(estimatedHeight, openAbove ? availableAbove : availableBelow));
+    const left = Math.min(Math.max(viewportPadding, rect.left), window.innerWidth - menuWidth - viewportPadding);
+    const top = openAbove
+      ? Math.max(viewportPadding, rect.top - maxHeight - gap)
+      : Math.min(rect.bottom + gap, window.innerHeight - maxHeight - viewportPadding);
+
+    setMenuStyle({
+      position: "fixed",
+      left,
+      top,
+      width: menuWidth,
+      maxHeight,
+      zIndex: 2147483600,
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+
+    updateMenuPosition();
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    const handleResize = () => updateMenuPosition();
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleResize, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleResize, true);
+    };
+  }, [open, value, options.length]);
+
+  const menuNode = open && typeof document !== "undefined" ? createPortal(
+    <div ref={menuRef} className="uam-filter-menu uam-filter-menu-portal setting-select-menu" style={menuStyle} role="listbox" aria-label={ariaLabel || placeholder}>
+      {options.map((option) => {
+        const optionValue = dropdownOptionValue(option);
+        const optionLabel = dropdownOptionLabel(option);
+        const selectedOption = optionValue === value;
+
+        return (
+          <button
+            key={`${optionValue}-${optionLabel}`}
+            className={`uam-filter-option ${selectedOption ? "selected" : ""}`}
+            type="button"
+            role="option"
+            aria-selected={selectedOption}
+            onClick={() => {
+              onChange(optionValue);
+              setOpen(false);
+            }}
+          >
+            <span>{optionLabel}</span>
+            {selectedOption && <span className="uam-filter-check">✓</span>}
+          </button>
+        );
+      })}
+    </div>,
+    document.body
+  ) : null;
+
+  return (
+    <div className={`uam-filter-dropdown setting-select-dropdown ${open ? "open" : ""} ${disabled ? "disabled" : ""} ${className}`}>
+      <button
+        ref={triggerRef}
+        className="uam-filter-trigger setting-select-trigger"
+        type="button"
+        onClick={() => {
+          if (!disabled) setOpen((current) => !current);
+        }}
+        disabled={disabled}
+        aria-expanded={open}
+        aria-label={ariaLabel || placeholder}
+      >
+        <span>{selectedLabel}</span>
+        <ChevronDownSvg />
+      </button>
+      {menuNode}
+    </div>
+  );
+}
+
+
+function UserAccessContent({ users, sourceUsers, loading, error, search, onSearchChange, onReload, onAdd, onEdit, onDelete }: { users: UserAccess[]; sourceUsers: UserAccess[]; loading: boolean; error: string; search: string; onSearchChange: (value: string) => void; onReload: () => void; onAdd: () => void; onEdit: (index: number) => void; onDelete: (index: number) => void }) {
   const [statusFilter, setStatusFilter] = useState("All Status");
   const [roleFilter, setRoleFilter] = useState("All Roles");
   const [openFilter, setOpenFilter] = useState<"status" | "role" | null>(null);
@@ -2395,7 +2529,16 @@ function UserAccessContent({ users, sourceUsers, loading, error, onReload, onAdd
 
   return (
     <div className="uam-panel clean">
-      <div className="user-action-bar advanced clean">
+      <div className="user-access-commandbar">
+        <label className="section-search user-search-inline">
+          <SearchSvg />
+          <input
+            placeholder="Search users by name, email or role..."
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+          />
+        </label>
+
         <div className="uam-filter-grid clean compact">
           <FilterDropdown
             label="Status"
@@ -2416,6 +2559,7 @@ function UserAccessContent({ users, sourceUsers, loading, error, onReload, onAdd
             onClose={() => setOpenFilter(null)}
           />
         </div>
+
         <div className="uam-actions-right">
           <button className="soft-btn" type="button" onClick={onReload} disabled={loading}>{loading ? "Loading..." : "Refresh"}</button>
           <button className="primary-btn" type="button" onClick={onAdd}>Add New User</button>
@@ -2466,21 +2610,11 @@ function UserAccessContent({ users, sourceUsers, loading, error, onReload, onAdd
                   {hiddenRoleCount > 0 && <span className="role-more-chip">+{hiddenRoleCount}</span>}
                 </div>
               </div>
-              <div className="user-cell">
-                <div className="mfa-status-stack">
-                  <span className={`mfa-pill ${isMfa ? "on" : "off"}`}>{isMfa ? "Required" : "Off"}</span>
-                  {isMfa && <small className={`mfa-setup-note ${user.twoFactorEnabled || user.hasTwoFactorSecret ? "ready" : "pending"}`}>{user.twoFactorEnabled || user.hasTwoFactorSecret ? "Authenticator set" : "QR pending"}</small>}
-                </div>
-              </div>
+              <div className="user-cell"><span className={`mfa-pill ${isMfa ? "on" : "off"}`}>{isMfa ? "On" : "Off"}</span></div>
               <div className="user-cell"><span className={`user-pill ${user.status === "Active" ? "active" : user.status === "Locked" ? "locked" : user.status === "Inactive" ? "inactive" : "review"}`}>{user.status}</span></div>
               <div className="user-cell"><span className="muted-cell">{formatUserDate(user.lastLoginAt)}</span></div>
               <div className="user-cell">
                 <div className="row-actions user-row-action-wrap clean">
-                  {isMfa && (
-                    <button className="mini-btn reset-2fa" type="button" onClick={() => onReset2FA(actualIndex)} aria-label="Reset 2FA" title="Reset 2FA">
-                      2FA
-                    </button>
-                  )}
                   <button className="mini-btn icon-only edit" type="button" onClick={() => onEdit(actualIndex)} aria-label="Edit user access" title="Edit">
                     <PencilSvg />
                   </button>
@@ -2725,6 +2859,8 @@ function AuditContent({
   onSeverityFilterChange,
   onDateFilterChange,
   onReload,
+  onExport,
+  exportDisabled,
 }: {
   logs: AuditLog[];
   allLogs: AuditLog[];
@@ -2739,6 +2875,8 @@ function AuditContent({
   onSeverityFilterChange: (value: string) => void;
   onDateFilterChange: (value: AuditDateFilter) => void;
   onReload: () => void;
+  onExport: () => void;
+  exportDisabled: boolean;
 }) {
   const [page, setPage] = useState(1);
   const pageSize = 10;
@@ -2761,34 +2899,45 @@ function AuditContent({
       )}
 
 
-      <div className="audit-filter-grid">
-        <label className="form-field">
-          Main Module
-          <select className="setting-select" value={moduleFilter} onChange={(event) => onModuleFilterChange(event.target.value)}>
-            <option value="all">All modules</option>
-            {moduleOptions.map((moduleName) => (
-              <option key={moduleName} value={moduleName}>{moduleName}</option>
-            ))}
-          </select>
-        </label>
-        <label className="form-field">
-          Severity / Status
-          <select className="setting-select" value={severityFilter} onChange={(event) => onSeverityFilterChange(event.target.value)}>
-            <option value="all">All statuses</option>
-            {severityOptions.map((severity) => (
-              <option key={severity} value={severity}>{severity}</option>
-            ))}
-          </select>
-        </label>
-        <label className="form-field">
-          Date Range
-          <select className="setting-select" value={dateFilter} onChange={(event) => onDateFilterChange(event.target.value as AuditDateFilter)}>
-            <option value="30d">Last 30 days</option>
-            <option value="7d">Last 7 days</option>
-            <option value="today">Today</option>
-            <option value="all">All time</option>
-          </select>
-        </label>
+      <div className="audit-commandbar">
+        <div className="audit-filter-grid">
+          <label className="form-field">
+            Main Module
+            <SettingSelect
+              value={moduleFilter}
+              options={[{ value: "all", label: "All modules" }, ...moduleOptions.map((moduleName) => ({ value: moduleName, label: moduleName }))]}
+              onChange={onModuleFilterChange}
+              ariaLabel="Audit module filter"
+            />
+          </label>
+          <label className="form-field">
+            Severity / Status
+            <SettingSelect
+              value={severityFilter}
+              options={[{ value: "all", label: "All statuses" }, ...severityOptions.map((severity) => ({ value: severity, label: severity }))]}
+              onChange={onSeverityFilterChange}
+              ariaLabel="Audit status filter"
+            />
+          </label>
+          <label className="form-field">
+            Date Range
+            <SettingSelect
+              value={dateFilter}
+              options={[
+                { value: "30d", label: "Last 30 days" },
+                { value: "7d", label: "Last 7 days" },
+                { value: "today", label: "Today" },
+                { value: "all", label: "All time" },
+              ]}
+              onChange={(value) => onDateFilterChange(value as AuditDateFilter)}
+              ariaLabel="Audit date range filter"
+            />
+          </label>
+        </div>
+
+        <button className="primary-btn audit-export-btn" type="button" onClick={onExport} disabled={exportDisabled}>
+          Export CSV
+        </button>
       </div>
 
       <div className="audit-kpi-strip">
@@ -2860,17 +3009,55 @@ function PricingContent({
   onSaveRow,
   onRequestDelete,
 }: PricingContentProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
   const term = search.trim().toLowerCase();
   const visibleRows = rows.filter((row) => {
     const haystack = `${row.Category} ${row.Brand} ${row.Model} ${row.Price} ${row.IsExcluded ? "excluded" : "capex"}`.toLowerCase();
     return !term || haystack.includes(term);
   });
 
+  const totalPages = Math.max(1, Math.ceil(visibleRows.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safeCurrentPage - 1) * pageSize;
+  const paginatedRows = visibleRows.slice(pageStartIndex, pageStartIndex + pageSize);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, rows.length]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
   return (
     <div className="pricing-editor">
       {error && <div className="settings-inline-alert">{error}</div>}
 
-      <div className="pricing-table-card">
+      <div className="pricing-top-insights">
+        <article className="pricing-info-card blue">
+          <span className="pricing-info-icon">BM</span>
+          <div>
+            <strong>Brand and Model Pricing</strong>
+            <p>Set pricing by device category, brand and exact model. The system prioritises the most specific match when estimating replacement cost.</p>
+          </div>
+        </article>
+
+        <article className="pricing-info-card green">
+          <span className="pricing-info-icon">CX</span>
+          <div>
+            <strong>CAPEX Exposure Control</strong>
+            <p>Exclude selected rows from CAPEX replacement exposure while keeping them available as asset reference data.</p>
+          </div>
+        </article>
+
+        <article className="pricing-disclaimer-card">
+          <strong>Planning disclaimer</strong>
+          <p>Market price and replacement-cost values are estimates based on current pricing, asset age and lifecycle assumptions. Use them for planning guidance and confirm final procurement values with Finance or Procurement before approval.</p>
+        </article>
+      </div>
+
+      <div className="pricing-table-card pricing-modern-table">
         <div className="pricing-row pricing-head-row">
           <div>Device Category</div>
           <div>Brand</div>
@@ -2890,44 +3077,53 @@ function PricingContent({
           </div>
         )}
 
-        {!loading && visibleRows.map((row) => {
+        {!loading && paginatedRows.map((row) => {
           const brandOptions = brandOptionsByCategory[row.Category] || [];
           const modelOptions = modelOptionsByKey[pricingModelKey(row.Category, row.Brand)] || [];
 
           return (
-            <div className="pricing-row" key={row.id}>
+            <div className="pricing-row pricing-data-row" key={row.id}>
               <label className="pricing-field-label">Device Category</label>
-              <select
-                className="setting-select pricing-select"
+              <SettingSelect
+                className="pricing-select"
                 value={row.Category}
-                onChange={(event) => onChange(row.id, { Category: event.target.value })}
-              >
-                {!row.Category && <option value="">Select category</option>}
-                {categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}
-                {!categoryOptions.includes("Others") && <option value="Others">Others</option>}
-              </select>
+                placeholder="Select category"
+                options={[
+                  ...(!row.Category ? [{ value: "", label: "Select category" }] : []),
+                  ...categoryOptions.map((category) => ({ value: category, label: category })),
+                  ...(!categoryOptions.includes("Others") ? [{ value: "Others", label: "Others" }] : []),
+                ]}
+                onChange={(value) => onChange(row.id, { Category: value })}
+                ariaLabel="Device category"
+              />
 
               <label className="pricing-field-label">Brand</label>
-              <select
-                className="setting-select pricing-select"
+              <SettingSelect
+                className="pricing-select"
                 value={row.Brand}
-                onChange={(event) => onChange(row.id, { Brand: event.target.value })}
+                placeholder="General / All Brands"
                 disabled={!row.Category}
-              >
-                <option value="">-- General / All Brands --</option>
-                {brandOptions.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
-              </select>
+                options={[
+                  { value: "", label: "General / All Brands" },
+                  ...brandOptions.map((brand) => ({ value: brand, label: brand })),
+                ]}
+                onChange={(value) => onChange(row.id, { Brand: value })}
+                ariaLabel="Device brand"
+              />
 
               <label className="pricing-field-label">Model Optional</label>
-              <select
-                className="setting-select pricing-select"
+              <SettingSelect
+                className="pricing-select"
                 value={row.Model}
-                onChange={(event) => onChange(row.id, { Model: event.target.value })}
+                placeholder="General / All Models"
                 disabled={!row.Category || !row.Brand}
-              >
-                <option value="">-- General / All Models --</option>
-                {modelOptions.map((model) => <option key={model} value={model}>{model}</option>)}
-              </select>
+                options={[
+                  { value: "", label: "General / All Models" },
+                  ...modelOptions.map((model) => ({ value: model, label: model })),
+                ]}
+                onChange={(value) => onChange(row.id, { Model: value })}
+                ariaLabel="Device model"
+              />
 
               <label className="pricing-field-label">Market Price</label>
               <div className="price-input-shell">
@@ -2969,16 +3165,21 @@ function PricingContent({
         })}
       </div>
 
-      <div className="pricing-notes-grid">
-        <article className="pricing-info-card blue">
-          <strong>Brand & Model Specific Pricing</strong>
-          <p>You can define pricing down to the exact model. The system will prioritise the most specific rule available: Category, then Brand, then Model.</p>
-        </article>
-        <article className="pricing-info-card green">
-          <strong>CAPEX Exposure Rule</strong>
-          <p>Any row marked as excluded from CAPEX will be ignored from replacement-cost exposure, but can still be shown as an asset reference.</p>
-        </article>
-      </div>
+      {!loading && visibleRows.length > 0 && (
+        <div className="uam-pagination global-style pricing-pagination">
+          <div className="uam-page-summary">Page {safeCurrentPage} of {totalPages}</div>
+          <div className="uam-page-status">Showing {visibleRows.length === 0 ? 0 : pageStartIndex + 1}-{Math.min(pageStartIndex + pageSize, visibleRows.length)} of {visibleRows.length} pricing records</div>
+          <div className="uam-pagination-controls global-style" aria-label="Device pricing pagination">
+            <button className="uam-page-icon" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page">«</button>
+            <button className="uam-page-icon" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page">‹</button>
+            <span className="uam-page-current">{safeCurrentPage}</span>
+            <button className="uam-page-icon" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page">›</button>
+            <button className="uam-page-icon" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page">»</button>
+          </div>
+        </div>
+      )}
+
+
     </div>
   );
 }
@@ -3104,20 +3305,24 @@ function AgingContent({
         <div className="form-grid aging-form-grid">
           <label className="form-field">
             Primary Date
-            <select className="setting-select" value={rule.ageSource} onChange={(event) => onChange({ ageSource: event.target.value })}>
-              {AGE_SOURCE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
+            <SettingSelect
+              value={rule.ageSource}
+              options={AGE_SOURCE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+              onChange={(value) => onChange({ ageSource: value })}
+              ariaLabel="Primary age source"
+            />
           </label>
           <label className="form-field">
             Missing Date
-            <select
-              className="setting-select"
+            <SettingSelect
               value={rule.includeUnknownAge ? "include" : "exclude"}
-              onChange={(event) => onChange({ includeUnknownAge: event.target.value === "include" })}
-            >
-              <option value="exclude">Flag as data gap</option>
-              <option value="include">Include in aging report</option>
-            </select>
+              options={[
+                { value: "exclude", label: "Flag as data gap" },
+                { value: "include", label: "Include in aging report" },
+              ]}
+              onChange={(value) => onChange({ includeUnknownAge: value === "include" })}
+              ariaLabel="Missing age date handling"
+            />
           </label>
           <label className="form-field">
             Replacement Window
@@ -3266,7 +3471,8 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 }
 
 function FormSelect({ label, options }: { label: string; options: string[] }) {
-  return <label className="form-field">{label}<select className="setting-select">{options.map((option) => <option key={option}>{option}</option>)}</select></label>;
+  const [value, setValue] = useState(options[0] || "");
+  return <label className="form-field">{label}<SettingSelect value={value} options={options} onChange={setValue} ariaLabel={label} /></label>;
 }
 
 
@@ -3358,7 +3564,7 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
                     className="role-picker-search"
                     value={roleSearchTerm}
                     onChange={(event) => setRoleSearchTerm(event.target.value)}
-                    placeholder="Search role to assign..."
+                    placeholder="Search role by name..."
                     autoFocus
                   />
                 </div>
@@ -3386,7 +3592,14 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
           </div>
           <label className="form-field">Department<input className="setting-input" id="userDepartment" placeholder="Example: IT Operation" value={form.department || ""} onChange={(event) => setForm({ ...form, department: event.target.value })} /></label>
           <label className="form-field">Position<input className="setting-input" id="userPosition" placeholder="Example: Support Engineer" value={form.position || ""} onChange={(event) => setForm({ ...form, position: event.target.value })} /></label>
-          <label className="form-field">Status<select className="setting-select" id="userStatus" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as RoleStatus, accountLocked: event.target.value === "Locked" })}><option>Active</option><option>Review</option><option>Locked</option><option>Inactive</option></select></label>
+          <label className="form-field">Status
+            <SettingSelect
+              value={form.status}
+              options={["Active", "Review", "Locked", "Inactive"]}
+              onChange={(value) => setForm({ ...form, status: value as RoleStatus, accountLocked: value === "Locked" })}
+              ariaLabel="User status"
+            />
+          </label>
 
           <div className="modal-section-title">Password</div>
           <label className="form-field">{isCreateMode ? "Initial Password" : "New Password"}<input className="setting-input" type="password" id="userPassword" placeholder={isCreateMode ? "Create login password" : "Leave blank to keep current password"} value={form.password || ""} onChange={(event) => setForm({ ...form, password: event.target.value })} /></label>
@@ -3395,10 +3608,6 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
 
           <div className="modal-section-title">Security</div>
           <label className="form-field inline-check"><input type="checkbox" checked={Boolean(form.requireMFA || form.mfa)} onChange={(event) => setForm({ ...form, requireMFA: event.target.checked, mfa: event.target.checked })} /><span>Require MFA</span></label>
-          <div className="form-field wide mfa-admin-note">
-            <strong>Authenticator 2FA</strong>
-            <span>{form.twoFactorEnabled || form.hasTwoFactorSecret ? "Authenticator already configured. Use Reset 2FA from the user row if the user changes phone." : "User will scan QR code on first login after MFA is required."}</span>
-          </div>
           <label className="form-field inline-check"><input type="checkbox" checked={Boolean(form.accountLocked)} onChange={(event) => setForm({ ...form, accountLocked: event.target.checked, status: event.target.checked ? "Locked" : form.status === "Locked" ? "Active" : form.status })} /><span>Account Locked</span></label>
           <label className="form-field wide">Lock Reason<input className="setting-input" id="userLockReason" placeholder="Optional reason shown in audit" value={form.lockReason || ""} onChange={(event) => setForm({ ...form, lockReason: event.target.value })} /></label>
           <label className="form-field">Access Start<input className="setting-input" type="date" id="userAccessStart" value={toDateInputValue(form.accessStartDate)} onChange={(event) => setForm({ ...form, accessStartDate: event.target.value })} /></label>
@@ -3434,7 +3643,14 @@ function AccessRoleModal({ open, mode, form, setForm, onClose, onSave }: { open:
 
         <div className="role-modal-body access-role-modal-body simple-role-modal-body">
           <label className="form-field">Role Name<input className="setting-input" placeholder="Example: L1 Support" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
-          <label className="form-field">Status<select className="setting-select" value={form.status === "Inactive" ? "Inactive" : "Active"} onChange={(event) => setForm({ ...form, status: event.target.value as RoleStatus })}><option>Active</option><option>Inactive</option></select></label>
+          <label className="form-field">Status
+            <SettingSelect
+              value={form.status === "Inactive" ? "Inactive" : "Active"}
+              options={["Active", "Inactive"]}
+              onChange={(value) => setForm({ ...form, status: value as RoleStatus })}
+              ariaLabel="Role status"
+            />
+          </label>
           <label className="form-field wide">Description<input className="setting-input" placeholder="Describe this role" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
           <label className="form-field inline-check wide"><input type="checkbox" checked={Boolean(form.approvalRequired)} onChange={(event) => setForm({ ...form, approvalRequired: event.target.checked })} /><span>Require approval for sensitive actions</span></label>
         </div>
@@ -3490,11 +3706,39 @@ function AccessPolicyModal({ open, mode, title, form, setForm, onClose, onSave }
 
         <div className="role-modal-body access-role-modal-body simple-role-modal-body">
           <label className="form-field">Control Name<input className="setting-input" placeholder="Example: Multi-Factor Authentication" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
-          <label className="form-field">Status<select className="setting-select" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value === "Inactive" ? "Inactive" : "Active" })}><option>Active</option><option>Inactive</option></select></label>
+          <label className="form-field">Status
+            <SettingSelect
+              value={form.status}
+              options={["Active", "Inactive"]}
+              onChange={(value) => setForm({ ...form, status: value === "Inactive" ? "Inactive" : "Active" })}
+              ariaLabel="Access control status"
+            />
+          </label>
           <label className="form-field wide">Description<input className="setting-input" placeholder="Describe this control" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
-          <label className="form-field">Scope<select className="setting-select" value={form.scope} onChange={(event) => setForm({ ...form, scope: event.target.value })}><option>All Users</option><option>Admin Only</option><option>Selected Role</option><option>Service Desk</option></select></label>
-          <label className="form-field">Enforcement<select className="setting-select" value={form.enforcement} onChange={(event) => setForm({ ...form, enforcement: event.target.value })}><option>Mandatory</option><option>Optional</option><option>Approval Based</option><option>Disabled</option></select></label>
-          <label className="form-field">Review Cycle<select className="setting-select" value={form.reviewCycle} onChange={(event) => setForm({ ...form, reviewCycle: event.target.value })}><option>Monthly</option><option>Quarterly</option><option>Yearly</option><option>Ad Hoc</option></select></label>
+          <label className="form-field">Scope
+            <SettingSelect
+              value={form.scope}
+              options={["All Users", "Admin Only", "Selected Role", "Service Desk"]}
+              onChange={(value) => setForm({ ...form, scope: value })}
+              ariaLabel="Access control scope"
+            />
+          </label>
+          <label className="form-field">Enforcement
+            <SettingSelect
+              value={form.enforcement}
+              options={["Mandatory", "Optional", "Approval Based", "Disabled"]}
+              onChange={(value) => setForm({ ...form, enforcement: value })}
+              ariaLabel="Access control enforcement"
+            />
+          </label>
+          <label className="form-field">Review Cycle
+            <SettingSelect
+              value={form.reviewCycle}
+              options={["Monthly", "Quarterly", "Yearly", "Ad Hoc"]}
+              onChange={(value) => setForm({ ...form, reviewCycle: value })}
+              ariaLabel="Access control review cycle"
+            />
+          </label>
         </div>
 
         <div className="role-modal-foot">
@@ -3535,7 +3779,7 @@ function RoleModal({ open, mode, form, setForm, onClose, onSave, onDelete }: { o
   const isDelete = mode === "delete";
   const title = mode === "add" ? "Add Module Role" : mode === "edit" ? "Update Module Role" : "Delete Module Role";
   const modeText = mode === "add" ? "ADD NEW ROLE" : mode === "edit" ? "UPDATE ROLE" : "DELETE ROLE";
-  return <div className={`role-modal-backdrop ${open ? "open" : ""}`} id="roleModalBackdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}><div className="role-modal"><div className="role-modal-head"><div><span className="eyebrow" id="roleModalMode">{modeText}</span><h3 id="roleModalTitle">{title}</h3><p>Create, update or delete roles used in the Module Control matrix.</p></div><button className="modal-close" id="closeRoleModal" type="button" onClick={onClose}>×</button></div><div className="role-modal-body"><label className="form-field">Role Name<input className="setting-input" id="moduleRoleName" placeholder="Example: Security Reviewer" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label><label className="form-field">Role Type<select className="setting-select" id="moduleRoleType" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}><option>Administrator</option><option>Management</option><option>Operation</option><option>Support</option><option>Audit / Viewer</option><option>Custom</option></select></label><label className="form-field wide">Description<input className="setting-input" id="moduleRoleDesc" placeholder="Describe access purpose for this role" value={form.desc} onChange={(event) => setForm({ ...form, desc: event.target.value })} /></label><label className="form-field">Default Access<select className="setting-select" id="moduleRoleDefaultAccess" value={form.defaultAccess} onChange={(event) => setForm({ ...form, defaultAccess: event.target.value })}><option>Read Only</option><option>Operational Access</option><option>Management Access</option><option>Full Access</option><option>No Access</option></select></label><label className="form-field">Approval Required<select className="setting-select" id="moduleRoleApproval" value={form.approval} onChange={(event) => setForm({ ...form, approval: event.target.value })}><option>Yes</option><option>No</option></select></label></div><p className={`role-delete-warning ${isDelete ? "show" : ""}`} id="roleDeleteWarning">Delete role will remove this role column from the module access matrix. Existing users assigned to this role should be reviewed before deletion.</p><div className="role-modal-foot"><button className="soft-btn" id="cancelRoleModal" type="button" onClick={onClose}>Cancel</button>{isDelete && <button className="danger-btn" id="deleteRoleConfirm" type="button" onClick={onDelete}>Delete Role</button>}{!isDelete && <button className="primary-btn" id="saveModuleRole" type="button" onClick={onSave}>Save Role</button>}</div></div></div>;
+  return <div className={`role-modal-backdrop ${open ? "open" : ""}`} id="roleModalBackdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}><div className="role-modal"><div className="role-modal-head"><div><span className="eyebrow" id="roleModalMode">{modeText}</span><h3 id="roleModalTitle">{title}</h3><p>Create, update or delete roles used in the Module Control matrix.</p></div><button className="modal-close" id="closeRoleModal" type="button" onClick={onClose}>×</button></div><div className="role-modal-body"><label className="form-field">Role Name<input className="setting-input" id="moduleRoleName" placeholder="Example: Security Reviewer" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label><label className="form-field">Role Type<SettingSelect value={form.type} options={["Administrator", "Management", "Operation", "Support", "Audit / Viewer", "Custom"]} onChange={(value) => setForm({ ...form, type: value })} ariaLabel="Module role type" /></label><label className="form-field wide">Description<input className="setting-input" id="moduleRoleDesc" placeholder="Describe access purpose for this role" value={form.desc} onChange={(event) => setForm({ ...form, desc: event.target.value })} /></label><label className="form-field">Default Access<SettingSelect value={form.defaultAccess} options={["Read Only", "Operational Access", "Management Access", "Full Access", "No Access"]} onChange={(value) => setForm({ ...form, defaultAccess: value })} ariaLabel="Default access" /></label><label className="form-field">Approval Required<SettingSelect value={form.approval} options={["Yes", "No"]} onChange={(value) => setForm({ ...form, approval: value })} ariaLabel="Approval required" /></label></div><p className={`role-delete-warning ${isDelete ? "show" : ""}`} id="roleDeleteWarning">Delete role will remove this role column from the module access matrix. Existing users assigned to this role should be reviewed before deletion.</p><div className="role-modal-foot"><button className="soft-btn" id="cancelRoleModal" type="button" onClick={onClose}>Cancel</button>{isDelete && <button className="danger-btn" id="deleteRoleConfirm" type="button" onClick={onDelete}>Delete Role</button>}{!isDelete && <button className="primary-btn" id="saveModuleRole" type="button" onClick={onSave}>Save Role</button>}</div></div></div>;
 }
 
 function Icon({ name }: { name: IconName }) {

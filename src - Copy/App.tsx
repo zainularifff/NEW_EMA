@@ -1,12 +1,20 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "./components/layout/AppShell";
+import { useAuth } from "./context/AuthContext";
 import Login from "./pages/auth/Login";
 import Dashboard from "./pages/dashboard/Dashboard";
 import HardwareInventory from "./pages/hardware/HardwareInventory";
-import Settings from "./pages/Settings/Settings";
 
-import ProtectedRoute from "./routes/ProtectedRoute";
+function RequireAuth({ children }: { children: JSX.Element }) {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
 
 export default function App() {
   return (
@@ -15,14 +23,13 @@ export default function App() {
 
       <Route
         element={
-          <ProtectedRoute>
+          <RequireAuth>
             <AppShell />
-          </ProtectedRoute>
+          </RequireAuth>
         }
       >
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/hardware" element={<HardwareInventory />} />
-        <Route path="/settings" element={<Settings />} />
       </Route>
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

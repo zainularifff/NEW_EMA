@@ -9,6 +9,7 @@ import "./index.css";
 import "./styles/theme.css";
 import "./styles/app-global.css";
 
+/* Global shared UI styles */
 import "./styles/typography.css";
 import "./styles/button.css";
 import "./styles/form.css";

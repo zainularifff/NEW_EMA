@@ -1,0 +1,28 @@
+:root {
+  --ema-bg: #071014;
+  --ema-bg-soft: #0b1620;
+  --ema-sidebar: #0d1726;
+  --ema-panel: rgba(15, 29, 43, 0.86);
+  --ema-panel-strong: rgba(18, 35, 52, 0.94);
+  --ema-border: rgba(148, 163, 184, 0.16);
+  --ema-border-strong: rgba(94, 234, 212, 0.3);
+
+  --ema-text: #f8fafc;
+  --ema-text-soft: #cbd5e1;
+  --ema-muted: #7d8da1;
+
+  --ema-primary: #38bdf8;
+  --ema-primary-2: #2dd4bf;
+  --ema-purple: #8b5cf6;
+  --ema-success: #22c55e;
+  --ema-warning: #eab308;
+  --ema-danger: #ef4444;
+
+  --ema-radius: 1rem;
+  --ema-radius-lg: 1.4rem;
+  --ema-radius-xl: 1.8rem;
+
+  --ema-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+  --ema-glow: 0 0 0 1px rgba(94, 234, 212, 0.12),
+    0 24px 80px rgba(45, 212, 191, 0.08);
+}

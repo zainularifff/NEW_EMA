@@ -1,0 +1,168 @@
+/* =========================================================
+   Global Buttons
+   Bootstrap remains foundation; these are EMA shared controls.
+========================================================= */
+
+.soft-btn,
+.primary-btn,
+.danger-btn,
+.mini-btn,
+.icon-action-btn,
+.icon-delete-btn,
+.pricing-save-btn,
+.role-picker-trigger,
+.uam-filter-trigger,
+.uam-page-btn,
+.uam-page-icon,
+.modal-close {
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease,
+    color 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.soft-btn,
+.primary-btn,
+.danger-btn {
+  min-height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  padding: 0 0.85rem;
+  border-radius: 0.82rem;
+  font-size: var(--ema-fs-xs, 0.72rem);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.soft-btn {
+  color: var(--ema-control-primary, #2563eb);
+  border: 1px solid color-mix(in srgb, var(--ema-control-primary, #2563eb) 24%, var(--ema-control-border, #d9e5f2));
+  background: color-mix(in srgb, var(--ema-control-primary, #2563eb) 5%, var(--ema-control-surface, #fff));
+}
+
+.primary-btn {
+  color: #fff;
+  border: 0;
+  background: linear-gradient(135deg, #2558e8 0%, #087ea4 100%);
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.16);
+}
+
+.danger-btn {
+  color: #fff;
+  border: 0;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 12px 24px rgba(239, 68, 68, 0.16);
+}
+
+.soft-btn:hover:not(:disabled),
+.primary-btn:hover:not(:disabled),
+.danger-btn:hover:not(:disabled),
+.mini-btn:hover:not(:disabled),
+.icon-action-btn:hover:not(:disabled),
+.icon-delete-btn:hover:not(:disabled),
+.pricing-save-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.soft-btn:disabled,
+.primary-btn:disabled,
+.danger-btn:disabled,
+.mini-btn:disabled,
+.icon-action-btn:disabled,
+.icon-delete-btn:disabled,
+.pricing-save-btn:disabled,
+.role-picker-trigger:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.mini-btn,
+.icon-action-btn,
+.icon-delete-btn {
+  min-height: 1.95rem;
+  border: 1px solid var(--ema-control-border, #d9e5f2);
+  border-radius: 0.72rem;
+  background: var(--ema-control-soft, #f5f8fc);
+  color: var(--ema-control-text, #173154);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.user-row-action-wrap.clean .mini-btn.icon-only,
+.role-control-row .row-actions.icon-actions .mini-btn.icon-only,
+.icon-action-btn,
+.icon-delete-btn {
+  width: 2.1rem !important;
+  height: 2.1rem !important;
+  min-width: 2.1rem !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 0.8rem !important;
+  font-size: 0 !important;
+  line-height: 1 !important;
+}
+
+.user-row-action-wrap.clean .mini-btn.icon-only svg,
+.role-control-row .row-actions.icon-actions .mini-btn.icon-only svg,
+.icon-action-btn svg,
+.icon-delete-btn svg {
+  width: 0.95rem !important;
+  height: 0.95rem !important;
+}
+
+.mini-btn.icon-only.edit,
+.icon-action-btn.edit {
+  color: #2558e8;
+  border-color: rgba(37, 99, 235, 0.22);
+  background: rgba(37, 99, 235, 0.075);
+}
+
+.mini-btn.icon-only.delete,
+.icon-action-btn.delete,
+.icon-delete-btn {
+  color: #e11d48;
+  border-color: rgba(225, 29, 72, 0.2);
+  background: rgba(225, 29, 72, 0.07);
+}
+
+.toggle {
+  width: 2.45rem;
+  height: 1.38rem;
+  position: relative;
+  border: 0;
+  border-radius: 999px;
+  padding: 0;
+  background: color-mix(in srgb, var(--ema-control-muted, #64748b) 27%, transparent);
+}
+
+.toggle::after {
+  content: "";
+  position: absolute;
+  left: 0.18rem;
+  top: 0.18rem;
+  width: 1.02rem;
+  height: 1.02rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.18);
+  transition: transform 0.18s ease;
+}
+
+.toggle.on {
+  background: linear-gradient(135deg, #2558e8, #087ea4);
+}
+
+.toggle.on::after {
+  transform: translateX(1.07rem);
+}
