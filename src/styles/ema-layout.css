@@ -8152,3 +8152,196 @@ main[data-section="service-desk"] .service-desk-required-mark {
     width: 100% !important;
   }
 }
+
+/* =========================================================
+   V31 App Shell Position + Topbar Search Fix
+   Purpose:
+   - lock the main app shell to the real sidebar/topbar position
+   - prevent module pages from sliding underneath the topbar
+   - make the global topbar search usable on Task List and shared pages
+========================================================= */
+:root {
+  --ema-shell-sidebar-width: 256px;
+  --ema-shell-topbar-height: 76px;
+}
+
+.ema-shell {
+  position: relative !important;
+  display: block !important;
+  min-height: 100dvh !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  padding-left: var(--ema-shell-sidebar-width) !important;
+  overflow: hidden !important;
+}
+
+.ema-sidebar {
+  position: fixed !important;
+  inset: 0 auto 0 0 !important;
+  z-index: 1050 !important;
+  width: var(--ema-shell-sidebar-width) !important;
+  min-width: var(--ema-shell-sidebar-width) !important;
+  max-width: var(--ema-shell-sidebar-width) !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden auto !important;
+  overscroll-behavior: contain !important;
+  scrollbar-gutter: stable !important;
+}
+
+.ema-main {
+  position: relative !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  min-height: 0 !important;
+  padding-top: var(--ema-shell-topbar-height) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.ema-topbar {
+  position: fixed !important;
+  top: 0 !important;
+  left: var(--ema-shell-sidebar-width) !important;
+  right: 0 !important;
+  z-index: 1040 !important;
+  height: var(--ema-shell-topbar-height) !important;
+  min-height: var(--ema-shell-topbar-height) !important;
+  max-height: var(--ema-shell-topbar-height) !important;
+  flex: 0 0 var(--ema-shell-topbar-height) !important;
+  box-sizing: border-box !important;
+}
+
+.ema-page,
+body.ema-layout-lock .ema-page,
+body.ema-settings-lock .ema-page,
+body.ema-settings-page-active .ema-page {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: calc(100dvh - var(--ema-shell-topbar-height)) !important;
+  max-height: calc(100dvh - var(--ema-shell-topbar-height)) !important;
+  overflow: hidden !important;
+  padding: 0.9rem !important;
+}
+
+.ema-global-search-form {
+  position: relative !important;
+  flex: 1 1 520px !important;
+  max-width: 560px !important;
+  min-width: 240px !important;
+  margin-left: auto !important;
+}
+
+.ema-global-search-submit,
+.ema-global-search-clear {
+  width: 28px !important;
+  height: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 28px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  color: inherit !important;
+  background: transparent !important;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease !important;
+}
+
+.ema-global-search-submit:hover,
+.ema-global-search-clear:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.10) !important;
+}
+
+.ema-global-search-submit:active,
+.ema-global-search-clear:active {
+  transform: scale(0.96) !important;
+}
+
+.ema-global-search input {
+  min-width: 0 !important;
+}
+
+.ema-ai-topbar-btn,
+.ema-admin-topbar-btn {
+  white-space: nowrap !important;
+}
+
+@media (max-width: 1180px) {
+  :root {
+    --ema-shell-sidebar-width: 232px;
+  }
+
+  .ema-topbar-title {
+    min-width: 180px !important;
+  }
+
+  .ema-global-search-form {
+    max-width: 460px !important;
+  }
+}
+
+@media (max-width: 960px) {
+  :root {
+    --ema-shell-sidebar-width: 84px;
+  }
+
+  .ema-sidebar {
+    padding-inline: 0.65rem !important;
+  }
+
+  .ema-sidebar-brand,
+  .ema-nav-link {
+    justify-content: center !important;
+  }
+
+  .ema-sidebar-brand > div:not(.ema-logo),
+  .ema-sidebar-section,
+  .ema-nav-link span:not(.ema-nav-soon),
+  .ema-nav-soon,
+  .ema-sidebar-footer {
+    display: none !important;
+  }
+
+  .ema-topbar {
+    gap: 0.65rem !important;
+    padding-inline: 0.85rem !important;
+  }
+
+  .ema-topbar-title {
+    display: none !important;
+  }
+
+  .ema-global-search-form {
+    flex-basis: auto !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+}
+
+/* ============================================================
+   V32 User Role Mapping - Topbar + Sidebar
+   Uses EMA_Users role/roleName/roles from auth payload instead of hardcoded labels.
+   ============================================================ */
+.ema-admin-topbar-btn {
+  min-width: 0;
+  max-width: 180px;
+  white-space: nowrap;
+}
+
+.ema-topbar-role-label,
+.ema-user-role-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ema-topbar-role-label {
+  display: inline-block;
+  max-width: 130px;
+}

@@ -44,15 +44,61 @@ function mergeAccessUser(contextUser: unknown): AccessUser | null {
   return {
     ...(storedUser || {}),
     ...(contextUser as AccessUser),
-    allowedModules:
-      (contextUser as AccessUser).allowedModules || storedUser?.allowedModules,
-    allowedRoutes:
-      (contextUser as AccessUser).allowedRoutes || storedUser?.allowedRoutes,
-    moduleAccess:
-      (contextUser as AccessUser).moduleAccess || storedUser?.moduleAccess,
-    permissions:
-      (contextUser as AccessUser).permissions || storedUser?.permissions,
+    roles: (contextUser as AccessUser).roles || storedUser?.roles,
+    role: (contextUser as AccessUser).role || storedUser?.role,
+    roleName: (contextUser as AccessUser).roleName || storedUser?.roleName,
+    allowedModules: (contextUser as AccessUser).allowedModules || storedUser?.allowedModules,
+    allowedRoutes: (contextUser as AccessUser).allowedRoutes || storedUser?.allowedRoutes,
+    moduleAccess: (contextUser as AccessUser).moduleAccess || storedUser?.moduleAccess,
+    permissions: (contextUser as AccessUser).permissions || storedUser?.permissions,
   };
+}
+
+function splitRoleText(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  return String(value || "")
+    .split(/[,|;]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function getUserRoles(user: AccessUser | null): string[] {
+  const roles = [
+    ...splitRoleText((user as any)?.roles),
+    ...splitRoleText((user as any)?.roleName),
+    ...splitRoleText((user as any)?.role),
+  ];
+
+  const seen = new Set<string>();
+  return roles.filter((role) => {
+    const key = role.toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function getDisplayName(user: AccessUser | null) {
+  return (
+    (user as any)?.name ||
+    (user as any)?.fullName ||
+    (user as any)?.username ||
+    (user as any)?.userID ||
+    "Current user"
+  );
+}
+
+function getSidebarRoleLabel(user: AccessUser | null) {
+  const roles = getUserRoles(user);
+
+  if (roles.length === 0) return "User";
+  if (roles.length === 1) return roles[0];
+  if (roles.length === 2) return roles.join(" • ");
+
+  return `${roles[0]} +${roles.length - 1}`;
 }
 
 export function Sidebar() {
@@ -64,6 +110,10 @@ export function Sidebar() {
     logout();
     navigate("/login", { replace: true });
   };
+
+  const displayName = getDisplayName(accessUser);
+  const roleLabel = getSidebarRoleLabel(accessUser);
+  const fullRoleLabel = getUserRoles(accessUser).join(" • ") || roleLabel;
 
   return (
     <aside className="ema-sidebar">
@@ -112,16 +162,16 @@ export function Sidebar() {
       </nav>
 
       <div className="ema-sidebar-footer">
-        <div className="ema-user-card">
+        <div className="ema-user-card" title={`${displayName} • ${fullRoleLabel}`}>
           <div className="ema-user-avatar">
             <ShieldCheck size={18} />
           </div>
 
           <div className="min-w-0">
-            <div className="fw-bold text-white lh-sm">
-              {user?.name || user?.username || "Admin User"}
+            <div className="fw-bold text-white lh-sm text-truncate">
+              {displayName}
             </div>
-            <div className="small text-muted">System Manager</div>
+            <div className="small text-muted text-truncate ema-user-role-label">{roleLabel}</div>
           </div>
         </div>
 
