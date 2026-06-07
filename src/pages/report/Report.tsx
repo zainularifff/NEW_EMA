@@ -1130,101 +1130,35 @@ function ProfileCover({ payload, filters, profile, skin }: { payload: ReportPayl
       ];
 
   return (
-    <section className={`report-cover report-template-cover report-cover-revamp cover-skin-${skin}`} style={{ "--template-accent": profile.accent, "--template-soft": profile.softAccent } as CSSProperties}>
-      <div className="report-cover-content report-template-cover-content revamp-cover-content">
-        <div className="revamp-cover-left">
-          <div className="report-logo-line revamp-cover-brand">
-            <div className="report-logo">E</div>
-            <div>
-              <b>EMA Unified System</b>
-              <span>{profile.eyebrow}</span>
-            </div>
+    <section
+      className={`report-cover report-template-cover report-cover-revamp clean-cover-page cover-skin-${skin}`}
+      style={{ "--template-accent": profile.accent, "--template-soft": profile.softAccent } as CSSProperties}
+    >
+      <div className="report-clean-cover">
+        <div className="report-clean-wave" />
+        <div className="report-clean-curve one" />
+        <div className="report-clean-curve two" />
+        <div className="report-clean-dots" />
+
+        <header className="report-clean-cover-brand">
+          <div className="report-logo">E</div>
+          <div>
+            <b>EMA Unified System</b>
+            <span>{reportPackLabel}</span>
           </div>
-          <span className="template-badge revamp-cover-badge">{reportPackLabel}</span>
+        </header>
+
+        <div className="report-clean-cover-body">
+          <span className="template-badge revamp-cover-badge">{profile.eyebrow}</span>
           <h1>{payload.report.title}</h1>
           <p>{payload.report.description}</p>
-          <div className="revamp-cover-pills">
-            <span>{payload.report.type}</span>
-            <span>{payload.narrative.scope}</span>
-            <span>{payload.narrative.period}</span>
-            <span>{filters.outputFormat}</span>
+          <div className="report-clean-cover-meta">
+            <div><span>Prepared</span><b>{formatDateTime(payload.generatedAt)}</b></div>
+            <div><span>Scope</span><b>{payload.narrative.scope}</b></div>
+            <div><span>Period</span><b>{payload.narrative.period}</b></div>
+            <div><span>Format</span><b>{filters.outputFormat}</b></div>
           </div>
         </div>
-
-        <div className="revamp-cover-center">
-          <div className="revamp-cover-score-card">
-            <span>{profile.heroMetricLabel}</span>
-            <strong>{getHeroMetric(payload, profile)}</strong>
-            <small>{payload.narrative.managementConclusion}</small>
-          </div>
-          <div className="revamp-cover-stat-grid">
-            {coverStats.slice(0, 4).map((item, index) => (
-              <div className="revamp-cover-stat" key={`${item.label}-${index}`}>
-                <span>{item.label}</span>
-                <b>{item.value}</b>
-                <small>{item.note}</small>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {profile.key === "executive" ? (
-          <div className="revamp-cover-right revamp-executive-cover-panel">
-            <div className="revamp-cover-panel-head">
-              <span>Executive Snapshot</span>
-              <b>{formatDateTime(payload.generatedAt)}</b>
-            </div>
-            <div className="cover-health-card">
-              <div className="cover-health-head">
-                <span>Endpoint Health Mix</span>
-                <b>{totalEndpoints}</b>
-              </div>
-              <div className="cover-health-bars" aria-label="Endpoint health mix">
-                <i style={{ width: `${Math.max(online, 2)}%` }} />
-                <em style={{ width: `${Math.max(100 - online, 2)}%` }} />
-              </div>
-              <div className="cover-health-grid">
-                <div><span>Online</span><b>{numberMetric(payload, ["onlineEndpoints"], 0)}</b></div>
-                <div><span>Offline</span><b>{offline}</b></div>
-                <div><span>Stale</span><b>{stale}</b></div>
-              </div>
-            </div>
-            <div className="cover-exec-focus-grid">
-              {(riskRows.length ? riskRows : kpiRows.slice(0, 3)).slice(0, 3).map((row, index) => (
-                <div key={index}>
-                  <span>{valueText(row.severity || row.label || `Focus ${index + 1}`)}</span>
-                  <p>{valueText(row.finding || row.note || row.action || row.value)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="revamp-cover-right">
-            <div className="revamp-cover-panel-head">
-              <span>Report Snapshot</span>
-              <b>{formatDateTime(payload.generatedAt)}</b>
-            </div>
-            {visualSection ? (
-              <div className="revamp-cover-mini-chart">
-                {visualSection.type === "donut" ? <DonutSection section={visualSection} /> : <BarSection section={visualSection} />}
-              </div>
-            ) : (
-              <div className="revamp-cover-mini-chart revamp-cover-no-chart">
-                {kpiRows.slice(0, 4).map((row, index) => (
-                  <div key={`${row.label}-${index}`}><span>{row.label}</span><b>{row.value}</b></div>
-                ))}
-              </div>
-            )}
-            <div className="revamp-cover-focus-list">
-              {(riskRows.length ? riskRows : kpiRows.slice(0, 3)).map((row, index) => (
-                <div key={index}>
-                  <span>{valueText(row.severity || row.label || `Focus ${index + 1}`)}</span>
-                  <p>{valueText(row.finding || row.note || row.action || row.value)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </section>
   );
@@ -2404,10 +2338,51 @@ function printableFindingRows(payload: ReportPayload, limit = 6) {
   return findings.slice(0, limit).map((item, index) => `<tr><td>${String(index + 1).padStart(2, "0")}</td><td>${pdfText(item, 190)}</td><td>${pdfText(index === 0 ? "High" : index === 1 ? "Medium" : "Monitor", 20)}</td></tr>`).join("");
 }
 
-function buildExecutivePrintableHtml(payload: ReportPayload, filters: ReportFilters) {
+
+function pdfReportPackName(payload: ReportPayload) {
+  const raw = `${payload.report.category || payload.report.type || "Report Pack"}`;
+  return raw.replace(/[-_]/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function buildPdfCoverOnlyPage(payload: ReportPayload, filters: ReportFilters, mode: "executive" | "generic") {
   const generated = formatDateTime(payload.generatedAt);
-  const scope = payload.narrative.scope || "All Sites";
   const period = payload.narrative.period || filters.dateRange;
+  const scope = payload.narrative.scope || "All Sites";
+  const title = payload.report.title || "EMA Report";
+  const intro = payload.report.description || payload.narrative.executiveSummary || "Prepared from the current EMA operational dataset.";
+  const label = mode === "executive" ? "Management-ready report pack" : "Operational report pack";
+
+  return `
+    <section class="pdf-cover-page pdf-cover-${mode}">
+      <div class="pdf-cover-wave"></div>
+      <div class="pdf-cover-arc arc-primary"></div>
+      <div class="pdf-cover-arc arc-gold"></div>
+      <div class="pdf-cover-dots dots-left"></div>
+      <div class="pdf-cover-dots dots-right"></div>
+
+      <header class="pdf-cover-brand-row">
+        <div class="pdf-cover-brand-mark">E</div>
+        <div><strong>EMA Unified System</strong><small>${pdfText(pdfReportPackName(payload), 70)}</small></div>
+      </header>
+
+      <div class="pdf-cover-title-block">
+        <span>${pdfText(label, 60)}</span>
+        <h1>${pdfText(title, 100)}</h1>
+        <p>${pdfText(intro, 240)}</p>
+      </div>
+
+      <div class="pdf-cover-meta-table">
+        <div><small>Prepared On</small><b>${pdfEscape(generated)}</b></div>
+        <div><small>Scope</small><b>${pdfText(scope, 70)}</b></div>
+        <div><small>Period</small><b>${pdfText(period, 60)}</b></div>
+        <div><small>Output</small><b>${pdfText(filters.outputFormat || "PDF", 30)}</b></div>
+      </div>
+    </section>
+    <div class="pdf-page-break"></div>
+  `;
+}
+
+function buildPdfMetricTable(payload: ReportPayload) {
   const endpointTotal = pdfNumber(payload, ["endpointTotal", "totalEndpoints", "assets"], 0);
   const online = pdfNumber(payload, ["onlineEndpoints", "online"], 0);
   const offline = pdfNumber(payload, ["offlineEndpoints", "offline"], 0);
@@ -2416,89 +2391,85 @@ function buildExecutivePrintableHtml(payload: ReportPayload, filters: ReportFilt
   const sla = pdfNumber(payload, ["slaBreachCandidates", "slaBreaches", "slaBreached"], 0);
   const software = pdfNumber(payload, ["softwareRows", "softwareRecords", "totalSoftwareRecords"], 0);
   const score = pdfNumber(payload, ["operationalScore", "score"], 0);
-  const onlineRate = endpointTotal ? Math.round((online / endpointTotal) * 100) : pdfNumber(payload, ["onlineRate"], 0);
-  const barSection = payload.sections.find((section) => ["bar", "donut"].includes(section.type));
-
-  const metricRows = [
-    { label: "Board Score", value: `${score}%`, note: "Composite posture" },
-    { label: "Endpoint Estate", value: endpointTotal, note: `${onlineRate}% online / ${offline} offline` },
-    { label: "Telemetry Watch", value: stale, note: "Stale or missing last-seen" },
-    { label: "Service Desk", value: openTickets, note: `${sla} SLA breach candidate(s)` },
-    { label: "Software", value: software, note: "Inventory records in scope" }
+  const onlineRate = endpointTotal ? Math.round((online / Math.max(endpointTotal, 1)) * 100) : pdfNumber(payload, ["onlineRate"], 0);
+  const rows = [
+    ["Board Score", `${score}%`, "Composite management posture"],
+    ["Endpoint Estate", endpointTotal, `${online} online / ${offline} offline`],
+    ["Online Rate", `${onlineRate}%`, `${stale} stale or missing telemetry`],
+    ["Service Desk", openTickets, `${sla} SLA breach candidate(s)`],
+    ["Software", software, "Inventory records in scope"]
   ];
 
   return `
-    <section class="pdf-cover pdf-exec-cover">
-      <div class="pdf-cover-mark">EMA</div>
-      <div class="pdf-cover-copy">
-        <span class="pdf-eyebrow">Executive Management Report</span>
-        <h1>${pdfText(payload.report.title, 90)}</h1>
-        <p>${pdfText(payload.report.description || payload.narrative.executiveSummary, 220)}</p>
-        <div class="pdf-meta-row"><span>${pdfText(scope, 42)}</span><span>${pdfText(period, 36)}</span><span>${pdfEscape(generated)}</span></div>
-      </div>
-      <div class="pdf-cover-score"><small>Online Rate</small><strong>${pdfEscape(onlineRate)}%</strong><span>${pdfEscape(online)} online / ${pdfEscape(offline)} offline</span></div>
-    </section>
+    <table class="pdf-real-table pdf-metric-table">
+      <thead><tr><th>Metric</th><th>Value</th><th>Notes</th></tr></thead>
+      <tbody>${rows.map((row) => `<tr><td>${pdfText(row[0], 60)}</td><td>${pdfText(row[1], 40)}</td><td>${pdfText(row[2], 100)}</td></tr>`).join("")}</tbody>
+    </table>
+  `;
+}
 
-    <section class="pdf-section pdf-metric-section">
-      <div class="pdf-section-head"><div><h2>Management Snapshot</h2><p>High-level operating posture for the selected reporting scope.</p></div><span>KPI Board</span></div>
-      <div class="pdf-kpi-grid">${metricRows.map((item) => `<article><small>${pdfText(item.label, 38)}</small><strong>${pdfText(item.value, 24)}</strong><span>${pdfText(item.note, 80)}</span></article>`).join("")}</div>
-    </section>
+function buildExecutivePrintableHtml(payload: ReportPayload, filters: ReportFilters) {
+  const barSection = payload.sections.find((section) => ["bar", "donut"].includes(section.type));
+
+  return `
+    ${buildPdfCoverOnlyPage(payload, filters, "executive")}
 
     <section class="pdf-section pdf-summary-section">
-      <div class="pdf-section-head"><div><h2>Executive Interpretation</h2><p>Management narrative generated from the live report dataset.</p></div><span>Summary</span></div>
-      <p class="pdf-lead">${pdfText(payload.narrative.managementConclusion || payload.narrative.executiveSummary, 360)}</p>
-      <div class="pdf-table-box pdf-compact-table-box">
-        <table class="pdf-real-table pdf-finding-table"><thead><tr><th>No.</th><th>Finding</th><th>Focus</th></tr></thead><tbody>${printableFindingRows(payload, 6)}</tbody></table>
+      <div class="pdf-section-head"><div><h2>Management Snapshot</h2><p>High-level operating posture for the selected reporting scope.</p></div><span>Page 2</span></div>
+      <div class="pdf-summary-layout">
+        <div>
+          <span class="pdf-eyebrow">Executive Summary</span>
+          <h2>${pdfText(payload.narrative.title || payload.report.title, 90)}</h2>
+          <p>${pdfText(payload.narrative.executiveSummary || payload.narrative.managementConclusion, 300)}</p>
+        </div>
+        ${buildPdfMetricTable(payload)}
       </div>
     </section>
 
-    ${filters.includeChart ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>${pdfText(barSection?.title || "Operational Distribution", 80)}</h2><p>Visual summary converted to a print-safe bar table.</p></div><span>Chart</span></div><div class="pdf-bars">${barListHtml(barSection)}</div></section>` : ""}
-
-    <section class="pdf-section pdf-table-section">
-      <div class="pdf-section-head"><div><h2>Board Attention Focus</h2><p>Management-level risks and actions in table format.</p></div><span>Decision Table</span></div>
-      ${managementAttentionHtml(payload, 24)}
+    <section class="pdf-section">
+      <div class="pdf-section-head"><div><h2>Key Findings</h2><p>Priority observations converted into management-ready findings.</p></div><span>Focus</span></div>
+      <table class="pdf-real-table"><thead><tr><th>No</th><th>Finding</th></tr></thead><tbody>${payload.narrative.keyFindings.slice(0, 6).map((item, index) => `<tr><td>${String(index + 1).padStart(2, "0")}</td><td>${pdfText(item, 220)}</td></tr>`).join("")}</tbody></table>
     </section>
+
+    ${filters.includeChart ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>${pdfText(barSection?.title || "Operational Distribution", 80)}</h2><p>Visual summary rendered as PDF-safe chart rows.</p></div><span>Chart</span></div><div class="pdf-bars">${barListHtml(barSection)}</div></section>` : ""}
+    ${filters.includeTable ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>Board Attention Focus</h2><p>Management-level attention items are shown in a structured table-friendly layout.</p></div><span>Decision Focus</span></div><div class="pdf-focus-grid">${riskCardsHtml(payload)}</div></section>` : ""}
+    ${filters.includeRecommendation ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>Recommended Actions</h2><p>Follow-up actions generated from current findings.</p></div><span>Action Plan</span></div>${tableRowsHtml({ type: "table", title: "Actions", rows: payload.recommendations || [] }, 10)}</section>` : ""}
   `;
 }
 
 function buildGenericPrintableHtml(payload: ReportPayload, filters: ReportFilters) {
-  const generated = formatDateTime(payload.generatedAt);
-  const scope = payload.narrative.scope || "All Sites";
-  const period = payload.narrative.period || filters.dateRange;
-  const kpis = printableKpis(payload).slice(0, 6);
+  const kpis = printableKpis(payload);
   const barSection = payload.sections.find((section) => ["bar", "donut"].includes(section.type));
-  const tableSections = payload.sections.filter((section) => section.type === "table");
+  const tableSection = payload.sections.find((section) => section.type === "table");
   const riskSection = payload.sections.find((section) => section.type === "risk");
-  const primaryTable = tableSections[0];
 
   return `
-    <section class="pdf-cover pdf-generic-cover">
-      <div class="pdf-cover-mark">EMA</div>
-      <div class="pdf-cover-copy">
-        <span class="pdf-eyebrow">${pdfText(payload.report.category || payload.report.type || "Report Pack", 70)}</span>
-        <h1>${pdfText(payload.report.title, 92)}</h1>
-        <p>${pdfText(payload.narrative.executiveSummary || payload.report.description, 250)}</p>
-        <div class="pdf-meta-row"><span>${pdfText(scope, 42)}</span><span>${pdfText(period, 36)}</span><span>${pdfEscape(generated)}</span></div>
-      </div>
-    </section>
-
-    <section class="pdf-section pdf-metric-section">
-      <div class="pdf-section-head"><div><h2>Report Snapshot</h2><p>Key measures prepared from the selected report data.</p></div><span>KPI Board</span></div>
-      <div class="pdf-kpi-grid">${kpis.map((item) => `<article><small>${pdfText(item.label, 38)}</small><strong>${pdfText(item.value, 24)}</strong><span>${pdfText(item.note, 80)}</span></article>`).join("")}</div>
-    </section>
+    ${buildPdfCoverOnlyPage(payload, filters, "generic")}
 
     <section class="pdf-section pdf-summary-section">
-      <div class="pdf-section-head"><div><h2>Management Interpretation</h2><p>Operational narrative and key findings for review.</p></div><span>Summary</span></div>
-      <p class="pdf-lead">${pdfText(payload.narrative.managementConclusion || payload.narrative.executiveSummary, 360)}</p>
-      <div class="pdf-table-box pdf-compact-table-box">
-        <table class="pdf-real-table pdf-finding-table"><thead><tr><th>No.</th><th>Finding</th><th>Focus</th></tr></thead><tbody>${printableFindingRows(payload, 6)}</tbody></table>
+      <div class="pdf-section-head"><div><h2>Report Snapshot</h2><p>High-level overview of the current reporting scope.</p></div><span>Overview</span></div>
+      <div class="pdf-summary-layout">
+        <div>
+          <span class="pdf-eyebrow">Report Narrative</span>
+          <h2>${pdfText(payload.narrative.title || payload.report.title, 90)}</h2>
+          <p>${pdfText(payload.narrative.managementConclusion || payload.narrative.executiveSummary, 300)}</p>
+        </div>
+        <table class="pdf-real-table pdf-metric-table">
+          <thead><tr><th>Metric</th><th>Value</th><th>Notes</th></tr></thead>
+          <tbody>${kpis.map((item) => `<tr><td>${pdfText(item.label, 55)}</td><td>${pdfText(item.value, 35)}</td><td>${pdfText(item.note, 95)}</td></tr>`).join("")}</tbody>
+        </table>
       </div>
     </section>
 
-    ${filters.includeChart ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>${pdfText(barSection?.title || "Operational Distribution", 80)}</h2><p>Visual summary converted to print-safe bars.</p></div><span>Chart</span></div><div class="pdf-bars">${barListHtml(barSection)}</div></section>` : ""}
-    ${riskSection && filters.includeTable ? `<section class="pdf-section pdf-table-section"><div class="pdf-section-head"><div><h2>${pdfText(riskSection.title, 80)}</h2><p>Risk and action evidence are rendered as a table.</p></div><span>Risk Table</span></div>${riskTableHtml((riskSection.rows || []) as Record<string, any>[], 24)}</section>` : ""}
-    ${primaryTable && filters.includeTable ? `<section class="pdf-section pdf-table-section"><div class="pdf-section-head"><div><h2>${pdfText(primaryTable.title, 80)}</h2><p>Large datasets are rendered as real table rows for PDF readability.</p></div><span>Data Table</span></div>${tableRowsHtml(primaryTable, 36, 7)}</section>` : ""}
-    ${filters.includeRecommendation ? `<section class="pdf-section pdf-table-section"><div class="pdf-section-head"><div><h2>Recommended Actions</h2><p>Management actions generated from the live report dataset.</p></div><span>Action Table</span></div>${recommendationsTableHtml(payload.recommendations || [], 24)}</section>` : ""}
+    <section class="pdf-section">
+      <div class="pdf-section-head"><div><h2>Key Findings</h2><p>Priority observations converted into report findings.</p></div><span>Findings</span></div>
+      <table class="pdf-real-table"><thead><tr><th>No</th><th>Finding</th></tr></thead><tbody>${payload.narrative.keyFindings.slice(0, 6).map((item, index) => `<tr><td>${String(index + 1).padStart(2, "0")}</td><td>${pdfText(item, 220)}</td></tr>`).join("")}</tbody></table>
+    </section>
+
+    ${filters.includeChart ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>${pdfText(barSection?.title || "Operational Distribution", 80)}</h2><p>Summary chart generated as real HTML bars.</p></div><span>Chart</span></div><div class="pdf-bars">${barListHtml(barSection)}</div></section>` : ""}
+    ${riskSection && filters.includeTable ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>${pdfText(riskSection.title, 80)}</h2><p>Evidence and priority items.</p></div><span>Risk</span></div><div class="pdf-focus-grid">${riskCardsHtml(payload)}</div></section>` : ""}
+    ${tableSection && filters.includeTable ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>${pdfText(tableSection.title, 80)}</h2><p>Detail rows are rendered as real selectable table data.</p></div><span>Table</span></div>${tableRowsHtml(tableSection, 32)}</section>` : ""}
+    ${filters.includeRecommendation ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>Recommended Actions</h2><p>Management actions generated from the live report dataset.</p></div><span>Action</span></div>${tableRowsHtml({ type: "table", title: "Actions", rows: payload.recommendations || [] }, 10)}</section>` : ""}
   `;
 }
 
@@ -2518,6 +2489,32 @@ function buildRegeneratedReportHtml(payload: ReportPayload, filters: ReportFilte
     html, body { margin: 0; padding: 0; background: #eef3f8; color: #17233c; font-family: "Segoe UI", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     body { width: 210mm; min-height: 297mm; }
     .pdf-pack { width: 190mm; margin: 0 auto; display: flex; flex-direction: column; gap: 6mm; }
+    .pdf-page-break { page-break-after: always; break-after: page; height: 0; }
+    .pdf-cover-page { position: relative; width: 190mm; min-height: 277mm; overflow: hidden; border: 1px solid #d9e3f0; border-radius: 7mm; background: linear-gradient(180deg,#ffffff 0%,#fbfdff 100%); padding: 13mm; page-break-after: always; }
+    .pdf-cover-executive { --pdf-cover-primary:#18324f; --pdf-cover-accent:#d3a84e; }
+    .pdf-cover-generic { --pdf-cover-primary:#143b72; --pdf-cover-accent:#4f8df7; }
+    .pdf-cover-brand-row { position: relative; z-index: 2; display: flex; align-items: center; gap: 4mm; color: #182c45; }
+    .pdf-cover-brand-mark { width: 13mm; height: 13mm; border: 1px solid #d5deeb; border-radius: 4mm; display: grid; place-items: center; color: var(--pdf-cover-primary); background:#fff; font-weight: 900; }
+    .pdf-cover-brand-row strong { display:block; font-size: 15pt; line-height: 1.1; }
+    .pdf-cover-brand-row small { display:block; margin-top: 1mm; color:#718096; font-size: 7pt; text-transform: uppercase; letter-spacing: .14em; font-weight: 900; }
+    .pdf-cover-title-block { position: relative; z-index: 2; max-width: 112mm; min-height: 178mm; display: flex; flex-direction: column; justify-content: center; }
+    .pdf-cover-title-block span { width: fit-content; padding: 2.2mm 4mm; border:1px solid #d9e3f0; border-radius:999px; background:#fff; color: var(--pdf-cover-primary); font-size: 7pt; font-weight: 900; letter-spacing:.11em; text-transform: uppercase; }
+    .pdf-cover-title-block h1 { margin: 7mm 0 0; color:#1d2f45; font-size: 35pt; line-height:.98; letter-spacing:-.055em; }
+    .pdf-cover-title-block p { margin: 6mm 0 0; max-width: 92mm; color:#58677b; font-size: 11pt; line-height:1.58; font-weight: 600; }
+    .pdf-cover-meta-table { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 3mm; padding-top: 6mm; border-top: 1px solid #dfe7f2; }
+    .pdf-cover-meta-table div { min-width:0; }
+    .pdf-cover-meta-table small { display:block; color:#718096; text-transform: uppercase; letter-spacing:.1em; font-size: 7pt; font-weight: 900; }
+    .pdf-cover-meta-table b { display:block; margin-top:1.5mm; color:#1d2f45; font-size:8.5pt; line-height:1.3; }
+    .pdf-cover-wave { position:absolute; left:-28mm; top:-24mm; width:140mm; height:72mm; border-top:1mm solid rgba(24,50,79,.14); border-radius:50%; box-shadow:0 4mm 0 rgba(24,50,79,.08),0 8mm 0 rgba(24,50,79,.08),0 12mm 0 rgba(24,50,79,.08),0 16mm 0 rgba(24,50,79,.08),0 20mm 0 rgba(24,50,79,.08),0 24mm 0 rgba(24,50,79,.08),0 28mm 0 rgba(24,50,79,.08); }
+    .pdf-cover-arc { position:absolute; right:-38mm; bottom:-52mm; border-radius:50%; pointer-events:none; }
+    .pdf-cover-arc.arc-primary { width:156mm; height:156mm; border:15mm solid var(--pdf-cover-primary); }
+    .pdf-cover-arc.arc-gold { width:136mm; height:136mm; right:-30mm; bottom:-43mm; border:7mm solid var(--pdf-cover-accent); opacity:.9; }
+    .pdf-cover-dots { position:absolute; width:26mm; height:26mm; background-image:radial-gradient(circle, rgba(89,108,136,.42) 1.1mm, transparent 1.2mm); background-size:8mm 8mm; opacity:.42; }
+    .pdf-cover-dots.dots-left { left:14mm; bottom:16mm; }
+    .pdf-cover-dots.dots-right { right:62mm; top:72mm; }
+    .pdf-summary-layout { display:grid; grid-template-columns: 62mm minmax(0,1fr); gap: 7mm; align-items:start; }
+    .pdf-summary-layout h2 { margin: 2mm 0 3mm; }
+    .pdf-metric-table td:nth-child(2) { font-weight: 900; white-space: nowrap; width: 24mm; }
     .pdf-cover, .pdf-section { width: 100%; background: #fff; border: 1px solid #d9e3f0; border-radius: 5mm; overflow: hidden; box-shadow: 0 2mm 8mm rgba(15,35,71,.06); }
     .pdf-cover { min-height: 68mm; display: grid; grid-template-columns: 25mm 1fr 42mm; gap: 6mm; align-items: stretch; padding: 7mm; background: linear-gradient(180deg,#ffffff 0%,#f8fbff 100%); border-top: 5mm solid #143b72; }
     .pdf-generic-cover { grid-template-columns: 25mm 1fr; }
@@ -2881,21 +2878,21 @@ export default function Report() {
 
   return (
     <>
-      <main className="settings-module-root ema-settings-pro ema-report-pro container-fluid p-3 p-xl-4" data-section="users">
+      <main className="settings-module-root ema-settings-pro ema-report-pro container-fluid p-3 p-xl-4" data-section="report">
         <input aria-hidden="true" id="globalSearch" type="hidden" />
         <button hidden id="themeBtn" type="button">
           <span id="themeLabel">Dark Mode</span>
         </button>
 
-        <div className="settings-layout d-grid gap-3">
-          <aside className="settings-menu ema-panel-surface">
+        <div className="settings-layout report-settings-layout d-grid gap-3">
+          <aside className="settings-menu report-category-panel ema-panel-surface">
             <div className="panel-head">
               <span>REPORT CENTER</span>
               <strong>Report Category</strong>
               <small>Management-ready reporting</small>
             </div>
 
-            <div className="settings-menu-list" id="categoryList" role="tablist" aria-label="Report category navigation">
+            <div className="settings-menu-list category-list" id="categoryList" role="tablist" aria-label="Report category navigation">
               {categories.length === 0 && <div className="report-mini-state error">No catalog loaded.</div>}
               {categories.map((category) => (
                 <button

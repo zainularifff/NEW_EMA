@@ -2202,7 +2202,7 @@ export default function HardwareInventory() {
     void loadDeviceDetails(device);
   };
 
-  const handleDeviceNameClick = (event: MouseEvent<HTMLButtonElement>, device: Device) => {
+  const handleDeviceNameClick = (event: MouseEvent<HTMLElement>, device: Device) => {
     event.preventDefault();
     event.stopPropagation();
     setDetailDeviceId(device.id);
@@ -3218,22 +3218,22 @@ export default function HardwareInventory() {
               <h2>{activeTab === "statistics" ? "Hardware Statistics" : "Device Registry"}</h2>
               <p>Live hardware inventory, department scope, MDM actions, geolocation, remote control and scan operations.</p>
             </div>
-            <div className="settings-score hardware-hero-score">
+            <div className="hardware-hero-score">
               {kpiCards.map((card) => (
                 <button
                   key={card.key}
                   type="button"
-                  className={`ema-kpi-card ${card.color} ${activeKpiFilter === card.key ? "is-active" : ""} ${
+                  className={`hardware-kpi-card ${card.color} ${activeKpiFilter === card.key ? "is-active" : ""} ${
                     card.key === "stale" || card.key === "locked" ? "is-attention" : ""
                   }`}
                   onClick={() => handleKpiFilterClick(card.key)}
                   aria-pressed={activeKpiFilter === card.key}
                 >
-                  <div className="ema-kpi-content">
-                    <i className="ema-kpi-icon">{card.icon}</i>
-                    <span className="ema-kpi-label">{card.title}</span>
-                    <strong className="ema-kpi-value">{card.value}</strong>
-                    <small className="ema-kpi-note">{card.subtitle}</small>
+                  <div className="hardware-kpi-content">
+                    <i className="hardware-kpi-icon">{card.icon}</i>
+                    <span className="hardware-kpi-label">{card.title}</span>
+                    <strong className="hardware-kpi-value">{card.value}</strong>
+                    <small className="hardware-kpi-note">{card.subtitle}</small>
                   </div>
                 </button>
               ))}
@@ -3245,10 +3245,38 @@ export default function HardwareInventory() {
         {activeTab === "statistics" ? renderStatisticsWorkbench() : (
           <>
 
-          <div className="hardware-registry-head">
-            <div>
-              <h3>Device Registry</h3>
-              <p>Synchronized device data and operational context</p>
+          <div className="hardware-registry-toolbar">
+            <div className="hardware-registry-filters">
+              <div className="hardware-filter-group">
+                <label>Status</label>
+                <HardwareDropdown
+                  label="Status filter"
+                  value={tableFilters.status}
+                  onChange={(value) => handleTableFilterChange("status", value)}
+                  options={[
+                    { value: "all", label: "All status" },
+                    ...tableFilterOptions.statuses.map((status) => ({ value: status, label: status })),
+                  ]}
+                />
+              </div>
+
+              <div className="hardware-filter-group">
+                <label>Platform</label>
+                <HardwareDropdown
+                  label="Platform filter"
+                  value={tableFilters.platform}
+                  onChange={(value) => handleTableFilterChange("platform", value)}
+                  options={[
+                    { value: "all", label: "All platform" },
+                    ...tableFilterOptions.platforms.map((platform) => ({ value: platform, label: platform })),
+                  ]}
+                />
+              </div>
+
+              <button type="button" className="hardware-clear-filters-btn" onClick={clearTableFilters} disabled={!searchDevices && activeTableFilterCount === 0}>
+                <X size={14} />
+                Reset
+              </button>
             </div>
 
             <div className="hardware-registry-tools">
@@ -3286,39 +3314,6 @@ export default function HardwareInventory() {
             </div>
           </div>
 
-          <div className="hardware-table-filter-bar">
-            <div className="hardware-filter-group">
-              <label>Status</label>
-              <HardwareDropdown
-                label="Status filter"
-                value={tableFilters.status}
-                onChange={(value) => handleTableFilterChange("status", value)}
-                options={[
-                  { value: "all", label: "All status" },
-                  ...tableFilterOptions.statuses.map((status) => ({ value: status, label: status })),
-                ]}
-              />
-            </div>
-
-            <div className="hardware-filter-group">
-              <label>Platform</label>
-              <HardwareDropdown
-                label="Platform filter"
-                value={tableFilters.platform}
-                onChange={(value) => handleTableFilterChange("platform", value)}
-                options={[
-                  { value: "all", label: "All platform" },
-                  ...tableFilterOptions.platforms.map((platform) => ({ value: platform, label: platform })),
-                ]}
-              />
-            </div>
-
-            <button type="button" className="hardware-clear-filters-btn" onClick={clearTableFilters} disabled={!searchDevices && activeTableFilterCount === 0}>
-              <X size={14} />
-              Reset
-            </button>
-          </div>
-
           <div className="hardware-registry-subhead">
             <div>
               <strong>
@@ -3335,110 +3330,102 @@ export default function HardwareInventory() {
             </div>
           </div>
 
-          <div className="hardware-table-wrap">
-            <table className="hardware-table">
-              <thead>
-                <tr>
-                  <th>No</th>
-                  <th>
-                    <button type="button" className="hardware-sort-btn" onClick={() => handleSort("name")}>
-                      Device Name {renderSortIndicator("name")}
-                    </button>
-                  </th>
-                  <th>
-                    <button type="button" className="hardware-sort-btn" onClick={() => handleSort("platformModel")}>
-                      Platform / Model {renderSortIndicator("platformModel")}
-                    </button>
-                  </th>
-                  <th>
-                    <button type="button" className="hardware-sort-btn" onClick={() => handleSort("status")}>
-                      Status {renderSortIndicator("status")}
-                    </button>
-                  </th>
-                  <th>
-                    <button type="button" className="hardware-sort-btn" onClick={() => handleSort("lastConnected")}>
-                      Last Connected {renderSortIndicator("lastConnected")}
-                    </button>
-                  </th>
-                  <th>
-                    <button type="button" className="hardware-sort-btn" onClick={() => handleSort("groupPath")}>
-                      Group Path {renderSortIndicator("groupPath")}
-                    </button>
-                  </th>
-                  <th>
-                    <button type="button" className="hardware-sort-btn" onClick={() => handleSort("deviceIdentifier")}>
-                      Device ID {renderSortIndicator("deviceIdentifier")}
-                    </button>
-                  </th>
-                  <th>
-                    <button type="button" className="hardware-sort-btn" onClick={() => handleSort("ip")}>
-                      IP Address {renderSortIndicator("ip")}
-                    </button>
-                  </th>
-                </tr>
-              </thead>
+          <div className="user-access-table advanced clean-table hardware-standard-table hardware-device-table">
+            <div className="user-row head advanced clean-table-row hardware-standard-row hardware-device-table-row">
+              <div className="user-cell">No</div>
+              <div className="user-cell">
+                <button type="button" className="hardware-sort-btn" onClick={() => handleSort("name")}>
+                  Device {renderSortIndicator("name")}
+                </button>
+              </div>
+              <div className="user-cell">
+                <button type="button" className="hardware-sort-btn" onClick={() => handleSort("platformModel")}>
+                  Platform / Model {renderSortIndicator("platformModel")}
+                </button>
+              </div>
+              <div className="user-cell">
+                <button type="button" className="hardware-sort-btn" onClick={() => handleSort("status")}>
+                  Status {renderSortIndicator("status")}
+                </button>
+              </div>
+              <div className="user-cell">
+                <button type="button" className="hardware-sort-btn" onClick={() => handleSort("lastConnected")}>
+                  Last Connected {renderSortIndicator("lastConnected")}
+                </button>
+              </div>
+              <div className="user-cell">
+                <button type="button" className="hardware-sort-btn" onClick={() => handleSort("ip")}>
+                  Network {renderSortIndicator("ip")}
+                </button>
+              </div>
+            </div>
 
-              <tbody>
-                {pagedDevices.map((device, index) => (
-                  <tr key={device.id} className={hasSelectedDevice && selectedDevice.id === device.id ? "is-selected" : ""} onClick={() => handleDeviceRowSelect(device)}>
-                    <td><span className="ema-row-no">{String((page - 1) * PAGE_SIZE + index + 1).padStart(2, "0")}</span></td>
-                    <td>
-                      <div className="hardware-device-cell">
-                        <span className={`hardware-status-dot ${getStatusClass(device.status)}`} />
-                        <div>
-                          <button
-                            type="button"
-                            className="hardware-device-name-link"
-                            onClick={(event) => handleDeviceNameClick(event, device)}
-                            title={`Open full details for ${device.name}`}
-                          >
-                            {device.name}
-                          </button>
-                          <small>
-                            {device.owner} / {device.department}
-                          </small>
-                        </div>
-                      </div>
-                    </td>
-                    <td>{device.platformModel}</td>
-                    <td>
-                      <span className={`hardware-status-pill ${getStatusClass(device.status)}`}>{device.status}</span>
-                    </td>
-                    <td>{device.lastConnected}</td>
-                    <td>{device.groupPath}</td>
-                    <td>{device.deviceIdentifier ?? device.id}</td>
-                    <td>{device.ip}</td>
-                  </tr>
-                ))}
+            {pagedDevices.map((device, index) => (
+              <div
+                role="button"
+                tabIndex={0}
+                key={device.id}
+                className={`user-row advanced clean-table-row hardware-standard-row hardware-device-table-row hardware-device-row ${hasSelectedDevice && selectedDevice.id === device.id ? "is-selected" : ""}`}
+                onClick={() => handleDeviceRowSelect(device)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") handleDeviceRowSelect(device);
+                }}
+              >
+                <div className="user-cell row-number">
+                  <span className="row-index-pill">{String((page - 1) * PAGE_SIZE + index + 1).padStart(2, "0")}</span>
+                </div>
+                <div className="user-cell hardware-device-main-cell">
+                  <div className="user-name hardware-user-name">
+                    <i className={`hardware-status-dot ${getStatusClass(device.status)}`} />
+                    <div>
+                      <strong
+                        role="button"
+                        tabIndex={0}
+                        onClick={(event) => handleDeviceNameClick(event, device)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            handleDeviceNameClick(event as unknown as MouseEvent<HTMLElement>, device);
+                          }
+                        }}
+                        title={`Open full details for ${device.name}`}
+                      >
+                        {device.name}
+                      </strong>
+                      <small>{device.owner} / {device.department}</small>
+                      <em>{device.deviceIdentifier ?? device.id}</em>
+                    </div>
+                  </div>
+                </div>
+                <div className="user-cell"><span className="hardware-model-text">{device.platformModel}</span></div>
+                <div className="user-cell"><span className={`user-pill hardware-status-pill ${getStatusClass(device.status)}`}>{device.status}</span></div>
+                <div className="user-cell"><span className="muted-cell hardware-date-cell">{device.lastConnected}</span></div>
+                <div className="user-cell hardware-network-cell">
+                  <strong>{device.ip}</strong>
+                  <small>{device.groupPath}</small>
+                </div>
+              </div>
+            ))}
 
-                {pagedDevices.length === 0 && (
-                  <tr>
-                    <td colSpan={8}>
-                      <div className="hardware-empty-state">{inventoryLoading ? "Loading hardware inventory from API..." : "No device found for current filter/search."}</div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+            {pagedDevices.length === 0 && (
+              <div className="settings-empty-state hardware-empty-state">{inventoryLoading ? "Loading hardware inventory from API..." : "No device found for current filter/search."}</div>
+            )}
           </div>
 
-          <div className="hardware-pagination">
-            <span>
-              Page {page} of {pageCount}
-            </span>
-            <div className="hardware-pagination-actions">
-              <button type="button" onClick={() => { setPage(1); setNote("Device panel remains open until you close it."); }} disabled={page === 1}>
-                <ChevronsLeft size={14} />
+          <div className="uam-pagination global-style hardware-pagination">
+            <div className="uam-page-summary hardware-page-summary">Page {page} of {pageCount}</div>
+            <div className="uam-pagination-controls global-style hardware-pagination-actions" aria-label="Hardware inventory pagination">
+              <button className="uam-page-icon" type="button" onClick={() => { setPage(1); setNote("Device panel remains open until you close it."); }} disabled={page === 1} aria-label="First page">
+                «
               </button>
-              <button type="button" onClick={() => { setPage((current) => Math.max(1, current - 1)); setNote("Device panel remains open until you close it."); }} disabled={page === 1}>
-                <ChevronLeft size={14} />
+              <button className="uam-page-icon" type="button" onClick={() => { setPage((current) => Math.max(1, current - 1)); setNote("Device panel remains open until you close it."); }} disabled={page === 1} aria-label="Previous page">
+                ‹
               </button>
-              <span className="hardware-pagination-current">{page}</span>
-              <button type="button" onClick={() => { setPage((current) => Math.min(pageCount, current + 1)); setNote("Device panel remains open until you close it."); }} disabled={page === pageCount}>
-                <ChevronRight size={14} />
+              <span className="uam-page-current hardware-pagination-current">{page}</span>
+              <button className="uam-page-icon" type="button" onClick={() => { setPage((current) => Math.min(pageCount, current + 1)); setNote("Device panel remains open until you close it."); }} disabled={page === pageCount} aria-label="Next page">
+                ›
               </button>
-              <button type="button" onClick={() => { setPage(pageCount); setNote("Device panel remains open until you close it."); }} disabled={page === pageCount}>
-                <ChevronsRight size={14} />
+              <button className="uam-page-icon" type="button" onClick={() => { setPage(pageCount); setNote("Device panel remains open until you close it."); }} disabled={page === pageCount} aria-label="Last page">
+                »
               </button>
             </div>
           </div>
