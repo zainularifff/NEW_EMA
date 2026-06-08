@@ -28,6 +28,7 @@ const navItems: NavItem[] = [
   { label: "Software", path: "/software", icon: Monitor},
   { label: "App Metering", path: "/appmetering", icon: BarChart3},
   { label: "App Restriction", path: "/app-restriction", icon: BarChart3},
+  { label: "Software Distribution", path: "/software-distribution", icon: BarChart3},
   { label: "Network", path: "/network", icon: Network, comingSoon: true },
   { label: "Users", path: "/users", icon: Users, comingSoon: true },
   { label: "Task List", path: "/tasklist", icon: Settings },

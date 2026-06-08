@@ -21187,15 +21187,14 @@ button.ema-sidebar-tree-node {
   scrollbar-gutter: stable !important;
 }
 
-/* App/Web has 3 vertical parts: hero, module switcher, work card.
-   Keep the outer panel locked; only appweb-main-body scrolls. */
+/* This is the requested change: the main content scrolls up/down instead of being squeezed. */
 .settings-module-root.appweb-scroll-module .settings-content {
   width: 100% !important;
   height: 100% !important;
   max-height: 100% !important;
   min-height: 0 !important;
   display: grid !important;
-  grid-template-rows: auto auto minmax(0, 1fr) !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
   gap: 1rem !important;
   overflow: hidden !important;
   padding-right: 0 !important;
@@ -21293,14 +21292,11 @@ button.ema-sidebar-tree-node {
   justify-self: end !important;
 }
 
-/* Module tabs below KPI should sit in their own grid row. */
+/* Module tabs below KPI should feel like cards, not cramped sidebar buttons. */
 .settings-module-root.appweb-scroll-module .appweb-module-switcher {
-  position: relative !important;
-  z-index: 1 !important;
   display: grid !important;
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   gap: 0.82rem !important;
-  min-height: 0 !important;
   overflow: visible !important;
 }
 
@@ -21326,11 +21322,9 @@ button.ema-sidebar-tree-node {
   color: #ffffff !important;
 }
 
-/* The lower work area fills the third grid row. Scroll happens inside appweb-main-body only. */
+/* The lower work area should grow naturally; scrolling is handled by settings-content. */
 .settings-module-root.appweb-scroll-module .appweb-main-card,
 .settings-module-root.appweb-scroll-module .content-shell.appweb-main-card {
-  position: relative !important;
-  z-index: 0 !important;
   width: 100% !important;
   height: 100% !important;
   min-height: 0 !important;
@@ -21361,10 +21355,6 @@ button.ema-sidebar-tree-node {
   overflow-x: hidden !important;
   overscroll-behavior: contain !important;
   scrollbar-gutter: stable !important;
-  scroll-behavior: auto !important;
-  contain: none !important;
-  will-change: auto !important;
-  transform: none !important;
   padding: 1rem 1.05rem 1.15rem !important;
 }
 
@@ -21396,81 +21386,9 @@ button.ema-sidebar-tree-node {
 }
 
 .settings-module-root.appweb-scroll-module .appweb-main-body .uam-pagination {
-  flex: 0 0 auto !important;
-  width: 100% !important;
-  min-height: 0 !important;
   margin: 0 !important;
-  padding: 0.58rem 0.72rem !important;
+  padding: 0.75rem 1rem !important;
   border-top: 1px solid rgba(203, 213, 225, 0.58) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-end !important;
-  gap: 0.38rem !important;
-  flex-wrap: wrap !important;
-  background: rgba(248, 251, 255, 0.94) !important;
-  overflow: visible !important;
-}
-
-.settings-module-root.appweb-scroll-module .appweb-main-body .uam-pagination .uam-page-status {
-  flex: 0 0 auto !important;
-  margin-right: auto !important;
-  color: var(--appweb-muted) !important;
-  font-size: 0.66rem !important;
-  font-weight: 850 !important;
-  white-space: nowrap !important;
-}
-
-.settings-module-root.appweb-scroll-module .appweb-main-body .uam-pagination .uam-page-icon {
-  flex: 0 0 auto !important;
-  width: auto !important;
-  min-width: 2rem !important;
-  height: 2rem !important;
-  min-height: 2rem !important;
-  padding: 0 0.62rem !important;
-  border-radius: 0.72rem !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  white-space: nowrap !important;
-}
-
-.settings-module-root.appweb-scroll-module .appweb-main-body .uam-pagination .uam-page-current {
-  color: #ffffff !important;
-  border-color: transparent !important;
-  background: linear-gradient(135deg, var(--appweb-blue), var(--appweb-cyan)) !important;
-}
-
-/* App/Web policy setting lists: keep pagination visible under the list.
-   This avoids the list scroll area swallowing the pagination row. */
-.settings-module-root.appweb-scroll-module .appweb-list-panel {
-  min-width: 0 !important;
-  min-height: 0 !important;
-  max-width: 100% !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important;
-  background: #ffffff !important;
-}
-
-.settings-module-root.appweb-scroll-module .appweb-list-panel > .user-row.head {
-  flex: 0 0 auto !important;
-}
-
-.settings-module-root.appweb-scroll-module .appweb-list-panel > .appweb-list-scroll {
-  flex: 1 1 auto !important;
-  min-height: 0 !important;
-  max-height: 18rem !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  scrollbar-gutter: stable !important;
-}
-
-.settings-module-root.appweb-scroll-module .appweb-list-panel > .uam-pagination {
-  flex: 0 0 auto !important;
-}
-
-.settings-module-root.appweb-scroll-module .appweb-list-panel > .uam-pagination .uam-page-status:first-child {
-  margin-right: auto !important;
 }
 
 /* Clean up action buttons without changing component logic. */

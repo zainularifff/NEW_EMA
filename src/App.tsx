@@ -11,6 +11,7 @@ import Report from "./pages/report/Report";
 import Software from "./pages/software/Software";
 import AppMetering from "./pages/appmetering/AppMetering";
 import AppWebRestriction from "./pages/apprestriction/AppWebRestriction";
+import SoftwareDistribution from "./pages/software-distribution/SoftwareDistribution";
 
 
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/software" element={<Software />} />
         <Route path="/appmetering" element={<AppMetering />} />
         <Route path="/app-restriction" element={<AppWebRestriction />} />
+        <Route path="/software-distribution" element={<SoftwareDistribution />} />
       </Route>
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

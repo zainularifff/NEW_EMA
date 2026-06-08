@@ -22,19 +22,6 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import "../../styles/theme.css";
-import "../../styles/typography.css";
-import "../../styles/ema-font-system.css";
-import "../../styles/button.css";
-import "../../styles/filter.css";
-import "../../styles/form.css";
-import "../../styles/kpi.css";
-import "../../styles/modal.css";
-import "../../styles/pagination.css";
-import "../../styles/panel.css";
-import "../../styles/table.css";
-import "../../styles/toast.css";
-import "../../styles/ema-layout.css";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");

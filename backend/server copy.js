@@ -13163,41 +13163,6 @@ function softScanParseInt(value, fallback = 0) {
     return Number.isNaN(parsed) ? fallback : parsed;
 }
 
-function softScanParseScopeInt(value, fallback = 0) {
-    if (value === undefined || value === null || value === "") return fallback;
-
-    if (typeof value === "number") {
-        return Number.isFinite(value) ? Math.trunc(value) : fallback;
-    }
-
-    if (typeof value === "object") {
-        return softScanParseScopeInt(softScanFirstDefined(
-            value.Object_Rel_Idn,
-            value.objectRelIdn,
-            value.objectRelID,
-            value.object_rel_idn,
-            value.relationID,
-            value.relationId,
-            value.relation_id,
-            value.folderId,
-            value.folderID,
-            value.departmentId,
-            value.branchId,
-            value.id
-        ), fallback);
-    }
-
-    const text = String(value).trim();
-    if (!text) return fallback;
-
-    if (/^-?\d+$/.test(text)) {
-        return softScanParseInt(text, fallback);
-    }
-
-    const embeddedNumber = text.match(/\d+/);
-    return embeddedNumber ? softScanParseInt(embeddedNumber[0], fallback) : fallback;
-}
-
 function softScanFirstDefined(...values) {
     return values.find(value => value !== undefined && value !== null && String(value).trim() !== "");
 }
@@ -13253,73 +13218,10 @@ function getSoftScanModeCode(scanMode) {
     return -1;
 }
 
-function getSoftScanObjectRelId(body = {}) {
-    return softScanParseScopeInt(softScanFirstDefined(
-        body.Object_Rel_Idn,
-        body.objectRelIdn,
-        body.objectRelID,
-        body.object_rel_idn,
-        body.relationID,
-        body.relationId,
-        body.relation_id,
-        body.folderId,
-        body.folderID,
-        body.departmentId,
-        body.departmentID,
-        body.branchId,
-        body.branchID,
-        body.selectedFolder,
-        body.folder,
-        body.department,
-        body.branch
-    ), -1);
-}
-
-function getSoftScanObjectRootId(body = {}) {
-    return softScanParseScopeInt(softScanFirstDefined(
-        body.Object_Root_Idn,
-        body.objectRootIdn,
-        body.objectRootID,
-        body.object_root_idn,
-        body.assetId,
-        body.assetID,
-        body.deviceIdn,
-        body.deviceIDN,
-        body.selectedDevice,
-        body.device,
-        body.asset
-    ), 0);
-}
-
-function getSoftScanObjectDeviceID(body = {}) {
-    return softScanNormalizeValue(softScanFirstDefined(
-        body.Object_DeviceID,
-        body.objectDeviceID,
-        body.objectDeviceId,
-        body.object_device_id,
-        body.deviceID,
-        body.deviceId,
-        body.deviceName,
-        body.computerName,
-        body.selectedDevice?.Object_DeviceID,
-        body.selectedDevice?.objectDeviceID,
-        body.selectedDevice?.objectDeviceId,
-        body.selectedDevice?.deviceID,
-        body.selectedDevice?.deviceId,
-        body.selectedDevice?.computerName,
-        body.device?.Object_DeviceID,
-        body.device?.objectDeviceID,
-        body.device?.objectDeviceId,
-        body.device?.deviceID,
-        body.device?.deviceId,
-        body.device?.computerName
-    ));
-}
-
 async function getSoftScanTargets(pool, options = {}) {
     const scanMode = options.scanMode;
-    const objectRelIdn = softScanParseScopeInt(options.objectRelIdn, -1);
-    const objectRootIdn = softScanParseScopeInt(options.objectRootIdn, 0);
+    const objectRelIdn = softScanParseInt(options.objectRelIdn, -1);
+    const objectRootIdn = softScanParseInt(options.objectRootIdn, 0);
     const objectDeviceID = softScanNormalizeValue(options.objectDeviceID);
 
     if (scanMode === "all") {
@@ -13341,9 +13243,7 @@ async function getSoftScanTargets(pool, options = {}) {
 
     if (scanMode === "folder") {
         if (objectRelIdn === -1 || objectRelIdn === 0 || Number.isNaN(objectRelIdn)) {
-            const error = new Error("Object_Rel_Idn is required for folder software inventory scan.");
-            error.statusCode = 400;
-            throw error;
+            throw new Error("Object_Rel_Idn is required for folder software inventory scan.");
         }
 
         const result = await pool.request()
@@ -13382,9 +13282,7 @@ async function getSoftScanTargets(pool, options = {}) {
 
     if (scanMode === "device") {
         if (!objectRootIdn && !objectDeviceID) {
-            const error = new Error("Object_Root_Idn or Object_DeviceID is required for device software inventory scan.");
-            error.statusCode = 400;
-            throw error;
+            throw new Error("Object_Root_Idn or Object_DeviceID is required for device software inventory scan.");
         }
 
         const result = await pool.request()
@@ -13597,17 +13495,9 @@ async function handleSoftInventoryScan(req, res) {
 
         const options = {
             scanMode,
-            objectRelIdn: getSoftScanObjectRelId(body),
-            objectRootIdn: getSoftScanObjectRootId(body),
-            objectDeviceID: getSoftScanObjectDeviceID(body)
-        };
-
-        const normalizedPayload = {
-            ...body,
-            scanMode,
-            Object_Rel_Idn: options.objectRelIdn,
-            Object_Root_Idn: options.objectRootIdn,
-            Object_DeviceID: options.objectDeviceID
+            objectRelIdn: softScanFirstDefined(body.Object_Rel_Idn, body.objectRelIdn, body.relationID, body.relationId),
+            objectRootIdn: softScanFirstDefined(body.Object_Root_Idn, body.objectRootIdn, body.objectRootID, body.assetId),
+            objectDeviceID: softScanFirstDefined(body.Object_DeviceID, body.objectDeviceID, body.deviceID, body.deviceId)
         };
 
         const pool = await sql.connect(dbConfig);
@@ -13623,14 +13513,14 @@ async function handleSoftInventoryScan(req, res) {
         transaction = new sql.Transaction(pool);
         await transaction.begin();
 
-        const job = await createSoftScanJobHeader(transaction, req, normalizedPayload, scanMode);
+        const job = await createSoftScanJobHeader(transaction, req, { ...body, scanMode }, scanMode);
         await insertHierarchicalTaskJobDestination(transaction, job.Job_Idn, scanMode, {
-            payload: normalizedPayload,
+            payload: body,
             firstTarget: targets[0],
-            objectRelIdn: options.objectRelIdn,
+            objectRelIdn: softScanFirstDefined(body.Object_Rel_Idn, body.objectRelIdn, body.relationID, body.relationId),
             objectRelCode: softScanFirstDefined(body.Object_Rel_Code, body.objectRelCode)
         });
-        const historyCount = await insertSoftScanHistoryRows(transaction, job.Job_Idn, scanMode, normalizedPayload, targets[0], job.Job_StartTime);
+        const historyCount = await insertSoftScanHistoryRows(transaction, job.Job_Idn, scanMode, body, targets[0], job.Job_StartTime);
 
         await transaction.commit();
         transaction = null;
@@ -13653,7 +13543,7 @@ async function handleSoftInventoryScan(req, res) {
                 historyRows: historyCount,
                 destination: {
                     mode: scanMode,
-                    Object_Rel_Idn: scanMode === "folder" ? softScanParseScopeInt(options.objectRelIdn, -1) : -1,
+                    Object_Rel_Idn: scanMode === "folder" ? softScanParseInt(options.objectRelIdn, -1) : -1,
                     Object_Root_Idn: scanMode === "device" ? targets[0]?.Object_Root_Idn : -1
                 }
             }
@@ -13668,9 +13558,9 @@ async function handleSoftInventoryScan(req, res) {
         }
 
         console.error("POST /api/software-inventory/scan error:", err);
-        return res.status(err.statusCode || 500).json({
+        return res.status(500).json({
             success: false,
-            message: err.statusCode === 400 ? (err.message || "Invalid software inventory scan request.") : "Failed to create software inventory scan job.",
+            message: "Failed to create software inventory scan job.",
             error: err.message || String(err)
         });
     }
