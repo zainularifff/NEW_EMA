@@ -1,13 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
-  CalendarDays,
   CheckCircle2,
   ClipboardList,
   Download,
   Loader2,
-  PauseCircle,
-  PlayCircle,
   RefreshCw,
   Search,
   Square,
@@ -15,15 +12,6 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-
-type AppTableColumn<T> = {
-  key: keyof T | string;
-  header: React.ReactNode;
-  width?: number | string;
-  sortable?: boolean;
-  className?: string;
-  render?: (row: T, index: number) => React.ReactNode;
-};
 
 type AppButtonVariant =
   | "primary"
@@ -49,6 +37,12 @@ type AppButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   leftIcon?: React.ReactNode;
 };
 
+function getGlobalButtonClass(variant: AppButtonVariant) {
+  if (variant === "danger" || variant === "outline-danger") return "danger-btn";
+  if (variant === "primary" || variant === "success" || variant === "info") return "primary-btn";
+  return "soft-btn";
+}
+
 function AppButton({
   variant = "primary",
   loading = false,
@@ -62,40 +56,12 @@ function AppButton({
   return (
     <button
       type={type}
-      className={`btn btn-${variant} d-inline-flex align-items-center justify-content-center gap-2 ${className}`.trim()}
+      className={`${getGlobalButtonClass(variant)} ${className}`.trim()}
       disabled={disabled || loading}
       {...props}
     >
       {loading ? <Loader2 className="task-spin" size={15} /> : leftIcon}
       <span>{children}</span>
-    </button>
-  );
-}
-
-type AppIconButtonProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
-  variant?: AppButtonVariant;
-  icon: React.ReactNode;
-  label: string;
-};
-
-function AppIconButton({
-  variant = "light",
-  icon,
-  label,
-  className = "",
-  type = "button",
-  title,
-  ...props
-}: AppIconButtonProps) {
-  return (
-    <button
-      type={type}
-      className={`btn btn-${variant} d-inline-flex align-items-center justify-content-center ${className}`.trim()}
-      aria-label={label}
-      title={title || label}
-      {...props}
-    >
-      {icon}
     </button>
   );
 }
@@ -111,131 +77,20 @@ type AppToastProps = {
 function AppToast({ show, tone = "info", title, message, onClose }: AppToastProps) {
   if (!show) return null;
 
-  const toneClass = tone === "error" ? "danger" : tone;
+  const icon = tone === "success" ? "✓" : tone === "error" ? "!" : "i";
 
   return (
-    <div className="toast-container position-fixed top-0 end-0 p-3 task-toast-container" style={{ zIndex: 1080 }}>
-      <div className={`toast show border-0 shadow task-toast task-toast-${tone}`} role="status" aria-live="polite">
-        <div className={`toast-header text-bg-${toneClass} border-0`}>
-          <strong className="me-auto">{title || "Notification"}</strong>
-          <button type="button" className="btn-close btn-close-white" aria-label="Close" onClick={onClose} />
+    <div className="settings-toast-layer task-toast-layer">
+      <div className={`settings-toast settings-toast-${tone} task-toast task-toast-${tone}`} role="status" aria-live="polite">
+        <div className="settings-toast-icon" aria-hidden="true">{icon}</div>
+        <div>
+          <strong>{title || "Notification"}</strong>
+          <span>{message}</span>
         </div>
-        <div className="toast-body">{message}</div>
+        <button type="button" className="settings-toast-close" aria-label="Close" onClick={onClose}>
+          ×
+        </button>
       </div>
-    </div>
-  );
-}
-
-type AppTableProps<T> = {
-  className?: string;
-  columns: AppTableColumn<T>[];
-  rows: T[];
-  rowKey: keyof T | ((row: T) => React.Key);
-  loading?: boolean;
-  selectedKey?: React.Key | null;
-  sortKey?: string;
-  sortDirection?: "asc" | "desc";
-  onSort?: (key: string) => void;
-  onRowClick?: (row: T) => void;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
-
-function getAppTableRowKey<T>(row: T, rowKey: AppTableProps<T>["rowKey"]): React.Key {
-  if (typeof rowKey === "function") return rowKey(row);
-  return (row as Record<string, unknown>)[String(rowKey)] as React.Key;
-}
-
-function AppTable<T extends object>({
-  className = "",
-  columns,
-  rows,
-  rowKey,
-  loading = false,
-  selectedKey,
-  sortKey,
-  sortDirection,
-  onSort,
-  onRowClick,
-  emptyTitle = "No records found",
-  emptyDescription = "There is no data to display.",
-}: AppTableProps<T>) {
-  return (
-    <div className={`table-responsive app-table-wrap ${className}`.trim()}>
-      <table className="table table-hover align-middle mb-0 app-table">
-        <thead>
-          <tr>
-            {columns.map((column) => {
-              const key = String(column.key);
-              const isSorted = sortKey === key;
-              const content = (
-                <span className="d-inline-flex align-items-center gap-1">
-                  {column.header}
-                  {column.sortable ? (
-                    <span className="app-table-sort-indicator" aria-hidden="true">
-                      {isSorted ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
-                    </span>
-                  ) : null}
-                </span>
-              );
-
-              return (
-                <th
-                  key={key}
-                  scope="col"
-                  style={column.width ? { width: column.width } : undefined}
-                  className={column.sortable ? "app-table-sortable" : undefined}
-                >
-                  {column.sortable && onSort ? (
-                    <button type="button" className="app-table-sort-btn" onClick={() => onSort(key)}>
-                      {content}
-                    </button>
-                  ) : content}
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {loading ? (
-            <tr>
-              <td colSpan={columns.length} className="text-center py-5">
-                <Loader2 className="task-spin me-2" size={18} /> Loading records...
-              </td>
-            </tr>
-          ) : rows.length === 0 ? (
-            <tr>
-              <td colSpan={columns.length} className="text-center py-5 app-table-empty">
-                <strong>{emptyTitle}</strong>
-                <div>{emptyDescription}</div>
-              </td>
-            </tr>
-          ) : (
-            rows.map((row, rowIndex) => {
-              const key = getAppTableRowKey(row, rowKey);
-              return (
-                <tr
-                  key={key}
-                  className={selectedKey === key ? "table-active" : undefined}
-                  onClick={() => onRowClick?.(row)}
-                  role={onRowClick ? "button" : undefined}
-                  tabIndex={onRowClick ? 0 : undefined}
-                >
-                  {columns.map((column) => {
-                    const cellKey = String(column.key);
-                    const value = row[cellKey];
-                    return (
-                      <td key={cellKey} className={column.className}>
-                        {column.render ? column.render(row, rowIndex) : (value as React.ReactNode) ?? "-"}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
     </div>
   );
 }
@@ -1116,31 +971,28 @@ const TaskList = () => {
               </div>
 
               <div className="task-list-filter-strip">
-                <label className="task-filter-field">
+                <label className="form-field">
                   <span>Classification</span>
-                  <select className="ema-select" value={classification} onChange={(event) => setClassification(event.target.value)}>
+                  <select className="setting-select form-select" value={classification} onChange={(event) => setClassification(event.target.value)}>
                     {classificationOptions.map((item) => <option key={item.code} value={item.label}>{item.label}</option>)}
                   </select>
                 </label>
 
-                <label className="task-filter-field">
+                <label className="form-field">
                   <span>State</span>
-                  <select className="ema-select" value={state} onChange={(event) => setState(event.target.value)}>
+                  <select className="setting-select form-select" value={state} onChange={(event) => setState(event.target.value)}>
                     {stateOptions.map((item) => <option key={item.code} value={item.label}>{item.label}</option>)}
                   </select>
                 </label>
 
-                <label className="task-filter-field">
+                <label className="form-field">
                   <span>From</span>
-                  <div className="task-date-field">
-                    <input className="ema-input" type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
-                    <CalendarDays size={14} />
-                  </div>
+                  <input className="setting-input form-control" type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
                 </label>
 
-                <label className="task-filter-field task-page-size-control compact">
+                <label className="form-field task-page-size-control compact">
                   <span>Rows</span>
-                  <select className="ema-select" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+                  <select className="setting-select form-select" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
                     {pageSizeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                   </select>
                 </label>
@@ -1229,7 +1081,7 @@ const TaskList = () => {
                           <span className={`task-status-pill ${getStateClass(task.state)}`}>{task.state}</span>
                           {task.rawState && task.rawState !== task.state ? <small>raw: {task.rawState}</small> : null}
                           <div className="task-mini-progress" aria-label={`Completion ${task.completionRate}%`}>
-                            <span style={{ width: `${Math.min(100, Math.max(0, task.completionRate))}%` }} />
+                            <progress className="task-progress-native" value={Math.min(100, Math.max(0, task.completionRate))} max={100} />
                           </div>
                         </div>
                       </div>
@@ -1473,7 +1325,7 @@ function TaskTargetList({
         </div>
 
         <div className="task-target-side-toolbar" aria-label="Target endpoint filters">
-          <div className="task-target-side-search">
+          <label className="section-search task-target-side-search">
             <Search size={15} />
             <input
               type="search"
@@ -1482,9 +1334,9 @@ function TaskTargetList({
               placeholder="Search target, IP, status, device ID..."
               aria-label="Search target endpoints"
             />
-          </div>
+          </label>
           {targetSearch ? (
-            <button type="button" onClick={() => setTargetSearch("")} className="task-target-clear-btn">Clear</button>
+            <button type="button" onClick={() => setTargetSearch("")} className="soft-btn task-target-clear-btn">Clear</button>
           ) : null}
         </div>
 
@@ -1772,9 +1624,11 @@ function StatusField({ label, value }: { label: string; value: string | number }
 }
 
 function ProgressBar({ value }: { value: number }) {
+  const progressValue = Math.min(Math.max(value, 0), 100);
+
   return (
     <div className="task-progress-bar">
-      <div style={{ width: `${Math.min(Math.max(value, 0), 100)}%` }} />
+      <progress className="task-progress-native" value={progressValue} max={100} aria-label={`Progress ${progressValue}%`} />
     </div>
   );
 }

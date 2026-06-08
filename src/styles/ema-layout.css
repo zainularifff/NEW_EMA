@@ -20059,3 +20059,45 @@ body.ema-report-page-active .main-content {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* =========================================================
+   V Task List Global CSS Cleanup
+   Purpose:
+   - support native progress elements after removing inline width styles
+   - keep Task List progress styling in shared global CSS only
+========================================================= */
+
+.settings-module-root.task-list-module .task-progress-native {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  border: 0 !important;
+  border-radius: inherit !important;
+  overflow: hidden !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background: transparent !important;
+}
+
+.settings-module-root.task-list-module .task-progress-native::-webkit-progress-bar {
+  border-radius: inherit !important;
+  background: transparent !important;
+}
+
+.settings-module-root.task-list-module .task-progress-native::-webkit-progress-value {
+  border-radius: inherit !important;
+  background: linear-gradient(90deg, var(--ema-control-primary), color-mix(in srgb, var(--ema-control-primary) 62%, #12b981)) !important;
+}
+
+.settings-module-root.task-list-module .task-progress-native::-moz-progress-bar {
+  border-radius: inherit !important;
+  background: linear-gradient(90deg, var(--ema-control-primary), color-mix(in srgb, var(--ema-control-primary) 62%, #12b981)) !important;
+}
+
+.settings-module-root.task-list-module .task-progress-bar .task-progress-native::-webkit-progress-value {
+  background: linear-gradient(90deg, var(--ema-control-primary), var(--ema-control-cyan)) !important;
+}
+
+.settings-module-root.task-list-module .task-progress-bar .task-progress-native::-moz-progress-bar {
+  background: linear-gradient(90deg, var(--ema-control-primary), var(--ema-control-cyan)) !important;
+}
