@@ -1,3 +1,21 @@
+import "../../styles/theme.css";
+import "../../styles/typography.css";
+import "../../styles/ema-font-system.css";
+import "../../styles/app-global.css";
+import "../../styles/button.css";
+import "../../styles/form.css";
+import "../../styles/filter.css";
+import "../../styles/kpi.css";
+import "../../styles/panel.css";
+import "../../styles/table.css";
+import "../../styles/pagination.css";
+import "../../styles/modal.css";
+import "../../styles/toast.css";
+import "../../styles/settings-layout.css";
+import "../../styles/settings-widgets.css";
+import "../../styles/resource-planning.css";
+import "../../styles/2fa.css";
+import "../../styles/ema-layout.css";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -699,12 +717,12 @@ export default function Software() {
   }, []);
 
   useEffect(() => {
-    document.documentElement.classList.add("ema-settings-page-active");
-    document.body.classList.add("ema-settings-page-active");
+    document.documentElement.classList.add("ema-settings-page-active", "ema-layout-lock");
+    document.body.classList.add("ema-settings-page-active", "ema-layout-lock");
 
     return () => {
-      document.documentElement.classList.remove("ema-settings-page-active");
-      document.body.classList.remove("ema-settings-page-active");
+      document.documentElement.classList.remove("ema-settings-page-active", "ema-layout-lock");
+      document.body.classList.remove("ema-settings-page-active", "ema-layout-lock");
     };
   }, []);
 
@@ -1042,20 +1060,20 @@ export default function Software() {
     const isOpen = openSelect === selectKey;
     const displayValue = value === "all" ? allLabel : value;
     return (
-      <div className="software-filter-group">
+      <div className="form-field software-filter-group">
         <label>{label}</label>
-        <div className={cx("software-custom-select", isOpen && "is-open")}>
-          <button type="button" className={cx("software-custom-select-trigger", isOpen && "is-open")} onClick={() => setOpenSelect(isOpen ? null : selectKey)}>
+        <div className={cx("setting-select-dropdown software-custom-select", isOpen && "open", isOpen && "is-open")}>
+          <button type="button" className={cx("setting-select-trigger software-custom-select-trigger", isOpen && "is-open")} onClick={() => setOpenSelect(isOpen ? null : selectKey)}>
             <span>{displayValue}</span>
             <ChevronDown size={15} />
           </button>
           {isOpen && (
-            <div className="software-custom-select-menu">
-              <button type="button" className={cx("software-custom-select-option", value === "all" && "is-selected")} onClick={() => { onChange("all"); setOpenSelect(null); }}>
+            <div className="uam-filter-menu software-custom-select-menu">
+              <button type="button" className={cx("uam-filter-option software-custom-select-option", value === "all" && "selected", value === "all" && "is-selected")} onClick={() => { onChange("all"); setOpenSelect(null); }}>
                 <span>{allLabel}</span>
               </button>
               {options.map((option) => (
-                <button type="button" key={option} className={cx("software-custom-select-option", value === option && "is-selected")} onClick={() => { onChange(option); setOpenSelect(null); }}>
+                <button type="button" key={option} className={cx("uam-filter-option software-custom-select-option", value === option && "selected", value === option && "is-selected")} onClick={() => { onChange(option); setOpenSelect(null); }}>
                   <span>{option}</span>
                 </button>
               ))}
@@ -1067,14 +1085,14 @@ export default function Software() {
   };
 
   const SortButton = ({ label, columnKey }: { label: string; columnKey: SortKey }) => (
-    <button type="button" className="ema-th-sort software-sort-btn" onClick={() => handleRegistrySort(columnKey)}>
+    <button type="button" className="resource-sort-button software-sort-btn" onClick={() => handleRegistrySort(columnKey)}>
       <span>{label}</span>
       <ArrowUpDown size={12} className={cx("software-sort-icon", sortKey === columnKey && "is-active")} />
     </button>
   );
 
   const TableSortButton = ({ label, index }: { label: string; index: number }) => (
-    <button type="button" className="ema-th-sort software-sort-btn" onClick={() => handleTableSort(index)}>
+    <button type="button" className="resource-sort-button software-sort-btn" onClick={() => handleTableSort(index)}>
       <span>{label}</span>
       <ArrowUpDown size={12} className={cx("software-sort-icon", tableSort?.index === index && "is-active")} />
     </button>
@@ -1135,12 +1153,14 @@ export default function Software() {
       : `Scope: ${selectedFolder?.label || "Organisation"}`;
 
   return (
-    <main className="settings-module-root ema-settings-pro software-module software-inventory-module container-fluid p-3 p-xl-4" data-section="software">
+    <main className="settings-module-root ema-settings-pro ema-module-root software-module software-inventory-module" data-section="software">
       {toast && (
-        <div className={cx("ema-toast", toast.type === "error" ? "is-error" : toast.type === "info" ? "is-info" : "is-success", "software-toast")}>
-          <div className="ema-toast-icon software-toast-icon">{toast.type === "error" ? <AlertTriangle size={18} /> : <ShieldCheck size={18} />}</div>
-          <div><strong>{toast.title}</strong><span>{toast.message}</span></div>
-          <button type="button" onClick={() => setToast(null)}><X size={15} /></button>
+        <div className="settings-toast-layer software-toast-layer">
+          <div className={cx("settings-toast software-toast", toast.type === "error" ? "settings-toast-error" : toast.type === "info" ? "settings-toast-info" : "settings-toast-success")}>
+            <div className="settings-toast-icon software-toast-icon">{toast.type === "error" ? <AlertTriangle size={18} /> : <ShieldCheck size={18} />}</div>
+            <div><strong>{toast.title}</strong><span>{toast.message}</span></div>
+            <button type="button" onClick={() => setToast(null)}><X size={15} /></button>
+          </div>
         </div>
       )}
 
@@ -1157,7 +1177,7 @@ export default function Software() {
             <button type="button" className={sidebarTab === "statistic" ? "is-active" : ""} onClick={() => setSidebarTab("statistic")}>Statistic</button>
           </div>
 
-          <div className="ema-search-field software-left-search">
+          <div className="section-search software-left-search">
             <Search size={15} />
             <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search software..." />
             {searchTerm && <button type="button" onClick={() => setSearchTerm("")}><X size={14} /></button>}
@@ -1189,20 +1209,20 @@ export default function Software() {
               <p>Manage installed software records, package statistics, file extension evidence and scan jobs from one locked workspace.</p>
             </div>
             <div className="software-hero-kpi-grid">
-            <button type="button" className={cx("software-kpi-card is-blue", activeView === "all" && !filtersActive && selected.tableKey === "registry" && "is-active")} onClick={() => activateView("all")}>
-              <div className="software-kpi-content"><div className="software-kpi-icon"><Package size={18} /></div><span className="software-kpi-label">Total Records</span><strong className="software-kpi-value">{summary.totalRecords}</strong><small className="software-kpi-note">{selected.tableKey === "registry" ? `${filteredRecords.length} shown` : "registry records"}</small></div>
+            <button type="button" className={cx("ema-kpi-card with-icon software-kpi-card is-blue", activeView === "all" && !filtersActive && selected.tableKey === "registry" && "is-active")} onClick={() => activateView("all")}>
+              <div className="ema-kpi-content software-kpi-content"><div className="ema-kpi-icon software-kpi-icon"><Package size={18} /></div><span className="ema-kpi-label software-kpi-label">Total Records</span><strong className="ema-kpi-value software-kpi-value">{summary.totalRecords}</strong><small className="ema-kpi-note software-kpi-note">{selected.tableKey === "registry" ? `${filteredRecords.length} shown` : "registry records"}</small></div>
             </button>
-            <button type="button" className={cx("software-kpi-card is-green", activeView === "unique" && selected.tableKey === "registry" && "is-active")} onClick={() => activateView("unique")}>
-              <div className="software-kpi-content"><div className="software-kpi-icon"><BarChart3 size={18} /></div><span className="software-kpi-label">Unique Software</span><strong className="software-kpi-value">{summary.uniqueSoftware}</strong><small className="software-kpi-note">unique names</small></div>
+            <button type="button" className={cx("ema-kpi-card with-icon software-kpi-card is-green", activeView === "unique" && selected.tableKey === "registry" && "is-active")} onClick={() => activateView("unique")}>
+              <div className="ema-kpi-content software-kpi-content"><div className="ema-kpi-icon software-kpi-icon"><BarChart3 size={18} /></div><span className="ema-kpi-label software-kpi-label">Unique Software</span><strong className="ema-kpi-value software-kpi-value">{summary.uniqueSoftware}</strong><small className="ema-kpi-note software-kpi-note">unique names</small></div>
             </button>
-            <button type="button" className={cx("software-kpi-card is-orange", activeView === "installed" && selected.tableKey === "registry" && "is-active")} onClick={() => activateView("installed")}>
-              <div className="software-kpi-content"><div className="software-kpi-icon"><MonitorSmartphone size={18} /></div><span className="software-kpi-label">Installed Devices</span><strong className="software-kpi-value">{summary.uniqueDevices}</strong><small className="software-kpi-note">linked devices</small></div>
+            <button type="button" className={cx("ema-kpi-card with-icon software-kpi-card is-orange", activeView === "installed" && selected.tableKey === "registry" && "is-active")} onClick={() => activateView("installed")}>
+              <div className="ema-kpi-content software-kpi-content"><div className="ema-kpi-icon software-kpi-icon"><MonitorSmartphone size={18} /></div><span className="ema-kpi-label software-kpi-label">Installed Devices</span><strong className="ema-kpi-value software-kpi-value">{summary.uniqueDevices}</strong><small className="ema-kpi-note software-kpi-note">linked devices</small></div>
             </button>
-            <button type="button" className={cx("software-kpi-card is-purple", activeView === "categories" && selected.tableKey === "registry" && "is-active")} onClick={() => activateView("categories")}>
-              <div className="software-kpi-content"><div className="software-kpi-icon"><Layers size={18} /></div><span className="software-kpi-label">Categories</span><strong className="software-kpi-value">{summary.categories}</strong><small className="software-kpi-note">class types</small></div>
+            <button type="button" className={cx("ema-kpi-card with-icon software-kpi-card is-purple", activeView === "categories" && selected.tableKey === "registry" && "is-active")} onClick={() => activateView("categories")}>
+              <div className="ema-kpi-content software-kpi-content"><div className="ema-kpi-icon software-kpi-icon"><Layers size={18} /></div><span className="ema-kpi-label software-kpi-label">Categories</span><strong className="ema-kpi-value software-kpi-value">{summary.categories}</strong><small className="ema-kpi-note software-kpi-note">class types</small></div>
             </button>
-            <button type="button" className={cx("software-kpi-card is-red", activeView === "unclassified" && selected.tableKey === "registry" && "is-active")} onClick={() => activateView("unclassified")}>
-              <div className="software-kpi-content"><div className="software-kpi-icon"><AlertTriangle size={18} /></div><span className="software-kpi-label">Unclassified</span><strong className="software-kpi-value">{summary.unclassified}</strong><small className="software-kpi-note">no category</small></div>
+            <button type="button" className={cx("ema-kpi-card with-icon software-kpi-card is-red", activeView === "unclassified" && selected.tableKey === "registry" && "is-active")} onClick={() => activateView("unclassified")}>
+              <div className="ema-kpi-content software-kpi-content"><div className="ema-kpi-icon software-kpi-icon"><AlertTriangle size={18} /></div><span className="ema-kpi-label software-kpi-label">Unclassified</span><strong className="ema-kpi-value software-kpi-value">{summary.unclassified}</strong><small className="ema-kpi-note software-kpi-note">no category</small></div>
             </button>
           </div>
           </section>
@@ -1211,14 +1231,14 @@ export default function Software() {
             <div className="software-registry-head">
               <div><h3>{tableTitle}</h3><p>{tableSubtitle}</p></div>
               <div className="software-registry-tools">
-                <div className="ema-search-field software-search-box"><Search size={15} /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search software records..." />{searchTerm && <button type="button" onClick={() => setSearchTerm("")}><X size={14} /></button>}</div>
-                <button type="button" className="ema-secondary-btn software-insights-toggle" onClick={() => setShowInsightsModal(true)}><FileText size={15} />Insights <span>{classificationCoverage}%</span></button>
-                <button type="button" className="ema-secondary-btn software-scan-btn" onClick={() => void handleSoftwareScan("device")} disabled={!selectedDevice || scanLoading}><MonitorSmartphone size={15} className={scanLoading ? "spin" : ""} />Scan Device</button>
-                <button type="button" className="ema-secondary-btn software-scan-btn" onClick={() => void handleSoftwareScan("folder")} disabled={!selectedFolder || scanLoading}><FolderOpen size={15} className={scanLoading ? "spin" : ""} />Scan Folder</button>
-                <button type="button" className="ema-secondary-btn software-scan-btn" onClick={() => void handleSoftwareScan("all")} disabled={scanLoading}><RefreshCw size={15} className={scanLoading ? "spin" : ""} />Scan All</button>
-                <button type="button" className="ema-icon-button" onClick={() => void refreshCurrentView()} title="Refresh"><RefreshCw size={15} /></button>
-                <button type="button" className="ema-ghost-btn software-reset-btn software-header-reset-btn" onClick={selected.tableKey === "registry" ? resetFilters : resetToRegistry} disabled={!canResetCurrentView}><X size={14} />Reset</button>
-                <button type="button" className="ema-primary-btn software-export-btn software-header-export-btn" onClick={exportCurrentView} disabled={isDataLoading || activeRowsCount === 0}><Download size={15} />Export</button>
+                <div className="section-search software-search-box"><Search size={15} /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search software records..." />{searchTerm && <button type="button" onClick={() => setSearchTerm("")}><X size={14} /></button>}</div>
+                <button type="button" className="soft-btn software-insights-toggle" onClick={() => setShowInsightsModal(true)}><FileText size={15} />Insights <span>{classificationCoverage}%</span></button>
+                <button type="button" className="soft-btn software-scan-btn" onClick={() => void handleSoftwareScan("device")} disabled={!selectedDevice || scanLoading}><MonitorSmartphone size={15} className={scanLoading ? "spin" : ""} />Scan Device</button>
+                <button type="button" className="soft-btn software-scan-btn" onClick={() => void handleSoftwareScan("folder")} disabled={!selectedFolder || scanLoading}><FolderOpen size={15} className={scanLoading ? "spin" : ""} />Scan Folder</button>
+                <button type="button" className="soft-btn software-scan-btn" onClick={() => void handleSoftwareScan("all")} disabled={scanLoading}><RefreshCw size={15} className={scanLoading ? "spin" : ""} />Scan All</button>
+                <button type="button" className="icon-action-btn software-icon-btn" onClick={() => void refreshCurrentView()} title="Refresh"><RefreshCw size={15} /></button>
+                <button type="button" className="soft-btn software-reset-btn software-header-reset-btn" onClick={selected.tableKey === "registry" ? resetFilters : resetToRegistry} disabled={!canResetCurrentView}><X size={14} />Reset</button>
+                <button type="button" className="primary-btn software-export-btn software-header-export-btn" onClick={exportCurrentView} disabled={isDataLoading || activeRowsCount === 0}><Download size={15} />Export</button>
               </div>
             </div>
 
@@ -1264,10 +1284,10 @@ export default function Software() {
             {apiError && selected.tableKey === "registry" && <div className="software-error-banner"><AlertTriangle size={16} /><div><strong>Software API failed</strong><span>{apiError}</span></div></div>}
             {tableError && selected.tableKey !== "registry" && <div className="software-error-banner"><AlertTriangle size={16} /><div><strong>View failed</strong><span>{tableError}</span></div></div>}
 
-            <div className={cx("software-standard-table", isDataLoading && "is-loading")} role="table" aria-label={tableTitle}>
+            <div className={cx("user-access-table software-standard-table", isDataLoading && "is-loading")} role="table" aria-label={tableTitle}>
               {selected.tableKey === "registry" ? (
                 <>
-                  <div className="software-standard-row head software-registry-row" role="row">
+                  <div className="user-row head software-standard-row software-registry-row" role="row">
                     <div className="user-cell">#</div>
                     <div className="user-cell"><SortButton label="Software Name" columnKey="softwareName" /></div>
                     <div className="user-cell"><SortButton label="Category" columnKey="category" /></div>
@@ -1295,10 +1315,10 @@ export default function Software() {
                       ))}
                     </div>
                   ) : pageRegistryRecords.map((record, index) => (
-                    <div className="software-standard-row software-registry-row" role="row" key={record.id}>
+                    <div className="user-row software-standard-row software-registry-row" role="row" key={record.id}>
                       <div className="user-cell row-number"><span className="row-index-pill software-row-no">{(page - 1) * PAGE_SIZE + index + 1}</span></div>
                       <div className="user-cell"><div className="software-name-cell"><span className="software-status-dot" /><div><strong title={record.softwareName}>{record.softwareName}</strong><small>{record.publisher || record.assetTag || "-"}</small></div></div></div>
-                      <div className="user-cell"><span className="software-chip">{record.category}</span></div>
+                      <div className="user-cell"><span className="user-pill info software-chip">{record.category}</span></div>
                       <div className="user-cell"><div className="software-device-cell"><strong title={record.deviceName}>{record.deviceName}</strong><small>{record.ip || record.assetTag || "-"}</small></div></div>
                       <div className="user-cell software-mono software-text-cell">{record.version}</div>
                       <div className="user-cell"><div className="software-type-cell"><strong>{record.machineType || "-"}</strong><small>{record.os || "-"}</small></div></div>
@@ -1309,7 +1329,7 @@ export default function Software() {
                 </>
               ) : (
                 <>
-                  <div className="software-standard-row head software-dynamic-row" role="row" style={{ gridTemplateColumns: `4.2rem repeat(${tableColumns[selected.tableKey].length}, minmax(11rem, 1fr))` }}>
+                  <div className="user-row head software-standard-row software-dynamic-row" role="row" style={{ gridTemplateColumns: `4.2rem repeat(${tableColumns[selected.tableKey].length}, minmax(11rem, 1fr))` }}>
                     <div className="user-cell">#</div>
                     {tableColumns[selected.tableKey].map((column, index) => <div className="user-cell" key={column}><TableSortButton label={column} index={index} /></div>)}
                   </div>
@@ -1330,7 +1350,7 @@ export default function Software() {
                       ))}
                     </div>
                   ) : pageTableRows.map((row, rowIndex) => (
-                    <div className="software-standard-row software-dynamic-row" role="row" key={`${selected.tableKey}-${rowIndex}`} style={{ gridTemplateColumns: `4.2rem repeat(${tableColumns[selected.tableKey].length}, minmax(11rem, 1fr))` }}>
+                    <div className="user-row software-standard-row software-dynamic-row" role="row" key={`${selected.tableKey}-${rowIndex}`} style={{ gridTemplateColumns: `4.2rem repeat(${tableColumns[selected.tableKey].length}, minmax(11rem, 1fr))` }}>
                       <div className="user-cell row-number"><span className="row-index-pill software-row-no">{(page - 1) * PAGE_SIZE + rowIndex + 1}</span></div>
                       {row.map((cell, cellIndex) => <div className="user-cell software-text-cell" key={cellIndex}>{cell}</div>)}
                     </div>
@@ -1341,7 +1361,7 @@ export default function Software() {
             </div>
 
             {!isDataLoading && activeRowsCount > 0 && (
-              <div className="software-page-pagination uam-pagination global-style" aria-label="Software pagination">
+              <div className="uam-pagination global-style software-page-pagination" aria-label="Software pagination">
                 <div className="uam-page-summary">Page {page} of {totalPages}</div>
                 <div className="uam-pagination-controls global-style">
                   <button className="uam-page-icon" type="button" onClick={() => setPage(1)} disabled={page <= 1} aria-label="First page">&laquo;</button>
@@ -1357,11 +1377,11 @@ export default function Software() {
       </div>
 
       {showInsightsModal && (
-        <div className="software-insights-modal-overlay" role="dialog" aria-modal="true" onClick={() => setShowInsightsModal(false)}>
-          <section className="software-insights-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="user-modal-backdrop open software-insights-modal-overlay" role="dialog" aria-modal="true" onClick={() => setShowInsightsModal(false)}>
+          <section className="user-modal advanced software-insights-modal" onClick={(event) => event.stopPropagation()}>
             <div className="software-insights-modal-hero">
               <div className="software-insights-modal-title"><div className="software-insights-modal-icon"><FileText size={22} /></div><div><span>Software Insights</span><h2>Inventory Overview</h2><p>Computed from current inventory data without shrinking the registry table.</p></div></div>
-              <button type="button" className="ema-icon-button software-insights-modal-close" onClick={() => setShowInsightsModal(false)} aria-label="Close software insights"><X size={18} /></button>
+              <button type="button" className="icon-action-btn software-icon-btn software-insights-modal-close" onClick={() => setShowInsightsModal(false)} aria-label="Close software insights"><X size={18} /></button>
             </div>
             <div className="software-insights-modal-body">
               <div className="software-insights-summary-grid">
@@ -1375,7 +1395,7 @@ export default function Software() {
                 <div className="software-insights-modal-panel"><div className="software-insights-section-head"><Layers size={15} /><div><strong>Categories</strong><small>Quick category drilldown</small></div></div><div className="software-insights-list">{categoryCounts.slice(0, 6).map((item) => <button type="button" key={item.label} className="software-insights-list-row" onClick={() => { setCategoryScope(item.label); setShowInsightsModal(false); }}><span>{item.label}</span><strong>{item.count}</strong></button>)}{!categoryCounts.length && <div className="software-insight-empty">No category data yet.</div>}</div></div>
               </div>
             </div>
-            <div className="software-insights-modal-actions"><button type="button" className="ema-secondary-btn" onClick={() => { resetFilters(); setShowInsightsModal(false); }}><X size={14} />Reset Filters</button><button type="button" className="ema-secondary-btn software-scan-btn" onClick={() => void handleSoftwareScan("all")} disabled={scanLoading}><RefreshCw size={15} className={scanLoading ? "spin" : ""} />Scan All</button></div>
+            <div className="software-insights-modal-actions"><button type="button" className="soft-btn" onClick={() => { resetFilters(); setShowInsightsModal(false); }}><X size={14} />Reset Filters</button><button type="button" className="soft-btn software-scan-btn" onClick={() => void handleSoftwareScan("all")} disabled={scanLoading}><RefreshCw size={15} className={scanLoading ? "spin" : ""} />Scan All</button></div>
           </section>
         </div>
       )}

@@ -1,61 +1,68 @@
 /* =========================================================
-   Global Filter / Toolbar
+   EMA Global Filter / Toolbar System
+   Standardised for Settings-style modules.
+   Keep search, dropdown and toolbar controls as one clean layer.
 ========================================================= */
+
+.settings-module-root {
+  --settings-content-x: 1rem;
+  --settings-toolbar-top: 0.82rem;
+  --settings-toolbar-bottom: 0.72rem;
+  --settings-toolbar-gap: 0.64rem;
+  --ema-filter-height: 2.42rem;
+  --ema-filter-radius: 0.9rem;
+  --ema-filter-border: rgba(142, 160, 186, 0.34);
+  --ema-filter-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(242, 246, 251, 0.94));
+  --ema-filter-text: var(--ema-control-text, #173154);
+  --ema-filter-muted: var(--ema-control-muted, #64748b);
+}
+
+/* =========================================================
+   Standard toolbar containers
+========================================================= */
+
+.content-toolbar,
+.user-access-commandbar,
+.audit-commandbar {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: var(--settings-toolbar-top) var(--settings-content-x) var(--settings-toolbar-bottom);
+  border-bottom: 0;
+  background: transparent;
+  box-shadow: none;
+  align-items: center;
+  gap: var(--settings-toolbar-gap);
+}
 
 .content-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 9.5rem;
-  gap: 0.6rem;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--ema-control-line-soft, rgba(203, 213, 225, 0.58));
-  background: color-mix(in srgb, var(--ema-control-surface, #fff) 84%, transparent);
-  align-items: center;
+  grid-template-columns: minmax(420px, 1fr) auto;
 }
 
 .content-toolbar.users-toolbar,
 .content-toolbar.roles-toolbar,
 .content-toolbar.modules-toolbar,
 .content-toolbar.access-toolbar {
+  grid-template-columns: minmax(420px, 1fr) auto;
+}
+
+.user-access-commandbar {
+  display: grid;
+  grid-template-columns:
+    minmax(420px, 1fr)
+    minmax(170px, 190px)
+    minmax(170px, 190px)
+    auto
+    auto;
+}
+
+.audit-commandbar {
+  display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.section-search {
-  height: 2.42rem;
-  min-height: 2.42rem;
-  max-height: 2.42rem;
-  display: flex;
-  align-items: center;
-  gap: 0.58rem;
-  padding: 0 0.75rem;
-  border: 1px solid var(--ema-control-border, #d9e5f2);
-  border-radius: 0.86rem;
-  color: var(--ema-control-muted, #64748b);
-  background: var(--ema-control-soft, #f5f8fc);
-  overflow: hidden;
-}
-
-.section-search > svg,
-.section-search .lucide {
-  width: 15px !important;
-  height: 15px !important;
-  min-width: 15px !important;
-  flex: 0 0 15px !important;
-  stroke-width: 2.2 !important;
-  color: var(--ema-control-muted, #64748b);
-}
-
-.section-search input {
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  border: 0;
-  outline: 0;
-  padding: 0;
-  color: var(--ema-control-text, #173154);
-  background: transparent;
-  font-size: 0.74rem;
-  font-weight: 720;
-  line-height: 1;
+  align-items: end;
+  column-gap: 0.95rem;
+  row-gap: 0.75rem;
 }
 
 .user-action-bar.advanced.clean {
@@ -69,11 +76,102 @@
   overflow: visible;
 }
 
+/* =========================================================
+   Search control
+   Important: wrapper owns the border/background. Input stays transparent.
+========================================================= */
+
+.section-search {
+  position: relative !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: var(--ema-filter-height) !important;
+  min-height: var(--ema-filter-height) !important;
+  max-height: var(--ema-filter-height) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.58rem !important;
+  padding: 0 0.78rem !important;
+  border: 1px solid var(--ema-filter-border) !important;
+  border-radius: var(--ema-filter-radius) !important;
+  color: var(--ema-filter-muted) !important;
+  background: var(--ema-filter-bg) !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+  contain: layout paint style !important;
+}
+
+.section-search > svg,
+.section-search .lucide {
+  position: static !important;
+  transform: none !important;
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
+  max-width: 15px !important;
+  min-height: 15px !important;
+  max-height: 15px !important;
+  flex: 0 0 15px !important;
+  color: var(--ema-filter-muted) !important;
+  stroke-width: 2.2 !important;
+  pointer-events: none;
+}
+
+.section-search input,
+.section-search input.form-control {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  color: var(--ema-filter-text) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 0.74rem !important;
+  font-weight: 720 !important;
+  line-height: 1 !important;
+}
+
+.section-search input:focus,
+.section-search input.form-control:focus {
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.section-search input::placeholder {
+  color: var(--ema-filter-muted);
+  opacity: 0.82;
+}
+
+.section-search:focus-within {
+  border-color: rgba(37, 99, 235, 0.46);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.09);
+}
+
+.user-search-inline {
+  grid-column: 1;
+}
+
+/* =========================================================
+   Dropdown controls
+========================================================= */
+
 .uam-filter-grid.clean.compact {
+  min-width: 0;
   display: grid;
-  grid-template-columns: minmax(210px, 260px) minmax(230px, 300px);
-  gap: 0.58rem;
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr);
+  gap: var(--settings-toolbar-gap);
   align-items: center;
+}
+
+.user-access-commandbar .uam-filter-grid.clean.compact {
+  display: contents;
 }
 
 .uam-filter-dropdown,
@@ -85,48 +183,60 @@
 .uam-filter-dropdown.disabled,
 .setting-select-dropdown.disabled {
   opacity: 0.62;
+  pointer-events: none;
 }
 
 .uam-filter-trigger,
 .setting-select-trigger {
   width: 100%;
-  height: 2.42rem;
-  min-height: 2.42rem;
-  max-height: 2.42rem;
-  border: 1px solid color-mix(in srgb, #2558e8 20%, var(--ema-control-border, #d9e5f2));
-  border-radius: 0.86rem;
-  background: var(--ema-control-soft, #f5f8fc);
-  color: var(--ema-control-text, #173154);
+  height: var(--ema-filter-height);
+  min-height: var(--ema-filter-height);
+  max-height: var(--ema-filter-height);
+  border: 1px solid var(--ema-filter-border);
+  border-radius: var(--ema-filter-radius);
+  background: var(--ema-filter-bg);
+  color: var(--ema-filter-text);
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.65rem;
   padding: 0 0.78rem;
   overflow: hidden;
+  box-shadow: none;
   font-size: 0.74rem;
   font-weight: 800;
   line-height: 1;
+  transition:
+    border-color 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease;
+  contain: layout paint style;
 }
 
 .uam-filter-dropdown.open .uam-filter-trigger,
-.setting-select-dropdown.open .setting-select-trigger {
+.setting-select-dropdown.open .setting-select-trigger,
+.uam-filter-trigger:focus-visible,
+.setting-select-trigger:focus-visible {
   border-color: rgba(37, 99, 235, 0.52);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.09);
   background: var(--ema-control-surface, #fff);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.09);
+  outline: 0;
 }
 
 .uam-filter-trigger svg,
 .uam-filter-trigger .lucide,
 .setting-select-trigger svg,
 .setting-select-trigger .lucide {
-  width: 14px !important;
-  height: 14px !important;
-  min-width: 14px !important;
-  max-width: 14px !important;
-  min-height: 14px !important;
-  max-height: 14px !important;
-  flex: 0 0 14px !important;
-  stroke-width: 2.35 !important;
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
+  max-width: 15px !important;
+  min-height: 15px !important;
+  max-height: 15px !important;
+  flex: 0 0 15px !important;
+  color: var(--ema-filter-muted) !important;
+  stroke-width: 2.2 !important;
+  transform: none !important;
 }
 
 .uam-filter-trigger > *,
@@ -141,16 +251,23 @@
   white-space: nowrap;
 }
 
+.section-filter-select {
+  min-width: 150px;
+}
+
+/* Portal menus rendered to body by Settings.tsx */
 .uam-filter-menu,
 .uam-filter-menu.uam-filter-menu-portal,
 .setting-select-menu {
   overflow: hidden auto !important;
-  border: 1px solid var(--ema-control-border, #d9e5f2);
-  border-radius: 0.95rem;
-  background: var(--ema-control-surface, #fff) !important;
-  box-shadow: 0 20px 46px rgba(15, 23, 42, 0.15);
-  padding: 0.38rem;
+  border: 1px solid rgba(142, 160, 186, 0.32) !important;
+  border-radius: 1rem !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12) !important;
+  padding: 0.4rem !important;
   z-index: 2147483600 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .uam-filter-menu.uam-filter-menu-portal,
@@ -160,9 +277,9 @@
 
 .uam-filter-option {
   width: 100%;
-  min-height: 2.26rem;
+  min-height: 2.28rem;
   border: 0;
-  border-radius: 0.72rem;
+  border-radius: 0.76rem;
   background: transparent;
   color: var(--ema-control-text, #173154);
   display: flex;
@@ -171,21 +288,21 @@
   gap: 0.65rem;
   padding: 0 0.68rem;
   font-size: 0.73rem;
-  font-weight: 800;
+  font-weight: 820;
   text-align: left;
 }
 
 .uam-filter-option:hover,
 .uam-filter-option.selected {
   color: #2558e8;
-  background: rgba(37, 99, 235, 0.09);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.11), rgba(8, 126, 164, 0.08));
 }
 
 .uam-filter-check {
-  width: 1.3rem;
-  height: 1.3rem;
+  width: 1.28rem;
+  height: 1.28rem;
   border-radius: 999px;
-  background: #2558e8;
+  background: linear-gradient(135deg, #2558e8, #087ea4);
   color: #fff;
   display: inline-flex;
   align-items: center;
@@ -195,8 +312,216 @@
   flex: 0 0 auto;
 }
 
-.section-filter-select {
-  min-width: 150px;
+/* =========================================================
+   Toolbar actions and right-side filter groups
+========================================================= */
+
+.settings-toolbar-right {
+  min-width: 0;
+  display: inline-grid;
+  grid-template-columns: minmax(170px, 190px) auto;
+  align-items: center;
+  justify-content: end;
+  gap: var(--settings-toolbar-gap);
+}
+
+.settings-primary-actions,
+.toolbar-actions,
+.uam-actions-right,
+.audit-command-actions {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.user-access-commandbar .uam-actions-right {
+  display: contents;
+}
+
+.user-access-commandbar .uam-actions-right .soft-btn {
+  grid-column: 4;
+}
+
+.user-access-commandbar .uam-actions-right .primary-btn {
+  grid-column: 5;
+}
+
+.content-toolbar .soft-btn,
+.content-toolbar .primary-btn,
+.user-access-commandbar .soft-btn,
+.user-access-commandbar .primary-btn,
+.audit-command-actions .soft-btn,
+.audit-command-actions .primary-btn,
+.audit-export-btn {
+  height: var(--ema-filter-height);
+  min-height: var(--ema-filter-height);
+  max-height: var(--ema-filter-height);
+}
+
+.audit-command-actions {
+  align-items: end;
+  gap: 0.62rem;
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+
+.audit-command-actions .soft-btn,
+.audit-command-actions .primary-btn,
+.audit-export-btn {
+  padding-inline: 1rem;
+}
+
+.audit-command-actions .primary-btn,
+.audit-export-btn {
+  min-width: 7rem;
+}
+
+/* =========================================================
+   Audit filter layout
+========================================================= */
+
+.audit-filter-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  align-items: end;
+  gap: 0.75rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.audit-filter-grid .form-field {
+  min-width: 0;
+}
+
+/* =========================================================
+   Role picker search consistency
+========================================================= */
+
+.role-picker-search-wrap {
+  height: var(--ema-filter-height);
+  min-height: var(--ema-filter-height);
+  max-height: var(--ema-filter-height);
+  display: flex;
+  align-items: center;
+  gap: 0.58rem;
+  overflow: hidden;
+}
+
+.role-picker-search-wrap svg,
+.role-picker-search-wrap .lucide {
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
+  max-width: 15px !important;
+  min-height: 15px !important;
+  max-height: 15px !important;
+  flex: 0 0 15px !important;
+  stroke-width: 2.2 !important;
+}
+
+.role-picker-search {
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 0.74rem;
+  line-height: 1;
+}
+
+/* =========================================================
+   Spacing alignment with tables/cards
+========================================================= */
+
+.user-access-commandbar + .user-access-table,
+.user-access-commandbar ~ .user-access-table,
+.content-toolbar + .user-access-table,
+.content-toolbar + .role-standard-table,
+.content-toolbar + .role-control-table,
+.content-toolbar + .module-control-table,
+.content-toolbar + .pricing-table-card,
+.content-toolbar + .audit-standard-table {
+  margin-top: 0;
+}
+
+.content-body > .user-access-commandbar:first-child,
+.content-body > .audit-commandbar:first-child {
+  margin-top: calc(var(--settings-toolbar-top) * -1);
+}
+
+/* =========================================================
+   Performance guard
+========================================================= */
+
+.content-toolbar,
+.user-access-commandbar,
+.audit-commandbar,
+.section-search,
+.uam-filter-trigger,
+.setting-select-trigger {
+  filter: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* =========================================================
+   Responsive behaviour
+========================================================= */
+
+@media (max-width: 1280px) {
+  .content-toolbar,
+  .content-toolbar.users-toolbar,
+  .content-toolbar.roles-toolbar,
+  .content-toolbar.modules-toolbar,
+  .content-toolbar.access-toolbar,
+  .user-access-commandbar,
+  .audit-commandbar {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .user-search-inline,
+  .user-access-commandbar .uam-actions-right .soft-btn,
+  .user-access-commandbar .uam-actions-right .primary-btn {
+    grid-column: auto;
+  }
+
+  .user-access-commandbar .uam-filter-grid.clean.compact {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+
+  .user-access-commandbar .uam-actions-right {
+    display: flex;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+  }
+
+  .settings-toolbar-right {
+    width: 100%;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+
+  .settings-primary-actions,
+  .toolbar-actions,
+  .audit-command-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .audit-filter-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 900px) {
@@ -209,644 +534,40 @@
     grid-template-columns: 1fr;
   }
 
-  .uam-filter-grid.clean.compact {
+  .uam-filter-grid.clean.compact,
+  .user-access-commandbar .uam-filter-grid.clean.compact {
     grid-template-columns: 1fr;
   }
 }
 
-
-/* =========================================================
-   REVAMP V2 - unified dropdown / search controls
-========================================================= */
-
-.settings-module-root .section-search,
-.settings-module-root .uam-filter-trigger,
-.settings-module-root .setting-select-trigger {
-  height: 2.42rem !important;
-  min-height: 2.42rem !important;
-  max-height: 2.42rem !important;
-  border-radius: 0.9rem !important;
-  border: 1px solid rgba(142, 160, 186, 0.34) !important;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.82), rgba(242,246,251,0.92)) !important;
-  color: var(--ema-control-text, #173154) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.85),
-    0 8px 18px rgba(15,23,42,0.035) !important;
-}
-
-.settings-module-root .section-search {
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.58rem !important;
-  padding: 0 0.75rem !important;
-  overflow: hidden !important;
-}
-
-.settings-module-root .section-search > svg,
-.settings-module-root .section-search .lucide,
-.settings-module-root .uam-filter-trigger svg,
-.settings-module-root .uam-filter-trigger .lucide,
-.settings-module-root .setting-select-trigger svg,
-.settings-module-root .setting-select-trigger .lucide {
-  width: 14px !important;
-  height: 14px !important;
-  min-width: 14px !important;
-  max-width: 14px !important;
-  min-height: 14px !important;
-  max-height: 14px !important;
-  flex: 0 0 14px !important;
-  stroke-width: 2.35 !important;
-  color: #64748b !important;
-}
-
-.settings-module-root .section-search input {
-  height: 100% !important;
-  min-height: 0 !important;
-  padding: 0 !important;
-  font-size: 0.74rem !important;
-  line-height: 1 !important;
-  color: var(--ema-control-text, #173154) !important;
-}
-
-.settings-module-root .content-toolbar {
-  align-items: center !important;
-  background: rgba(248, 251, 255, 0.76) !important;
-}
-
-.settings-module-root .setting-select-dropdown.disabled {
-  opacity: 0.62;
-  pointer-events: none;
-}
-
-.uam-filter-menu.uam-filter-menu-portal,
-.setting-select-menu {
-  border: 1px solid rgba(142, 160, 186, 0.32) !important;
-  border-radius: 1rem !important;
-  background:
-    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
-  box-shadow:
-    0 24px 60px rgba(15, 23, 42, 0.20),
-    inset 0 1px 0 rgba(255,255,255,0.90) !important;
-  padding: 0.4rem !important;
-  overflow: hidden auto !important;
-}
-
-.uam-filter-option {
-  min-height: 2.28rem !important;
-  border-radius: 0.76rem !important;
-  font-size: 0.73rem !important;
-  font-weight: 820 !important;
-}
-
-.uam-filter-option:hover,
-.uam-filter-option.selected {
-  color: #2558e8 !important;
-  background:
-    linear-gradient(135deg, rgba(37, 99, 235, 0.11), rgba(8, 126, 164, 0.08)) !important;
-}
-
-.uam-filter-check {
-  width: 1.28rem !important;
-  height: 1.28rem !important;
-  background: linear-gradient(135deg, #2558e8, #087ea4) !important;
-}
-
-.setting-select-trigger span,
-.uam-filter-trigger span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* =========================================================
-   V3 command bar and icon lock
-   Fixes giant search icons and aligns User Access controls.
-========================================================= */
-
-.settings-module-root .user-access-commandbar {
-  display: grid !important;
-  grid-template-columns: minmax(320px, 1fr) minmax(390px, auto) auto !important;
-  align-items: center !important;
-  gap: 0.65rem !important;
-  padding: 0.86rem 1rem !important;
-  border-bottom: 1px solid var(--ema-control-line-soft, rgba(156, 171, 190, 0.28)) !important;
-  background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(247,250,253,0.82)) !important;
-}
-
-.settings-module-root .user-search-inline {
-  width: 100% !important;
-}
-
-.settings-module-root .section-search,
-.settings-module-root .role-picker-search-wrap {
-  height: 2.42rem !important;
-  min-height: 2.42rem !important;
-  max-height: 2.42rem !important;
-  overflow: hidden !important;
-}
-
-.settings-module-root .section-search svg,
-.settings-module-root .section-search .lucide,
-.settings-module-root .role-picker-search-wrap svg,
-.settings-module-root .role-picker-search-wrap .lucide,
-.settings-module-root .setting-select-trigger svg,
-.settings-module-root .setting-select-trigger .lucide,
-.settings-module-root .uam-filter-trigger svg,
-.settings-module-root .uam-filter-trigger .lucide {
-  width: 15px !important;
-  height: 15px !important;
-  min-width: 15px !important;
-  max-width: 15px !important;
-  min-height: 15px !important;
-  max-height: 15px !important;
-  flex: 0 0 15px !important;
-  stroke-width: 2.2 !important;
-  transform: none !important;
-}
-
-.settings-module-root .role-picker-search-wrap {
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.58rem !important;
-}
-
-.settings-module-root .role-picker-search {
-  height: 100% !important;
-  min-height: 0 !important;
-  padding: 0 !important;
-  font-size: 0.74rem !important;
-  line-height: 1 !important;
-}
-
-.settings-module-root .uam-filter-grid.clean.compact {
-  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) !important;
-  align-items: center !important;
-}
-
-.settings-module-root .uam-actions-right {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: flex-end !important;
-  gap: 0.5rem !important;
-  white-space: nowrap !important;
-}
-
-@media (max-width: 1280px) {
-  .settings-module-root .user-access-commandbar {
-    grid-template-columns: 1fr !important;
+@media (max-width: 860px) {
+  .audit-command-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 
-  .settings-module-root .uam-actions-right {
-    justify-content: flex-start !important;
-  }
-}
-
-/* =========================================================
-   V4 aligned toolbars
-   Pricing/Aging filters now sit beside Reset/Save actions.
-   Audit filters sit beside Export CSV.
-========================================================= */
-
-.settings-module-root .content-toolbar {
-  grid-template-columns: minmax(280px, 1fr) auto !important;
-  align-items: center !important;
-}
-
-.settings-module-root .settings-toolbar-right {
-  display: inline-grid !important;
-  grid-template-columns: minmax(150px, 170px) auto !important;
-  align-items: center !important;
-  gap: 0.65rem !important;
-  justify-content: end !important;
-}
-
-.settings-module-root .settings-primary-actions {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: flex-end !important;
-  gap: 0.5rem !important;
-  white-space: nowrap !important;
-}
-
-.settings-module-root .audit-commandbar {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto !important;
-  align-items: end !important;
-  gap: 0.75rem !important;
-  padding: 0.9rem 1rem !important;
-  border-bottom: 1px solid var(--ema-control-line-soft, rgba(156, 171, 190, 0.28)) !important;
-  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(248,251,254,0.82)) !important;
-}
-
-.settings-module-root .audit-commandbar .audit-filter-grid {
-  display: grid !important;
-  grid-template-columns: repeat(3, minmax(190px, 1fr)) !important;
-  gap: 0.65rem !important;
-  padding: 0 !important;
-  background: transparent !important;
-  border: 0 !important;
-}
-
-.settings-module-root .audit-export-btn {
-  min-width: 112px !important;
-  height: 2.42rem !important;
-  align-self: end !important;
-}
-
-@media (max-width: 1180px) {
-  .settings-module-root .content-toolbar,
-  .settings-module-root .audit-commandbar {
-    grid-template-columns: 1fr !important;
-  }
-
-  .settings-module-root .settings-toolbar-right {
-    grid-template-columns: 1fr !important;
-    justify-content: stretch !important;
-  }
-
-  .settings-module-root .settings-primary-actions {
-    justify-content: flex-start !important;
-    flex-wrap: wrap !important;
-  }
-
-  .settings-module-root .audit-commandbar .audit-filter-grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  .settings-module-root .audit-export-btn {
-    justify-self: start !important;
-  }
-}
-
-/* =========================================================
-   V5 toolbar no seams
-========================================================= */
-
-.settings-module-root .content-toolbar,
-.settings-module-root .user-access-commandbar,
-.settings-module-root .audit-commandbar {
-  border-bottom: 0 !important;
-  box-shadow: none !important;
-}
-
-.settings-module-root .content-toolbar {
-  padding-bottom: 0.72rem !important;
-}
-
-.settings-module-root .audit-commandbar {
-  padding-bottom: 0.78rem !important;
-}
-
-.settings-module-root .section-search,
-.settings-module-root .uam-filter-trigger,
-.settings-module-root .setting-select-trigger {
-  box-shadow: none !important;
-}
-
-/* =========================================================
-   V6 standard toolbar alignment
-   Standardise search/filter/action rows so they align with the table/card below.
-========================================================= */
-
-.settings-module-root {
-  --settings-content-x: 1rem;
-  --settings-toolbar-top: 0.82rem;
-  --settings-toolbar-bottom: 0.72rem;
-  --settings-toolbar-gap: 0.64rem;
-}
-
-/* All toolbar types share the same left/right padding and vertical rhythm */
-.settings-module-root .content-toolbar,
-.settings-module-root .user-access-commandbar,
-.settings-module-root .audit-commandbar {
-  width: 100% !important;
-  margin: 0 !important;
-  padding:
-    var(--settings-toolbar-top)
-    var(--settings-content-x)
-    var(--settings-toolbar-bottom) !important;
-  border-bottom: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  align-items: center !important;
-  gap: var(--settings-toolbar-gap) !important;
-}
-
-/* User Access should line up like Role Based Control:
-   search + filters + actions in one row, with the same outer edge as the table below. */
-.settings-module-root .user-access-commandbar {
-  grid-template-columns:
-    minmax(420px, 1fr)
-    minmax(170px, 190px)
-    minmax(170px, 190px)
-    auto
-    auto !important;
-}
-
-.settings-module-root .user-access-commandbar .user-search-inline {
-  grid-column: 1 !important;
-}
-
-.settings-module-root .user-access-commandbar .uam-filter-grid.clean.compact {
-  display: contents !important;
-}
-
-.settings-module-root .user-access-commandbar .uam-filter-dropdown {
-  min-width: 0 !important;
-}
-
-.settings-module-root .user-access-commandbar .uam-actions-right {
-  display: contents !important;
-}
-
-.settings-module-root .user-access-commandbar .uam-actions-right .soft-btn {
-  grid-column: 4 !important;
-}
-
-.settings-module-root .user-access-commandbar .uam-actions-right .primary-btn {
-  grid-column: 5 !important;
-}
-
-/* Role/search-only sections use the same edge and gap */
-.settings-module-root .content-toolbar {
-  grid-template-columns: minmax(420px, 1fr) auto !important;
-}
-
-.settings-module-root .content-toolbar.roles-toolbar,
-.settings-module-root .content-toolbar.modules-toolbar,
-.settings-module-root .content-toolbar.access-toolbar {
-  grid-template-columns: minmax(420px, 1fr) auto !important;
-}
-
-/* Pricing/Aging right side uses the same control width rhythm */
-.settings-module-root .settings-toolbar-right {
-  display: inline-grid !important;
-  grid-template-columns: minmax(170px, 190px) auto !important;
-  align-items: center !important;
-  gap: var(--settings-toolbar-gap) !important;
-  justify-content: end !important;
-}
-
-/* Audit uses the same edge and compact alignment */
-.settings-module-root .audit-commandbar {
-  grid-template-columns: minmax(0, 1fr) auto !important;
-  align-items: end !important;
-}
-
-.settings-module-root .audit-commandbar .audit-filter-grid {
-  display: grid !important;
-  grid-template-columns: repeat(3, minmax(180px, 1fr)) !important;
-  gap: var(--settings-toolbar-gap) !important;
-  padding: 0 !important;
-}
-
-.settings-module-root .audit-export-btn {
-  height: 2.42rem !important;
-  min-height: 2.42rem !important;
-  align-self: end !important;
-}
-
-/* Controls have a single standard height */
-.settings-module-root .section-search,
-.settings-module-root .uam-filter-trigger,
-.settings-module-root .setting-select-trigger,
-.settings-module-root .content-toolbar .soft-btn,
-.settings-module-root .content-toolbar .primary-btn,
-.settings-module-root .user-access-commandbar .soft-btn,
-.settings-module-root .user-access-commandbar .primary-btn {
-  height: 2.42rem !important;
-  min-height: 2.42rem !important;
-  max-height: 2.42rem !important;
-}
-
-/* Same edge for tables/cards immediately after the toolbar */
-.settings-module-root .user-access-commandbar + .user-access-table,
-.settings-module-root .user-access-commandbar ~ .user-access-table,
-.settings-module-root .content-toolbar + .user-access-table,
-.settings-module-root .content-toolbar + .role-standard-table,
-.settings-module-root .content-toolbar + .role-control-table,
-.settings-module-root .content-toolbar + .module-control-table,
-.settings-module-root .content-toolbar + .pricing-table-card,
-.settings-module-root .content-toolbar + .audit-standard-table {
-  margin-top: 0 !important;
-}
-
-/* Remove the extra "floating" gap before content sections */
-.settings-module-root .content-body > .user-access-commandbar:first-child,
-.settings-module-root .content-body > .audit-commandbar:first-child {
-  margin-top: calc(var(--settings-toolbar-top) * -1) !important;
-}
-
-/* Mobile/tablet fallback */
-@media (max-width: 1280px) {
-  .settings-module-root .user-access-commandbar,
-  .settings-module-root .content-toolbar,
-  .settings-module-root .content-toolbar.roles-toolbar,
-  .settings-module-root .content-toolbar.modules-toolbar,
-  .settings-module-root .content-toolbar.access-toolbar,
-  .settings-module-root .audit-commandbar {
-    grid-template-columns: 1fr !important;
-  }
-
-  .settings-module-root .user-access-commandbar .user-search-inline,
-  .settings-module-root .user-access-commandbar .uam-actions-right .soft-btn,
-  .settings-module-root .user-access-commandbar .uam-actions-right .primary-btn {
-    grid-column: auto !important;
-  }
-
-  .settings-module-root .user-access-commandbar .uam-filter-grid.clean.compact,
-  .settings-module-root .user-access-commandbar .uam-actions-right {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-  }
-
-  .settings-module-root .settings-toolbar-right {
-    grid-template-columns: 1fr !important;
-    justify-content: stretch !important;
-  }
-
-  .settings-module-root .audit-commandbar .audit-filter-grid {
-    grid-template-columns: 1fr !important;
-  }
-}
-
-/* =========================================================
-   V7 responsive toolbar wrap
-   Toolbars should wrap cleanly on smaller screens.
-========================================================= */
-
-@media (max-width: 1100px) {
-  .settings-module-root .content-toolbar,
-  .settings-module-root .user-access-commandbar,
-  .settings-module-root .audit-commandbar {
-    grid-template-columns: 1fr !important;
-    align-items: stretch !important;
-  }
-
-  .settings-module-root .user-access-commandbar .uam-filter-grid.clean.compact {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 0.6rem !important;
-  }
-
-  .settings-module-root .user-access-commandbar .uam-actions-right {
-    display: flex !important;
-    justify-content: flex-start !important;
-    flex-wrap: wrap !important;
-    gap: 0.55rem !important;
-  }
-
-  .settings-module-root .settings-toolbar-right {
-    grid-template-columns: 1fr !important;
-    justify-content: stretch !important;
-  }
-
-  .settings-module-root .settings-primary-actions {
-    justify-content: flex-start !important;
-    flex-wrap: wrap !important;
-  }
-
-  .settings-module-root .audit-commandbar .audit-filter-grid {
-    grid-template-columns: 1fr !important;
+  .audit-command-actions .soft-btn,
+  .audit-command-actions .primary-btn,
+  .audit-export-btn {
+    width: 100%;
   }
 }
 
 @media (max-width: 640px) {
-  .settings-module-root .user-access-commandbar .uam-filter-grid.clean.compact {
-    grid-template-columns: 1fr !important;
-  }
-
   .settings-module-root .soft-btn,
   .settings-module-root .primary-btn,
   .settings-module-root .danger-btn {
-    width: 100% !important;
+    width: 100%;
   }
 
-  .settings-module-root .settings-primary-actions,
-  .settings-module-root .user-access-commandbar .uam-actions-right {
-    width: 100% !important;
-  }
-}
-
-/* =========================================================
-   V8 filter interaction performance
-========================================================= */
-
-.settings-module-root .content-toolbar,
-.settings-module-root .user-access-commandbar,
-.settings-module-root .audit-commandbar,
-.settings-module-root .section-search,
-.settings-module-root .uam-filter-trigger,
-.settings-module-root .setting-select-trigger {
-  contain: layout paint style !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
-.settings-module-root .section-search,
-.settings-module-root .uam-filter-trigger,
-.settings-module-root .setting-select-trigger,
-.settings-module-root .soft-btn,
-.settings-module-root .primary-btn,
-.settings-module-root .danger-btn {
-  transition:
-    border-color 100ms ease,
-    background-color 100ms ease,
-    color 100ms ease !important;
-}
-
-/* =========================================================
-   V9 toolbar paint reduction
-========================================================= */
-
-.settings-module-root .section-search,
-.settings-module-root .uam-filter-trigger,
-.settings-module-root .setting-select-trigger,
-.settings-module-root .content-toolbar,
-.settings-module-root .user-access-commandbar,
-.settings-module-root .audit-commandbar {
-  box-shadow: none !important;
-  filter: none !important;
-}
-
-.settings-module-root .setting-select-menu,
-.settings-module-root .uam-filter-menu {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12) !important;
-}
-
-/* =========================================================
-   Audit toolbar spacing fix
-   Keep Refresh and Export CSV separated from filters.
-========================================================= */
-
-.settings-module-root .audit-commandbar {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto !important;
-  align-items: end !important;
-  column-gap: 0.95rem !important;
-  row-gap: 0.75rem !important;
-  padding-inline: 1rem !important;
-}
-
-.settings-module-root .audit-commandbar .audit-filter-grid {
-  display: grid !important;
-  grid-template-columns: repeat(3, minmax(180px, 1fr)) !important;
-  gap: 0.75rem !important;
-  min-width: 0 !important;
-}
-
-.settings-module-root .audit-command-actions {
-  display: inline-flex !important;
-  align-items: end !important;
-  justify-content: flex-end !important;
-  gap: 0.62rem !important;
-  flex: 0 0 auto !important;
-  white-space: nowrap !important;
-  min-width: max-content !important;
-}
-
-.settings-module-root .audit-command-actions .soft-btn,
-.settings-module-root .audit-command-actions .primary-btn,
-.settings-module-root .audit-export-btn {
-  height: 2.42rem !important;
-  min-height: 2.42rem !important;
-  padding-inline: 1rem !important;
-}
-
-.settings-module-root .audit-command-actions .primary-btn,
-.settings-module-root .audit-export-btn {
-  min-width: 7rem !important;
-}
-
-/* When width is tight, buttons move to the next row instead of squeezing into filters. */
-@media (max-width: 1280px) {
-  .settings-module-root .audit-commandbar {
-    grid-template-columns: 1fr !important;
+  .settings-primary-actions,
+  .toolbar-actions,
+  .user-access-commandbar .uam-actions-right {
+    width: 100%;
   }
 
-  .settings-module-root .audit-command-actions {
-    justify-content: flex-start !important;
-  }
-}
-
-@media (max-width: 860px) {
-  .settings-module-root .audit-commandbar .audit-filter-grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  .settings-module-root .audit-command-actions {
-    width: 100% !important;
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-  }
-
-  .settings-module-root .audit-command-actions .soft-btn,
-  .settings-module-root .audit-command-actions .primary-btn,
-  .settings-module-root .audit-export-btn {
-    width: 100% !important;
+  .audit-command-actions {
+    grid-template-columns: 1fr;
   }
 }

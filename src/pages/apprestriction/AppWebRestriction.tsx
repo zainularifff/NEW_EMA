@@ -30,6 +30,24 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import '../../styles/theme.css';
+import '../../styles/ema-font-system.css';
+import '../../styles/typography.css';
+import '../../styles/app-global.css';
+import '../../styles/settings-layout.css';
+import '../../styles/ema-layout.css';
+import '../../styles/panel.css';
+import '../../styles/button.css';
+import '../../styles/form.css';
+import '../../styles/filter.css';
+import '../../styles/table.css';
+import '../../styles/pagination.css';
+import '../../styles/kpi.css';
+import '../../styles/modal.css';
+import '../../styles/toast.css';
+import '../../styles/settings-widgets.css';
+import '../../styles/resource-planning.css';
+import '../../styles/2fa.css';
 
 import restrictionService, {
   getCurrentLoginId,
@@ -163,7 +181,7 @@ type AppTableProps<RowType extends { [key: string]: any }> = {
   summary?: ReactNode;
 };
 
-type AppButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type AppButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size'> & {
   size?: 'sm' | 'md';
   variant?: 'primary' | 'secondary' | 'light';
   loading?: boolean;
@@ -181,12 +199,12 @@ function AppButton({
   ...props
 }: AppButtonProps) {
   const sizeClass = size === 'sm' ? 'btn-sm' : '';
-  const variantClass = variant === 'primary' ? 'btn-primary' : variant === 'secondary' ? 'btn-outline-secondary' : 'btn-light';
+  const variantClass = variant === 'primary' ? 'primary-btn' : variant === 'secondary' ? 'soft-btn' : 'soft-btn';
 
   return (
     <button
       type="button"
-      className={clsx('app-btn btn d-inline-flex align-items-center gap-2 fw-bold', sizeClass, variantClass, className)}
+      className={clsx(variantClass, sizeClass, className)}
       disabled={disabled || loading}
       {...props}
     >
@@ -228,10 +246,10 @@ function AppTable<RowType extends { [key: string]: any }>({
   });
 
   return (
-    <div className={clsx('appweb-table-card', className)}>
-      {summary && <div className="appweb-table-summary">{summary}</div>}
-      <div className="appweb-table-scroll">
-        <table className="table ema-table appweb-table align-middle mb-0">
+    <div className={clsx('pricing-table-card', className)}>
+      {summary && <div className="content-head">{summary}</div>}
+      <div className="table-responsive">
+        <table className="table align-middle mb-0">
           <thead>
             <tr>
               {columns.map((column) => (
@@ -283,8 +301,8 @@ function AppTable<RowType extends { [key: string]: any }>({
       </div>
 
       {rows.length > APPWEB_TABLE_PAGE_SIZE && (
-        <div className="uam-pagination appweb-pagination">
-          <button type="button" disabled={safePage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
+        <div className="uam-pagination global-style">
+          <button type="button" className="uam-page-icon" disabled={safePage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
             Previous
           </button>
           {pages.map((item, index) => {
@@ -292,14 +310,14 @@ function AppTable<RowType extends { [key: string]: any }>({
             const needsGap = previous && item - previous > 1;
             return (
               <span key={item} className="d-inline-flex align-items-center gap-1">
-                {needsGap && <span className="appweb-page-ellipsis">...</span>}
-                <button type="button" className={clsx(item === safePage && 'is-active')} onClick={() => setPage(item)}>
+                {needsGap && <span className="uam-page-status">...</span>}
+                <button type="button" className={clsx('uam-page-icon', item === safePage && 'uam-page-current')} onClick={() => setPage(item)}>
                   {item}
                 </button>
               </span>
             );
           })}
-          <button type="button" disabled={safePage === totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>
+          <button type="button" className="uam-page-icon" disabled={safePage === totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>
             Next
           </button>
         </div>
@@ -308,12 +326,9 @@ function AppTable<RowType extends { [key: string]: any }>({
   );
 }
 
-const fieldClass =
-  'h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-700 shadow-inner shadow-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400';
-const labelClass =
-  'mb-1 block text-[9px] font-black uppercase tracking-widest text-slate-500';
-const sectionTitleClass =
-  'text-[10px] font-black uppercase tracking-[0.18em] text-slate-700';
+const fieldClass = 'setting-input';
+const labelClass = 'form-field-label';
+const sectionTitleClass = 'section-tag';
 
 const colorClasses = {
   rose: {
@@ -621,6 +636,16 @@ export default function AppWebRestriction() {
     }
     setNotice(null);
   };
+
+  useEffect(() => {
+    document.documentElement.classList.add('ema-settings-page-active');
+    document.body.classList.add('ema-settings-page-active');
+
+    return () => {
+      document.documentElement.classList.remove('ema-settings-page-active');
+      document.body.classList.remove('ema-settings-page-active');
+    };
+  }, []);
 
 
   const loadTree = useCallback(async () => {
@@ -1456,40 +1481,34 @@ export default function AppWebRestriction() {
     </div>
   );
 
-  const noticeClasses: Record<NoticeTone, string> = {
-    success: 'border-emerald-200 bg-emerald-50 text-emerald-800 shadow-emerald-900/10',
-    warning: 'border-amber-200 bg-amber-50 text-amber-800 shadow-amber-900/10',
-    error: 'border-rose-200 bg-rose-50 text-rose-800 shadow-rose-900/10',
-    info: 'border-blue-200 bg-blue-50 text-blue-800 shadow-blue-900/10',
-  };
 
   return (
-    <div className="appweb-restriction-page">
+    <main className="settings-module-root ema-module-root ema-settings-pro" data-section="appwebrestriction">
       {notice && (
-        <div className="fixed right-5 top-5 z-[80] w-[min(420px,calc(100vw-2.5rem))]">
-          <div className={clsx('flex items-start gap-3 rounded-2xl border px-4 py-3 text-xs font-bold shadow-2xl backdrop-blur', noticeClasses[notice.tone])}>
-            <Info size={17} className="mt-0.5 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">
+        <div className="settings-toast-layer">
+          <div className={clsx('settings-toast', `settings-toast-${notice.tone}`)}>
+            <span className="settings-toast-icon"><Info size={17} /></span>
+            <div>
+              <strong>
                 {notice.tone === 'error' ? 'Action failed' : notice.tone === 'warning' ? 'Action needed' : notice.tone === 'info' ? 'Status update' : 'Action completed'}
-              </p>
-              <p className="mt-0.5 leading-relaxed">{notice.text}</p>
+              </strong>
+              <span>{notice.text}</span>
             </div>
-            <button type="button" onClick={dismissNotice} className="rounded-lg p-1 opacity-70 hover:bg-white/60 hover:opacity-100">
+            <button type="button" onClick={dismissNotice} aria-label="Dismiss notification">
               <X size={14} />
             </button>
           </div>
         </div>
       )}
-      <div className="appweb-restriction-layout">
-        <aside className="appweb-left-panel">
-          <div className="appweb-panel-head">
+      <div className="settings-layout">
+        <aside className="settings-menu ema-panel-surface">
+          <div className="panel-head">
             <p>Restriction Target</p>
             <h2>
               <Building2 size={16} className="text-blue-600" /> Organization Tree
             </h2>
           </div>
-          <div className="appweb-tree-scroll">
+          <div className="settings-menu-list">
             {loading && treeNodes.length === 0 ? (
               <div className="flex h-32 items-center justify-center gap-2 text-[11px] font-bold text-slate-400">
                 <Loader2 size={14} className="animate-spin" /> Loading targets
@@ -1502,22 +1521,22 @@ export default function AppWebRestriction() {
           </div>
         </aside>
 
-        <main className="appweb-main-panel">
-          <div className="appweb-hero-card">
+        <section className="settings-content">
+          <div className="settings-hero ema-panel-surface">
             <div>
               <div>
-                <div className="appweb-breadcrumb">
+                <div className="eyebrow d-inline-flex align-items-center gap-1 mb-2">
                   <span>Policy Management</span>
                   <ChevronRight size={12} />
                   <span>{moduleConfig.label}</span>
                 </div>
-                <h1 className="appweb-page-title">
-                  <span className="appweb-title-icon">
+                <h1 className="ema-title mb-2 d-flex align-items-center gap-2">
+                  <span className="setting-icon">
                     <ModuleIcon size={19} />
                   </span>
                   App / Web Restriction
                 </h1>
-                <p className="appweb-selected-target">
+                <p className="settings-helper-card m-0">
                   Selected target: <span>{selectedTarget?.label || 'None'}</span>
                   {selectedTarget?.Object_Full_Name && <span> ({selectedTarget.Object_Full_Name})</span>}
                 </p>
@@ -1525,33 +1544,32 @@ export default function AppWebRestriction() {
             </div>
 
             {message && (
-              <div className="appweb-message">
+              <div className="settings-inline-alert d-inline-flex gap-2 align-items-start">
                 <Info size={14} className="mt-0.5 shrink-0" /> {message}
               </div>
             )}
           </div>
 
-          <div className="appweb-kpi-grid">
+          <div className="settings-score users-hero-score">
             {summaryCards.map((card) => {
               const Icon = card.icon;
               return (
                 <div
                   key={card.label}
                   className={clsx(
-                    'appweb-kpi-card',
-                    card.tone === 'rose' ? 'is-red' :
-                    card.tone === 'amber' ? 'is-yellow' :
-                    card.tone === 'emerald' ? 'is-green' :
-                    card.tone === 'slate' ? 'is-purple' :
-                    'is-blue'
+                    'score-box ema-kpi-card',
+                    card.tone === 'rose' ? 'is-danger' :
+                    card.tone === 'amber' ? 'is-warning' :
+                    card.tone === 'emerald' ? 'is-success' :
+                    'is-info'
                   )}
                 >
-                  <div className="appweb-kpi-top">
+                  <div>
                     <span>{card.label}</span>
                     <strong>{card.value}</strong>
                     <small>{card.helper}</small>
                   </div>
-                  <span className="appweb-kpi-icon">
+                  <span className="ema-kpi-icon">
                     <Icon size={17} />
                   </span>
                 </div>
@@ -1559,7 +1577,7 @@ export default function AppWebRestriction() {
             })}
           </div>
 
-          <div className="appweb-module-grid">
+          <div className="settings-score">
             {modules.map((item) => {
               const Icon = item.icon;
               const selected = item.id === activeModule;
@@ -1573,9 +1591,9 @@ export default function AppWebRestriction() {
                     setSearchText('');
                     setMessage(null);
                   }}
-                  className={clsx('appweb-module-btn', selected && `is-active is-${item.color}`)}
+                  className={clsx('setting-btn', selected && 'active')}
                 >
-                  <span className="appweb-module-icon">
+                  <span className="setting-icon">
                     <Icon size={17} />
                   </span>
                   <span>
@@ -1587,15 +1605,15 @@ export default function AppWebRestriction() {
             })}
           </div>
 
-          <div className="appweb-registry-card">
-            <div className="appweb-registry-head">
-              <div className="appweb-tabs">
+          <div className="content-shell ema-panel-surface">
+            <div className="content-head">
+              <div className="content-actions">
                 {moduleConfig.tabs.map((tab) => (
                   <button
                     key={tab}
                     type="button"
                     onClick={() => setActiveTab(tab)}
-                    className={clsx('appweb-tab-btn', activeTab === tab && 'is-active')}
+                    className={clsx('soft-btn', activeTab === tab && 'is-active')}
                   >
                     {tabLabels[tab]}
                   </button>
@@ -1615,19 +1633,19 @@ export default function AppWebRestriction() {
               )}
             </div>
 
-            <div className="appweb-registry-body">
+            <div className="content-body">
               {activeTab === 'status' && activeModule !== 'webRestriction' && renderRestrictionStatus()}
               {activeTab === 'settings' && renderPolicySettings()}
               {activeTab === 'policyStatus' && renderPolicyStatus()}
             </div>
           </div>
-        </main>
+        </section>
       </div>
 
       {showManageSoftware && renderManageSoftwareModal()}
       {showPackageManager && renderPackageManagerModal()}
       {showWebGroupManager && renderWebGroupManagerModal()}
-    </div>
+    </main>
   );
 
   function renderRestrictionStatus() {
@@ -1695,19 +1713,19 @@ export default function AppWebRestriction() {
     ];
 
     return (
-      <div className="appweb-status-panel">
-        <div className="appweb-filter-panel appweb-status-toolbar">
+      <div className="d-grid gap-3">
+        <div className="content-toolbar users-toolbar">
           <div className="row g-2 align-items-end w-100 m-0">
             <div className="col-12 col-sm-auto">
-              <label className="appweb-label">Start Date</label>
-              <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="form-control form-control-sm appweb-input" />
+              <label className="form-field-label">Start Date</label>
+              <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="setting-input" />
             </div>
             <div className="col-12 col-sm-auto">
-              <label className="appweb-label">End Date</label>
-              <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="form-control form-control-sm appweb-input" />
+              <label className="form-field-label">End Date</label>
+              <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="setting-input" />
             </div>
             <div className="col-12 col-sm-auto">
-              <label className="form-check appweb-check mb-0">
+              <label className="inline-check mb-0">
                 <input className="form-check-input" type="checkbox" checked={includeSub} onChange={(event) => setIncludeSub(event.target.checked)} />
                 <span className="form-check-label">Include Sub-Dept</span>
               </label>
@@ -1721,7 +1739,6 @@ export default function AppWebRestriction() {
         </div>
 
         <AppTable<StatusTableRow>
-          className="appweb-status-table"
           columns={appBlacklistMode ? appColumns : whitelistColumns}
           rows={tableRows}
           rowKey="__rowKey"
@@ -1731,7 +1748,7 @@ export default function AppWebRestriction() {
           summary={(
             <>
               <div>
-                <strong className="appweb-table-title">{statusTitle}</strong>
+                <strong className="ema-title">{statusTitle}</strong>
                 <span>{selectedTarget?.label || 'Organization'} · {startDate} until {endDate}</span>
               </div>
               <span className="badge rounded-pill text-bg-light border">
@@ -2123,18 +2140,18 @@ export default function AppWebRestriction() {
         key: 'Version',
         header: 'Policy Version',
         width: 170,
-        render: (row) => <code className="appweb-policy-version">{row.Version || row.version || '-'}</code>,
+        render: (row) => <code className="user-pill info">{row.Version || row.version || '-'}</code>,
       },
     ];
 
     return (
-      <div className="appweb-policy-status-panel">
-        <div className="alert alert-primary appweb-policy-note mb-3" role="alert">
+      <div className="d-grid gap-3">
+        <div className="alert alert-primary settings-helper-card mb-3" role="alert">
           This policy list shows policy information for clients or departments that do not inherit their parent policies.
         </div>
 
         <AppTable<PolicyTableRow>
-          className="appweb-policy-status-table"
+          className="pricing-table-card"
           columns={columns}
           rows={tableRows}
           rowKey="__rowKey"
@@ -2144,7 +2161,7 @@ export default function AppWebRestriction() {
           summary={(
             <>
               <div>
-                <strong className="appweb-table-title">Policy Status List</strong>
+                <strong className="ema-title">Policy Status List</strong>
                 <span>{moduleConfig.label} · {selectedTarget?.label || 'Organization'}</span>
               </div>
               <span className="badge rounded-pill text-bg-light border">

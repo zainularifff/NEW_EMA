@@ -105,3 +105,54 @@
     width: auto !important;
   }
 }
+
+/* =========================================================
+   V2 Global Toast Front Layer
+   Toast is rendered through a body portal so it stays above
+   confirmations, ticket modals and locked module shells.
+========================================================= */
+
+body > .settings-toast-layer {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important;
+  isolation: isolate !important;
+}
+
+body > .settings-toast-layer .settings-toast {
+  position: fixed !important;
+  top: 86px !important;
+  right: 24px !important;
+  bottom: auto !important;
+  z-index: 2147483647 !important;
+  pointer-events: auto !important;
+}
+
+.settings-toast-close {
+  width: 1.65rem !important;
+  height: 1.65rem !important;
+  border: 0 !important;
+  border-radius: 0.65rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: var(--ema-control-soft, #f5f8fc) !important;
+  color: var(--ema-control-muted, #64748b) !important;
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+}
+
+.settings-toast-close:hover {
+  color: var(--ema-control-primary, #2558e8) !important;
+  background: color-mix(in srgb, var(--ema-control-primary, #2558e8) 9%, var(--ema-control-soft, #f5f8fc)) !important;
+}
+
+@media (max-width: 720px) {
+  body > .settings-toast-layer .settings-toast {
+    top: 18px !important;
+    right: 16px !important;
+    left: 16px !important;
+    width: auto !important;
+  }
+}
