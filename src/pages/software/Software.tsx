@@ -197,7 +197,7 @@ const statisticTree: TreeNode[] = [
 const fallbackDeviceTree: TreeNode[] = [
   {
     id: "org-root",
-    label: "Organisation",
+    label: "Organization",
     type: "org",
     children: [],
     relationId: -1,
@@ -530,7 +530,7 @@ function mapDepartmentsToTree(departments: DepartmentNode[], depth = 0): TreeNod
 }
 
 function buildDeviceTreeFromDepartments(departments: DepartmentNode[]): TreeNode[] {
-  return [{ id: "org-root", label: "Organisation", type: "org", relationId: -1, children: mapDepartmentsToTree(departments) }];
+  return [{ id: "org-root", label: "Organization", type: "org", relationId: -1, children: mapDepartmentsToTree(departments) }];
 }
 
 function mapAssetToDeviceNode(asset: AssetItem, relationId?: number): TreeNode {
@@ -631,7 +631,7 @@ export default function Software() {
   const [deviceTree, setDeviceTree] = useState<TreeNode[]>(fallbackDeviceTree);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(["org-root", "stat-package", "stat-extension"]));
   const [currentRelationId, setCurrentRelationId] = useState(-1);
-  const [selectedFolder, setSelectedFolder] = useState<{ id: number; label: string } | null>({ id: -1, label: "Organisation" });
+  const [selectedFolder, setSelectedFolder] = useState<{ id: number; label: string } | null>({ id: -1, label: "Organization" });
   const [selectedDevice, setSelectedDevice] = useState<TreeNode | null>(null);
   const [selected, setSelected] = useState<SelectedContext>({ mode: "registry", tableKey: "registry", label: "Software", relationId: -1 });
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("organization");
@@ -703,7 +703,7 @@ export default function Software() {
       const departments = Array.isArray(response) ? response : Array.isArray(response.data) ? response.data : [];
       setDeviceTree(buildDeviceTreeFromDepartments(departments));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to load organization hierarchy.";
+      const message = "Organization view is not available right now.";
       setTreeError(message);
       setDeviceTree(fallbackDeviceTree);
     } finally {
@@ -843,7 +843,7 @@ export default function Software() {
       }));
     } catch (error) {
       setDeviceTree((prev) => updateTreeNode(prev, node.id, (target) => ({ ...target, devicesLoaded: false, devicesLoading: false })));
-      showToast({ type: "error", title: "Device hierarchy failed", message: error instanceof Error ? error.message : "Failed to load devices." });
+      showToast({ type: "error", title: "Device view unavailable", message: "Device list is not available right now." });
     }
   };
 
@@ -1093,7 +1093,7 @@ export default function Software() {
   );
 
   const renderTree = (nodes: TreeNode[], depth = 0, mode: "organization" | "statistic" = "organization") => (
-    <div className={cx("ema-sidebar-tree-children", depth > 0 && "is-nested")}>
+    <div className={depth > 0 ? "ema-sidebar-tree-children is-nested" : "ema-sidebar-tree-level"}>
       {nodes.map((node) => {
         const hasChildren = Boolean(node.children?.length);
         const isExpanded = expandedGroups.has(node.id);
@@ -1107,26 +1107,37 @@ export default function Software() {
           && node.relationId !== -1
           && node.devicesLoaded !== true;
         const isExpandable = hasChildren || canLazyLoadDevices;
+        const handleNodeAction = () => {
+          if (mode === "statistic") {
+            void selectStatistic(node);
+            return;
+          }
+          if (isDevice) void loadRowsForDevice(node);
+          else void handleFolderClick(node, isExpandable);
+        };
+
         return (
-          <div key={node.id}>
-            <button
-              type="button"
-              className={cx("ema-sidebar-tree-node", `depth-${Math.min(depth, 8)}`, isActive && "is-selected", isDevice && "is-device", isExpandable && "is-expandable")}
-              onClick={() => {
-                if (mode === "statistic") {
-                  void selectStatistic(node);
-                  return;
-                }
-                if (isDevice) void loadRowsForDevice(node);
-                else void handleFolderClick(node, isExpandable);
-              }}
-            >
-              <span className="ema-sidebar-tree-node-chevron">
+          <div key={node.id} className="ema-sidebar-tree-branch">
+            <div className={cx("ema-sidebar-tree-node", `depth-${Math.min(depth, 8)}`, isActive && "is-selected", isDevice && "is-device", isExpandable && "is-expandable")}>
+              <button
+                type="button"
+                className="ema-sidebar-tree-toggle"
+                onClick={handleNodeAction}
+                aria-label={isExpandable ? (isExpanded ? "Collapse" : "Expand") : "Open"}
+              >
                 {isExpandable ? (isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />) : <span aria-hidden="true" />}
-              </span>
-              <span className="ema-sidebar-tree-node-main"><span className="ema-sidebar-tree-node-icon">{isDevice ? <MonitorSmartphone size={13} /> : mode === "statistic" ? <Database size={13} /> : <FolderOpen size={13} />}</span><span className="ema-sidebar-tree-label">{node.label}</span></span>
-              {node.devicesLoading && <RefreshCw size={12} className="spin" />}
-            </button>
+              </button>
+
+              <button type="button" className="ema-sidebar-tree-main" onClick={handleNodeAction}>
+                <span className="ema-sidebar-tree-icon">
+                  {isDevice ? <MonitorSmartphone size={13} /> : mode === "statistic" ? <Database size={13} /> : <FolderOpen size={13} />}
+                </span>
+                <span className="ema-sidebar-tree-label">{node.label}</span>
+              </button>
+
+              {node.devicesLoading ? <RefreshCw size={12} className="spin" /> : null}
+            </div>
+
             {hasChildren && isExpanded && renderTree(node.children || [], depth + 1, mode)}
           </div>
         );
@@ -1138,11 +1149,6 @@ export default function Software() {
   const visibleStart = activeRowsCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const visibleEnd = Math.min(page * PAGE_SIZE, activeRowsCount);
   const tableTitle = selected.tableKey === "registry" ? "Software" : selected.label;
-  const tableSubtitle = selected.tableKey === "registry"
-    ? "Installed software records synchronized from endpoint inventory"
-    : selected.mode === "device"
-      ? `Device: ${selected.label}`
-      : `Scope: ${selectedFolder?.label || "Organisation"}`;
 
   return (
     <main className="settings-module-root ema-settings-pro ema-module-root software-inventory-module" data-section="software">
@@ -1161,10 +1167,10 @@ export default function Software() {
           <div className="panel-head">
             <span>SOFTWARE</span>
             <strong>Software</strong>
-            <small>Software list, statistics and scan scope</small>
+            <small>Browse software records, devices and statistics.</small>
           </div>
 
-          <nav className="settings-menu-list ema-module-sidebar-nav" id="softwareMenu" role="tablist" aria-label="Software navigation">
+          <nav className="settings-menu-list ema-module-sidebar-nav ema-module-sidebar-switcher" id="softwareMenu" role="tablist" aria-label="Software navigation">
             <button
               type="button"
               className={cx("setting-btn", sidebarTab === "organization" && "active")}
@@ -1179,7 +1185,7 @@ export default function Software() {
               onClick={() => setSidebarTab("statistic")}
             >
               <span className="setting-icon"><Database size={16} /></span>
-              <span><strong>Statistic</strong><small>Software evidence views</small></span>
+              <span><strong>Statistics</strong><small>Software evidence views</small></span>
             </button>
           </nav>
 
@@ -1194,9 +1200,12 @@ export default function Software() {
               {sidebarTab === "organization" ? (
                 <div className="ema-sidebar-tree" aria-label="Software organization tree">
                   <div className="ema-sidebar-section-title"><FolderOpen size={15} /><span>Organization</span></div>
-                  {treeLoading && <div className="ema-sidebar-empty">Loading organization...</div>}
-                  {treeError && <div className="ema-sidebar-empty is-error">{treeError}</div>}
-                  {renderTree(deviceTree, 0, "organization")}
+                  {treeError ? <div className="ema-sidebar-empty is-error">{treeError}</div> : null}
+                  {treeLoading ? (
+                    <div className="ema-sidebar-empty">Preparing organization view...</div>
+                  ) : (
+                    renderTree(deviceTree, 0, "organization")
+                  )}
                 </div>
               ) : (
                 <div className="ema-sidebar-tree" aria-label="Software statistics tree">
@@ -1236,26 +1245,27 @@ export default function Software() {
           </section>
 
           <section className="content-shell ema-panel-surface software-registry-card software-registry-card--full">
-            <div className="software-registry-head">
-              <div><h3>{tableTitle}</h3><p>{tableSubtitle}</p></div>
-              <div className="software-registry-tools">
-                <div className="section-search software-search-box"><Search size={15} /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search software records..." />{searchTerm && <button type="button" className="ema-sidebar-search-clear" onClick={() => setSearchTerm("")}><X size={14} /></button>}</div>
+            <div className="software-registry-head software-registry-head--standard">
+              <div className="software-registry-tools software-registry-tools--standard">
                 <button type="button" className="soft-btn software-insights-toggle" onClick={() => setShowInsightsModal(true)}><FileText size={15} />Insights <span>{classificationCoverage}%</span></button>
                 <button type="button" className="soft-btn software-scan-btn" onClick={() => void handleSoftwareScan("device")} disabled={!selectedDevice || scanLoading}><MonitorSmartphone size={15} className={scanLoading ? "spin" : ""} />Scan Device</button>
                 <button type="button" className="soft-btn software-scan-btn" onClick={() => void handleSoftwareScan("folder")} disabled={!selectedFolder || scanLoading}><FolderOpen size={15} className={scanLoading ? "spin" : ""} />Scan Folder</button>
                 <button type="button" className="soft-btn software-scan-btn" onClick={() => void handleSoftwareScan("all")} disabled={scanLoading}><RefreshCw size={15} className={scanLoading ? "spin" : ""} />Scan All</button>
-                <button type="button" className="icon-action-btn software-icon-btn" onClick={() => void refreshCurrentView()} title="Refresh"><RefreshCw size={15} /></button>
+                <div className="section-search software-search-box"><Search size={15} /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search software records..." />{searchTerm && <button type="button" className="ema-sidebar-search-clear" onClick={() => setSearchTerm("")}><X size={14} /></button>}</div>
+                <button type="button" className="icon-action-btn software-icon-btn" onClick={() => void refreshCurrentView()} title="Refresh" aria-label="Refresh software records"><RefreshCw size={15} /></button>
                 <button type="button" className="primary-btn software-export-btn software-header-export-btn" onClick={exportCurrentView} disabled={isDataLoading || activeRowsCount === 0}><Download size={15} />Export</button>
               </div>
-            </div>
 
-            {selected.tableKey === "registry" && (
-              <div className="software-filter-row">
-                <FilterSelect selectKey="category" label="Category" value={categoryFilter} options={categoryOptions} allLabel="All category" onChange={(value) => { setCategoryFilter(value); setActiveView(value === "Unclassified" ? "unclassified" : "all"); }} />
-                <FilterSelect selectKey="type" label="Device Type" value={typeFilter} options={typeOptions} allLabel="All type" onChange={setTypeFilter} />
-                <FilterSelect selectKey="os" label="Operating System" value={osFilter} options={osOptions} allLabel="All OS" onChange={setOsFilter} />
-              </div>
-            )}
+              {selected.tableKey === "registry" ? (
+                <div className="software-filter-row software-filter-row--toolbar">
+                  <FilterSelect selectKey="category" label="Category" value={categoryFilter} options={categoryOptions} allLabel="All category" onChange={(value) => { setCategoryFilter(value); setActiveView(value === "Unclassified" ? "unclassified" : "all"); }} />
+                  <FilterSelect selectKey="type" label="Device Type" value={typeFilter} options={typeOptions} allLabel="All type" onChange={setTypeFilter} />
+                  <FilterSelect selectKey="os" label="Operating System" value={osFilter} options={osOptions} allLabel="All OS" onChange={setOsFilter} />
+                </div>
+              ) : (
+                <div className="software-toolbar-spacer" aria-hidden="true" />
+              )}
+            </div>
 
             {selected.tableKey !== "registry" && (
               <div className="software-stat-summary-row">
@@ -1283,15 +1293,17 @@ export default function Software() {
               </div>
             )}
 
-            <div className="software-table-status-row">
-              <strong>{isDataLoading ? "Loading software records..." : `Showing ${visibleStart}-${visibleEnd} of ${activeRowsCount} software records`}</strong>
-              {!isDataLoading && <span>View: {selected.label}</span>}
-            </div>
+            {!isDataLoading && (
+              <div className="software-table-status-row">
+                <strong>{`Showing ${visibleStart}-${visibleEnd} of ${activeRowsCount} software records`}</strong>
+                <span>View: {selected.label}</span>
+              </div>
+            )}
 
             {apiError && selected.tableKey === "registry" && <div className="software-error-banner"><AlertTriangle size={16} /><div><strong>Software API failed</strong><span>{apiError}</span></div></div>}
             {tableError && selected.tableKey !== "registry" && <div className="software-error-banner"><AlertTriangle size={16} /><div><strong>View failed</strong><span>{tableError}</span></div></div>}
 
-            <div className={cx("user-access-table software-standard-table", isDataLoading && "is-loading")} role="table" aria-label={tableTitle}>
+            <div className="user-access-table software-standard-table" role="table" aria-label={tableTitle}>
               {selected.tableKey === "registry" ? (
                 <>
                   <div className="user-row head software-standard-row software-registry-row" role="row">
@@ -1303,25 +1315,7 @@ export default function Software() {
                     <div className="user-cell"><SortButton label="Type" columnKey="machineType" /></div>
                     <div className="user-cell"><SortButton label="Last Updated" columnKey="lastUpdated" /></div>
                   </div>
-                  {isDataLoading ? (
-                    <div className="software-loading-table-state software-registry-loading-state" role="row">
-                      <div className="software-loading-copy">
-                        <RefreshCw size={18} className="spin" />
-                        <div><strong>Loading software inventory</strong><span>Preparing records, categories and device links...</span></div>
-                      </div>
-                      {Array.from({ length: 6 }).map((_, index) => (
-                        <div className="software-loading-skeleton-row" key={`software-skeleton-${index}`}>
-                          <span className="software-skeleton-pill" />
-                          <span className="software-skeleton-line is-wide" />
-                          <span className="software-skeleton-line" />
-                          <span className="software-skeleton-line is-mid" />
-                          <span className="software-skeleton-line is-short" />
-                          <span className="software-skeleton-line" />
-                          <span className="software-skeleton-line is-mid" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : pageRegistryRecords.map((record, index) => (
+                  {!isDataLoading && pageRegistryRecords.map((record, index) => (
                     <div className="user-row software-standard-row software-registry-row" role="row" key={record.id}>
                       <div className="user-cell row-number"><span className="row-index-pill software-row-no">{(page - 1) * PAGE_SIZE + index + 1}</span></div>
                       <div className="user-cell"><div className="software-name-cell"><span className="software-status-dot" /><div><strong title={record.softwareName}>{record.softwareName}</strong><small>{record.publisher || record.assetTag || "-"}</small></div></div></div>
@@ -1340,23 +1334,7 @@ export default function Software() {
                     <div className="user-cell">#</div>
                     {tableColumns[selected.tableKey].map((column, index) => <div className="user-cell" key={column}><TableSortButton label={column} index={index} /></div>)}
                   </div>
-                  {isDataLoading ? (
-                    <div className="software-loading-table-state software-dynamic-loading-state" role="row">
-                      <div className="software-loading-copy">
-                        <RefreshCw size={18} className="spin" />
-                        <div><strong>Loading selected software view</strong><span>Fetching records for {selected.label}...</span></div>
-                      </div>
-                      {Array.from({ length: 6 }).map((_, index) => (
-                        <div className="software-loading-skeleton-row" key={`software-table-skeleton-${index}`}>
-                          <span className="software-skeleton-pill" />
-                          <span className="software-skeleton-line is-wide" />
-                          <span className="software-skeleton-line" />
-                          <span className="software-skeleton-line is-mid" />
-                          <span className="software-skeleton-line" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : pageTableRows.map((row, rowIndex) => (
+                  {!isDataLoading && pageTableRows.map((row, rowIndex) => (
                     <div className="user-row software-standard-row software-dynamic-row" role="row" key={`${selected.tableKey}-${rowIndex}`} style={{ gridTemplateColumns: `4.2rem repeat(${tableColumns[selected.tableKey].length}, minmax(11rem, 1fr))` }}>
                       <div className="user-cell row-number"><span className="row-index-pill software-row-no">{(page - 1) * PAGE_SIZE + rowIndex + 1}</span></div>
                       {row.map((cell, cellIndex) => <div className="user-cell software-text-cell" key={cellIndex}>{cell}</div>)}
@@ -1407,7 +1385,6 @@ export default function Software() {
         </div>
       )}
 
-      <div className="software-footer">EMA UNIFIED SYSTEM — SOFTWARE</div>
     </main>
   );
 }

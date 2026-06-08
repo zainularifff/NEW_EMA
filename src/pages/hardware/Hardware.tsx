@@ -1726,7 +1726,7 @@ function FolderTree({
 
   return (
     <div className="ema-sidebar-tree-branch">
-      <div className={`ema-sidebar-tree-node depth-${Math.min(depth, 8)} ${isSelected ? "is-selected is-active" : ""}`}>
+      <div className={`ema-sidebar-tree-node depth-${Math.min(depth, 8)} ${isSelected ? "is-selected is-active" : ""} ${hasChildren ? "is-expandable" : ""}`}>
         <button type="button" className="ema-sidebar-tree-toggle" onClick={() => hasChildren && onToggle(node.key)}>
           {hasChildren ? isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} /> : <span />}
         </button>
@@ -1771,7 +1771,7 @@ function FolderTree({
       </div>
 
       {hasChildren && isExpanded && (
-        <div className="ema-sidebar-tree-children">
+        <div className="ema-sidebar-tree-children is-nested">
           {node.children!.map((child) => (
             <FolderTree
               key={child.key}
@@ -2069,7 +2069,7 @@ export default function HardwareInventory() {
     setActiveKpiFilter("all");
     setPage(1);
     setFolderMenuKey(null);
-    setNote(`Hierarchy filtered by ${allTreeNodes.find((node) => node.key === key)?.label ?? key}. Device panel remains open until closed.`);
+    setNote(`Organization filtered by ${allTreeNodes.find((node) => node.key === key)?.label ?? key}. Device panel remains open until closed.`);
   };
 
   const handleAddFolder = (parentKey?: string) => {
@@ -3013,7 +3013,7 @@ export default function HardwareInventory() {
         </div>
 
         {hasChildren && isExpanded && (
-          <div className="ema-sidebar-tree-children">
+          <div className="ema-sidebar-tree-children is-nested">
             {node.children!.map((child) => renderStatisticTreeNode(child, depth + 1))}
           </div>
         )}
@@ -3225,10 +3225,10 @@ export default function HardwareInventory() {
           <div className="panel-head">
             <span>HARDWARE</span>
             <strong>Hardware Inventory</strong>
-            <small>Endpoint hierarchy and synchronized device records.</small>
+            <small>Manage hardware folders and device records.</small>
           </div>
 
-          <nav className="settings-menu-list ema-module-sidebar-nav" id="hardwareMenu" role="tablist" aria-label="Hardware navigation">
+          <nav className="settings-menu-list ema-module-sidebar-nav ema-module-sidebar-switcher" id="hardwareMenu" role="tablist" aria-label="Hardware navigation">
             <button
               type="button"
               className={`setting-btn ${activeTab === "organization" ? "active" : ""}`}
@@ -3253,15 +3253,16 @@ export default function HardwareInventory() {
                 <>
                   <div className="section-search ema-sidebar-field">
                     <Search size={15} />
-                    <input value={searchHierarchy} onChange={(event) => setSearchHierarchy(event.target.value)} placeholder="Search folder hierarchy..." />
+                    <input value={searchHierarchy} onChange={(event) => setSearchHierarchy(event.target.value)} placeholder="Search folders..." />
                   </div>
 
-                  <button type="button" className="soft-btn ema-sidebar-action-btn" onClick={() => handleAddFolder()}>
-                    <FolderPlus size={15} />
-                    New Main Folder
-                  </button>
+                  <button type="button" className="soft-btn d-inline-flex align-items-center gap-1 px-2" onClick={() => handleAddFolder()}><FolderPlus size={13} /> New Path</button>
 
                   <div className="ema-sidebar-tree" aria-label="Hardware organization tree">
+                    <div className="ema-sidebar-section-title justify-content-between">
+                      <span className="d-inline-flex align-items-center gap-1"><FolderOpen size={14} /> Organization</span>
+                    </div>
+
                     {treeNodes.map((node) => (
                       <FolderTree
                         key={node.key}
@@ -3290,6 +3291,7 @@ export default function HardwareInventory() {
                   </div>
 
                   <div className="ema-sidebar-tree" aria-label="Hardware statistics tree">
+                    <div className="ema-sidebar-section-title"><Database size={14} /><span>Statistics</span></div>
                     {statisticTree.map((node) => renderStatisticTreeNode(node))}
                   </div>
                 </>

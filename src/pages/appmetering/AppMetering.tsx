@@ -871,34 +871,31 @@ function AppMeteringTree({ nodes, selectedId, onSelect }: { nodes: TreeNode[]; s
 
     return (
       <div key={node.id} className="ema-sidebar-tree-branch">
-        <button
-          className={cx("ema-sidebar-tree-node", isSelected && "is-selected")}
-          type="button"
-          title={node.subLabel ? `${node.label} · ${node.subLabel}` : node.label}
-          onClick={() => onSelect(node)}
-        >
-          <span
-            className="ema-sidebar-tree-node-chevron"
-            role="button"
-            tabIndex={-1}
-            aria-hidden={!hasChildren}
-            onClick={(event) => {
-              event.stopPropagation();
+        <div className={cx("ema-sidebar-tree-node", `depth-${Math.min(depth, 8)}`, isSelected && "is-selected", hasChildren && "is-expandable")}>
+          <button
+            type="button"
+            className="ema-sidebar-tree-toggle"
+            aria-label={hasChildren ? (isOpen ? "Collapse" : "Expand") : "Open"}
+            onClick={() => {
               if (hasChildren) setOpen((prev) => ({ ...prev, [node.id]: !isOpen }));
             }}
           >
             {hasChildren ? (isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />) : <span />}
-          </span>
-          <span className="ema-sidebar-tree-main">
+          </button>
+
+          <button
+            type="button"
+            className="ema-sidebar-tree-main"
+            title={node.subLabel ? `${node.label} · ${node.subLabel}` : node.label}
+            onClick={() => onSelect(node)}
+          >
             <span className="ema-sidebar-tree-icon"><Icon size={14} /></span>
             <span className="ema-sidebar-tree-label">{node.label}</span>
-          </span>
-          {node.type === "device" ? (
-            <span className={getTreeStatusPillClass(node.status)}>{nodeMeta}</span>
-          ) : (
-            <span className="ema-sidebar-tree-count">{nodeMeta}</span>
-          )}
-        </button>
+          </button>
+
+          <span className="ema-sidebar-tree-count">{nodeMeta}</span>
+        </div>
+
         {hasChildren && isOpen ? (
           <div className="ema-sidebar-tree-children is-nested">
             {node.children?.map((child) => renderNode(child, depth + 1))}
@@ -994,7 +991,7 @@ export default function AppMetering() {
       setScopeDeviceRows([]);
       setAssetCache({});
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load department hierarchy.");
+      setError("Organization view is not available right now.");
       setAppMeteringDevices([]);
       setScopeDeviceRows([]);
     } finally {
@@ -1036,7 +1033,7 @@ export default function AppMetering() {
       setAssetCache((prev) => ({ ...prev, [cacheKey]: rows }));
     } catch (err) {
       setScopeDeviceRows([]);
-      setError(err instanceof Error ? err.message : "Failed to load device targets for the selected folder.");
+      setError("Device list is not available right now.");
     } finally {
       setLoading((prev) => ({ ...prev, assets: false }));
     }
@@ -1382,10 +1379,10 @@ export default function AppMetering() {
           <div className="panel-head">
             <span>APPLICATION METERING</span>
             <strong>Metering Scope</strong>
-            <small>Browse organization, endpoint and package targets.</small>
+            <small>Browse organization, devices and software packages.</small>
           </div>
 
-          <div className="ema-module-sidebar-nav">
+          <div className="ema-module-sidebar-nav ema-module-sidebar-switcher">
             <button type="button" className={cx("setting-btn", viewMode === "device" && "active")} onClick={() => setViewMode("device")}>
               <span className="setting-icon"><UserRound size={18} /></span>
               <span><strong>Devices</strong><small>Folder and endpoint scope</small></span>
@@ -1409,11 +1406,11 @@ export default function AppMetering() {
                   <span>{viewMode === "device" ? "Organization" : "Packages"}</span>
                 </div>
                 {loading.hierarchy || loading.packages ? (
-                  <div className="ema-sidebar-empty"><strong>Loading hierarchy...</strong></div>
+                  <div className="ema-sidebar-empty">{viewMode === "device" ? "Preparing organization view..." : "Preparing package list..."}</div>
                 ) : activeTree.length > 0 ? (
                   <AppMeteringTree nodes={activeTree} selectedId={selectedNode.id} onSelect={handleNodeSelect} />
                 ) : (
-                  <div className="ema-sidebar-empty">No metering targets found.</div>
+                  <div className="ema-sidebar-empty">{viewMode === "device" ? "No organization entries found." : "No packages found."}</div>
                 )}
               </div>
             </div>
@@ -1567,7 +1564,7 @@ export default function AppMetering() {
                       {loading.assets ? (
                         <tr><td colSpan={8}><div className="settings-helper-card"><strong>Loading devices</strong><span>Loading devices from /api/assets/{selectedNode.relationID}...</span></div></td></tr>
                       ) : pagedDeviceRows.length === 0 ? (
-                        <tr><td colSpan={8}><div className="settings-helper-card"><strong>No devices found</strong><span>{selectedNode.id === "organization" ? "Company scope selected. Choose a department to browse device targets, or run Metering Company directly." : "No devices found in this folder scope."}</span></div></td></tr>
+                        <tr><td colSpan={8}><div className="settings-helper-card"><strong>No devices found</strong><span>{selectedNode.id === "organization" ? "Company scope selected. Choose a department to browse devices, or run Metering Company directly." : "No devices found in this folder scope."}</span></div></td></tr>
                       ) : pagedDeviceRows.map((device, index) => {
                         const raw = device.raw || {};
                         const isSelected = selectedNode.id === device.id;

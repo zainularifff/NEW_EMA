@@ -413,6 +413,23 @@ const findFirstTarget = (nodes: RestrictionTreeNode[]): RestrictionTarget | null
   return null;
 };
 
+const filterRestrictionTree = (nodes: RestrictionTreeNode[], query: string): RestrictionTreeNode[] => {
+  const search = query.trim().toLowerCase();
+  if (!search) return nodes;
+
+  return nodes
+    .map((node) => {
+      const children = filterRestrictionTree(node.children || [], search);
+      const matches = [node.label, node.Object_Full_Name, node.Object_DeviceID, node.type]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(search));
+
+      if (matches) return { ...node };
+      return children.length ? { ...node, children } : null;
+    })
+    .filter((node): node is RestrictionTreeNode => Boolean(node));
+};
+
 const getSetting = (policy: RestrictionPolicyDetail | null, key: string, fallback = '') => {
   if (!policy) return fallback;
   const direct = policy.settings?.[key];
@@ -552,6 +569,7 @@ export default function AppWebRestriction() {
   const [activeTab, setActiveTab] = useState<SubTab>('status');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [treeNodes, setTreeNodes] = useState<RestrictionTreeNode[]>([]);
+  const [targetTreeSearch, setTargetTreeSearch] = useState('');
   const [selectedTarget, setSelectedTarget] = useState<RestrictionTarget | null>(null);
   const [policyDetail, setPolicyDetail] = useState<RestrictionPolicyDetail | null>(null);
   const [policyRows, setPolicyRows] = useState<RestrictionPolicyRow[]>([]);
@@ -597,6 +615,7 @@ export default function AppWebRestriction() {
   const treeInitializedRef = useRef(false);
 
   const moduleConfig = modules.find((module) => module.id === activeModule) || modules[0];
+  const filteredTreeNodes = useMemo(() => filterRestrictionTree(treeNodes, targetTreeSearch), [treeNodes, targetTreeSearch]);
   const ModuleIcon = moduleConfig.icon;
   const tone = colorClasses[moduleConfig.color];
   // App Whitelist must stay editable even when the displayed effective policy is inherited.
@@ -671,7 +690,7 @@ export default function AppWebRestriction() {
         return findFirstTarget(data) || null;
       });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Failed to load restriction target tree.');
+      setMessage('Organization view is not available right now.');
     } finally {
       setLoading(false);
     }
@@ -1436,43 +1455,45 @@ export default function AppWebRestriction() {
   };
 
   const renderTree = (nodes: RestrictionTreeNode[], depth = 0) => (
-    <div className={clsx('ema-sidebar-tree-level', depth > 0 && 'ema-sidebar-tree-children is-nested')}>
+    <div className={depth > 0 ? 'ema-sidebar-tree-children is-nested' : 'ema-sidebar-tree-level'}>
       {nodes.map((node) => {
         const hasChildren = Boolean(node.children?.length);
         const isOpen = expandedGroups.has(node.id);
         const target = toTarget(node);
         const isSelected = target && selectedTarget?.id === target.id;
         const Icon = node.type === 'org' ? Server : node.type === 'root' ? Layers : node.type === 'department' ? (isOpen ? FolderOpen : Folder) : Laptop;
+        const handleNodeAction = () => {
+          if (hasChildren) toggleExpand(node.id);
+          if (target) handleTargetClick(node);
+        };
 
         return (
           <div key={node.id} className="ema-sidebar-tree-branch">
-            <button
-              type="button"
-              className={clsx('ema-sidebar-tree-node', isSelected && 'is-selected')}
-              title={node.label}
-              onClick={() => {
-                if (hasChildren) toggleExpand(node.id);
-                if (target) handleTargetClick(node);
-              }}
-            >
-              <span
-                className="ema-sidebar-tree-node-chevron"
-                role="button"
-                tabIndex={-1}
-                aria-hidden={!hasChildren}
-                onClick={(event) => {
-                  event.stopPropagation();
+            <div className={clsx('ema-sidebar-tree-node', `depth-${Math.min(depth, 8)}`, isSelected && 'is-selected', hasChildren && 'is-expandable')}>
+              <button
+                type="button"
+                className="ema-sidebar-tree-toggle"
+                aria-label={hasChildren ? (isOpen ? 'Collapse' : 'Expand') : 'Open'}
+                onClick={() => {
                   if (hasChildren) toggleExpand(node.id);
                 }}
               >
                 {hasChildren ? (isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />) : <span />}
-              </span>
-              <span className="ema-sidebar-tree-main">
+              </button>
+
+              <button
+                type="button"
+                className="ema-sidebar-tree-main"
+                title={node.label}
+                onClick={handleNodeAction}
+              >
                 <span className="ema-sidebar-tree-icon"><Icon size={14} /></span>
                 <span className="ema-sidebar-tree-label">{node.label}</span>
-              </span>
-              {node.badge ? <span className="ema-sidebar-tree-count">{node.badge}</span> : <span />}
-            </button>
+              </button>
+
+              {node.badge ? <span className="ema-sidebar-tree-count">{node.badge}</span> : null}
+            </div>
+
             {hasChildren && isOpen ? renderTree(node.children || [], depth + 1) : null}
           </div>
         );
@@ -1502,24 +1523,33 @@ export default function AppWebRestriction() {
       <div className="settings-layout">
         <aside className="settings-menu ema-panel-surface">
           <div className="panel-head">
-            <span>RESTRICTION TARGET</span>
-            <strong>Organization Tree</strong>
-            <small>Browse organization, endpoint and policy targets.</small>
+            <span>WEB RESTRICTION</span>
+            <strong>Policy Scope</strong>
+            <small>Browse organization, devices and policy groups.</small>
           </div>
 
           <div className="ema-sidebar-content">
             <div className="ema-sidebar-subpanel">
+              <label className="section-search ema-sidebar-field" htmlFor="restrictionSidebarSearch">
+                <Search size={15} />
+                <input
+                  id="restrictionSidebarSearch"
+                  value={targetTreeSearch}
+                  onChange={(event) => setTargetTreeSearch(event.target.value)}
+                  placeholder="Search organization..."
+                />
+                {targetTreeSearch && <button type="button" className="ema-sidebar-search-clear" onClick={() => setTargetTreeSearch('')}><X size={14} /></button>}
+              </label>
+
               <div className="ema-sidebar-tree" role="tree" aria-label="App and web restriction organization tree">
                 <div className="ema-sidebar-section-title">
                   <Building2 size={14} />
                   <span>Organization</span>
                 </div>
                 {loading && treeNodes.length === 0 ? (
-                  <div className="ema-sidebar-empty">
-                    <Loader2 size={14} className="animate-spin" /> Loading targets
-                  </div>
-                ) : treeNodes.length > 0 ? renderTree(treeNodes) : (
-                  <div className="ema-sidebar-empty">No restriction targets found.</div>
+                  <div className="ema-sidebar-empty">Preparing organization view...</div>
+                ) : filteredTreeNodes.length > 0 ? renderTree(filteredTreeNodes) : (
+                  <div className="ema-sidebar-empty">{targetTreeSearch ? "No matching organization found." : "No organization entries found."}</div>
                 )}
               </div>
             </div>
