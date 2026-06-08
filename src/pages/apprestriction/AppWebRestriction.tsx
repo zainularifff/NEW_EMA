@@ -161,6 +161,7 @@ const initialForm: FormState = {
 
 const dayOptions = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 const APPWEB_TABLE_PAGE_SIZE = 10;
+const APPWEB_SETTING_LIST_PAGE_SIZE = 8;
 
 type AppTableColumn<RowType> = {
   key: keyof RowType | string;
@@ -187,6 +188,76 @@ type AppButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size'> & {
   loading?: boolean;
   leftIcon?: ReactNode;
 };
+
+type CompactPaginationProps = {
+  page: number;
+  totalPages: number;
+  totalCount: number;
+  pageSize?: number;
+  onPageChange: (page: number) => void;
+};
+
+function CompactPagination({
+  page,
+  totalPages,
+  totalCount,
+  pageSize = APPWEB_SETTING_LIST_PAGE_SIZE,
+  onPageChange,
+}: CompactPaginationProps) {
+  if (totalPages <= 1) return null;
+
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const start = (safePage - 1) * pageSize + 1;
+  const end = Math.min(totalCount, safePage * pageSize);
+  const pages = Array.from({ length: totalPages }, (_, index) => index + 1).filter((item) => {
+    if (totalPages <= 5) return true;
+    return item === 1 || item === totalPages || Math.abs(item - safePage) <= 1;
+  });
+
+  return (
+    <div className="uam-pagination global-style">
+      <span className="uam-page-status">{start}-{end} of {totalCount}</span>
+      <button type="button" className="uam-page-icon" disabled={safePage === 1} onClick={() => onPageChange(safePage - 1)}>
+        Previous
+      </button>
+      {pages.map((item, index) => {
+        const previous = pages[index - 1];
+        const needsGap = previous && item - previous > 1;
+        return (
+          <span key={item} className="d-inline-flex align-items-center gap-1">
+            {needsGap && <span className="uam-page-status">...</span>}
+            <button type="button" className={clsx('uam-page-icon', item === safePage && 'uam-page-current')} onClick={() => onPageChange(item)}>
+              {item}
+            </button>
+          </span>
+        );
+      })}
+      <button type="button" className="uam-page-icon" disabled={safePage === totalPages} onClick={() => onPageChange(safePage + 1)}>
+        Next
+      </button>
+    </div>
+  );
+}
+
+function getPaginationState<T>(items: T[], page: number, pageSize = APPWEB_SETTING_LIST_PAGE_SIZE) {
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  return {
+    totalPages,
+    safePage,
+    startIndex,
+    pageItems: items.slice(startIndex, startIndex + pageSize),
+  };
+}
+
+function getFastRowKey(row: Record<string, unknown>, index: number, keys: string[]) {
+  for (const key of keys) {
+    const value = row[key];
+    if (value !== undefined && value !== null && String(value).trim() !== '') return `${key}-${value}`;
+  }
+  return `row-${index}`;
+}
 
 function AppButton({
   size = 'md',
@@ -586,6 +657,8 @@ export default function AppWebRestriction() {
   const [selectedWhitelistIds, setSelectedWhitelistIds] = useState<string[]>([]);
   const [selectedWhitelistRows, setSelectedWhitelistRows] = useState<WhitelistSoftware[]>([]);
   const [webUrls, setWebUrls] = useState<string[]>([]);
+  const [webPolicyPage, setWebPolicyPage] = useState(1);
+  const [webGroupUrlPage, setWebGroupUrlPage] = useState(1);
   const [newUrl, setNewUrl] = useState('');
   const [showWebGroupManager, setShowWebGroupManager] = useState(false);
   const [webGroupName, setWebGroupName] = useState('');
@@ -654,6 +727,14 @@ export default function AppWebRestriction() {
     }
     setNotice(null);
   };
+
+  useEffect(() => {
+    setWebPolicyPage(1);
+  }, [webUrls.length, activeModule, activeTab]);
+
+  useEffect(() => {
+    setWebGroupUrlPage(1);
+  }, [webGroupUrls.length, selectedWebsiteGroupId, activeModule, activeTab]);
 
   useEffect(() => {
     document.documentElement.classList.add('ema-settings-page-active', 'ema-appwebrestriction-page-active');
@@ -1665,11 +1746,7 @@ export default function AppWebRestriction() {
       ? 'No restriction status data found for this target and selected duration.'
       : 'No target selected yet. Showing root policy scope when available.';
 
-    type StatusTableRow = RestrictionStatusRow & { __rowKey: string };
-    const tableRows: StatusTableRow[] = rows.map((row, index) => ({
-      ...row,
-      __rowKey: `${index}-${JSON.stringify(row).slice(0, 28)}`,
-    }));
+    type StatusTableRow = RestrictionStatusRow & Record<string, any>;
 
     const appColumns: AppTableColumn<StatusTableRow>[] = [
       {
@@ -1750,8 +1827,8 @@ export default function AppWebRestriction() {
         <AppTable<StatusTableRow>
           className="appweb-large-data-card appweb-status-table"
           columns={appBlacklistMode ? appColumns : whitelistColumns}
-          rows={tableRows}
-          rowKey="__rowKey"
+          rows={rows as StatusTableRow[]}
+          rowKey={(row, index) => getFastRowKey(row, index, ['SW_Pkg_Name', 'SW_PKG_NAME', 'FILENAME', 'EVT_TYPE', 'evt_cnt', 'EVT_CNT'])}
           loading={loading}
           emptyTitle="No status records"
           emptyDescription={emptyMessage}
@@ -1773,53 +1850,67 @@ export default function AppWebRestriction() {
 
   function renderPolicyActionButtons() {
     return (
-      <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
-        <button
-          type="button"
+      <div className="content-actions justify-content-end border-top pt-3">
+        <AppButton
+          size="sm"
+          variant="secondary"
           onClick={loadPolicyData}
-          className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-[11px] font-black text-slate-600 shadow-sm"
+          leftIcon={<RotateCcw size={14} />}
         >
-          <RotateCcw size={14} /> Restore Policy
-        </button>
-        <button
-          type="button"
+          Restore Policy
+        </AppButton>
+        <AppButton
+          size="sm"
+          variant="primary"
           onClick={handleSavePolicy}
           disabled={!selectedTarget || saving}
-          className="inline-flex h-9 items-center gap-2 rounded-xl bg-blue-600 px-4 text-[11px] font-black text-white shadow-lg shadow-blue-200 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+          loading={saving}
+          leftIcon={<Save size={14} />}
         >
-          {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save Policy
-        </button>
+          Save Policy
+        </AppButton>
       </div>
     );
   }
 
   function renderBasicSettingsSection(layout: 'default' | 'whitelist' = 'default') {
     return (
-      <section className={clsx('rounded-2xl border border-slate-200 p-4', layout === 'whitelist' && 'max-w-[760px]')}>
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h3 className={sectionTitleClass}>Basic Setting</h3>
-          <span className={clsx('rounded-full border px-2 py-1 text-[9px] font-black capitalize', tone.soft)}>
+      <section className={clsx('policy-card h-100', layout === 'whitelist' && 'h-100')}>
+        <div className="policy-top">
+          <div>
+            <h4>Basic Setting</h4>
+            <p>Policy assignment, update interval and inheritance control.</p>
+          </div>
+          <span className={clsx('user-pill info text-capitalize', tone.soft)}>
             {policyDetail?.source || 'none'} policy
           </span>
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <div>
+
+        <div className="row g-3">
+          <div className="col-12 col-md-6">
             <label className={labelClass}>Policy ID</label>
             <input value={form.policyId || 'New Policy'} disabled className={fieldClass} />
           </div>
-          <div>
+          <div className="col-12 col-md-6">
             <label className={labelClass}>Result Update Interval (min.)</label>
             <input value={form.updateInterval} onChange={(event) => updateForm('updateInterval', event.target.value)} disabled={isInherited} className={fieldClass} />
           </div>
-          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-600">
-            <input type="checkbox" checked={form.inheritPolicy} disabled={selectedTarget?.type === 'root'} onChange={(event) => updateForm('inheritPolicy', event.target.checked)} /> Inherit Policy
-          </label>
-          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-600">
-            <input type="checkbox" checked={form.exception} disabled={isInherited} onChange={(event) => updateForm('exception', event.target.checked)} /> Do not apply restriction / Exception
-          </label>
+          <div className="col-12 col-md-6">
+            <label className="inline-check mb-0 h-100">
+              <input className="form-check-input" type="checkbox" checked={form.inheritPolicy} disabled={selectedTarget?.type === 'root'} onChange={(event) => updateForm('inheritPolicy', event.target.checked)} />
+              <span>Inherit Policy</span>
+            </label>
+          </div>
+          <div className="col-12 col-md-6">
+            <label className="inline-check mb-0 h-100">
+              <input className="form-check-input" type="checkbox" checked={form.exception} disabled={isInherited} onChange={(event) => updateForm('exception', event.target.checked)} />
+              <span>Do not apply restriction / Exception</span>
+            </label>
+          </div>
         </div>
+
         {isInherited && (
-          <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">
+          <div className="settings-inline-alert mt-3">
             This target is currently using an inherited policy{policyDetail?.sourceLabel ? ` from ${policyDetail.sourceLabel}` : ''}. Uncheck Inherit Policy to create or update a custom policy for the selected target.
           </div>
         )}
@@ -1828,26 +1919,39 @@ export default function AppWebRestriction() {
   }
 
   function renderPolicySettings() {
+    const settingsIntro = {
+      appBlacklist: 'Configure application blocking method, weekly schedule and package selection for the selected target.',
+      appWhitelist: 'Configure permitted software behaviour, process control, font control and software selection for the selected target.',
+      webRestriction: 'Configure website restriction behaviour, schedule and website list for the selected target.',
+    }[activeModule];
+
     if (activeModule === 'appWhitelist') {
       return (
-        <div className="space-y-4">
-          <div className="flex max-w-[760px] items-start gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-[11px] font-bold text-emerald-700">
-            <Info size={14} className="mt-0.5 shrink-0" />
-            <span>
-              Default Permitted Software policy controls process and font restrictions, then applies the selected permit software list to the currently selected target.
-            </span>
+        <div className="d-grid gap-3">
+          <div className="settings-helper-card">
+            <strong>{moduleConfig.label} Policy Settings</strong>
+            <span>{settingsIntro}</span>
           </div>
-          {renderBasicSettingsSection('whitelist')}
-          {renderWhitelistRestrictionSettings()}
-          <div className="max-w-[980px]">{renderWhitelistSelector()}</div>
+
+          <div className="role-grid">
+            {renderBasicSettingsSection('whitelist')}
+            {renderWhitelistRestrictionSettings()}
+          </div>
+
+          {renderWhitelistSelector()}
           {renderPolicyActionButtons()}
         </div>
       );
     }
 
     return (
-      <div className="space-y-4">
-        <div className="grid gap-4 xl:grid-cols-[1.05fr_1.4fr]">
+      <div className="d-grid gap-3">
+        <div className="settings-helper-card">
+          <strong>{moduleConfig.label} Policy Settings</strong>
+          <span>{settingsIntro}</span>
+        </div>
+
+        <div className="role-grid">
           {renderBasicSettingsSection()}
           {activeModule === 'appBlacklist' && renderAppRestrictionSettings()}
           {activeModule === 'webRestriction' && renderWebRestrictionSettings()}
@@ -1863,100 +1967,160 @@ export default function AppWebRestriction() {
   }
 
   function renderAppRestrictionSettings() {
+    const options: Array<[FormState['appRestrictType'], string, string]> = [
+      ['1', 'Restrict', 'Block the selected package list.'],
+      ['2', 'Warning Message + Restrict', 'Warn users and block the app.'],
+      ['3', 'Warning Message', 'Show warning without blocking.'],
+    ];
+
     return (
-      <section className="rounded-2xl border border-slate-200 p-4">
-        <h3 className={sectionTitleClass}>Restriction Method</h3>
-        <div className="mt-3 grid gap-2 md:grid-cols-3">
-          {[
-            ['1', 'Restrict'],
-            ['2', 'Warning Message + Restrict'],
-            ['3', 'Warning Message'],
-          ].map(([value, label]) => (
-            <label key={value} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-600">
-              <input type="radio" name="appRestrictType" checked={form.appRestrictType === value} disabled={isInherited} onChange={() => updateForm('appRestrictType', value as FormState['appRestrictType'])} /> {label}
-            </label>
+      <section className="policy-card h-100">
+        <div className="policy-top">
+          <div>
+            <h4>Restriction Method</h4>
+            <p>Choose how the app restriction policy responds when a selected package is detected.</p>
+          </div>
+          <span className="user-pill info">{appRestrictionLabel(form.appRestrictType)}</span>
+        </div>
+
+        <div className="row g-2">
+          {options.map(([value, label, helper]) => (
+            <div key={value} className="col-12 col-xl-4">
+              <label className={clsx('inline-check mb-0 h-100', form.appRestrictType === value && 'border-primary bg-primary-subtle text-primary')}>
+                <input className="form-check-input" type="radio" name="appRestrictType" checked={form.appRestrictType === value} disabled={isInherited} onChange={() => updateForm('appRestrictType', value)} />
+                <span>
+                  <strong className="d-block">{label}</strong>
+                  <small className="d-block text-muted fw-bold">{helper}</small>
+                </span>
+              </label>
+            </div>
           ))}
         </div>
+
         <div className="mt-3">
           <label className={labelClass}>Warning Message</label>
-          <textarea value={form.appNoticeMessage} onChange={(event) => updateForm('appNoticeMessage', event.target.value)} disabled={isInherited} className="min-h-[74px] w-full rounded-xl border border-slate-200 p-3 text-[11px] font-bold text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100" />
+          <textarea value={form.appNoticeMessage} onChange={(event) => updateForm('appNoticeMessage', event.target.value)} disabled={isInherited} className="setting-textarea" placeholder="Message shown to the user when this policy triggers." />
         </div>
-        <label className="mt-3 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-600">
-          <input type="checkbox" checked={form.versionCompare} disabled={isInherited} onChange={(event) => updateForm('versionCompare', event.target.checked)} /> Version comparison
+
+        <label className="inline-check mt-3 mb-0">
+          <input className="form-check-input" type="checkbox" checked={form.versionCompare} disabled={isInherited} onChange={(event) => updateForm('versionCompare', event.target.checked)} />
+          <span>Version comparison</span>
         </label>
       </section>
     );
   }
 
   function renderWhitelistRestrictionSettings() {
-    return (
-      <section className="space-y-4">
-        <div className="max-w-[760px] rounded-2xl border border-slate-200 p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className={sectionTitleClass}>Restriction of Process</h3>
-            <span className="text-[10px] font-bold text-slate-400">
-              {form.processNoticeMessage.length}letter(s) entered
-            </span>
-          </div>
-          <div className="grid gap-2">
-            {[
-              ['0', 'None'],
-              ['1', 'Warning Message'],
-              ['2', 'Restriction'],
-              ['3', 'Warning Message + Restriction'],
-            ].map(([value, label]) => (
-              <label key={value} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-600">
-                <input type="radio" name="processRestrictType" checked={form.processRestrictType === value} disabled={isInherited} onChange={() => updateForm('processRestrictType', value as FormState['processRestrictType'])} /> {label}
-              </label>
-            ))}
-          </div>
-          <label className={clsx(labelClass, 'mt-3')}>Notice Message (max 249 characters)</label>
-          <textarea maxLength={249} value={form.processNoticeMessage} onChange={(event) => updateForm('processNoticeMessage', event.target.value)} disabled={isInherited} className="min-h-[76px] w-full rounded-xl border border-slate-200 p-3 text-[11px] font-bold text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100" />
-        </div>
+    const processOptions: Array<[FormState['processRestrictType'], string]> = [
+      ['0', 'None'],
+      ['1', 'Warning Message'],
+      ['2', 'Restriction'],
+      ['3', 'Warning Message + Restriction'],
+    ];
 
-        <div className="max-w-[760px] rounded-2xl border border-slate-200 p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className={sectionTitleClass}>Restriction of Font</h3>
-            <span className="text-[10px] font-bold text-slate-400">
-              {form.fontNoticeMessage.length}letter(s) entered
-            </span>
+    const fontOptions: Array<[FormState['fontRestrictType'], string]> = [
+      ['0', 'None'],
+      ['1', 'Warning Message'],
+      ['2', 'Delete Font File'],
+      ['3', 'Warning Message + Delete Font File'],
+    ];
+
+    return (
+      <>
+        <section className="policy-card h-100">
+          <div className="policy-top">
+            <div>
+              <h4>Restriction of Process</h4>
+              <p>Control process behaviour for software outside the permitted list.</p>
+            </div>
+            <span className="user-pill info">{whitelistProcessLabel(form.processRestrictType)}</span>
           </div>
-          <div className="grid gap-2">
-            {[
-              ['0', 'None'],
-              ['1', 'Warning Message'],
-              ['2', 'Delete Font File'],
-              ['3', 'Warning Message + Delete Font File'],
-            ].map(([value, label]) => (
-              <label key={value} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-600">
-                <input type="radio" name="fontRestrictType" checked={form.fontRestrictType === value} disabled={isInherited} onChange={() => updateForm('fontRestrictType', value as FormState['fontRestrictType'])} /> {label}
-              </label>
+
+          <div className="row g-2">
+            {processOptions.map(([value, label]) => (
+              <div key={value} className="col-12 col-sm-6">
+                <label className={clsx('inline-check mb-0 h-100', form.processRestrictType === value && 'border-primary bg-primary-subtle text-primary')}>
+                  <input className="form-check-input" type="radio" name="processRestrictType" checked={form.processRestrictType === value} disabled={isInherited} onChange={() => updateForm('processRestrictType', value)} />
+                  <span>{label}</span>
+                </label>
+              </div>
             ))}
           </div>
-          <label className={clsx(labelClass, 'mt-3')}>Notice Message (max 249 characters)</label>
-          <textarea maxLength={249} value={form.fontNoticeMessage} onChange={(event) => updateForm('fontNoticeMessage', event.target.value)} disabled={isInherited} className="min-h-[76px] w-full rounded-xl border border-slate-200 p-3 text-[11px] font-bold text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100" />
-        </div>
-      </section>
+
+          <div className="mt-3">
+            <div className="d-flex align-items-center justify-content-between gap-2">
+              <label className={labelClass}>Notice Message (max 249 characters)</label>
+              <span className="user-pill muted-cell">{form.processNoticeMessage.length}/249</span>
+            </div>
+            <textarea maxLength={249} value={form.processNoticeMessage} onChange={(event) => updateForm('processNoticeMessage', event.target.value)} disabled={isInherited} className="setting-textarea" placeholder="Message shown when the process policy triggers." />
+          </div>
+        </section>
+
+        <section className="policy-card h-100">
+          <div className="policy-top">
+            <div>
+              <h4>Restriction of Font</h4>
+              <p>Control font file handling for software outside the permitted list.</p>
+            </div>
+            <span className="user-pill info">{whitelistFontLabel(form.fontRestrictType)}</span>
+          </div>
+
+          <div className="row g-2">
+            {fontOptions.map(([value, label]) => (
+              <div key={value} className="col-12 col-sm-6">
+                <label className={clsx('inline-check mb-0 h-100', form.fontRestrictType === value && 'border-primary bg-primary-subtle text-primary')}>
+                  <input className="form-check-input" type="radio" name="fontRestrictType" checked={form.fontRestrictType === value} disabled={isInherited} onChange={() => updateForm('fontRestrictType', value)} />
+                  <span>{label}</span>
+                </label>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-3">
+            <div className="d-flex align-items-center justify-content-between gap-2">
+              <label className={labelClass}>Notice Message (max 249 characters)</label>
+              <span className="user-pill muted-cell">{form.fontNoticeMessage.length}/249</span>
+            </div>
+            <textarea maxLength={249} value={form.fontNoticeMessage} onChange={(event) => updateForm('fontNoticeMessage', event.target.value)} disabled={isInherited} className="setting-textarea" placeholder="Message shown when the font policy triggers." />
+          </div>
+        </section>
+      </>
     );
   }
 
   function renderWebRestrictionSettings() {
+    const options: Array<[FormState['webRestrictType'], string, string]> = [
+      ['1', 'Block Website List', 'Deny access to websites in the list.'],
+      ['2', 'Only Allow Website List', 'Allow only websites in the list.'],
+    ];
+
     return (
-      <section className="rounded-2xl border border-slate-200 p-4">
-        <h3 className={sectionTitleClass}>Restriction Type</h3>
-        <div className="mt-3 grid gap-2 md:grid-cols-2">
-          {[
-            ['1', 'Block Website List'],
-            ['2', 'Only Allow Website List'],
-          ].map(([value, label]) => (
-            <label key={value} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-600">
-              <input type="radio" name="webRestrictType" checked={form.webRestrictType === value} disabled={isInherited} onChange={() => updateForm('webRestrictType', value as FormState['webRestrictType'])} /> {label}
-            </label>
+      <section className="policy-card h-100">
+        <div className="policy-top">
+          <div>
+            <h4>Restriction Type</h4>
+            <p>Choose whether the website list is treated as a block list or an allow list.</p>
+          </div>
+          <span className="user-pill info">{webRestrictionLabel(form.webRestrictType)}</span>
+        </div>
+
+        <div className="row g-2">
+          {options.map(([value, label, helper]) => (
+            <div key={value} className="col-12 col-md-6">
+              <label className={clsx('inline-check mb-0 h-100', form.webRestrictType === value && 'border-primary bg-primary-subtle text-primary')}>
+                <input className="form-check-input" type="radio" name="webRestrictType" checked={form.webRestrictType === value} disabled={isInherited} onChange={() => updateForm('webRestrictType', value)} />
+                <span>
+                  <strong className="d-block">{label}</strong>
+                  <small className="d-block text-muted fw-bold">{helper}</small>
+                </span>
+              </label>
+            </div>
           ))}
         </div>
+
         <div className="mt-3">
           <label className={labelClass}>Move to default URL</label>
-          <input value={form.defaultUrl} onChange={(event) => updateForm('defaultUrl', event.target.value)} disabled={isInherited} className={fieldClass} />
+          <input value={form.defaultUrl} onChange={(event) => updateForm('defaultUrl', event.target.value)} disabled={isInherited} className={fieldClass} placeholder="127.0.0.1" />
         </div>
       </section>
     );
@@ -1964,43 +2128,50 @@ export default function AppWebRestriction() {
 
   function renderWeeklyAndSchedule() {
     return (
-      <section className="grid gap-4 xl:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className={sectionTitleClass}>Weekly Policy</h3>
-            <label className="flex items-center gap-2 text-[11px] font-bold text-slate-600">
-              <input type="checkbox" checked={form.weeklyPolicy} disabled={isInherited} onChange={(event) => updateForm('weeklyPolicy', event.target.checked)} /> Enable
+      <section className="role-grid">
+        <div className="policy-card h-100">
+          <div className="policy-top">
+            <div>
+              <h4>Weekly Policy</h4>
+              <p>Select the days where this policy should be active.</p>
+            </div>
+            <label className="inline-check mb-0">
+              <input className="form-check-input" type="checkbox" checked={form.weeklyPolicy} disabled={isInherited} onChange={(event) => updateForm('weeklyPolicy', event.target.checked)} />
+              <span>Enable</span>
             </label>
           </div>
-          <div className="grid grid-cols-7 gap-2">
+
+          <div className="row g-2 row-cols-2 row-cols-sm-4 row-cols-lg-7">
             {dayOptions.map((day) => (
-              <button
-                key={day}
-                type="button"
-                disabled={!form.weeklyPolicy || isInherited}
-                onClick={() => toggleDay(day)}
-                className={clsx(
-                  'h-9 rounded-xl border text-[10px] font-black transition disabled:cursor-not-allowed disabled:opacity-50',
-                  selectedDays.includes(day) ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-slate-50 text-slate-500',
-                )}
-              >
-                {day}
-              </button>
+              <div key={day} className="col">
+                <button
+                  type="button"
+                  disabled={!form.weeklyPolicy || isInherited}
+                  onClick={() => toggleDay(day)}
+                  className={clsx('w-100', selectedDays.includes(day) ? 'primary-btn' : 'soft-btn')}
+                >
+                  {day}
+                </button>
+              </div>
             ))}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className={sectionTitleClass}>Restricted Time</h3>
-            <div className="flex overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-1">
-              <button type="button" disabled={isInherited} onClick={() => updateForm('useSchedule', false)} className={clsx('h-7 rounded-lg px-3 text-[10px] font-black', !form.useSchedule ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500')}>All Day</button>
-              <button type="button" disabled={isInherited} onClick={() => updateForm('useSchedule', true)} className={clsx('h-7 rounded-lg px-3 text-[10px] font-black', form.useSchedule ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500')}>Schedule</button>
+        <div className="policy-card h-100">
+          <div className="policy-top">
+            <div>
+              <h4>Restricted Time</h4>
+              <p>Run the policy all day or only during selected time ranges.</p>
+            </div>
+            <div className="content-actions">
+              <button type="button" disabled={isInherited} onClick={() => updateForm('useSchedule', false)} className={clsx(!form.useSchedule ? 'primary-btn' : 'soft-btn')}>All Day</button>
+              <button type="button" disabled={isInherited} onClick={() => updateForm('useSchedule', true)} className={clsx(form.useSchedule ? 'primary-btn' : 'soft-btn')}>Schedule</button>
             </div>
           </div>
-          <div className="grid gap-2 md:grid-cols-2">
+
+          <div className="row g-3">
             {(['schedule1', 'schedule2', 'schedule3', 'schedule4'] as const).map((key, index) => (
-              <div key={key}>
+              <div key={key} className="col-12 col-md-6">
                 <label className={labelClass}>Schedule {index + 1} (HH:mm-HH:mm)</label>
                 <input value={form[key]} onChange={(event) => updateForm(key, event.target.value)} placeholder="09:00-18:00" disabled={!form.useSchedule || isInherited} className={fieldClass} />
               </div>
@@ -2046,70 +2217,110 @@ export default function AppWebRestriction() {
   }
 
   function renderWebsiteSelector() {
+    const policyUrlPagination = getPaginationState<string>(webUrls, webPolicyPage);
+    const groupUrlPagination = getPaginationState<WebGroupUrl>(webGroupUrls, webGroupUrlPage);
+
     return (
-      <section className="grid gap-4 xl:grid-cols-[1.35fr_1fr]">
-        <div className="rounded-2xl border border-slate-200 p-4">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h3 className={sectionTitleClass}>Website List</h3>
-            <span className="text-[10px] font-black text-slate-400">{webUrls.length} URLs</span>
+      <section className="role-grid">
+        <div className="policy-card h-100">
+          <div className="policy-top">
+            <div>
+              <h4>Website List</h4>
+              <p>Add website domains for the selected web restriction policy.</p>
+            </div>
+            <span className="user-pill info">{webUrls.length} URL{webUrls.length === 1 ? '' : 's'}</span>
           </div>
-          <div className="mb-3 flex gap-2">
+
+          <div className="d-flex gap-2 mb-3">
             <input value={newUrl} onChange={(event) => setNewUrl(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && addPolicyUrl()} placeholder="example.com" disabled={isInherited} className={fieldClass} />
-            <button type="button" onClick={addPolicyUrl} disabled={isInherited} className="inline-flex h-8 items-center gap-1 rounded-lg bg-blue-600 px-3 text-[10px] font-black text-white disabled:bg-slate-300">
-              <Plus size={13} /> Add
-            </button>
+            <AppButton size="sm" variant="primary" onClick={addPolicyUrl} disabled={isInherited} leftIcon={<Plus size={13} />}>
+              Add
+            </AppButton>
           </div>
-          <div className="max-h-64 overflow-auto rounded-xl border border-slate-200">
-            {webUrls.length === 0 ? (
-              <div className="p-6 text-center text-[11px] font-bold text-slate-400">No URLs added to this policy.</div>
-            ) : webUrls.map((url) => (
-              <div key={url} className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 last:border-b-0">
-                <div className="flex min-w-0 items-center gap-2 text-[11px] font-bold text-slate-700">
-                  <LinkIcon size={13} className="shrink-0 text-slate-400" />
-                  <span className="truncate">{url}</span>
+
+          <div className="appweb-list-panel rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="appweb-list-scroll p-0">
+              {webUrls.length === 0 ? (
+                <div className="p-4 text-center text-muted fw-bold small">No URLs added to this policy.</div>
+              ) : policyUrlPagination.pageItems.map((url) => (
+                <div key={url} className="user-row" style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}>
+                  <div className="user-cell user-name">
+                    <span className="user-mini-avatar"><LinkIcon size={13} /></span>
+                    <strong>{url}</strong>
+                  </div>
+                  <div className="user-cell text-end">
+                    <button
+                      type="button"
+                      disabled={isInherited}
+                      onClick={() => {
+                        setWebUrls((previous) => previous.filter((item) => item !== url));
+                        setMessage(`${url} removed from website list.`);
+                      }}
+                      className="icon-delete-btn"
+                      aria-label={`Remove ${url}`}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  disabled={isInherited}
-                  onClick={() => {
-                    setWebUrls((previous) => previous.filter((item) => item !== url));
-                    setMessage(`${url} removed from website list.`);
-                  }}
-                  className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            ))}
+              ))}
+            </div>
+            <CompactPagination
+              page={policyUrlPagination.safePage}
+              totalPages={policyUrlPagination.totalPages}
+              totalCount={webUrls.length}
+              onPageChange={setWebPolicyPage}
+            />
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 p-4">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h3 className={sectionTitleClass}>Website Group</h3>
-            <div className="flex gap-2">
-              <button type="button" onClick={openWebGroupManager} className="inline-flex h-7 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-[9px] font-black text-slate-600 hover:bg-slate-50">
-                <Globe size={12} /> Edit Website Group
-              </button>
-              <button type="button" onClick={addGroupUrlsToPolicy} disabled={isInherited || webGroupUrls.length === 0} className="inline-flex h-7 items-center gap-1 rounded-lg border border-blue-100 bg-blue-50 px-2 text-[9px] font-black text-blue-700 disabled:opacity-40">
-                <ArrowLeft size={12} /> Add Group URLs
-              </button>
+        <div className="policy-card h-100">
+          <div className="policy-top">
+            <div>
+              <h4>Website Group</h4>
+              <p>Select a saved website group and add its URLs into this policy.</p>
             </div>
+            <span className="user-pill info">{webGroupUrls.length} URL{webGroupUrls.length === 1 ? '' : 's'}</span>
           </div>
-          <select value={selectedWebsiteGroupId || ''} onChange={(event) => setSelectedWebsiteGroupId(Number(event.target.value) || null)} className={fieldClass}>
-            <option value="">Select group</option>
-            {webGroups.map((group) => (
-              <option key={group.idx} value={group.idx}>{group.name} ({group.url_count || 0})</option>
-            ))}
-          </select>
-          <div className="mt-3 max-h-64 overflow-auto rounded-xl border border-slate-200">
-            {webGroupUrls.length === 0 ? (
-              <div className="p-6 text-center text-[11px] font-bold text-slate-400">No URLs found in selected website group.</div>
-            ) : webGroupUrls.map((item) => (
-              <div key={`${item.idx}-${item.seq}`} className="flex items-center gap-2 border-b border-slate-100 px-3 py-2 text-[11px] font-bold text-slate-700 last:border-b-0">
-                <Globe size={13} className="text-slate-400" /> <span className="truncate">{item.url}</span>
-              </div>
-            ))}
+
+          <div className="content-actions justify-content-start mb-3">
+            <AppButton size="sm" variant="secondary" onClick={openWebGroupManager} leftIcon={<Globe size={13} />}>
+              Edit Website Group
+            </AppButton>
+            <AppButton size="sm" variant="secondary" onClick={addGroupUrlsToPolicy} disabled={isInherited || webGroupUrls.length === 0} leftIcon={<ArrowLeft size={13} />}>
+              Add Group URLs
+            </AppButton>
+          </div>
+
+          <div className="mb-3">
+            <label className={labelClass}>Website Group</label>
+            <select value={selectedWebsiteGroupId || ''} onChange={(event) => setSelectedWebsiteGroupId(Number(event.target.value) || null)} className={fieldClass}>
+              <option value="">Select group</option>
+              {webGroups.map((group) => (
+                <option key={group.idx} value={group.idx}>{group.name} ({group.url_count || 0})</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="appweb-list-panel rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="appweb-list-scroll p-0">
+              {webGroupUrls.length === 0 ? (
+                <div className="p-4 text-center text-muted fw-bold small">No URLs found in selected website group.</div>
+              ) : groupUrlPagination.pageItems.map((item) => (
+                <div key={`${item.idx}-${item.seq}`} className="user-row" style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>
+                  <div className="user-cell user-name">
+                    <span className="user-mini-avatar"><Globe size={13} /></span>
+                    <strong>{item.url}</strong>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <CompactPagination
+              page={groupUrlPagination.safePage}
+              totalPages={groupUrlPagination.totalPages}
+              totalCount={webGroupUrls.length}
+              onPageChange={setWebGroupUrlPage}
+            />
           </div>
         </div>
       </section>
@@ -2118,11 +2329,7 @@ export default function AppWebRestriction() {
 
   function renderPolicyStatus() {
     const rows = Array.isArray(policyRows) ? policyRows : [];
-    type PolicyTableRow = RestrictionPolicyRow & { __rowKey: string };
-    const tableRows: PolicyTableRow[] = rows.map((row, index) => ({
-      ...row,
-      __rowKey: `${row.policy_id || index}-${row.target_type || 'target'}-${row.target_id || index}`,
-    }));
+    type PolicyTableRow = RestrictionPolicyRow & Record<string, any>;
 
     const columns: AppTableColumn<PolicyTableRow>[] = [
       {
@@ -2163,8 +2370,8 @@ export default function AppWebRestriction() {
         <AppTable<PolicyTableRow>
           className="appweb-large-data-card appweb-policy-status-table"
           columns={columns}
-          rows={tableRows}
-          rowKey="__rowKey"
+          rows={rows as PolicyTableRow[]}
+          rowKey={(row, index) => getFastRowKey(row, index, ['policy_id', 'target_id', 'Version', 'version'])}
           loading={loading}
           emptyTitle="No custom policy status"
           emptyDescription="No custom policy status found for this scope."
@@ -2737,24 +2944,31 @@ function DualListSection({
   onMoveRight,
 }: DualListSectionProps) {
   return (
-    <section className="rounded-2xl border border-slate-200 p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className={sectionTitleClass}>{title}</h3>
-        <div className="relative w-full max-w-xs">
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="Search software or package" className="h-8 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-2 text-[11px] font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
+    <section className="policy-card">
+      <div className="policy-top">
+        <div>
+          <h4>{title}</h4>
+          <p>Move items between the available list and the policy selection list.</p>
         </div>
+        <label className="section-search mb-0" style={{ maxWidth: '22rem' }}>
+          <Search size={14} />
+          <input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="Search software or package" />
+        </label>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr]">
-        <ListPanel title={leftTitle} items={leftItems} emptyText="No selected items." actionIcon={ArrowRight} disabled={disabled} onAction={onMoveRight} />
-        <div className="flex items-center justify-center">
-          <div className="flex flex-col gap-2 text-slate-300">
+      <div className="row g-3 align-items-stretch">
+        <div className="col-12 col-lg-5">
+          <ListPanel title={leftTitle} items={leftItems} emptyText="No selected items." actionIcon={ArrowRight} disabled={disabled} onAction={onMoveRight} />
+        </div>
+        <div className="col-12 col-lg-2 d-flex align-items-center justify-content-center">
+          <div className="d-flex flex-lg-column gap-2 text-muted">
             <ArrowLeft size={18} />
             <ArrowRight size={18} />
           </div>
         </div>
-        <ListPanel title={rightTitle} items={rightItems} emptyText="No available items." actionIcon={ArrowLeft} disabled={disabled} onAction={onMoveLeft} />
+        <div className="col-12 col-lg-5">
+          <ListPanel title={rightTitle} items={rightItems} emptyText="No available items." actionIcon={ArrowLeft} disabled={disabled} onAction={onMoveLeft} />
+        </div>
       </div>
     </section>
   );
@@ -2770,27 +2984,48 @@ type ListPanelProps = {
 };
 
 function ListPanel({ title, items, emptyText, actionIcon: ActionIcon, disabled, onAction }: ListPanelProps) {
+  const [page, setPage] = useState(1);
+  const itemSignature = `${items.length}:${items[0]?.id || ''}:${items[items.length - 1]?.id || ''}`;
+  const pagination = getPaginationState<DualListItem>(items, page);
+
+  useEffect(() => {
+    setPage(1);
+  }, [itemSignature, title]);
+
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200">
-      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-3 py-2">
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{title}</p>
-        <span className="rounded-full bg-white px-2 py-0.5 text-[9px] font-black text-slate-400 shadow-sm">{items.length}</span>
+    <div className="appweb-list-panel rounded-2xl border border-slate-200 overflow-hidden h-100">
+      <div className="user-row head" style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}>
+        <div className="user-cell">{title}</div>
+        <div className="user-cell text-end">
+          <span className="row-index-pill">{items.length}</span>
+        </div>
       </div>
-      <div className="max-h-72 overflow-auto bg-white">
+      <div className="appweb-list-scroll p-0">
         {items.length === 0 ? (
-          <div className="p-6 text-center text-[11px] font-bold text-slate-400">{emptyText}</div>
-        ) : items.map((item) => (
-          <div key={item.id} className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 last:border-b-0 hover:bg-slate-50">
-            <div className="min-w-0">
-              <p className="truncate text-[11px] font-black text-slate-700">{item.title}</p>
-              <p className="truncate text-[10px] font-bold text-slate-400">{item.meta || '-'}</p>
+          <div className="p-4 text-center text-muted fw-bold small">{emptyText}</div>
+        ) : pagination.pageItems.map((item) => (
+          <div key={item.id} className="user-row" style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}>
+            <div className="user-cell user-name">
+              <span className="user-mini-avatar"><Package size={13} /></span>
+              <span className="min-w-0">
+                <strong>{item.title}</strong>
+                <small>{item.meta || '-'}</small>
+              </span>
             </div>
-            <button type="button" disabled={disabled} onClick={() => onAction(item.id)} className="rounded-lg border border-slate-200 p-1.5 text-slate-400 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40">
-              <ActionIcon size={13} />
-            </button>
+            <div className="user-cell text-end">
+              <button type="button" disabled={disabled} onClick={() => onAction(item.id)} className="icon-action-btn edit" aria-label={`Move ${item.title}`}>
+                <ActionIcon size={13} />
+              </button>
+            </div>
           </div>
         ))}
       </div>
+      <CompactPagination
+        page={pagination.safePage}
+        totalPages={pagination.totalPages}
+        totalCount={items.length}
+        onPageChange={setPage}
+      />
     </div>
   );
 }
@@ -2806,4 +3041,16 @@ function whitelistProcessLabel(value: string) {
   if (value === '2') return 'Restriction';
   if (value === '3') return 'Warn + restrict';
   return 'None';
+}
+
+function whitelistFontLabel(value: string) {
+  if (value === '1') return 'Warning';
+  if (value === '2') return 'Delete font file';
+  if (value === '3') return 'Warn + delete';
+  return 'None';
+}
+
+function webRestrictionLabel(value: string) {
+  if (value === '2') return 'Allow list only';
+  return 'Block list';
 }
