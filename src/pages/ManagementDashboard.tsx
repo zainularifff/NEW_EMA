@@ -170,6 +170,7 @@ type EvidenceRow = {
   riskScore?: number | string;
   riskSeverity?: string;
   replacementCost?: string;
+  [key: string]: unknown;
 };
 
 type ExecutiveStory = {
@@ -1011,6 +1012,14 @@ body.md-dashboard-page-active .content-area {
   border-radius: 12px !important;
 }
 
+.md-domain-row.is-muted {
+  opacity: .58;
+  cursor: not-allowed;
+}
+.md-domain-row.is-muted:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
 @media (max-width: 1180px) {
   .md-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .md-top-row, .md-bottom-grid { grid-template-columns: 1fr; }
@@ -3202,6 +3211,223 @@ body.md-dashboard-page-active .content-area {
   .md-visual-donut-row { grid-template-columns: 1fr; justify-items: center; }
 }
 
+
+/* De-duplicated management overview: one meaning per section */
+.md-kpi-grid.md-exec-kpi-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+}
+.md-overview-grid {
+  grid-template-columns: minmax(0, 1.45fr) minmax(360px, .55fr) !important;
+  align-items: stretch !important;
+}
+.md-domain-card {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.md-domain-list {
+  display: grid;
+  gap: 9px;
+  margin-top: 6px;
+}
+.md-domain-row {
+  width: 100%;
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(203, 213, 225, .74);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+  padding: 10px 11px;
+  text-align: left;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+.md-domain-row:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, .28);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, .07);
+}
+.md-domain-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #fff;
+}
+.md-domain-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.md-domain-copy strong {
+  color: #10233f;
+  font-family: var(--md-display-font) !important;
+  font-size: 12.5px;
+  line-height: 1.12;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+}
+.md-domain-copy span {
+  color: #64748b;
+  font-size: 10.5px;
+  line-height: 1.32;
+  font-weight: 700;
+}
+.md-domain-score {
+  min-width: 86px;
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  color: #0f172a;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.md-domain-score strong {
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+.md-domain-score span {
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 750;
+}
+.md-action-only-grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+.md-action-card-wide {
+  min-width: 0;
+}
+.md-chart-summary .md-chart-context {
+  color: #64748b;
+  font-size: 10.5px;
+  line-height: 1.35;
+  font-weight: 750;
+}
+@media (max-width: 1180px) {
+  .md-kpi-grid.md-exec-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .md-overview-grid { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 680px) {
+  .md-kpi-grid.md-exec-kpi-grid { grid-template-columns: 1fr !important; }
+  .md-domain-row { grid-template-columns: 34px minmax(0, 1fr); }
+  .md-domain-score { grid-column: 2; justify-items: start; min-width: 0; }
+}
+
+
+/* Monthly Exposure Intelligence compact layout */
+.md-chart-card {
+  display: grid !important;
+  align-content: start !important;
+  gap: 12px !important;
+  min-height: auto !important;
+  padding: 16px 18px !important;
+}
+.md-chart-card .md-card-head {
+  margin-bottom: 0 !important;
+}
+.md-chart-layout {
+  grid-template-columns: minmax(206px, 0.24fr) minmax(0, 1fr) !important;
+  gap: 18px !important;
+  align-items: start !important;
+}
+.md-chart-panel {
+  min-height: 322px !important;
+  align-self: start !important;
+}
+.md-chart-svg {
+  height: 310px !important;
+}
+.md-chart-summary > div {
+  min-height: 80px !important;
+}
+.md-chart-context {
+  min-height: 62px !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 10px 12px !important;
+  border: 1px solid rgba(226,232,240,.82) !important;
+  border-radius: 14px !important;
+  background: rgba(248,251,255,.74) !important;
+}
+.md-exposure-insight-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 2px;
+}
+.md-exposure-insight {
+  --insight-a: #2563eb;
+  min-width: 0;
+  min-height: 86px;
+  display: grid;
+  align-content: space-between;
+  gap: 7px;
+  border: 1px solid rgba(203,213,225,.78);
+  border-radius: 16px;
+  padding: 12px 13px;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--insight-a) 14%, transparent), transparent 8rem),
+    linear-gradient(135deg, #ffffff, #f8fbff);
+  text-align: left;
+  box-shadow: 0 9px 20px rgba(15,23,42,.045);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+.md-exposure-insight:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--insight-a) 34%, rgba(203,213,225,.78));
+  box-shadow: 0 14px 28px rgba(15,23,42,.075);
+}
+.md-exposure-insight.tone-blue { --insight-a: #2563eb; }
+.md-exposure-insight.tone-red { --insight-a: #e11d48; }
+.md-exposure-insight.tone-amber { --insight-a: #f59e0b; }
+.md-exposure-insight.tone-pink { --insight-a: #db2777; }
+.md-exposure-insight.tone-green { --insight-a: #059669; }
+.md-exposure-insight span {
+  color: #64748b;
+  font-size: 9.8px;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: .065em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.md-exposure-insight strong {
+  color: #0f172a;
+  font-family: var(--md-display-font) !important;
+  font-size: clamp(20px, 1.55vw, 27px);
+  line-height: .98;
+  font-weight: 920;
+  letter-spacing: -.06em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.md-exposure-insight small {
+  color: #5b6f89;
+  font-size: 10.3px;
+  line-height: 1.32;
+  font-weight: 670;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+@media (max-width: 1180px) {
+  .md-exposure-insight-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 680px) {
+  .md-exposure-insight-strip { grid-template-columns: 1fr; }
+}
+
 `;
 
 function Icon({ name, className = "" }: { name: keyof typeof IconSet; className?: string }) {
@@ -3359,11 +3585,17 @@ function parseActionTarget(action: BoardAction) {
 }
 
 function getDrillValue(row: DrillRow, area?: string) {
-  if (row.valueFmt) return row.valueFmt;
-  if (area === "resources") return `${Number(row.count || 0).toLocaleString()} endpoint(s)`;
-  if (area === "compliance") return row.key === "pricing-coverage" ? `${Number(row.value || 0)}%` : `${Number(row.count || 0).toLocaleString()} record(s)`;
-  if (area === "actions") return row.value ? formatMoney(row.value) : "Decision item";
-  return row.value ? formatMoney(row.value) : `${Number(row.count || 0).toLocaleString()} record(s)`;
+  const areaKey = String(area || "").toLowerCase();
+  const rowValue = getRowValue(row);
+  if (isEvidenceOnlyArea(areaKey)) {
+    if (row.valueFmt && !/^RM\s/i.test(row.valueFmt)) return row.valueFmt;
+    return formatEvidenceCount(row, "evidence record(s)");
+  }
+  if (row.valueFmt && !isZeroMoneyText(row.valueFmt)) return row.valueFmt;
+  if (areaKey === "resources") return `${Number(row.count || 0).toLocaleString()} endpoint(s)`;
+  if (areaKey === "compliance") return row.key === "pricing-coverage" ? `${Number(row.value || 0)}%` : `${Number(row.count || 0).toLocaleString()} record(s)`;
+  if (areaKey === "actions") return rowValue > 0 ? formatMoney(rowValue) : "Decision item";
+  return rowValue > 0 ? formatMoney(rowValue) : `${Number(row.count || 0).toLocaleString()} record(s)`;
 }
 
 function drillNumber(value: unknown) {
@@ -3383,9 +3615,24 @@ function drillMoneyFromText(value: unknown) {
 }
 
 function getRowValue(row: DrillRow) {
-  return drillNumber(row.value) || drillMoneyFromText(row.valueFmt);
+  const rawValue = drillNumber(row.value);
+  const moneyTextValue = drillMoneyFromText(row.valueFmt);
+  if (rawValue > 0) return rawValue;
+  if (moneyTextValue > 0) return moneyTextValue;
+  return 0;
 }
 
+function isEvidenceOnlyArea(area?: string) {
+  return ["software", "network", "geolocation", "service", "servicedesk", "service-desk"].includes(String(area || "").toLowerCase());
+}
+
+function isZeroMoneyText(value?: string) {
+  return /^RM\s*0(?:\.00)?$/i.test(String(value || "").trim());
+}
+
+function formatEvidenceCount(row: DrillRow, unit = "record(s)") {
+  return `${Number(row.count || 0).toLocaleString()} ${unit}`;
+}
 
 
 type BreakdownVisualItem = {
@@ -3454,7 +3701,11 @@ function getVisualMeasure(row: DrillRow, area?: string) {
 
 function formatVisualMeasure(row: DrillRow, area?: string) {
   const measure = getVisualMeasure(row, area);
-  if (measure.mode === "money") return row.valueFmt || formatMoney(measure.value);
+  if (isEvidenceOnlyArea(area)) {
+    if (row.valueFmt && !/^RM\s/i.test(row.valueFmt)) return row.valueFmt;
+    return formatEvidenceCount(row, "evidence record(s)");
+  }
+  if (measure.mode === "money") return row.valueFmt && !isZeroMoneyText(row.valueFmt) ? row.valueFmt : formatMoney(measure.value);
   if (row.valueFmt && !/^RM\s/i.test(row.valueFmt)) return row.valueFmt;
   return `${Math.round(measure.value).toLocaleString()} record(s)`;
 }
@@ -3629,6 +3880,7 @@ function getRowLens(row: DrillRow, area?: string, maxValue = 1, totalCount = 0) 
   const label = String(row.label || "").toLowerCase();
   const rowValue = getRowValue(row);
   const rowCount = drillNumber(row.count);
+  const evidenceOnly = isEvidenceOnlyArea(area) || /evidence only|not costed|not priced/i.test(`${row.costType || ""} ${row.confidence || ""} ${row.valueFmt || ""}`);
   const progress = Math.max(6, Math.min(100, Math.round(((rowValue || rowCount) / Math.max(1, rowValue ? maxValue : totalCount)) * 100)));
   const tone = normalizeTone(row.tone || (rowValue > 0 ? "blue" : rowCount > 0 ? "purple" : "slate"));
 
@@ -3636,12 +3888,12 @@ function getRowLens(row: DrillRow, area?: string, maxValue = 1, totalCount = 0) 
     tone,
     progress,
     impactType: row.impactType || "Operational",
-    costType: row.costType || (rowValue > 0 ? "Recorded cost" : "Evidence only"),
+    costType: row.costType || (rowValue > 0 && !evidenceOnly ? "Recorded cost" : "Evidence only"),
     riskType: row.riskType || "Management signal",
-    confidence: row.confidence || (rowValue > 0 && rowCount > 0 ? "Costed evidence" : rowCount > 0 ? "Evidence gap" : "Monitor"),
+    confidence: row.confidence || (rowValue > 0 && rowCount > 0 && !evidenceOnly ? "Costed evidence" : rowCount > 0 ? "Evidence gap" : "Monitor"),
     decision: row.decision || "Open evidence and assign owner",
     insight: row.insight || "This item needs evidence review before management can decide confidently.",
-    metricLabel: row.metricLabel || (rowValue > 0 ? "Recorded value" : "Evidence records"),
+    metricLabel: row.metricLabel || (rowValue > 0 && !evidenceOnly ? "Recorded value" : "Evidence records"),
   };
 
   if (/financial|capex|replacement|cost/.test(`${area} ${key} ${label}`)) {
@@ -3665,6 +3917,109 @@ function getRowLens(row: DrillRow, area?: string, maxValue = 1, totalCount = 0) 
 function readText(value: unknown, fallback = "-") {
   if (value === undefined || value === null || value === "") return fallback;
   return String(value);
+}
+
+
+function evidenceCellValue(row: EvidenceRow, keys: string | string[], fallback = "-") {
+  const list = Array.isArray(keys) ? keys : [keys];
+  for (const key of list) {
+    const value = row[key];
+    if (value !== undefined && value !== null && String(value).trim() !== "") return String(value);
+  }
+  return fallback;
+}
+
+function evidenceDomain(row: EvidenceRow) {
+  return evidenceCellValue(row, ["evidenceDomain", "category", "platform", "objectAgent"], "Uncategorised");
+}
+
+function evidenceKind(area?: string, key?: string, rows: EvidenceRow[] = []) {
+  const a = String(area || "").toLowerCase();
+  const k = String(key || "").toLowerCase();
+  const sample = rows[0] || {};
+  const agent = String(sample.evidenceType || sample.objectAgent || sample.platform || sample.category || "").toLowerCase();
+  if (/software/.test(`${a} ${k} ${agent}`)) return "software";
+  if (/network/.test(`${a} ${k} ${agent}`)) return "network";
+  if (/geo|location/.test(`${a} ${k} ${agent}`)) return "geolocation";
+  if (/service|ticket|incident|sla/.test(`${a} ${k} ${agent}`)) return "service";
+  return "hardware";
+}
+
+function evidenceRiskText(row: EvidenceRow) {
+  const severity = evidenceCellValue(row, ["riskSeverity", "severity"], "-");
+  const score = evidenceCellValue(row, ["riskScore", "score"], "");
+  return score ? `${severity} (${score})` : severity;
+}
+
+function evidenceCostText(row: EvidenceRow) {
+  const raw = evidenceCellValue(row, ["replacementCost", "replacementCostFmt", "cost", "costSource"], "");
+  if (!raw) return "Not priced";
+  if (/^(0|rm\s*0)$/i.test(raw.trim())) return "Not priced";
+  if (/not priced|not costed|evidence only|no cost/i.test(raw)) return "Not priced";
+  return raw;
+}
+
+function getEvidenceColumns(kind: string) {
+  if (kind === "software") {
+    return [
+      { label: "Software", render: (row: EvidenceRow) => evidenceCellValue(row, ["deviceName", "softwareName"]) },
+      { label: "Device / scope", render: (row: EvidenceRow) => evidenceCellValue(row, ["assetId", "department"], "Unmapped device") },
+      { label: "Publisher", render: (row: EvidenceRow) => evidenceCellValue(row, ["brand", "publisher"], "-") },
+      { label: "Version", render: (row: EvidenceRow) => evidenceCellValue(row, ["model", "version"], "-") },
+      { label: "Classification", render: (row: EvidenceRow) => evidenceDomain(row).replace(/^Software\s*\/\s*/i, "") },
+      { label: "Inventory status", render: (row: EvidenceRow) => evidenceCellValue(row, "status") },
+      { label: "Last scan", render: (row: EvidenceRow) => evidenceCellValue(row, ["lastSeen", "age"], "-") },
+      { label: "Risk", render: evidenceRiskText }
+    ];
+  }
+
+  if (kind === "network") {
+    return [
+      { label: "IP / network item", render: (row: EvidenceRow) => evidenceCellValue(row, ["ipAddress", "assetId", "deviceName"]) },
+      { label: "Host / owner", render: (row: EvidenceRow) => evidenceCellValue(row, ["deviceName", "department"], "-") },
+      { label: "Owner / scope", render: (row: EvidenceRow) => evidenceCellValue(row, ["department", "owner"], "Unmapped network") },
+      { label: "Network evidence", render: (row: EvidenceRow) => evidenceCellValue(row, ["model", "brand", "platform"], "-") },
+      { label: "Mapping status", render: (row: EvidenceRow) => evidenceCellValue(row, "status") },
+      { label: "Freshness", render: (row: EvidenceRow) => evidenceCellValue(row, ["lastSeen", "age"], "-") },
+      { label: "Risk", render: evidenceRiskText }
+    ];
+  }
+
+  if (kind === "geolocation") {
+    return [
+      { label: "Device", render: (row: EvidenceRow) => evidenceCellValue(row, ["assetId", "deviceName"]) },
+      { label: "Location / address", render: (row: EvidenceRow) => evidenceCellValue(row, ["department", "locationName"], "Unknown location") },
+      { label: "Coordinates", render: (row: EvidenceRow) => evidenceCellValue(row, ["model", "coordinates"], "No coordinates") },
+      { label: "Telemetry time", render: (row: EvidenceRow) => evidenceCellValue(row, ["lastSeen", "locationTime"], "-") },
+      { label: "Location state", render: (row: EvidenceRow) => evidenceCellValue(row, "status") },
+      { label: "Evidence issue", render: (row: EvidenceRow) => evidenceCellValue(row, ["age", "issue"], "-") },
+      { label: "Risk", render: evidenceRiskText }
+    ];
+  }
+
+  if (kind === "service") {
+    return [
+      { label: "Ticket", render: (row: EvidenceRow) => evidenceCellValue(row, ["assetId", "assetKey"]) },
+      { label: "Summary", render: (row: EvidenceRow) => evidenceCellValue(row, "deviceName") },
+      { label: "Customer / owner", render: (row: EvidenceRow) => evidenceCellValue(row, ["department", "owner"], "Service Desk") },
+      { label: "Priority", render: (row: EvidenceRow) => evidenceCellValue(row, "brand", "-") },
+      { label: "Queue / asset", render: (row: EvidenceRow) => evidenceCellValue(row, ["model", "ipAddress"], "-") },
+      { label: "Status", render: (row: EvidenceRow) => evidenceCellValue(row, "status") },
+      { label: "SLA / due", render: (row: EvidenceRow) => evidenceCellValue(row, ["age", "lastSeen"], "-") },
+      { label: "Risk", render: evidenceRiskText }
+    ];
+  }
+
+  return [
+    { label: "Device", render: (row: EvidenceRow) => evidenceCellValue(row, ["deviceName", "assetId"]) },
+    { label: "Owner / department", render: (row: EvidenceRow) => evidenceCellValue(row, "department", "Unassigned") },
+    { label: "Asset type", render: (row: EvidenceRow) => evidenceCellValue(row, "category") },
+    { label: "Brand / model", render: (row: EvidenceRow) => `${evidenceCellValue(row, "brand", "")} ${evidenceCellValue(row, "model", "")}`.trim() || "-" },
+    { label: "Status", render: (row: EvidenceRow) => evidenceCellValue(row, "status") },
+    { label: "Last seen / age", render: (row: EvidenceRow) => evidenceCellValue(row, ["age", "lastSeen"], "-") },
+    { label: "Risk", render: evidenceRiskText },
+    { label: "Cost source", render: evidenceCostText }
+  ];
 }
 
 function normalizeStoryTone(value?: string): "green" | "amber" | "red" | "blue" | "purple" {
@@ -3708,19 +4063,32 @@ function buildLocalExecutiveStory(dashboard: DashboardData): ExecutiveStory {
 }
 
 function buildChartRows(dashboard: DashboardData): TrendPoint[] {
+  const hasSignal = (row: TrendPoint) =>
+    moneyValue(row.financialExposure) > 0 ||
+    moneyValue(row.riskExposure) > 0 ||
+    moneyValue(row.capex) > 0 ||
+    moneyValue(row.opex) > 0 ||
+    Number(row.signals || row.serviceRisk || 0) > 0;
+
   const direct = dashboard.analysis?.trend || [];
-  if (direct.length) return direct.slice(-6);
+  if (direct.length) {
+    const rows = direct.slice(-6);
+    return rows.some(hasSignal) ? rows : [];
+  }
+
   const financeRows = dashboard.finance.capexOpex || [];
   if (financeRows.length) {
-    return financeRows.slice(-6).map((row) => ({
+    const rows = financeRows.slice(-6).map((row) => ({
       month: row.month,
       label: row.label || row.month,
       financialExposure: moneyValue(row.financialExposure ?? row.capex),
       riskExposure: moneyValue(row.riskExposure ?? row.opex),
       signals: Number(row.signals || 0),
     }));
+    return rows.some(hasSignal) ? rows : [];
   }
-  return ["Jan", "Feb", "Mar", "Apr", "May", "Jun"].map((month) => ({ month, financialExposure: 0, riskExposure: 0, signals: 0 }));
+
+  return [];
 }
 
 export default function ManagementDashboard() {
@@ -3735,6 +4103,12 @@ export default function ManagementDashboard() {
   const [tableFilter, setTableFilter] = useState("all");
   const [tablePage, setTablePage] = useState(1);
   const [tablePageSize, setTablePageSize] = useState(10);
+
+  const resetDrillTableState = () => {
+    setTableSearch("");
+    setTableFilter("all");
+    setTablePage(1);
+  };
 
   useEffect(() => {
     setTableSearch("");
@@ -3810,7 +4184,15 @@ export default function ManagementDashboard() {
   }, [dashboard.analysis?.signals, pillars]);
 
   const chartRows = useMemo(() => buildChartRows(dashboard), [dashboard]);
-  const chartMax = useMemo(() => Math.max(1, ...chartRows.flatMap((row) => [moneyValue(row.financialExposure), moneyValue(row.riskExposure)])), [chartRows]);
+  const chartMode = useMemo(() => {
+    if (chartRows.some((row) => moneyValue(row.financialExposure) > 0 || moneyValue(row.riskExposure) > 0)) return "money" as const;
+    if (chartRows.some((row) => Number(row.signals || row.serviceRisk || 0) > 0)) return "signals" as const;
+    return "empty" as const;
+  }, [chartRows]);
+  const chartMax = useMemo(() => Math.max(1, ...chartRows.flatMap((row) => chartMode === "money"
+    ? [moneyValue(row.financialExposure), moneyValue(row.riskExposure)]
+    : [Number(row.signals || row.serviceRisk || 0)]
+  )), [chartRows, chartMode]);
   const mix = dashboard.analysis?.mix || { risk: 0, control: 0, savings: 0 };
   const healthValue = parseNumberFromText(topKpis.find((item) => /health/i.test(item.title))?.value, moneyValue(mix.control));
   const ringHealth = clampPercent(healthValue || moneyValue(mix.control));
@@ -3820,6 +4202,7 @@ export default function ManagementDashboard() {
   const ringRiskDash = (Math.min(100, ringRisk) / 100) * ringCircumference;
 
   function openLevel2(area: string, title: string, key = "") {
+    resetDrillTableState();
     if (area === "actions") {
       const rows: DrillRow[] = dashboard.boardActions.map((action) => {
         const target = parseActionTarget(action);
@@ -3838,8 +4221,12 @@ export default function ManagementDashboard() {
 
     if (!key) {
       const rows = dashboard.level2[area] || [];
-      setDrill({ level: 2, area, key, title, rows, total: rows.length });
-      return;
+      if (rows.length) {
+        setDrill({ level: 2, area, key, title, rows, total: rows.length });
+        return;
+      }
+      // If the overview did not include a local breakdown, ask the backend for the live domain breakdown
+      // instead of showing a misleading empty screen.
     }
 
     setDrill({ level: 2, area, key, title, rows: [], total: 0, loading: true });
@@ -3849,46 +4236,254 @@ export default function ManagementDashboard() {
         const json = await readApiJson(res, "Management dashboard drilldown");
         if (!res.ok || json?.success === false) throw new Error(json?.message || "Breakdown failed.");
         const data = json.data || {};
-        setDrill({ level: 2, area, key, title: data.title || title, rows: data.rows || [], total: data.total || 0 });
+        setDrill({ level: 2, area, key, title: title || data.title || "Management Breakdown", rows: data.rows || [], total: data.total || 0 });
       })
       .catch(() => setDrill({ level: 2, area, key, title, rows: [], total: 0 }));
   }
 
   function openLevel3(area: string, key: string, title: string) {
+    resetDrillTableState();
     const parent = drill.level === 2 ? { ...drill, loading: false } : undefined;
-    setDrill({ level: 3, area, key, title, rows: [], total: 0, loading: true, parent });
+    const evidenceTitle = title || key || "Evidence Detail";
+    setDrill({ level: 3, area, key, title: evidenceTitle, rows: [], total: 0, loading: true, parent });
     const params = new URLSearchParams({ area, key, level: "3" });
     fetch(buildApiUrl(`/api/management-dashboard/drilldown?${params}`), { headers: getAuthHeaders() })
       .then(async (res) => {
         const json = await readApiJson(res, "Management dashboard evidence");
         if (!res.ok || json?.success === false) throw new Error(json?.message || "Evidence failed.");
         const data = json.data || {};
-        setDrill({ level: 3, area, key, title: data.title || title, rows: data.rows || [], total: data.total || 0, parent });
+        // Keep the exact signal title the user clicked. The backend returns generic technical
+        // titles such as "resources evidence" for API context, which should not replace the
+        // management-facing label like "Offline fleet pressure".
+        setDrill({ level: 3, area, key, title: evidenceTitle, rows: data.rows || [], total: data.total || 0, parent });
       })
-      .catch(() => setDrill({ level: 3, area, key, title, rows: [], total: 0, parent }));
+      .catch(() => setDrill({ level: 3, area, key, title: evidenceTitle, rows: [], total: 0, parent }));
   }
 
-  function closeDrilldown() { setDrill({ level: 1 }); }
-  function backDrilldown() { drill.level === 3 && drill.parent ? setDrill({ ...drill.parent, level: 2 }) : closeDrilldown(); }
+  function closeDrilldown() { resetDrillTableState(); setDrill({ level: 1 }); }
+  function backDrilldown() { resetDrillTableState(); drill.level === 3 && drill.parent ? setDrill({ ...drill.parent, level: 2 }) : closeDrilldown(); }
   function refreshDashboard() { closeDrilldown(); loadDashboard(); }
   function printDashboard() { window.print(); }
 
   function renderOverview() {
-    const actualSavingsRecorded = dashboard.finance.actualSavingsRecorded === true && typeof dashboard.finance.potentialSavings === "number";
-    const financeChips = [
-      { label: "Financial Exposure", value: formatMoney(dashboard.finance.totalCost || 0), icon: "money" as const, tone: "pink" as Tone, area: "capex", title: "Financial Exposure" },
-      { label: "Risk Exposure", value: formatMoney(dashboard.finance.riskCost || 0), icon: "risk" as const, tone: "purple" as Tone, area: "risk", title: "Risk Exposure" },
-      { label: "Actual Savings", value: actualSavingsRecorded ? formatMoney(Number(dashboard.finance.potentialSavings || 0)) : "Not recorded", icon: "saving" as const, tone: actualSavingsRecorded ? "cyan" as Tone : "slate" as Tone, area: "saving", title: "Actual Savings" },
-      { label: "CAPEX Watch", value: formatMoney(dashboard.finance.capexYtd || 0), icon: "package" as const, tone: "orange" as Tone, area: "capex", title: "CAPEX Watch" },
-    ];
-    const totalEndpoints = Number(dashboard.metrics?.totalEndpoints || parseNumberFromText(pillars.find((item) => /resource/i.test(item.title))?.secondValue, 0) || 0);
-    const onlineCoverage = clampPercent(dashboard.metrics?.onlineCoverage || parseNumberFromText(pillars.find((item) => /resource/i.test(item.title))?.scoreValue, 0));
-    const pricingCoverage = clampPercent(dashboard.metrics?.pricingCoverage || parseNumberFromText(topKpis.find((item) => /compliance/i.test(item.title))?.note, 0));
-    const riskSignals = Number(dashboard.metrics?.riskCandidates || parseNumberFromText(topKpis.find((item) => /risk/i.test(item.title))?.note, 0) || 0);
-    const boardItems = Number(dashboard.metrics?.boardItems || actions.length || 0);
-    const riskProgress = totalEndpoints > 0 ? Math.min(100, Math.round((riskSignals / totalEndpoints) * 100)) : Math.min(100, riskSignals);
-    const boardProgress = Math.min(100, boardItems * 25);
+    const metrics = dashboard.metrics || {};
+    const metricNumber = (key: string): number | null => {
+      const raw = metrics[key];
+      if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+      if (typeof raw === "string" && raw.trim() !== "" && Number.isFinite(Number(raw))) return Number(raw);
+      return null;
+    };
+    const metricBoolean = (key: string): boolean | null => {
+      const raw = metrics[key];
+      if (raw === undefined || raw === null || raw === "") return null;
+      if (typeof raw === "boolean") return raw;
+      if (typeof raw === "number") return raw === 1;
+      const text = String(raw).trim().toLowerCase();
+      if (["true", "1", "yes", "y", "on", "enabled"].includes(text)) return true;
+      if (["false", "0", "no", "n", "off", "disabled"].includes(text)) return false;
+      return null;
+    };
+    const countText = (value: number | null, unit = "") => value === null ? "Not recorded" : `${value.toLocaleString()}${unit ? ` ${unit}` : ""}`;
+    const percentText = (value: number | null) => value === null ? "Not recorded" : `${clampPercent(value)}%`;
+    const exposureValue = typeof dashboard.finance.totalCost === "number" && dashboard.finance.totalCost > 0 ? dashboard.finance.totalCost : null;
+    const totalEndpointsValue = metricNumber("totalEndpoints");
+    const onlineCoverageValue = metricNumber("onlineCoverage") ?? metricNumber("onlineRate");
+    const pricingCoverageValue = metricNumber("pricingCoverage");
+    const riskSignalsValue = metricNumber("riskCandidates");
+    const boardItemsValue = metricNumber("boardAttention") ?? metricNumber("boardItems") ?? (actions.length > 0 ? actions.length : null);
+    const healthScoreValue = metricNumber("healthScore");
+    const complianceScoreValue = metricNumber("complianceScore");
+    const pcAgingRuleFlag = metricBoolean("pcAgingRuleEnabled");
+    const hardwareLifecycleRiskValue =
+      metricNumber("hardwareLifecycleRiskItems") ??
+      metricNumber("endpointRiskCandidates") ??
+      metricNumber("aging");
+    const hasHardwareLifecycleMetrics =
+      hardwareLifecycleRiskValue !== null ||
+      metricNumber("hardwareAgingItems") !== null ||
+      metricNumber("hardwareMonitorItems") !== null ||
+      metricNumber("hardwareStaleItems") !== null ||
+      totalEndpointsValue !== null;
+    const pcAgingRuleActive = pcAgingRuleFlag === null ? hasHardwareLifecycleMetrics : pcAgingRuleFlag;
     const executiveStory = story || buildLocalExecutiveStory(dashboard);
+
+    const latestTrendRow = chartRows[chartRows.length - 1] || null;
+    const peakTrendRow = chartRows.reduce<TrendPoint | null>((best, row) => {
+      const rowTotal = moneyValue(row.financialExposure) + moneyValue(row.riskExposure) + moneyValue(row.capex) + moneyValue(row.opex);
+      const bestTotal = best ? moneyValue(best.financialExposure) + moneyValue(best.riskExposure) + moneyValue(best.capex) + moneyValue(best.opex) : -1;
+      return rowTotal > bestTotal ? row : best;
+    }, null);
+    const peakExposureValue = peakTrendRow
+      ? moneyValue(peakTrendRow.financialExposure) + moneyValue(peakTrendRow.riskExposure) + moneyValue(peakTrendRow.capex) + moneyValue(peakTrendRow.opex)
+      : 0;
+    const latestFinancialValue = latestTrendRow
+      ? moneyValue(latestTrendRow.financialExposure) + moneyValue(latestTrendRow.capex)
+      : 0;
+    const latestRiskValue = latestTrendRow
+      ? moneyValue(latestTrendRow.riskExposure) + moneyValue(latestTrendRow.opex)
+      : 0;
+    const chartSignalTotal = chartRows.reduce((sum, row) => sum + Number(row.signals || row.serviceRisk || 0), 0);
+    const chartRiskSignalValue = riskSignalsValue ?? (chartSignalTotal > 0 ? chartSignalTotal : null);
+    const softwareScopeValue = metricNumber("uniqueSoftware") ?? metricNumber("softwareInstallCount") ?? metricNumber("softwareInstalls");
+    const networkScopeValue = metricNumber("networkKnownIps") ?? metricNumber("networkRecordCount") ?? metricNumber("networkRecords");
+    const geoScopeValue = metricNumber("geoTrackedDevices");
+    const evidenceCoverageText = [
+      totalEndpointsValue !== null ? `${countText(totalEndpointsValue)} endpoint(s)` : "endpoint scope not recorded",
+      softwareScopeValue !== null ? `${countText(softwareScopeValue)} software item(s)` : "software not recorded",
+      networkScopeValue !== null ? `${countText(networkScopeValue)} network record(s)` : "network not recorded",
+      geoScopeValue !== null ? `${countText(geoScopeValue)} geo device(s)` : "geo not recorded",
+    ].join(" • ");
+    const chartInsightCards = [
+      {
+        label: "Peak Exposure",
+        value: peakExposureValue > 0 ? formatMoney(peakExposureValue) : "Not recorded",
+        note: peakTrendRow ? `${peakTrendRow.label || peakTrendRow.month} highest combined exposure` : "No monthly exposure yet",
+        tone: "pink" as Tone,
+        area: "capex",
+        title: "Costed Exposure",
+      },
+      {
+        label: "Risk Movement",
+        value: countText(chartRiskSignalValue),
+        note: chartRiskSignalValue === null ? "Risk signal source not recorded" : "Cross-domain risk signals detected",
+        tone: "red" as Tone,
+        area: "risk",
+        title: "Active Risk Signals",
+      },
+      {
+        label: "Current Month",
+        value: latestFinancialValue + latestRiskValue > 0 ? formatMoney(latestFinancialValue + latestRiskValue) : "Not recorded",
+        note: latestTrendRow ? `${latestTrendRow.label || latestTrendRow.month}: ${formatMoney(latestFinancialValue)} financial / ${formatMoney(latestRiskValue)} risk` : "No current month movement",
+        tone: "amber" as Tone,
+        area: "capex",
+        title: "Costed Exposure",
+      },
+      {
+        label: "Evidence Coverage",
+        value: totalEndpointsValue === null ? "Not recorded" : countText(totalEndpointsValue),
+        note: evidenceCoverageText,
+        tone: "blue" as Tone,
+        area: "resources",
+        title: "Estate Scope",
+      },
+    ];
+
+    const frontKpis = [
+      {
+        title: "Estate Scope",
+        value: countText(totalEndpointsValue),
+        subValue: totalEndpointsValue === null ? "" : "endpoint(s)",
+        note: onlineCoverageValue === null ? "Online/control coverage not recorded" : `${percentText(onlineCoverageValue)} online/control coverage`,
+        tone: "blue" as Tone,
+        icon: "endpoint" as keyof typeof IconSet,
+        area: "resources",
+        key: "",
+      },
+      {
+        title: "Costed Exposure",
+        value: exposureValue === null ? "Not recorded" : formatMoney(exposureValue),
+        note: exposureValue === null ? "No live cost source recorded" : "Costed from pricing/catalog evidence",
+        tone: exposureValue === null ? "slate" as Tone : "pink" as Tone,
+        icon: "money" as keyof typeof IconSet,
+        area: "capex",
+        key: "",
+      },
+      {
+        title: "Active Risk Signals",
+        value: countText(riskSignalsValue),
+        note: "Hardware, software, network, geolocation and service evidence",
+        tone: riskSignalsValue && riskSignalsValue > 0 ? "red" as Tone : "green" as Tone,
+        icon: "risk" as keyof typeof IconSet,
+        area: "risk",
+        key: "",
+      },
+      {
+        title: "Compliance Coverage",
+        value: percentText(pricingCoverageValue),
+        note: complianceScoreValue === null ? "Evidence score not recorded" : `${percentText(complianceScoreValue)} compliance score`,
+        tone: complianceScoreValue !== null && complianceScoreValue >= 80 ? "green" as Tone : "amber" as Tone,
+        icon: "audit" as keyof typeof IconSet,
+        area: "compliance",
+        key: "",
+      },
+      {
+        title: "Open Decisions",
+        value: countText(boardItemsValue),
+        note: "Items requiring management owner, approval or evidence follow-up",
+        tone: boardItemsValue && boardItemsValue > 0 ? "orange" as Tone : "green" as Tone,
+        icon: "list" as keyof typeof IconSet,
+        area: "actions",
+        key: "",
+      },
+    ];
+
+    const domainMatrix = [
+      {
+        title: "Hardware",
+        caption: "Endpoint lifecycle, aging, stale telemetry and control evidence.",
+        value: pcAgingRuleActive ? hardwareLifecycleRiskValue : null,
+        valueLabel: "lifecycle signal(s)",
+        meta: pcAgingRuleActive ? (totalEndpointsValue === null ? "Estate scope not recorded" : `${countText(totalEndpointsValue)} endpoint(s) in estate`) : "PC aging rule/source not configured",
+        score: pcAgingRuleActive ? healthScoreValue : null,
+        scoreLabel: "health",
+        tone: "blue" as Tone,
+        icon: "endpoint" as keyof typeof IconSet,
+        area: "risk",
+        key: "pc-lifecycle",
+      },
+      {
+        title: "Software",
+        caption: "Unclassified, stale or review-needed software evidence.",
+        value: metricNumber("softwareRiskItems"),
+        valueLabel: "software signal(s)",
+        meta: metricNumber("uniqueSoftware") === null ? "Software scope not recorded" : `${countText(metricNumber("uniqueSoftware"))} app(s) tracked`,
+        score: metricNumber("softwareComplianceScore"),
+        scoreLabel: "classification",
+        tone: "cyan" as Tone,
+        icon: "package" as keyof typeof IconSet,
+        area: "software",
+        key: "software-risk",
+      },
+      {
+        title: "Network",
+        caption: "Unregistered IP, duplicate IP and network evidence integrity.",
+        value: metricNumber("networkRiskItems"),
+        valueLabel: "network signal(s)",
+        meta: metricNumber("networkKnownIps") === null ? "Network scope not recorded" : `${countText(metricNumber("networkKnownIps"))} IP record(s)`,
+        score: metricNumber("networkIntegrityScore"),
+        scoreLabel: "integrity",
+        tone: "purple" as Tone,
+        icon: "activity" as keyof typeof IconSet,
+        area: "network",
+        key: "network-risk",
+      },
+      {
+        title: "Geolocation",
+        caption: "Missing, stale or unknown location/custody evidence.",
+        value: metricNumber("geoRiskItems"),
+        valueLabel: "location issue(s)",
+        meta: metricNumber("geoTrackedDevices") === null ? "Location scope not recorded" : `${countText(metricNumber("geoTrackedDevices"))} tracked device(s)`,
+        score: metricNumber("geoIntegrityScore"),
+        scoreLabel: "freshness",
+        tone: "amber" as Tone,
+        icon: "target" as keyof typeof IconSet,
+        area: "geolocation",
+        key: "geolocation-risk",
+      },
+      {
+        title: "Service Desk",
+        caption: "Open ticket load, SLA governance and support pressure.",
+        value: metricNumber("slaBreached") !== null && Number(metricNumber("slaBreached")) > 0 ? metricNumber("slaBreached") : metricNumber("openTickets"),
+        valueLabel: metricNumber("slaBreached") !== null && Number(metricNumber("slaBreached")) > 0 ? "SLA exception(s)" : "open ticket(s)",
+        meta: metricNumber("openTickets") === null ? "Ticket scope not recorded" : `${countText(metricNumber("openTickets"))} open ticket(s)`,
+        score: null,
+        scoreLabel: "queue",
+        tone: "orange" as Tone,
+        icon: "list" as keyof typeof IconSet,
+        area: "service",
+        key: metricNumber("slaBreached") !== null && Number(metricNumber("slaBreached")) > 0 ? "sla-breach" : "service-desk",
+      },
+    ];
 
     return (
       <section className="md-dashboard-view" aria-label="Management dashboard overview">
@@ -3914,52 +4509,26 @@ export default function ManagementDashboard() {
           </aside>
         </section>
 
-        <section className="md-intel-strip" aria-label="Executive intelligence summary">
-          <button type="button" className="md-intel-card is-blue" onClick={() => openLevel2("resources", "Endpoint Visibility") }>
-            <span className="md-intel-top"><span>Endpoint visibility</span><strong>{totalEndpoints.toLocaleString()}</strong></span>
-            <span className="md-progress-track"><i style={{ "--w": `${onlineCoverage}%` } as React.CSSProperties} /></span>
-            <small>{onlineCoverage}% online/control coverage across current estate.</small>
-          </button>
-          <button type="button" className="md-intel-card is-red" onClick={() => openLevel2("risk", "Active Risk Signals") }>
-            <span className="md-intel-top"><span>Risk density</span><strong>{riskSignals.toLocaleString()}</strong></span>
-            <span className="md-progress-track"><i style={{ "--w": `${riskProgress}%` } as React.CSSProperties} /></span>
-            <small>{riskProgress}% of visible estate requires management attention.</small>
-          </button>
-          <button type="button" className="md-intel-card is-green" onClick={() => openLevel2("compliance", "Evidence Coverage") }>
-            <span className="md-intel-top"><span>Evidence coverage</span><strong>{pricingCoverage}%</strong></span>
-            <span className="md-progress-track"><i style={{ "--w": `${pricingCoverage}%` } as React.CSSProperties} /></span>
-            <small>Pricing and compliance evidence linked to dashboard decisions.</small>
-          </button>
-          <button type="button" className="md-intel-card is-amber" onClick={() => openLevel2("actions", "Board Action Queue") }>
-            <span className="md-intel-top"><span>Decision pressure</span><strong>{boardItems.toLocaleString()}</strong></span>
-            <span className="md-progress-track"><i style={{ "--w": `${boardProgress}%` } as React.CSSProperties} /></span>
-            <small>Open executive action(s) ready for review.</small>
-          </button>
+        <section className="md-kpi-grid md-exec-kpi-grid" aria-label="Executive KPI cards">
+          {frontKpis.map((kpi, index) => (
+            <button type="button" className={`md-card md-kpi-card tone-${normalizeTone(kpi.tone)} ${getKpiSemanticClass(kpi, index)}`} key={`${kpi.title}-${index}`} onClick={() => openLevel2(kpi.area, kpi.title, kpi.key)}>
+              <span>
+                <h3>{kpi.title}</h3>
+                <span className="md-kpi-value"><strong>{kpi.value}</strong>{kpi.subValue && <span>{kpi.subValue}</span>}</span>
+                <p>{kpi.note}</p>
+              </span>
+              <span className="md-kpi-icon"><Icon name={normalizeIcon(kpi.icon)} /></span>
+            </button>
+          ))}
         </section>
 
-        <section className="md-kpi-grid" aria-label="Executive KPI cards">
-          {topKpis.map((kpi, index) => {
-            const target = getKpiTarget(kpi);
-            return (
-              <button type="button" className={`md-card md-kpi-card tone-${normalizeTone(kpi.tone)} ${getKpiSemanticClass(kpi, index)}`} key={`${kpi.title}-${index}`} onClick={() => openLevel2(target.area, target.title, target.key)}>
-                <span>
-                  <h3>{kpi.title}</h3>
-                  <span className="md-kpi-value"><strong>{kpi.value}</strong>{kpi.subValue && <span>{kpi.subValue}</span>}</span>
-                  <p>{kpi.note || kpi.trend || "Click for management breakdown"}</p>
-                </span>
-                <span className="md-kpi-icon"><Icon name={normalizeIcon(kpi.icon)} /></span>
-              </button>
-            );
-          })}
-        </section>
-
-        <section className="md-top-row">
+        <section className="md-top-row md-overview-grid">
           <article className="md-card md-chart-card">
             <div className="md-card-head">
               <div>
                 <span className="md-eyebrow">Management Analytics</span>
-                <h2>Monthly Exposure Snapshot</h2>
-                <p>{dashboard.analysis?.headline || "Live trend uses endpoint lifecycle, pricing and service desk evidence only."}</p>
+                <h2>Monthly Exposure Movement</h2>
+                <p>{dashboard.analysis?.headline || "Trend appears only when live exposure, risk or signal records exist."}</p>
               </div>
               <div className="md-actions">
                 <button type="button" className="md-action-btn" onClick={refreshDashboard}><Icon name="refresh" /> Refresh</button>
@@ -3970,39 +4539,46 @@ export default function ManagementDashboard() {
             <div className="md-chart-layout">
               <div className="md-chart-summary">
                 <div>
-                  <p className="md-chart-number">{formatMoney(dashboard.finance.totalCost || 0)}</p>
-                  <span>Total management exposure</span>
+                  <p className="md-chart-number">{chartRows.length ? chartRows.length.toLocaleString() : "Not recorded"}</p>
+                  <span>Live trend period(s)</span>
                 </div>
-                <div>
-                  <p className="md-chart-number">{Number(dashboard.metrics?.riskCandidates || 0).toLocaleString()}</p>
-                  <span>Endpoint risk signal(s)</span>
-                </div>
-                <button type="button" className="md-summary-btn" onClick={() => openLevel2("risk", "Current Risk Signals")}>View Risk Breakdown</button>
+                <span className="md-chart-context">Movement view only. The cards below explain peak exposure, current month impact and evidence coverage.</span>
+                <button type="button" className="md-summary-btn" onClick={() => openLevel2("capex", "Costed Exposure")}>Open exposure evidence</button>
               </div>
-
-              <div className="md-chart-panel">
+              <div className="md-chart-panel" onMouseLeave={() => setChartHover(null)}>
                 <div className="md-chart-legend">
-                  <span><i className="md-dot orange" /> Financial exposure</span>
-                  <span><i className="md-dot red" /> Risk exposure</span>
+                  {chartMode === "money" ? (
+                    <>
+                      <span><i className="md-dot orange" /> Financial</span>
+                      <span><i className="md-dot red" /> Risk</span>
+                    </>
+                  ) : chartMode === "signals" ? (
+                    <span><i className="md-dot red" /> Evidence signals</span>
+                  ) : (
+                    <span>No recorded trend</span>
+                  )}
                 </div>
-                <svg className="md-chart-svg" viewBox="0 0 640 230" role="img" aria-label="Monthly management exposure trend" onMouseLeave={() => setChartHover(null)}>
+                <svg className="md-chart-svg" viewBox="0 0 640 230" role="img" aria-label="Monthly exposure trend">
                   <defs>
+                    <linearGradient id="mdAreaGradient" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#fee2e2" stopOpacity="0.72" />
+                      <stop offset="100%" stopColor="#fff7ed" stopOpacity="0.08" />
+                    </linearGradient>
                     <linearGradient id="mdFinanceBarGradient" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#fbbf24" />
-                      <stop offset="100%" stopColor="#f59e0b" />
+                      <stop offset="0%" stopColor="#f59e0b" stopOpacity="1" />
+                      <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.82" />
                     </linearGradient>
                     <linearGradient id="mdRiskBarGradient" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#fb7185" />
-                      <stop offset="100%" stopColor="#f43f5e" />
+                      <stop offset="0%" stopColor="#ef4444" stopOpacity="1" />
+                      <stop offset="100%" stopColor="#fb7185" stopOpacity="0.86" />
                     </linearGradient>
                   </defs>
-                  {[0, 1, 2, 3, 4].map((tick) => {
-                    const y = 18 + tick * 43;
-                    const labelValue = chartMax - (chartMax / 4) * tick;
+                  {[0, 1, 2, 3].map((i) => {
+                    const y = 24 + i * 44;
                     return (
-                      <g key={`grid-${tick}`}>
+                      <g key={`grid-${i}`}>
                         <line className="md-chart-grid" x1="54" x2="602" y1={y} y2={y} />
-                        <text className="md-chart-label" x="0" y={y + 4}>{formatMoney(labelValue).replace("RM ", "")}</text>
+                        <text className="md-chart-label" x="10" y={y + 4}>{chartMode === "money" ? formatMoney((chartMax * (4 - i)) / 4) : Math.round((chartMax * (4 - i)) / 4).toLocaleString()}</text>
                       </g>
                     );
                   })}
@@ -4011,13 +4587,21 @@ export default function ManagementDashboard() {
                     const x = chartRows.length <= 1 ? 328 : 54 + (index / Math.max(1, chartRows.length - 1)) * 548;
                     const financeRaw = moneyValue(row.financialExposure);
                     const riskRaw = moneyValue(row.riskExposure);
-                    const financeHeight = financeRaw > 0 ? Math.max(9, (financeRaw / chartMax) * 172) : 0;
-                    const riskHeight = riskRaw > 0 ? Math.max(9, (riskRaw / chartMax) * 172) : 0;
+                    const signalRaw = Number(row.signals || row.serviceRisk || 0);
+                    const financeHeight = chartMode === "money" && financeRaw > 0 ? Math.max(9, (financeRaw / chartMax) * 172) : 0;
+                    const riskHeight = chartMode === "money" && riskRaw > 0 ? Math.max(9, (riskRaw / chartMax) * 172) : 0;
+                    const signalHeight = chartMode === "signals" && signalRaw > 0 ? Math.max(9, (signalRaw / chartMax) * 172) : 0;
                     return (
                       <g key={`bar-${index}`} onMouseEnter={() => setChartHover(index)}>
                         <rect className="md-chart-hover-band" x={x - 34} y="12" width="68" height="194" rx="12" />
-                        <rect className="md-chart-bar-finance" x={x - 14} y={190 - financeHeight} width="12" height={financeHeight} rx="6" />
-                        <rect className="md-chart-bar-risk" x={x + 4} y={190 - riskHeight} width="12" height={riskHeight} rx="6" />
+                        {chartMode === "money" ? (
+                          <>
+                            <rect className="md-chart-bar-finance" x={x - 14} y={190 - financeHeight} width="12" height={financeHeight} rx="6" />
+                            <rect className="md-chart-bar-risk" x={x + 4} y={190 - riskHeight} width="12" height={riskHeight} rx="6" />
+                          </>
+                        ) : chartMode === "signals" ? (
+                          <rect className="md-chart-bar-risk" x={x - 8} y={190 - signalHeight} width="16" height={signalHeight} rx="8" />
+                        ) : null}
                         <text className="md-chart-label" x={x - 12} y="218">{row.label || row.month}</text>
                       </g>
                     );
@@ -4032,112 +4616,78 @@ export default function ManagementDashboard() {
                         <line className="md-chart-active-line" x1={x} x2={x} y1="18" y2="190" />
                         <rect className="md-chart-tooltip-box" x={boxX} y={boxY} width="182" height="82" rx="14" />
                         <text className="md-chart-tooltip-title" x={boxX + 14} y={boxY + 22}>{row.label || row.month}</text>
-                        <text className="md-chart-tooltip-text" x={boxX + 14} y={boxY + 42}>Financial: {formatMoney(row.financialExposure || 0)}</text>
-                        <text className="md-chart-tooltip-text" x={boxX + 14} y={boxY + 59}>Risk: {formatMoney(row.riskExposure || 0)}</text>
-                        <text className="md-chart-tooltip-text" x={boxX + 14} y={boxY + 76}>Signals: {Number(row.signals || 0).toLocaleString()}</text>
+                        {chartMode === "money" ? (
+                          <>
+                            <text className="md-chart-tooltip-text" x={boxX + 14} y={boxY + 42}>Financial: {formatMoney(row.financialExposure || 0)}</text>
+                            <text className="md-chart-tooltip-text" x={boxX + 14} y={boxY + 59}>Risk: {formatMoney(row.riskExposure || 0)}</text>
+                            <text className="md-chart-tooltip-text" x={boxX + 14} y={boxY + 76}>Signals: {Number(row.signals || 0).toLocaleString()}</text>
+                          </>
+                        ) : (
+                          <>
+                            <text className="md-chart-tooltip-text" x={boxX + 14} y={boxY + 42}>Evidence signals: {Number(row.signals || row.serviceRisk || 0).toLocaleString()}</text>
+                            <text className="md-chart-tooltip-text" x={boxX + 14} y={boxY + 59}>Cost source: Not recorded</text>
+                          </>
+                        )}
                       </g>
                     );
                   })()}
-                  {chartRows.every((row) => moneyValue(row.financialExposure) === 0 && moneyValue(row.riskExposure) === 0) && (
-                    <text className="md-chart-empty-note" x="210" y="104">No monthly exposure data available yet.</text>
+                  {chartRows.length === 0 && (
+                    <text className="md-chart-empty-note" x="190" y="104">No live monthly exposure trend is recorded yet.</text>
                   )}
                 </svg>
               </div>
             </div>
 
-            <div className="md-finance-strip">
-              {financeChips.map((chip) => (
-                <button key={chip.label} type="button" className="md-finance-chip" onClick={() => openLevel2(chip.area, chip.title)}>
-                  <span className={`md-chip-icon bg-${chip.tone}`}><Icon name={chip.icon} /></span>
-                  <span className="md-chip-body"><span className="md-chip-label">{chip.label}</span><strong className="md-chip-value">{chip.value}</strong></span>
+            <div className="md-exposure-insight-strip" aria-label="Monthly exposure intelligence">
+              {chartInsightCards.map((card) => (
+                <button type="button" key={card.label} className={`md-exposure-insight tone-${normalizeTone(card.tone)}`} onClick={() => openLevel2(card.area, card.title)}>
+                  <span>{card.label}</span>
+                  <strong>{card.value}</strong>
+                  <small>{card.note}</small>
                 </button>
               ))}
             </div>
           </article>
 
-          <article className="md-card md-donut-card">
+          <article className="md-card md-domain-card">
             <div className="md-card-head">
               <div>
-                <span className="md-eyebrow">Executive Health</span>
-                <h2>Risk and Control Mix</h2>
-                <p>Risk exposure, operational control and savings visibility.</p>
+                <span className="md-eyebrow">Domain Risk Matrix</span>
+                <h2>Risk by Evidence Domain</h2>
+                <p>Hardware, software, network, geolocation and service desk are separated to avoid hardware-only analysis.</p>
               </div>
-              <Icon name="health" />
+              <Icon name="target" />
             </div>
-            <div className="md-donut-shell">
-              <button type="button" className="md-donut" onClick={() => openLevel2("risk", "Risk and Control Mix")} aria-label="Open risk and control mix">
-                <span className="md-health-ring">
-                  <svg className="md-health-ring-svg" viewBox="0 0 220 220" aria-hidden="true">
-                    <defs>
-                      <linearGradient id="mdControlRingGradient" x1="0%" x2="100%" y1="0%" y2="100%">
-                        <stop offset="0%" stopColor="#38bdf8" />
-                        <stop offset="52%" stopColor="#2563eb" />
-                        <stop offset="100%" stopColor="#1d4ed8" />
-                      </linearGradient>
-                      <linearGradient id="mdRiskRingGradient" x1="0%" x2="100%" y1="0%" y2="100%">
-                        <stop offset="0%" stopColor="#fb7185" />
-                        <stop offset="100%" stopColor="#e11d48" />
-                      </linearGradient>
-                    </defs>
-                    <circle className="md-ring-track" cx="110" cy="110" r="78" />
-                    <circle className="md-ring-control" cx="110" cy="110" r="78" strokeDasharray={`${ringControlDash} ${ringCircumference}`} strokeDashoffset="58" />
-                    <circle className="md-ring-risk" cx="110" cy="110" r="78" strokeDasharray={`${ringRiskDash} ${ringCircumference}`} strokeDashoffset={String(-ringControlDash - 24)} />
-                  </svg>
-                  <span className="md-ring-center"><span><strong>{ringHealth}%</strong><span>Health</span></span></span>
-                  <span className="md-ring-core-icon"><Icon name="health" /></span>
-                </span>
-              </button>
-              <div className="md-mix-row">
-                <button type="button" className="md-mix-item" onClick={() => openLevel2("risk", "Risk Exposure")}><strong>{Math.round(moneyValue(mix.risk))}%</strong><span><i className="md-dot red" /> Risk</span></button>
-                <button type="button" className="md-mix-item" onClick={() => openLevel2("resources", "Operational Control")}><strong>{Math.round(healthValue || moneyValue(mix.control))}%</strong><span><i className="md-dot purple" /> Control</span></button>
-                <button type="button" className="md-mix-item" onClick={() => openLevel2("saving", "Savings Visibility")}><strong>{Math.round(moneyValue(mix.savings))}%</strong><span><i className="md-dot cyan" /> Savings</span></button>
-              </div>
-            </div>
-          </article>
-        </section>
-
-        <section className="md-pillar-grid" aria-label="Management pillar cards">
-          {pillars.map((pillar, index) => {
-            const colors = ["tile-purple", "tile-blue", "tile-teal", "tile-orange"];
-            return (
-              <button type="button" key={pillar.id || pillar.title} className={`md-pillar-tile ${colors[index % colors.length]}`} onClick={() => openLevel2(pillar.area, pillar.title)}>
-                <span className="md-tile-icon"><Icon name={normalizeIcon(pillar.icon)} /></span>
-                <span>
-                  <h3>{pillar.title}</h3>
-                  <span className="md-tile-value"><strong>{pillar.scoreValue}</strong>{pillar.scoreUnit && <em>{pillar.scoreUnit}</em>}</span>
-                  <small>{pillar.secondTitle}: {pillar.secondValue || pillar.secondNote || pillar.scoreStatus}</small>
-                </span>
-              </button>
-            );
-          })}
-        </section>
-
-        <section className="md-bottom-grid">
-          <article className="md-card md-signals-card">
-            <div className="md-card-head">
-              <div>
-                <span className="md-eyebrow">Recent Signals</span>
-                <h2>Management Insights</h2>
-                <p>High-value items from current dashboard analysis.</p>
-              </div>
-            </div>
-            <div className="md-signal-stack">
-              {signals.length === 0 ? <div className="md-state-panel">No signal found.</div> : signals.map((signal, index) => (
-                <button type="button" className="md-signal-row" key={`${signal.title}-${index}`} onClick={() => openLevel2(signal.area || "risk", signal.title, signal.key || "")}>
-                  <span className={`md-activity-icon bg-${normalizeTone(signal.tone)}`}><Icon name={normalizeIcon(signal.icon)} /></span>
-                  <span className="md-signal-copy"><strong>{signal.title}</strong><span>{signal.subtitle || "Click to inspect evidence."}</span></span>
-                  <span className="md-signal-value">{signal.value || "View"}</span>
+            <div className="md-domain-list">
+              {domainMatrix.map((domain) => {
+                const domainHasData = domain.value !== null && Number(domain.value) > 0;
+                return (
+                <button type="button" key={domain.title} className={`md-domain-row ${domainHasData ? "" : "is-muted"}`} disabled={!domainHasData} onClick={() => domainHasData && openLevel2(domain.area, domain.title, domain.key)}>
+                  <span className={`md-domain-icon bg-${domain.tone}`}><Icon name={normalizeIcon(domain.icon)} /></span>
+                  <span className="md-domain-copy">
+                    <strong>{domain.title}</strong>
+                    <span>{domain.caption}</span>
+                    <span>{domain.meta}</span>
+                  </span>
+                  <span className="md-domain-score">
+                    <strong>{domain.value === null ? "Not recorded" : domain.value.toLocaleString()}</strong>
+                    <span>{domain.valueLabel}</span>
+                    {domain.score !== null && <span>{percentText(domain.score)} {domain.scoreLabel}</span>}
+                  </span>
                 </button>
-              ))}
+                );
+              })}
             </div>
           </article>
+        </section>
 
-          <article className="md-card md-action-card">
+        <section className="md-bottom-grid md-action-only-grid">
+          <article className="md-card md-action-card md-action-card-wide">
             <div className="md-action-header">
               <div>
                 <span className="md-eyebrow">Decision Table</span>
                 <h2 className="md-section-title">Board Action Queue</h2>
-                <p className="md-section-subtitle">Click a row to open the related breakdown.</p>
+                <p className="md-section-subtitle">Single actionable table for management decisions. Click a row to open the related evidence.</p>
               </div>
               <div className="md-actions">
                 <button type="button" className="md-action-btn primary" onClick={() => openLevel2("actions", "Board Action Queue")}><Icon name="list" /> View All</button>
@@ -4151,7 +4701,7 @@ export default function ManagementDashboard() {
                     <th style={{ width: "96px" }}>Priority</th>
                     <th style={{ width: "120px" }}>Area</th>
                     <th>Signal</th>
-                    <th style={{ width: "120px" }}>Impact</th>
+                    <th style={{ width: "140px" }}>Impact</th>
                     <th>Decision</th>
                     <th style={{ width: "96px" }}>Status</th>
                   </tr>
@@ -4418,14 +4968,16 @@ export default function ManagementDashboard() {
 
   function renderEvidenceView() {
     const rows = (drill.rows || []) as EvidenceRow[];
-    const evidenceFilterOptions = Array.from(new Set(rows.map((row) => readText(row.category, "Uncategorised")).filter(Boolean)));
+    const kind = evidenceKind(drill.area, drill.key, rows);
+    const evidenceColumns = getEvidenceColumns(kind);
+    const evidenceFilterOptions = Array.from(new Set(rows.map((row) => evidenceDomain(row)).filter(Boolean)));
     const evidenceSearch = tableSearch.trim().toLowerCase();
     const filteredEvidenceRows = rows.filter((row) => {
-      const domain = readText(row.category, "Uncategorised");
+      const domain = evidenceDomain(row);
       const matchesFilter = tableFilter === "all" || domain === tableFilter;
       if (!matchesFilter) return false;
       if (!evidenceSearch) return true;
-      return normalizeTableSearchText(row.deviceName, row.department, row.category, row.brand, row.model, row.platform, row.status, row.lastSeen, row.age, row.ipAddress, row.riskSeverity, row.riskScore, row.replacementCost).includes(evidenceSearch);
+      return normalizeTableSearchText(...Object.values(row as Record<string, unknown>)).includes(evidenceSearch);
     });
     const evidencePageInfo = getPageInfo(filteredEvidenceRows.length, tablePage, tablePageSize);
     const visibleEvidenceRows = filteredEvidenceRows.slice(evidencePageInfo.start, evidencePageInfo.end);
@@ -4435,7 +4987,7 @@ export default function ManagementDashboard() {
           <div>
             <span className="md-view-eyebrow">Evidence Detail</span>
             <h2>{drill.title || "Evidence View"}</h2>
-            <p>{Number(drill.total || rows.length || 0).toLocaleString()} record(s) found for this selection.</p>
+            <p>{drill.loading ? "Loading evidence for this selection..." : `${Number(drill.total || rows.length || 0).toLocaleString()} record(s) found for this selection.`}</p>
           </div>
           <div className="md-view-actions">
             <button type="button" className="md-action-btn primary" onClick={backDrilldown}><Icon name="back" /> {drill.parent ? "Back to Breakdown" : "Back to Overview"}</button>
@@ -4452,7 +5004,7 @@ export default function ManagementDashboard() {
                     type="search"
                     value={tableSearch}
                     onChange={(event) => { setTableSearch(event.target.value); setTablePage(1); }}
-                    placeholder="Search evidence, owner, IP, risk..."
+                    placeholder={kind === "geolocation" ? "Search device, location, coordinate, issue..." : kind === "software" ? "Search software, device, publisher, version..." : kind === "network" ? "Search IP, host, owner, status..." : kind === "service" ? "Search ticket, customer, SLA, priority..." : "Search device, owner, model, risk..."}
                   />
                 </label>
                 <select value={tableFilter} onChange={(event) => { setTableFilter(event.target.value); setTablePage(1); }} aria-label="Filter evidence domain">
@@ -4468,27 +5020,13 @@ export default function ManagementDashboard() {
                 <table className="md-table">
                   <thead>
                     <tr>
-                      <th>Evidence Item</th>
-                      <th>Owner / Scope</th>
-                      <th>Domain</th>
-                      <th>Detail</th>
-                      <th>Status</th>
-                      <th>Freshness</th>
-                      <th>Risk</th>
-                      <th>Exposure</th>
+                      {evidenceColumns.map((column) => <th key={column.label}>{column.label}</th>)}
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleEvidenceRows.length === 0 ? <tr><td colSpan={8}>No matching evidence record found.</td></tr> : visibleEvidenceRows.map((row, index) => (
+                    {visibleEvidenceRows.length === 0 ? <tr><td colSpan={evidenceColumns.length}>No matching evidence record found.</td></tr> : visibleEvidenceRows.map((row, index) => (
                       <tr key={row.assetKey || `${row.objectAgent}-${row.assetId}-${evidencePageInfo.start + index}`}>
-                        <td>{readText(row.deviceName)}</td>
-                        <td>{readText(row.department)}</td>
-                        <td>{readText(row.category)}</td>
-                        <td>{readText(`${readText(row.brand, "")} ${readText(row.model, "")}`.trim() || row.ipAddress)}</td>
-                        <td>{readText(row.status)}</td>
-                        <td>{readText(row.age || row.lastSeen)}</td>
-                        <td>{readText(row.riskSeverity)} ({readText(row.riskScore, "0")})</td>
-                        <td>{readText(row.replacementCost)}</td>
+                        {evidenceColumns.map((column) => <td key={column.label}>{column.render(row)}</td>)}
                       </tr>
                     ))}
                   </tbody>

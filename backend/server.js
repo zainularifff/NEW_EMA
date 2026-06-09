@@ -12581,6 +12581,146 @@ function softInvText(value) {
     return String(value).trim();
 }
 
+function softInvCleanText(value, fallback = "") {
+    if (value === undefined || value === null) return fallback;
+
+    const text = String(value)
+        .replace(/[\u0000-\u001f\u007f]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    if (!text || text === "-" || /^(null|undefined|n\/?a|na|not available|not collected)$/i.test(text)) {
+        return fallback;
+    }
+
+    return text;
+}
+
+function softInvFirstText(...values) {
+    for (const value of values) {
+        const text = softInvCleanText(value);
+        if (text) return text;
+    }
+    return "";
+}
+
+function softInvIsGuid(value) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(softInvCleanText(value));
+}
+
+function softInvNormalizeSoftwareNameValue(value, fallback = "") {
+    let text = softInvCleanText(value, fallback);
+
+    if (softInvIsGuid(text)) {
+        text = softInvCleanText(fallback);
+    }
+
+    if (!text) return "-";
+
+    const lower = text.toLowerCase().replace(/\s+/g, " ").trim();
+
+    if (lower === "zoom" || lower.includes("zoom workplace")) return "Zoom Workplace";
+    if (lower.includes("google chrome")) return "Google Chrome";
+    if (lower.includes("microsoft edge")) return "Microsoft Edge";
+    if (lower.includes("microsoft onedrive") || lower === "onedrive") return "Microsoft OneDrive";
+    if (lower.includes("tightvnc")) return "TightVNC";
+
+    if (lower.includes("adobe acrobat") && /64[ -]?bit/.test(lower)) return "Adobe Acrobat (64-bit)";
+    if (lower.includes("adobe acrobat")) return "Adobe Acrobat";
+
+    return text;
+}
+
+function softInvNormalizeCategoryName(value) {
+    const text = softInvCleanText(value, "Unclassified");
+    const lower = text.toLowerCase();
+
+    if (["others", "other categories", "tools", "uncategorized", "unknown"].includes(lower)) {
+        return "Unclassified";
+    }
+
+    return text;
+}
+
+function softInvNormalizeOs(value, platformType = "") {
+    const os = softInvCleanText(value);
+    const platform = softInvCleanText(platformType);
+
+    if (os && os !== platform) return os;
+    if (/windows/i.test(platform)) return "Windows";
+    if (/android/i.test(platform)) return "Android";
+    if (/ios|ipad/i.test(platform)) return "iOS";
+    if (/mac|darwin/i.test(platform)) return "macOS";
+
+    return platform || "-";
+}
+
+function softInvNormalizeRow(row = {}) {
+    const fallbackSoftwareName = softInvFirstText(
+        row.RawSoftwareID,
+        row.SoftwareID,
+        row.Id,
+        row.id
+    );
+
+    const softwareName = softInvNormalizeSoftwareNameValue(
+        softInvFirstText(
+            row.SoftwareName,
+            row.softwareName,
+            row.SWUNI_Name,
+            row.SWUNI_Alias,
+            row.Name,
+            row.name,
+            row.RawSoftwareName
+        ),
+        fallbackSoftwareName
+    );
+
+    const categoryName = softInvNormalizeCategoryName(
+        softInvFirstText(row.CategoryName, row.categoryName, row.Category, row.category, row.SW_CATEGORY)
+    );
+
+    const publisher = softInvCleanText(row.Publisher || row.publisher || row.Description || row.description);
+    const version = softInvCleanText(row.Version || row.version || row.SWUNI_Version || row.FileVersion);
+    const assetTag = softInvFirstText(row.AssetTag, row.assetTag, row.DeviceName, row.DeviceID, row.ComputerName, row.Object_DeviceID, row.AssetID, row.assetId) || "-";
+    const computerName = softInvFirstText(row.ComputerName, row.computerName, row.DeviceName, row.deviceName, assetTag) || assetTag;
+    const machineType = softInvFirstText(row.MachineType, row.machineType, row.DeviceType, row.deviceType, row.PlatformType, row.platformType) || "-";
+    const os = softInvNormalizeOs(
+        softInvFirstText(row.OS, row.os, row.OperatingSystem, row.operatingSystem),
+        softInvFirstText(row.PlatformType, row.platformType, machineType)
+    );
+    const customerName = softInvFirstText(row.CustomerName, row.customerName, row.Object_Full_Name, row.Department, row.department, row.Object_Client_Name);
+    const department = softInvFirstText(row.Department, row.department, row.Object_Full_Name, customerName);
+
+    return {
+        ...row,
+        SoftwareName: softwareName,
+        softwareName,
+        CategoryName: categoryName,
+        categoryName,
+        Publisher: publisher,
+        publisher,
+        Version: version,
+        version,
+        AssetTag: assetTag,
+        assetTag,
+        ComputerName: computerName,
+        computerName,
+        MachineType: machineType,
+        machineType,
+        OS: os,
+        os,
+        CustomerName: customerName,
+        customerName,
+        Department: department,
+        department
+    };
+}
+
+function softInvNormalizeRows(data) {
+    return Array.isArray(data) ? data.map(softInvNormalizeRow) : [];
+}
+
 function softInvSendWrapped(res, data, meta = {}) {
     return res.json({
         success: true,
@@ -12604,6 +12744,8 @@ async function getMdmSoftwareInventory(pool, searchText = "") {
                 OR base.CategoryName LIKE @SearchText
                 OR base.PlatformType LIKE @SearchText
                 OR base.Description LIKE @SearchText
+                OR base.CustomerName LIKE @SearchText
+                OR base.DeviceModelName LIKE @SearchText
             )
         `;
     }
@@ -12627,6 +12769,7 @@ async function getMdmSoftwareInventory(pool, searchText = "") {
                 asset.ConnectionStatus,
                 asset.DeviceIPAddress,
                 asset.DeviceLocalIPAddress,
+                relInfo.Object_Full_Name AS CustomerName,
 
                 ISNULL(NULLIF(LTRIM(RTRIM(cat.CategoryName)), ''), 'Unclassified') AS CategoryName,
 
@@ -12648,6 +12791,15 @@ async function getMdmSoftwareInventory(pool, searchText = "") {
                 ON sw.DeviceID = asset.DeviceID
             LEFT JOIN TS_SW_CATEGORY cat WITH (NOLOCK)
                 ON sw.SW_CATEGORY = cat.CategoryID
+            OUTER APPLY (
+                SELECT TOP 1 rel.Object_Full_Name
+                FROM TSMDM_OBJECT_RELATION mor WITH (NOLOCK)
+                INNER JOIN TS_OBJECT_RELATION rel WITH (NOLOCK)
+                    ON mor.Object_Rel_Idn = rel.Object_Rel_Idn
+                WHERE mor.MDM_Asset_Idn = asset.MDM_Asset_Idn
+                  AND ISNULL(rel.Object_Rel_Deleted, 0) = 0
+                ORDER BY rel.Object_Full_Name ASC
+            ) relInfo
         )
         SELECT
             CleanSoftwareName AS SoftwareID,
@@ -12664,7 +12816,7 @@ async function getMdmSoftwareInventory(pool, searchText = "") {
             ISNULL(DeviceName, '-') AS ComputerName,
             ISNULL(PlatformType, '-') AS MachineType,
             ISNULL(PlatformType, '-') AS OS,
-            '' AS CustomerName,
+            ISNULL(CustomerName, '') AS CustomerName,
 
             CASE
                 WHEN DeviceLocalIPAddress IS NULL OR DeviceLocalIPAddress = ''
@@ -12672,7 +12824,7 @@ async function getMdmSoftwareInventory(pool, searchText = "") {
                 ELSE DeviceLocalIPAddress
             END AS IP,
 
-            '' AS Department,
+            ISNULL(CustomerName, '') AS Department,
             ISNULL(CAST(ConnectionStatus AS VARCHAR(100)), '-') AS AgentStatus,
             'MDM' AS Object_Agent,
             ISNULL(DeviceID, '-') AS Object_DeviceID,
@@ -12708,7 +12860,7 @@ async function handleSoftwareInventoryList(req, res) {
                 SWName: { type: sql.VarChar(255), value: swname }
             });
 
-            return softInvSendWrapped(res, data, { scope: "client", clientID });
+            return softInvSendWrapped(res, softInvNormalizeRows(data), { scope: "client", clientID });
         }
 
         if (relationID) {
@@ -12717,11 +12869,11 @@ async function handleSoftwareInventoryList(req, res) {
                 SWName: { type: sql.VarChar(255), value: swname }
             });
 
-            return softInvSendWrapped(res, data, { scope: "relation", relationID });
+            return softInvSendWrapped(res, softInvNormalizeRows(data), { scope: "relation", relationID });
         }
 
         const data = await getMdmSoftwareInventory(pool, swname);
-        return res.json(data);
+        return res.json(softInvNormalizeRows(data));
 
     } catch (err) {
         console.error("GET /api/software error:", err);
@@ -12749,7 +12901,7 @@ async function handleSoftwareCategories(req, res) {
 
         return res.json(
             (result.recordset || [])
-                .map((row) => row.CategoryName)
+                .map((row) => softInvNormalizeCategoryName(row.CategoryName))
                 .filter(Boolean)
         );
 
@@ -12840,7 +12992,7 @@ app.get("/api/software/client/:clientID", authenticateToken, async (req, res) =>
             SWName: { type: sql.VarChar(255), value: swname }
         });
 
-        return softInvSendWrapped(res, data, { scope: "client", clientID });
+        return softInvSendWrapped(res, softInvNormalizeRows(data), { scope: "client", clientID });
     } catch (err) {
         console.error("GET /api/software/client/:clientID error:", err);
         return res.status(500).json({ success: false, message: "Failed to retrieve client software list", error: err.message });
@@ -12873,7 +13025,7 @@ app.get("/api/software/mdm/:deviceID", authenticateToken, async (req, res) => {
             DeviceID: { type: sql.VarChar(255), value: deviceID }
         });
 
-        return softInvSendWrapped(res, data, { scope: "mdm", deviceID });
+        return softInvSendWrapped(res, softInvNormalizeRows(data), { scope: "mdm", deviceID });
     } catch (err) {
         console.error("GET /api/software/mdm/:deviceID error:", err);
         return res.status(500).json({ success: false, message: "Failed to retrieve MDM software list", error: err.message });
@@ -12919,7 +13071,7 @@ app.get("/api/software/relation/:relationID/installed", authenticateToken, async
             }
         );
 
-        return softInvSendWrapped(res, data, { scope: "relation", relationID, mode, procedure });
+        return softInvSendWrapped(res, isDeviceListMode ? softInvNormalizeRows(data) : data, { scope: "relation", relationID, mode, procedure });
     } catch (err) {
         console.error("GET /api/software/relation/:relationID/installed error:", err);
         return res.status(500).json({ success: false, message: "Failed to retrieve installed software statistics", error: err.message });
@@ -29013,6 +29165,12 @@ function mdBuildGroups(assets, incidents, metrics, domains = {}) {
         ...payload
     });
 
+    // Keep the Hardware domain card and its drilldown aligned.
+    // The frontend Hardware card represents lifecycle + telemetry + identity/control evidence,
+    // not only devices that already crossed the final aging threshold.
+    const hardwareLifecycleRows = assets.filter((row) => row.isAging || row.isMonitor || row.isStale || row.missingIdentity || row.riskScore >= 35);
+    const hardwareLifecycleValue = sumCost(hardwareLifecycleRows);
+
     const riskRows = [
         row({
             key: "software-risk",
@@ -29080,15 +29238,15 @@ function mdBuildGroups(assets, incidents, metrics, domains = {}) {
         row({
             key: "pc-lifecycle",
             label: "PC lifecycle risk",
-            count: rowsBy.aging.length,
-            value: metrics.capexExposure,
-            valueFmt: mdMoneyValue(metrics.capexExposure),
+            count: hardwareLifecycleRows.length,
+            value: hardwareLifecycleValue,
+            valueFmt: mdMoneyValue(hardwareLifecycleValue),
             tone: "red",
             impactType: "PC risk",
-            riskType: "Aging / refresh window",
-            costType: "Tangible CAPEX",
+            riskType: "Aging / refresh window / stale telemetry / identity gap",
+            costType: "Tangible CAPEX + control evidence",
             decision: "Build refresh wave and owner list",
-            insight: "Aging devices carry replacement cost plus productivity and support risk when refresh is delayed.",
+            insight: "Hardware lifecycle risk combines aging, monitor-stage, stale telemetry, identity gaps and endpoint risk signals so the overview count always opens matching evidence.",
             level3Area: "risk",
             level3Key: "pc-lifecycle"
         }),
@@ -29331,6 +29489,7 @@ function mdBuildOverviewPayload(assets, incidents, rule, domains = {}) {
     const aging = assets.filter((row) => row.isAging).length;
     const monitor = assets.filter((row) => row.isMonitor).length;
     const identityGaps = assets.filter((row) => row.missingIdentity).length;
+    const hardwareLifecycleRiskItems = assets.filter((row) => row.isAging || row.isMonitor || row.isStale || row.missingIdentity || row.riskScore >= 35).length;
     const pricedAssets = assets.filter((row) => row.isPriced).length;
     const unpricedAssets = total - pricedAssets;
     const endpointRiskCandidates = assets.filter((row) => row.riskScore >= 35).length;
@@ -29392,6 +29551,17 @@ function mdBuildOverviewPayload(assets, incidents, rule, domains = {}) {
         aging,
         monitor,
         identityGaps,
+        pcAgingRuleEnabled: rule?.enabled !== false,
+        pcAgingAgeSource: mdText(rule?.ageSource, "RegDate"),
+        pcAgingHealthyMaxYears: mdNumber(rule?.healthyMaxYears, 3),
+        pcAgingMonitorMaxYears: mdNumber(rule?.monitorMaxYears, mdNumber(rule?.healthyMaxYears, 3)),
+        pcAgingMinYears: mdNumber(rule?.agingMinYears, 5),
+        pcAgingIncludeUnknownAge: rule?.includeUnknownAge === true || rule?.includeUnknownAge === 1 || String(rule?.includeUnknownAge).toLowerCase() === "true",
+        hardwareLifecycleRiskItems,
+        hardwareAgingItems: aging,
+        hardwareMonitorItems: monitor,
+        hardwareStaleItems: stale,
+        hardwareIdentityGapItems: identityGaps,
         pricedAssets,
         unpricedAssets,
         riskCandidates,
@@ -29559,7 +29729,9 @@ function mdFilterDrilldownRows(assets, incidents, area, key, domains = {}) {
     if (a === "risk") {
         if (k === "stale") return assets.filter((row) => row.isStale);
         if (k === "offline") return assets.filter((row) => !row.isOnline);
-        if (k === "aging" || k === "pc-lifecycle") return assets.filter((row) => row.isAging);
+        if (k === "aging" || k === "pc-lifecycle" || k === "hardware-lifecycle") {
+            return assets.filter((row) => row.isAging || row.isMonitor || row.isStale || row.missingIdentity || row.riskScore >= 35);
+        }
         if (k === "data-quality") return assets.filter((row) => row.missingIdentity);
         if (k === "financial-risk") return assets.filter((row) => row.riskScore >= 35);
         if (k === "visibility-risk") return assets.filter((row) => row.isStale || !row.isOnline);

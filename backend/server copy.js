@@ -13163,6 +13163,41 @@ function softScanParseInt(value, fallback = 0) {
     return Number.isNaN(parsed) ? fallback : parsed;
 }
 
+function softScanParseScopeInt(value, fallback = 0) {
+    if (value === undefined || value === null || value === "") return fallback;
+
+    if (typeof value === "number") {
+        return Number.isFinite(value) ? Math.trunc(value) : fallback;
+    }
+
+    if (typeof value === "object") {
+        return softScanParseScopeInt(softScanFirstDefined(
+            value.Object_Rel_Idn,
+            value.objectRelIdn,
+            value.objectRelID,
+            value.object_rel_idn,
+            value.relationID,
+            value.relationId,
+            value.relation_id,
+            value.folderId,
+            value.folderID,
+            value.departmentId,
+            value.branchId,
+            value.id
+        ), fallback);
+    }
+
+    const text = String(value).trim();
+    if (!text) return fallback;
+
+    if (/^-?\d+$/.test(text)) {
+        return softScanParseInt(text, fallback);
+    }
+
+    const embeddedNumber = text.match(/\d+/);
+    return embeddedNumber ? softScanParseInt(embeddedNumber[0], fallback) : fallback;
+}
+
 function softScanFirstDefined(...values) {
     return values.find(value => value !== undefined && value !== null && String(value).trim() !== "");
 }
@@ -13218,10 +13253,73 @@ function getSoftScanModeCode(scanMode) {
     return -1;
 }
 
+function getSoftScanObjectRelId(body = {}) {
+    return softScanParseScopeInt(softScanFirstDefined(
+        body.Object_Rel_Idn,
+        body.objectRelIdn,
+        body.objectRelID,
+        body.object_rel_idn,
+        body.relationID,
+        body.relationId,
+        body.relation_id,
+        body.folderId,
+        body.folderID,
+        body.departmentId,
+        body.departmentID,
+        body.branchId,
+        body.branchID,
+        body.selectedFolder,
+        body.folder,
+        body.department,
+        body.branch
+    ), -1);
+}
+
+function getSoftScanObjectRootId(body = {}) {
+    return softScanParseScopeInt(softScanFirstDefined(
+        body.Object_Root_Idn,
+        body.objectRootIdn,
+        body.objectRootID,
+        body.object_root_idn,
+        body.assetId,
+        body.assetID,
+        body.deviceIdn,
+        body.deviceIDN,
+        body.selectedDevice,
+        body.device,
+        body.asset
+    ), 0);
+}
+
+function getSoftScanObjectDeviceID(body = {}) {
+    return softScanNormalizeValue(softScanFirstDefined(
+        body.Object_DeviceID,
+        body.objectDeviceID,
+        body.objectDeviceId,
+        body.object_device_id,
+        body.deviceID,
+        body.deviceId,
+        body.deviceName,
+        body.computerName,
+        body.selectedDevice?.Object_DeviceID,
+        body.selectedDevice?.objectDeviceID,
+        body.selectedDevice?.objectDeviceId,
+        body.selectedDevice?.deviceID,
+        body.selectedDevice?.deviceId,
+        body.selectedDevice?.computerName,
+        body.device?.Object_DeviceID,
+        body.device?.objectDeviceID,
+        body.device?.objectDeviceId,
+        body.device?.deviceID,
+        body.device?.deviceId,
+        body.device?.computerName
+    ));
+}
+
 async function getSoftScanTargets(pool, options = {}) {
     const scanMode = options.scanMode;
-    const objectRelIdn = softScanParseInt(options.objectRelIdn, -1);
-    const objectRootIdn = softScanParseInt(options.objectRootIdn, 0);
+    const objectRelIdn = softScanParseScopeInt(options.objectRelIdn, -1);
+    const objectRootIdn = softScanParseScopeInt(options.objectRootIdn, 0);
     const objectDeviceID = softScanNormalizeValue(options.objectDeviceID);
 
     if (scanMode === "all") {
@@ -13243,7 +13341,9 @@ async function getSoftScanTargets(pool, options = {}) {
 
     if (scanMode === "folder") {
         if (objectRelIdn === -1 || objectRelIdn === 0 || Number.isNaN(objectRelIdn)) {
-            throw new Error("Object_Rel_Idn is required for folder software inventory scan.");
+            const error = new Error("Object_Rel_Idn is required for folder software inventory scan.");
+            error.statusCode = 400;
+            throw error;
         }
 
         const result = await pool.request()
@@ -13282,7 +13382,9 @@ async function getSoftScanTargets(pool, options = {}) {
 
     if (scanMode === "device") {
         if (!objectRootIdn && !objectDeviceID) {
-            throw new Error("Object_Root_Idn or Object_DeviceID is required for device software inventory scan.");
+            const error = new Error("Object_Root_Idn or Object_DeviceID is required for device software inventory scan.");
+            error.statusCode = 400;
+            throw error;
         }
 
         const result = await pool.request()
@@ -13495,9 +13597,17 @@ async function handleSoftInventoryScan(req, res) {
 
         const options = {
             scanMode,
-            objectRelIdn: softScanFirstDefined(body.Object_Rel_Idn, body.objectRelIdn, body.relationID, body.relationId),
-            objectRootIdn: softScanFirstDefined(body.Object_Root_Idn, body.objectRootIdn, body.objectRootID, body.assetId),
-            objectDeviceID: softScanFirstDefined(body.Object_DeviceID, body.objectDeviceID, body.deviceID, body.deviceId)
+            objectRelIdn: getSoftScanObjectRelId(body),
+            objectRootIdn: getSoftScanObjectRootId(body),
+            objectDeviceID: getSoftScanObjectDeviceID(body)
+        };
+
+        const normalizedPayload = {
+            ...body,
+            scanMode,
+            Object_Rel_Idn: options.objectRelIdn,
+            Object_Root_Idn: options.objectRootIdn,
+            Object_DeviceID: options.objectDeviceID
         };
 
         const pool = await sql.connect(dbConfig);
@@ -13513,14 +13623,14 @@ async function handleSoftInventoryScan(req, res) {
         transaction = new sql.Transaction(pool);
         await transaction.begin();
 
-        const job = await createSoftScanJobHeader(transaction, req, { ...body, scanMode }, scanMode);
+        const job = await createSoftScanJobHeader(transaction, req, normalizedPayload, scanMode);
         await insertHierarchicalTaskJobDestination(transaction, job.Job_Idn, scanMode, {
-            payload: body,
+            payload: normalizedPayload,
             firstTarget: targets[0],
-            objectRelIdn: softScanFirstDefined(body.Object_Rel_Idn, body.objectRelIdn, body.relationID, body.relationId),
+            objectRelIdn: options.objectRelIdn,
             objectRelCode: softScanFirstDefined(body.Object_Rel_Code, body.objectRelCode)
         });
-        const historyCount = await insertSoftScanHistoryRows(transaction, job.Job_Idn, scanMode, body, targets[0], job.Job_StartTime);
+        const historyCount = await insertSoftScanHistoryRows(transaction, job.Job_Idn, scanMode, normalizedPayload, targets[0], job.Job_StartTime);
 
         await transaction.commit();
         transaction = null;
@@ -13543,7 +13653,7 @@ async function handleSoftInventoryScan(req, res) {
                 historyRows: historyCount,
                 destination: {
                     mode: scanMode,
-                    Object_Rel_Idn: scanMode === "folder" ? softScanParseInt(options.objectRelIdn, -1) : -1,
+                    Object_Rel_Idn: scanMode === "folder" ? softScanParseScopeInt(options.objectRelIdn, -1) : -1,
                     Object_Root_Idn: scanMode === "device" ? targets[0]?.Object_Root_Idn : -1
                 }
             }
@@ -13558,9 +13668,9 @@ async function handleSoftInventoryScan(req, res) {
         }
 
         console.error("POST /api/software-inventory/scan error:", err);
-        return res.status(500).json({
+        return res.status(err.statusCode || 500).json({
             success: false,
-            message: "Failed to create software inventory scan job.",
+            message: err.statusCode === 400 ? (err.message || "Invalid software inventory scan request.") : "Failed to create software inventory scan job.",
             error: err.message || String(err)
         });
     }
@@ -28272,6 +28382,1526 @@ app.delete('/api/settings/access-controls/:id', authenticateToken, async (req, r
         return res.status(500).json({ success: false, message: err.message || 'Failed to delete access control.' });
     }
 });
+
+/*
+|--------------------------------------------------------------------------
+| MANAGEMENT DASHBOARD APIs - ANALYTICS SAFE VERSION
+|--------------------------------------------------------------------------
+| Place before app.listen. This block is defensive: EM, MDM, pricing and
+| incident data are loaded separately so one failing source will not break
+| the whole dashboard.
+|--------------------------------------------------------------------------
+*/
+
+function mdText(value, fallback = "") {
+    if (value === undefined || value === null) return fallback;
+    const text = String(value).trim();
+    if (!text || text.toLowerCase() === "null" || text.toLowerCase() === "undefined") return fallback;
+    return text;
+}
+
+function mdNumber(value, fallback = 0) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+}
+
+function mdRound(value, decimals = 0) {
+    const factor = Math.pow(10, decimals);
+    return Math.round(mdNumber(value) * factor) / factor;
+}
+
+function mdPercent(value, total) {
+    const d = mdNumber(total);
+    if (!d) return 0;
+    return Math.max(0, Math.min(100, Math.round((mdNumber(value) / d) * 100)));
+}
+
+function mdMoneyValue(value) {
+    const n = mdNumber(value);
+    if (Math.abs(n) >= 1000000) return `RM ${(n / 1000000).toFixed(2)}M`;
+    if (Math.abs(n) >= 1000) return `RM ${Math.round(n / 1000).toLocaleString()}K`;
+    return `RM ${Math.round(n).toLocaleString()}`;
+}
+
+function mdDate(value) {
+    if (!value) return null;
+    const d = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function mdDateLabel(value) {
+    const d = mdDate(value);
+    return d ? d.toISOString().slice(0, 10) : "-";
+}
+
+function mdAgeYears(value) {
+    const d = mdDate(value);
+    if (!d) return null;
+    return mdRound((Date.now() - d.getTime()) / (365.25 * 24 * 60 * 60 * 1000), 1);
+}
+
+function mdAddYears(value, years) {
+    const d = mdDate(value);
+    if (!d) return null;
+    const copy = new Date(d.getTime());
+    copy.setFullYear(copy.getFullYear() + mdNumber(years));
+    return copy;
+}
+
+function mdIsOnline(status) {
+    const text = mdText(status).toLowerCase();
+    return ["1", "online", "on", "connected", "active", "true"].includes(text);
+}
+
+function mdMonthKey(date) {
+    const d = mdDate(date);
+    if (!d) return "";
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function mdMonthLabel(key) {
+    const parts = String(key || "").split("-");
+    if (parts.length !== 2) return mdText(key, "-");
+    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, 1);
+    return d.toLocaleString("en-US", { month: "short" });
+}
+
+function mdLastMonthKeys(count = 6) {
+    const now = new Date();
+    const keys = [];
+    for (let i = count - 1; i >= 0; i -= 1) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        keys.push(mdMonthKey(d));
+    }
+    return keys;
+}
+
+function mdInferBrand(...values) {
+    const text = values.map((value) => mdText(value)).filter(Boolean).join(" ").toLowerCase();
+    if (!text) return "";
+    const rules = [
+        { brand: "Dell", keys: ["dell", "latitude", "optiplex", "precision", "vostro", "inspiron", "xps"] },
+        { brand: "HP", keys: ["hewlett", "hp ", "probook", "elitebook", "zbook", "pavilion", "compaq"] },
+        { brand: "Lenovo", keys: ["lenovo", "thinkpad", "thinkcentre", "ideapad", "legion"] },
+        { brand: "Apple", keys: ["apple", "macbook", "imac", "mac mini", "mac pro"] },
+        { brand: "Microsoft", keys: ["surface"] },
+        { brand: "Acer", keys: ["acer", "aspire", "travelmate", "predator"] },
+        { brand: "ASUS", keys: ["asus", "zenbook", "vivobook", "rog "] },
+        { brand: "Samsung", keys: ["samsung", "galaxy"] }
+    ];
+    const found = rules.find((rule) => rule.keys.some((key) => text.includes(key)));
+    return found ? found.brand : "";
+}
+
+function mdInferCategory(row) {
+    const text = [row.rawMachineType, row.category, row.platform, row.model, row.deviceName]
+        .map((value) => mdText(value))
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+    if (/server/.test(text)) return "Server";
+    if (/tablet|ipad/.test(text)) return "Tablet";
+    if (/phone|iphone|android|mobile/.test(text)) return "Mobile";
+    if (/notebook|laptop|portable|macbook|thinkpad|latitude|elitebook|probook|surface/.test(text)) return "Laptop";
+    if (/desktop|tower|optiplex|thinkcentre|workstation|pc/.test(text)) return "Desktop";
+    if (/monitor|display|screen/.test(text)) return "Monitor";
+    if (/printer|scanner/.test(text)) return "Peripheral";
+    return "Endpoint";
+}
+
+function mdGroupBy(rows, keyFn) {
+    const map = new Map();
+    rows.forEach((row) => {
+        const key = mdText(keyFn(row), "Unassigned");
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(row);
+    });
+    return map;
+}
+
+function mdTopGroups(rows, keyFn, valueFn, limit = 10) {
+    return Array.from(mdGroupBy(rows, keyFn).entries())
+        .map(([key, items]) => ({
+            key,
+            label: key,
+            count: items.length,
+            value: items.reduce((sum, item) => sum + mdNumber(valueFn ? valueFn(item) : 0), 0),
+            sample: items.slice(0, 3).map((item) => item.deviceName || item.deviceId || item.assetId).filter(Boolean)
+        }))
+        .sort((a, b) => b.value - a.value || b.count - a.count || String(a.label).localeCompare(String(b.label)))
+        .slice(0, limit);
+}
+
+function mdPriority(scoreOrCount, high = 50, medium = 10) {
+    const n = mdNumber(scoreOrCount);
+    if (n >= high) return "High";
+    if (n >= medium) return "Medium";
+    return "Low";
+}
+
+async function mdCol(pool, tableName, alias, columnName, fallbackSql = "NULL") {
+    try {
+        return (await tableColumnExists(pool, tableName, columnName)) ? `${alias}.[${columnName}]` : fallbackSql;
+    } catch (err) {
+        return fallbackSql;
+    }
+}
+
+async function mdHasColumn(pool, tableName, columnName) {
+    try {
+        return await tableColumnExists(pool, tableName, columnName);
+    } catch (err) {
+        return false;
+    }
+}
+
+async function mdSafeQuery(pool, label, query) {
+    try {
+        const result = await pool.request().query(query);
+        return result.recordset || [];
+    } catch (err) {
+        console.warn(`Management dashboard source skipped (${label}):`, err.message);
+        return [];
+    }
+}
+
+async function mdLoadPcAgingRule(pool) {
+    const fallback = {
+        enabled: true,
+        ageSource: "RegDate",
+        healthyMaxYears: 3,
+        monitorMaxYears: 5,
+        agingMinYears: 5,
+        includeUnknownAge: false,
+        replacementWindowMonths: 6
+    };
+    try {
+        if (!(await tableExists(pool, "AssetSettings"))) return fallback;
+        const result = await pool.request()
+            .input("SettingKey", sql.NVarChar(100), "PC_AGING_RULE")
+            .query(`SELECT TOP 1 SettingValue FROM AssetSettings WITH (NOLOCK) WHERE SettingKey = @SettingKey;`);
+        const raw = result.recordset?.[0]?.SettingValue;
+        if (!raw) return fallback;
+        return { ...fallback, ...JSON.parse(raw) };
+    } catch (err) {
+        return fallback;
+    }
+}
+
+async function mdBuildEmQuery(pool, rule) {
+    if (!(await tableExists(pool, "TS_OBJECT_ROOT"))) return "";
+    const hasRel = await tableExists(pool, "TS_OBJECT_RELATION");
+    const hasClient = (await tableExists(pool, "TS_CLIENT_INFO")) && (await mdHasColumn(pool, "TS_CLIENT_INFO", "Object_Root_Idn"));
+    const brand = await mdCol(pool, "TS_OBJECT_ROOT", "root", "MadeCompany", "''");
+    const model = await mdCol(pool, "TS_OBJECT_ROOT", "root", "Model", "''");
+    const ip = await mdCol(pool, "TS_OBJECT_ROOT", "root", "IP", "''");
+    const computer = await mdCol(pool, "TS_OBJECT_ROOT", "root", "ComputerName", "''");
+    const deviceId = await mdCol(pool, "TS_OBJECT_ROOT", "root", "Object_DeviceID", "CAST(root.Object_Root_Idn AS NVARCHAR(100))");
+    const connectionTime = await mdCol(pool, "TS_OBJECT_ROOT", "root", "ConnectionTime", "NULL");
+    const connectionStatus = await mdCol(pool, "TS_OBJECT_ROOT", "root", "ConnectionStatus", "NULL");
+    const regDate = await mdCol(pool, "TS_OBJECT_ROOT", "root", "RegDate", "NULL");
+    const hiUpdate = await mdCol(pool, "TS_OBJECT_ROOT", "root", "HIUpdateTime", "NULL");
+    const ciMachine = hasClient && await mdHasColumn(pool, "TS_CLIENT_INFO", "MachineType") ? "ci.[MachineType]" : model;
+    const ciOs = hasClient && await mdHasColumn(pool, "TS_CLIENT_INFO", "OS_FullName") ? "ci.[OS_FullName]" : "'Windows'";
+    const relJoin = hasRel ? "LEFT JOIN TS_OBJECT_RELATION rel WITH (NOLOCK) ON root.Object_Rel_Idn = rel.Object_Rel_Idn" : "";
+    const ciJoin = hasClient ? "LEFT JOIN TS_CLIENT_INFO ci WITH (NOLOCK) ON root.Object_Root_Idn = ci.Object_Root_Idn" : "";
+    const department = hasRel ? "COALESCE(NULLIF(rel.Object_Full_Name, ''), NULLIF(rel.Object_Rel_Name, ''), '')" : "''";
+    return `
+        SELECT TOP 50000
+            CONCAT('EM-', root.Object_Root_Idn) AS assetKey,
+            'EM' AS objectAgent,
+            CAST(root.Object_Root_Idn AS NVARCHAR(100)) AS assetId,
+            COALESCE(NULLIF(CAST(${computer} AS NVARCHAR(255)), ''), NULLIF(CAST(${deviceId} AS NVARCHAR(255)), ''), CAST(root.Object_Root_Idn AS NVARCHAR(100))) AS deviceName,
+            CAST(${deviceId} AS NVARCHAR(255)) AS deviceId,
+            CAST(${department} AS NVARCHAR(500)) AS department,
+            CAST(${ciMachine} AS NVARCHAR(255)) AS rawMachineType,
+            CAST(${brand} AS NVARCHAR(255)) AS brand,
+            CAST(${model} AS NVARCHAR(255)) AS model,
+            CAST(${ciOs} AS NVARCHAR(255)) AS platform,
+            CASE WHEN LOWER(CAST(${connectionStatus} AS NVARCHAR(50))) IN ('1','online','connected','active','on','true') THEN 'Online' ELSE 'Offline' END AS status,
+            TRY_CONVERT(datetime, ${connectionTime}) AS lastSeen,
+            COALESCE(TRY_CONVERT(datetime, ${regDate}), TRY_CONVERT(datetime, ${hiUpdate}), TRY_CONVERT(datetime, ${connectionTime})) AS ageDate,
+            CAST(${ip} AS NVARCHAR(100)) AS ipAddress
+        FROM TS_OBJECT_ROOT root WITH (NOLOCK)
+        ${ciJoin}
+        ${relJoin};
+    `;
+}
+
+async function mdBuildMdmQuery(pool) {
+    if (!(await tableExists(pool, "TSMDM_ASSET"))) return "";
+    const hasRel = await tableExists(pool, "TSMDM_OBJECT_RELATION");
+    const hasRootRel = await tableExists(pool, "TS_OBJECT_RELATION");
+    const hasMap = (await tableExists(pool, "TSMDM_TS_OBJECT_MAPPING")) && (await mdHasColumn(pool, "TSMDM_TS_OBJECT_MAPPING", "MDM_Asset_Idn"));
+    const brand = await mdCol(pool, "TSMDM_ASSET", "asset", "DeviceManufacture", "''");
+    const model = await mdCol(pool, "TSMDM_ASSET", "asset", "DeviceModelName", "''");
+    const deviceName = await mdCol(pool, "TSMDM_ASSET", "asset", "DeviceName", "''");
+    const deviceId = await mdCol(pool, "TSMDM_ASSET", "asset", "DeviceID", "CAST(asset.MDM_Asset_Idn AS NVARCHAR(100))");
+    const platform = await mdCol(pool, "TSMDM_ASSET", "asset", "PlatformType", "'MDM'");
+    const status = await mdCol(pool, "TSMDM_ASSET", "asset", "ConnectionStatus", "NULL");
+    const seen = await mdCol(pool, "TSMDM_ASSET", "asset", "DeviceTimeStamp", "NULL");
+    const regDate = await mdCol(pool, "TSMDM_ASSET", "asset", "RegDate", "NULL");
+    const localIp = await mdCol(pool, "TSMDM_ASSET", "asset", "DeviceLocalIPAddress", "''");
+    const ip = await mdCol(pool, "TSMDM_ASSET", "asset", "DeviceIPAddress", "''");
+    const relJoin = hasRel ? "LEFT JOIN TSMDM_OBJECT_RELATION mor WITH (NOLOCK) ON asset.MDM_Asset_Idn = mor.MDM_Asset_Idn" : "";
+    const rootRelJoin = hasRel && hasRootRel ? "LEFT JOIN TS_OBJECT_RELATION rel WITH (NOLOCK) ON mor.Object_Rel_Idn = rel.Object_Rel_Idn" : "";
+    const department = hasRel && hasRootRel ? "COALESCE(NULLIF(rel.Object_Full_Name, ''), NULLIF(rel.Object_Rel_Name, ''), '')" : "''";
+    const mapWhere = hasMap ? "WHERE NOT EXISTS (SELECT 1 FROM TSMDM_TS_OBJECT_MAPPING map WITH (NOLOCK) WHERE map.MDM_Asset_Idn = asset.MDM_Asset_Idn)" : "";
+    return `
+        SELECT TOP 50000
+            CONCAT('MDM-', asset.MDM_Asset_Idn) AS assetKey,
+            'MDM' AS objectAgent,
+            CAST(asset.MDM_Asset_Idn AS NVARCHAR(100)) AS assetId,
+            COALESCE(NULLIF(CAST(${deviceName} AS NVARCHAR(255)), ''), NULLIF(CAST(${deviceId} AS NVARCHAR(255)), ''), CAST(asset.MDM_Asset_Idn AS NVARCHAR(100))) AS deviceName,
+            CAST(${deviceId} AS NVARCHAR(255)) AS deviceId,
+            CAST(${department} AS NVARCHAR(500)) AS department,
+            CAST(${platform} AS NVARCHAR(255)) AS rawMachineType,
+            CAST(${brand} AS NVARCHAR(255)) AS brand,
+            CAST(${model} AS NVARCHAR(255)) AS model,
+            CAST(${platform} AS NVARCHAR(255)) AS platform,
+            CASE WHEN LOWER(CAST(${status} AS NVARCHAR(50))) IN ('1','online','connected','active','on','true') THEN 'Online' ELSE 'Offline' END AS status,
+            TRY_CONVERT(datetime, ${seen}) AS lastSeen,
+            COALESCE(TRY_CONVERT(datetime, ${regDate}), TRY_CONVERT(datetime, ${seen})) AS ageDate,
+            COALESCE(NULLIF(CAST(${localIp} AS NVARCHAR(100)), ''), NULLIF(CAST(${ip} AS NVARCHAR(100)), ''), '') AS ipAddress
+        FROM TSMDM_ASSET asset WITH (NOLOCK)
+        ${relJoin}
+        ${rootRelJoin}
+        ${mapWhere};
+    `;
+}
+
+async function mdFetchAssetRows(pool, rule) {
+    const emQuery = await mdBuildEmQuery(pool, rule);
+    const mdmQuery = await mdBuildMdmQuery(pool);
+    const [emRows, mdmRows] = await Promise.all([
+        emQuery ? mdSafeQuery(pool, "EM assets", emQuery) : Promise.resolve([]),
+        mdmQuery ? mdSafeQuery(pool, "MDM assets", mdmQuery) : Promise.resolve([])
+    ]);
+    return [...emRows, ...mdmRows];
+}
+
+function mdPriceField(row, names) {
+    for (const name of names) {
+        if (row[name] !== undefined && row[name] !== null && row[name] !== "") return row[name];
+    }
+    const lowerMap = Object.keys(row).reduce((acc, key) => { acc[key.toLowerCase()] = row[key]; return acc; }, {});
+    for (const name of names) {
+        const value = lowerMap[String(name).toLowerCase()];
+        if (value !== undefined && value !== null && value !== "") return value;
+    }
+    return "";
+}
+
+async function mdFetchPricing(pool) {
+    try {
+        if (!(await tableExists(pool, "AssetPricing"))) return [];
+        const result = await pool.request().query(`SELECT TOP 20000 * FROM AssetPricing WITH (NOLOCK);`);
+        return (result.recordset || []).map((row) => ({
+            id: mdPriceField(row, ["PricingID", "Id", "ID"]),
+            category: mdText(mdPriceField(row, ["Category", "DeviceCategory", "AssetCategory"]), "Others"),
+            brand: mdText(mdPriceField(row, ["Brand", "Manufacturer", "DeviceBrand"])),
+            model: mdText(mdPriceField(row, ["Model", "DeviceModel", "ModelName"])),
+            unitPrice: mdNumber(mdPriceField(row, ["UnitPrice", "Price", "ReplacementCost", "AssetPrice", "EstimatedPrice", "Amount", "Cost"]), 0),
+            isExcluded: [true, 1, "1", "true", "yes", "Y"].includes(mdPriceField(row, ["IsExcluded", "Excluded", "ExcludeFromCapex"]))
+        })).filter((row) => row.unitPrice > 0 || row.isExcluded);
+    } catch (err) {
+        console.warn("Management dashboard pricing skipped:", err.message);
+        return [];
+    }
+}
+
+async function mdFetchIncidents(pool) {
+    try {
+        if (!(await tableExists(pool, "HD_Incidents"))) return { rows: [], totalTickets: 0, openTickets: 0, slaBreached: 0, highPriority: 0 };
+        const result = await pool.request().query(`SELECT TOP 30000 * FROM HD_Incidents WITH (NOLOCK);`);
+        const rows = result.recordset || [];
+        const now = Date.now();
+        const closed = (status) => /resolved|closed|complete|cancel/i.test(mdText(status));
+        const openRows = rows.filter((row) => !closed(row.Status || row.status));
+        const slaBreached = openRows.filter((row) => {
+            const due = mdDate(row.SlaDue || row.SLADue || row.slaDue);
+            return due && due.getTime() < now;
+        }).length;
+        const highPriority = openRows.filter((row) => /high|critical|urgent|p1/i.test(mdText(row.Priority || row.priority))).length;
+        return { rows, totalTickets: rows.length, openTickets: openRows.length, slaBreached, highPriority };
+    } catch (err) {
+        console.warn("Management dashboard incidents skipped:", err.message);
+        return { rows: [], totalTickets: 0, openTickets: 0, slaBreached: 0, highPriority: 0 };
+    }
+}
+
+
+async function mdFetchSoftwareRows(pool) {
+    try {
+        if (!(await tableExists(pool, "TSMDM_SW_LIST"))) return [];
+        const hasCategory = await tableExists(pool, "TS_SW_CATEGORY");
+        const nameCol = await mdCol(pool, "TSMDM_SW_LIST", "sw", "Name", "''");
+        const idCol = await mdCol(pool, "TSMDM_SW_LIST", "sw", "Id", "''");
+        const deviceCol = await mdCol(pool, "TSMDM_SW_LIST", "sw", "DeviceID", "''");
+        const versionCol = await mdCol(pool, "TSMDM_SW_LIST", "sw", "Version", "''");
+        const vendorCol = await mdCol(pool, "TSMDM_SW_LIST", "sw", "Publisher", await mdCol(pool, "TSMDM_SW_LIST", "sw", "Manufacturer", "''"));
+        const dateCol = await mdCol(pool, "TSMDM_SW_LIST", "sw", "SearchDate", "NULL");
+        const categoryJoin = hasCategory ? "LEFT JOIN TS_SW_CATEGORY cat WITH (NOLOCK) ON sw.SW_CATEGORY = cat.CategoryID" : "";
+        const categoryExpression = hasCategory ? "ISNULL(NULLIF(LTRIM(RTRIM(cat.CategoryName)), ''), 'Unclassified')" : "'Unclassified'";
+        const result = await pool.request().query(`
+            SELECT TOP 30000
+                COALESCE(NULLIF(CAST(${nameCol} AS NVARCHAR(255)), ''), NULLIF(CAST(${idCol} AS NVARCHAR(255)), ''), '-') AS SoftwareName,
+                CAST(${deviceCol} AS NVARCHAR(255)) AS DeviceID,
+                CAST(${versionCol} AS NVARCHAR(255)) AS VersionName,
+                CAST(${vendorCol} AS NVARCHAR(255)) AS PublisherName,
+                ${categoryExpression} AS CategoryName,
+                TRY_CONVERT(datetime, ${dateCol}) AS SearchDate
+            FROM TSMDM_SW_LIST sw WITH (NOLOCK)
+            ${categoryJoin};
+        `);
+        const staleCutoff = Date.now() - (45 * 24 * 60 * 60 * 1000);
+        const riskWords = /remote admin|torrent|crypto|keygen|crack|unknown|toolbar|vpn|proxy|unauthor/i;
+        return (result.recordset || []).map((row, index) => {
+            const category = mdText(row.CategoryName, "Unclassified");
+            const searchDate = mdDate(row.SearchDate);
+            const softwareName = mdText(row.SoftwareName, "Unknown software");
+            const isUnclassified = /unclassified|unknown|uncategor/i.test(category);
+            const isStale = !searchDate || searchDate.getTime() < staleCutoff;
+            const isSensitive = riskWords.test(`${softwareName} ${category}`);
+            const riskScore = Math.min(100, (isSensitive ? 55 : 0) + (isUnclassified ? 30 : 0) + (isStale ? 18 : 0));
+            return {
+                assetKey: `SW-${index}-${mdText(row.DeviceID) || softwareName}`,
+                objectAgent: "SOFTWARE",
+                assetId: mdText(row.DeviceID),
+                deviceName: softwareName,
+                department: mdText(row.DeviceID, "Unmapped device"),
+                category: `Software / ${category}`,
+                brand: mdText(row.PublisherName, "Software"),
+                model: mdText(row.VersionName, "-"),
+                platform: "Software Inventory",
+                status: isSensitive ? "Review" : isUnclassified ? "Unclassified" : isStale ? "Stale scan" : "Catalogued",
+                lastSeen: mdDateLabel(searchDate),
+                age: isStale ? "Stale evidence" : "Current evidence",
+                ipAddress: "",
+                riskScore,
+                riskSeverity: riskScore >= 70 ? "High" : riskScore >= 35 ? "Medium" : riskScore > 0 ? "Low" : "Healthy",
+                replacementCost: riskScore > 0 ? mdMoneyValue(150) : mdMoneyValue(0),
+                isUnclassified,
+                isStale,
+                isSensitive,
+                searchDate
+            };
+        });
+    } catch (err) {
+        console.warn("Management dashboard software skipped:", err.message);
+        return [];
+    }
+}
+
+async function mdFetchNetworkRows(pool) {
+    try {
+        let rows = [];
+        if (typeof getNetworkInventoryRows === "function") {
+            rows = await getNetworkInventoryRows(pool, {});
+        }
+        return (rows || []).slice(0, 30000).map((row, index) => {
+            const text = JSON.stringify(row || {}).toLowerCase();
+            const ip = mdText(row.IP || row.Ip || row.ip || row.IPAddress || row.IP_Address || row.Address || row.HostIP || row.Subnet);
+            const name = mdText(row.ComputerName || row.DeviceName || row.Object_DeviceID || row.HostName || row.Name || ip, ip || "Unknown IP");
+            const owner = mdText(row.WorkGroup || row.Workgroup || row.WorkgroupName || row.GroupName || row.Object_Full_Name || row.Department, "Unmapped network");
+            const registered = text.includes("registered") || text.includes("installed") || text.includes("agent") || text.includes("managed");
+            const active = text.includes("active") || text.includes("online") || text.includes("up") || text.includes("alive");
+            const riskScore = Math.min(100, (!registered ? 42 : 0) + (!active ? 16 : 0) + (!ip ? 20 : 0));
+            return {
+                assetKey: `NET-${index}-${ip || name}`,
+                objectAgent: "NETWORK",
+                assetId: ip || name,
+                deviceName: name,
+                department: owner,
+                category: "Network inventory",
+                brand: "IP / subnet",
+                model: ip || "-",
+                platform: "Network",
+                status: registered ? (active ? "Registered active" : "Registered inactive") : (active ? "Unregistered active" : "Unregistered"),
+                lastSeen: "Network scan",
+                age: registered ? "Mapped" : "Unmapped",
+                ipAddress: ip,
+                riskScore,
+                riskSeverity: riskScore >= 70 ? "High" : riskScore >= 35 ? "Medium" : riskScore > 0 ? "Low" : "Healthy",
+                replacementCost: riskScore > 0 ? mdMoneyValue(300) : mdMoneyValue(0),
+                registered,
+                active
+            };
+        });
+    } catch (err) {
+        console.warn("Management dashboard network skipped:", err.message);
+        return [];
+    }
+}
+
+async function mdFetchGeoRows(pool) {
+    try {
+        if (!(await tableExists(pool, "TSMDM_GEOLOCATION"))) return [];
+        const deviceCol = await mdCol(pool, "TSMDM_GEOLOCATION", "geo", "DeviceID", "''");
+        const locationCol = await mdCol(pool, "TSMDM_GEOLOCATION", "geo", "LocationName", "''");
+        const timeCol = await mdCol(pool, "TSMDM_GEOLOCATION", "geo", "Time", "NULL");
+        const latCol = await mdCol(pool, "TSMDM_GEOLOCATION", "geo", "Latitude", "''");
+        const longCol = await mdCol(pool, "TSMDM_GEOLOCATION", "geo", "Longitude", "''");
+        const result = await pool.request().query(`
+            SELECT TOP 30000
+                CAST(${deviceCol} AS NVARCHAR(255)) AS DeviceID,
+                CAST(${locationCol} AS NVARCHAR(1000)) AS LocationName,
+                TRY_CONVERT(datetime, ${timeCol}) AS LocationTime,
+                CAST(${latCol} AS NVARCHAR(100)) AS Latitude,
+                CAST(${longCol} AS NVARCHAR(100)) AS Longitude
+            FROM TSMDM_GEOLOCATION geo WITH (NOLOCK);
+        `);
+        const staleCutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
+        return (result.recordset || []).map((row, index) => {
+            const location = mdText(row.LocationName, "Unknown Location");
+            const time = mdDate(row.LocationTime);
+            const isUnknown = !location || /unable to fetch|unknown|n\/a|null/i.test(location);
+            const isStale = !time || time.getTime() < staleCutoff;
+            const hasCoordinate = Boolean(mdText(row.Latitude) && mdText(row.Longitude));
+            const riskScore = Math.min(100, (isUnknown ? 35 : 0) + (isStale ? 32 : 0) + (!hasCoordinate ? 15 : 0));
+            return {
+                assetKey: `GEO-${index}-${mdText(row.DeviceID) || location}`,
+                objectAgent: "GEOLOCATION",
+                assetId: mdText(row.DeviceID),
+                deviceName: mdText(row.DeviceID, "Unknown device"),
+                department: location,
+                category: "Geolocation telemetry",
+                brand: "Location evidence",
+                model: hasCoordinate ? `${mdText(row.Latitude)}, ${mdText(row.Longitude)}` : "No coordinates",
+                platform: "MDM Geolocation",
+                status: isUnknown ? "Unknown location" : isStale ? "Stale location" : "Located",
+                lastSeen: mdDateLabel(time),
+                age: isStale ? "Stale evidence" : "Fresh evidence",
+                ipAddress: "",
+                riskScore,
+                riskSeverity: riskScore >= 70 ? "High" : riskScore >= 35 ? "Medium" : riskScore > 0 ? "Low" : "Healthy",
+                replacementCost: riskScore > 0 ? mdMoneyValue(200) : mdMoneyValue(0),
+                isUnknown,
+                isStale,
+                hasCoordinate,
+                locationTime: time
+            };
+        });
+    } catch (err) {
+        console.warn("Management dashboard geolocation skipped:", err.message);
+        return [];
+    }
+}
+
+function mdMatchPricing(asset, pricing) {
+    const category = mdText(asset.category, "Others").toLowerCase();
+    const brand = mdText(asset.brand).toLowerCase();
+    const model = mdText(asset.model).toLowerCase();
+    let best = null;
+    let bestScore = -1;
+    for (const row of pricing) {
+        const pc = mdText(row.category, "Others").toLowerCase();
+        const pb = mdText(row.brand).toLowerCase();
+        const pm = mdText(row.model).toLowerCase();
+        let score = 0;
+        if (pc === category) score += 40;
+        else if (pc === "others" || pc === "endpoint") score += 10;
+        else continue;
+        if (pb && brand && pb === brand) score += 30;
+        else if (pb) continue;
+        if (pm && model && (pm === model || model.includes(pm) || pm.includes(model))) score += 30;
+        else if (pm) continue;
+        if (score > bestScore) {
+            best = row;
+            bestScore = score;
+        }
+    }
+    return best;
+}
+
+function mdNormalizeAssets(rows, pricing, rule) {
+    const staleMs = 14 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const agingMin = mdNumber(rule?.agingMinYears, 5);
+    const healthyMax = mdNumber(rule?.healthyMaxYears, 3);
+    return rows.map((row) => {
+        const brand = mdText(row.brand) || mdInferBrand(row.model, row.deviceName, row.rawMachineType);
+        const category = mdInferCategory({ ...row, brand });
+        const age = mdAgeYears(row.ageDate);
+        const lastSeen = mdDate(row.lastSeen);
+        const isOnline = mdIsOnline(row.status);
+        const isStale = !lastSeen || (now - lastSeen.getTime()) > staleMs;
+        const missingIdentity = !mdText(row.deviceName) || !mdText(row.department) || !mdText(row.model) || !mdText(row.ipAddress);
+        const isAging = age !== null && age >= agingMin;
+        const isMonitor = age !== null && age >= healthyMax && age < agingMin;
+        const pricingRule = mdMatchPricing({ ...row, brand, category }, pricing);
+        const isPriced = Boolean(pricingRule && pricingRule.unitPrice > 0);
+        const isExcluded = Boolean(pricingRule?.isExcluded);
+        const replacementCost = isPriced && !isExcluded ? mdNumber(pricingRule.unitPrice) : 0;
+        let riskScore = 0;
+        if (isAging) riskScore += 38;
+        else if (isMonitor) riskScore += 18;
+        if (!isOnline) riskScore += 22;
+        if (isStale) riskScore += 22;
+        if (missingIdentity) riskScore += 12;
+        if (!isPriced) riskScore += 6;
+        riskScore = Math.min(100, riskScore);
+        const riskSeverity = riskScore >= 70 ? "High" : riskScore >= 40 ? "Medium" : riskScore > 0 ? "Low" : "Healthy";
+        return {
+            assetKey: mdText(row.assetKey),
+            objectAgent: mdText(row.objectAgent),
+            assetId: mdText(row.assetId),
+            deviceName: mdText(row.deviceName, "Unnamed device"),
+            deviceId: mdText(row.deviceId),
+            department: mdText(row.department, "Unassigned"),
+            rawMachineType: mdText(row.rawMachineType),
+            category,
+            brand,
+            model: mdText(row.model),
+            platform: mdText(row.platform),
+            status: isOnline ? "Online" : "Offline",
+            lastSeen,
+            lastSeenLabel: mdDateLabel(lastSeen),
+            ageDate: mdDate(row.ageDate),
+            ageYears: age,
+            ageLabel: age === null ? "Unknown" : `${age} year(s)`,
+            ipAddress: mdText(row.ipAddress),
+            isOnline,
+            isStale,
+            missingIdentity,
+            isAging,
+            isMonitor,
+            isPriced,
+            isExcluded,
+            replacementCost,
+            replacementCostFmt: mdMoneyValue(replacementCost),
+            riskScore,
+            riskSeverity,
+            dueDate: row.ageDate ? mdAddYears(row.ageDate, agingMin) : null
+        };
+    });
+}
+
+function mdBuildGroups(assets, incidents, metrics, domains = {}) {
+    const sumCost = (rows) => rows.reduce((sum, row) => sum + mdNumber(row.replacementCost), 0);
+    const countUnique = (rows) => rows.length;
+    const rowsBy = {
+        stale: assets.filter((row) => row.isStale),
+        offline: assets.filter((row) => !row.isOnline),
+        aging: assets.filter((row) => row.isAging),
+        monitor: assets.filter((row) => row.isMonitor),
+        missingIdentity: assets.filter((row) => row.missingIdentity),
+        unpriced: assets.filter((row) => !row.isPriced),
+        risk: assets.filter((row) => row.riskScore >= 35),
+        online: assets.filter((row) => row.isOnline),
+        unassigned: assets.filter((row) => mdText(row.department, "Unassigned").toLowerCase() === "unassigned")
+    };
+    const softwareRows = Array.isArray(domains.softwareRows) ? domains.softwareRows : [];
+    const networkRows = Array.isArray(domains.networkRows) ? domains.networkRows : [];
+    const geoRows = Array.isArray(domains.geoRows) ? domains.geoRows : [];
+    const duplicateIpRows = Array.isArray(domains.duplicateIpRows) ? domains.duplicateIpRows : [];
+    const visibilityRiskRows = assets.filter((row) => row.isStale || !row.isOnline);
+    const auditRiskRows = assets.filter((row) => row.missingIdentity || !row.isPriced);
+    const staleRecoveryValue = rowsBy.stale.length * 250;
+    const pricingCleanupValue = rowsBy.unpriced.length * 250;
+    const identityCleanupValue = rowsBy.missingIdentity.length * 150;
+    const slaProductivityValue = mdNumber(incidents.slaBreached) * 500;
+    const intangibleExposure = pricingCleanupValue + identityCleanupValue + staleRecoveryValue + slaProductivityValue;
+
+    const row = (payload) => ({
+        count: 0,
+        value: 0,
+        valueFmt: payload.value !== undefined ? mdMoneyValue(payload.value) : undefined,
+        tone: "blue",
+        confidence: payload.value > 0 ? "Costed evidence" : "Evidence gap",
+        metricLabel: payload.value > 0 ? "Estimated exposure" : "Evidence records",
+        ...payload
+    });
+
+    // Keep the Hardware domain card and its drilldown aligned.
+    // The frontend Hardware card represents lifecycle + telemetry + identity/control evidence,
+    // not only devices that already crossed the final aging threshold.
+    const hardwareLifecycleRows = assets.filter((row) => row.isAging || row.isMonitor || row.isStale || row.missingIdentity || row.riskScore >= 35);
+    const hardwareLifecycleValue = sumCost(hardwareLifecycleRows);
+
+    const riskRows = [
+        row({
+            key: "software-risk",
+            label: "Software estate risk",
+            count: metrics.softwareRiskItems,
+            value: metrics.softwareRiskExposure,
+            valueFmt: mdMoneyValue(metrics.softwareRiskExposure),
+            tone: "cyan",
+            impactType: "Software risk",
+            riskType: "Unclassified / stale / review software",
+            costType: "License + compliance exposure",
+            confidence: `${metrics.softwareInstallations.toLocaleString()} install evidence`,
+            decision: "Classify risky software and review unauthorized usage",
+            insight: "Software risk is driven by unclassified applications, stale inventory evidence and software names/categories that require review.",
+            level3Area: "software",
+            level3Key: "software-risk"
+        }),
+        row({
+            key: "network-risk",
+            label: "Network control risk",
+            count: metrics.networkRiskItems,
+            value: metrics.networkRiskExposure,
+            valueFmt: mdMoneyValue(metrics.networkRiskExposure),
+            tone: "purple",
+            impactType: "Network risk",
+            riskType: "Unmapped IP / duplicate IP / inactive scan",
+            costType: "Control + outage exposure",
+            confidence: `${metrics.networkKnownIps.toLocaleString()} network record(s)`,
+            decision: "Reconcile IP ownership, duplicate IP and unmanaged network records",
+            insight: "Network risk is not hardware age. It is about IP ownership, duplicate addressing and unmanaged reachable devices.",
+            level3Area: "network",
+            level3Key: "network-risk"
+        }),
+        row({
+            key: "geolocation-risk",
+            label: "Geolocation movement risk",
+            count: metrics.geoRiskItems,
+            value: metrics.geoRiskExposure,
+            valueFmt: mdMoneyValue(metrics.geoRiskExposure),
+            tone: "amber",
+            impactType: "Location risk",
+            riskType: "Missing / stale / unknown location",
+            costType: "Asset custody + audit exposure",
+            confidence: `${metrics.geoTrackedDevices.toLocaleString()} tracked device(s)`,
+            decision: "Validate location telemetry, stale coordinates and asset custody exceptions",
+            insight: "Geolocation adds custody and movement evidence so management can see devices outside normal ownership confidence.",
+            level3Area: "geolocation",
+            level3Key: "geolocation-risk"
+        }),
+        row({
+            key: "financial-risk",
+            label: "Financial risk exposure",
+            count: rowsBy.risk.length,
+            value: metrics.riskExposure,
+            valueFmt: mdMoneyValue(metrics.riskExposure),
+            tone: "pink",
+            impactType: "Financial risk",
+            riskType: "Budget / replacement exposure",
+            costType: "Tangible + risk-adjusted",
+            decision: "Approve refresh priority or risk acceptance",
+            insight: "Priced endpoints with high risk score create a budget exposure, not just an IT health issue.",
+            level3Area: "risk",
+            level3Key: "financial-risk"
+        }),
+        row({
+            key: "pc-lifecycle",
+            label: "PC lifecycle risk",
+            count: hardwareLifecycleRows.length,
+            value: hardwareLifecycleValue,
+            valueFmt: mdMoneyValue(hardwareLifecycleValue),
+            tone: "red",
+            impactType: "PC risk",
+            riskType: "Aging / refresh window / stale telemetry / identity gap",
+            costType: "Tangible CAPEX + control evidence",
+            decision: "Build refresh wave and owner list",
+            insight: "Hardware lifecycle risk combines aging, monitor-stage, stale telemetry, identity gaps and endpoint risk signals so the overview count always opens matching evidence.",
+            level3Area: "risk",
+            level3Key: "pc-lifecycle"
+        }),
+        row({
+            key: "visibility-risk",
+            label: "Operational visibility risk",
+            count: countUnique(visibilityRiskRows),
+            value: sumCost(visibilityRiskRows),
+            valueFmt: mdMoneyValue(sumCost(visibilityRiskRows)),
+            tone: "amber",
+            impactType: "Operational risk",
+            riskType: "Offline / stale telemetry",
+            costType: "Control risk",
+            decision: "Validate agent health and network reachability",
+            insight: "Offline and stale telemetry reduce management confidence even when the endpoint still exists.",
+            level3Area: "risk",
+            level3Key: "visibility-risk"
+        }),
+        row({
+            key: "audit-evidence",
+            label: "Audit evidence risk",
+            count: auditRiskRows.length + mdNumber(incidents.slaBreached),
+            value: intangibleExposure,
+            valueFmt: mdMoneyValue(intangibleExposure),
+            tone: "purple",
+            impactType: "Auditor risk",
+            riskType: "Evidence / SLA proof",
+            costType: "Intangible exposure",
+            confidence: "Evidence gap",
+            decision: "Close pricing, identity and SLA evidence gaps",
+            insight: "Audit exposure is driven by missing proof: pricing, ownership, identity and service governance.",
+            level3Area: "compliance",
+            level3Key: "audit-risk"
+        }),
+        row({
+            key: "control-risk",
+            label: "Endpoint control risk",
+            count: assets.filter((r) => r.riskScore >= 40 || r.isStale || !r.isOnline).length,
+            value: sumCost(assets.filter((r) => r.riskScore >= 40 || r.isStale || !r.isOnline)),
+            valueFmt: mdMoneyValue(sumCost(assets.filter((r) => r.riskScore >= 40 || r.isStale || !r.isOnline))),
+            tone: "orange",
+            impactType: "Control risk",
+            riskType: "PC / security posture",
+            costType: "Tangible + intangible",
+            decision: "Review control ownership and remediation SLA",
+            insight: "High score, stale and offline endpoints should be treated as control weakness before they become incidents.",
+            level3Area: "risk",
+            level3Key: "control-risk"
+        })
+    ].filter((item) => item.count > 0 || item.value > 0);
+
+    const resourcesByDepartment = [
+        row({ key: "software-estate", label: "Software estate scope", count: metrics.uniqueSoftware, value: metrics.softwareInstallations, valueFmt: `${metrics.uniqueSoftware.toLocaleString()} app(s)`, tone: "cyan", impactType: "Software resource", riskType: "Application footprint", costType: "License / support scope", confidence: `${metrics.softwareDevices.toLocaleString()} device(s) reporting`, metricLabel: "Unique software", decision: "Review software footprint and category ownership", insight: "Software estate size affects licensing, support complexity and compliance review workload.", level3Area: "software", level3Key: "software-scope" }),
+        row({ key: "network-footprint", label: "Network footprint", count: metrics.networkKnownIps, value: metrics.networkKnownIps, valueFmt: `${metrics.networkKnownIps.toLocaleString()} IP record(s)`, tone: "purple", impactType: "Network resource", riskType: "IP visibility", costType: "Control scope", confidence: `${metrics.networkSubnets.toLocaleString()} subnet(s)`, metricLabel: "Network records", decision: "Use network footprint to validate endpoint inventory completeness", insight: "Network inventory shows what is reachable, even when endpoint inventory does not have a clean owner.", level3Area: "network", level3Key: "network-scope" }),
+        row({ key: "location-coverage", label: "Location telemetry coverage", count: metrics.geoTrackedDevices, value: metrics.geoTrackedDevices, valueFmt: `${metrics.geoTrackedDevices.toLocaleString()} tracked device(s)`, tone: "amber", impactType: "Location resource", riskType: "Custody visibility", costType: "Audit evidence", confidence: `${metrics.geoStaleLocations.toLocaleString()} stale`, metricLabel: "Tracked devices", decision: "Use location coverage for custody and branch-level assurance", insight: "Location data turns inventory into custody evidence, especially for mobile and branch devices.", level3Area: "geolocation", level3Key: "geolocation-scope" }),
+        row({
+            key: "online-fleet",
+            label: "Usable online fleet",
+            count: rowsBy.online.length,
+            value: sumCost(rowsBy.online),
+            valueFmt: `${rowsBy.online.length.toLocaleString()} endpoint(s)`,
+            tone: "green",
+            impactType: "Resource capacity",
+            riskType: "Available fleet",
+            costType: "Operational capacity",
+            confidence: `${metrics.onlineRate}% online coverage`,
+            metricLabel: "Endpoint count",
+            decision: "Keep baseline and monitor drift",
+            insight: "Online endpoints represent the fleet that management can actually observe and support today.",
+            level3Area: "resources",
+            level3Key: "online-fleet"
+        }),
+        row({
+            key: "offline-fleet",
+            label: "Offline fleet pressure",
+            count: rowsBy.offline.length,
+            value: sumCost(rowsBy.offline),
+            valueFmt: `${rowsBy.offline.length.toLocaleString()} endpoint(s)`,
+            tone: "red",
+            impactType: "Resource risk",
+            riskType: "Availability / supportability",
+            costType: "Operational risk",
+            metricLabel: "Endpoint count",
+            decision: "Validate endpoint status and support owner",
+            insight: "Offline assets can hide support demand, lost devices or weak endpoint control.",
+            level3Area: "resources",
+            level3Key: "offline-fleet"
+        }),
+        row({
+            key: "stale-telemetry",
+            label: "Stale telemetry backlog",
+            count: rowsBy.stale.length,
+            value: sumCost(rowsBy.stale),
+            valueFmt: `${rowsBy.stale.length.toLocaleString()} endpoint(s)`,
+            tone: "amber",
+            impactType: "Visibility risk",
+            riskType: "Telemetry freshness",
+            costType: "Control confidence",
+            metricLabel: "Endpoint count",
+            decision: "Refresh agent health and inventory sync",
+            insight: "Stale records reduce confidence in every downstream cost, risk and audit number.",
+            level3Area: "resources",
+            level3Key: "stale-telemetry"
+        }),
+        row({
+            key: "unassigned-owner",
+            label: "Ownership / department gaps",
+            count: rowsBy.unassigned.length,
+            value: sumCost(rowsBy.unassigned),
+            valueFmt: `${rowsBy.unassigned.length.toLocaleString()} endpoint(s)`,
+            tone: "purple",
+            impactType: "Resource governance",
+            riskType: "Owner accountability",
+            costType: "Intangible control",
+            confidence: "Ownership gap",
+            metricLabel: "Endpoint count",
+            decision: "Fix department mapping and accountable owner",
+            insight: "A resource without ownership becomes a budget, audit and support blind spot.",
+            level3Area: "resources",
+            level3Key: "unassigned-owner"
+        }),
+        row({
+            key: "refresh-queue",
+            label: "Refresh queue resources",
+            count: rowsBy.aging.length + rowsBy.monitor.length,
+            value: metrics.capexExposure + metrics.monitorExposure,
+            valueFmt: mdMoneyValue(metrics.capexExposure + metrics.monitorExposure),
+            tone: "orange",
+            impactType: "Resource planning",
+            riskType: "Lifecycle capacity",
+            costType: "Tangible CAPEX",
+            decision: "Split buy-now vs monitor-stage deferment",
+            insight: "Refresh planning should separate immediate aging endpoints from monitor-stage devices that may be deferred.",
+            level3Area: "capex",
+            level3Key: "refresh-watch"
+        }),
+        row({
+            key: "ticket-load",
+            label: "Service ticket load",
+            count: metrics.openTickets,
+            value: slaProductivityValue,
+            valueFmt: `${metrics.openTickets.toLocaleString()} open ticket(s)`,
+            tone: "blue",
+            impactType: "Support resource",
+            riskType: "Service capacity",
+            costType: "Productivity risk",
+            metricLabel: "Ticket count",
+            decision: "Review queue ownership and SLA breach risk",
+            insight: "Open service load is a resource signal because it competes with remediation and refresh capacity.",
+            level3Area: "compliance",
+            level3Key: "sla-breach"
+        })
+    ].filter((item) => item.count > 0 || item.value > 0);
+
+    const capexByCategory = [
+        row({ key: "lifecycle-replacement", label: "Tangible lifecycle replacement", count: rowsBy.aging.length, value: metrics.capexExposure, valueFmt: mdMoneyValue(metrics.capexExposure), tone: "pink", impactType: "Financial exposure", riskType: "Buy-now refresh", costType: "Tangible CAPEX", decision: "Approve replacement wave by risk priority", insight: "This is the clearest cash exposure: aged devices with priced replacement evidence.", level3Area: "capex", level3Key: "lifecycle-replacement" }),
+        row({ key: "refresh-watch", label: "Near-term refresh watch", count: rowsBy.monitor.length, value: metrics.monitorExposure, valueFmt: mdMoneyValue(metrics.monitorExposure), tone: "orange", impactType: "Financial watch", riskType: "Monitor-stage lifecycle", costType: "Potential CAPEX", decision: "Decide defer, reuse or budget reserve", insight: "Monitor-stage devices are not immediate spend; they are a planning reserve and optimization opportunity.", level3Area: "capex", level3Key: "refresh-watch" }),
+        row({ key: "risk-adjusted-replacement", label: "Risk-adjusted replacement exposure", count: rowsBy.risk.length, value: metrics.riskExposure, valueFmt: mdMoneyValue(metrics.riskExposure), tone: "red", impactType: "Financial risk", riskType: "High-risk endpoints", costType: "Risk-adjusted cost", decision: "Prioritise the highest risk-score devices", insight: "This cost reflects devices where risk score indicates likely business impact if left untreated.", level3Area: "risk", level3Key: "financial-risk" }),
+        row({ key: "intangible-exposure", label: "Intangible evidence and service exposure", count: auditRiskRows.length + mdNumber(incidents.slaBreached), value: intangibleExposure, valueFmt: mdMoneyValue(intangibleExposure), tone: "purple", impactType: "Intangible cost", riskType: "Audit / service confidence", costType: "Estimated intangible", confidence: "Estimated", decision: "Close evidence gaps before budget sign-off", insight: "Intangible exposure estimates cleanup, productivity and audit effort where direct asset price is not enough.", level3Area: "compliance", level3Key: "audit-risk" }),
+        row({ key: "unpriced-blindspot", label: "Unpriced exposure blind spot", count: rowsBy.unpriced.length, value: pricingCleanupValue, valueFmt: mdMoneyValue(pricingCleanupValue), tone: "amber", impactType: "Financial confidence", riskType: "Pricing evidence gap", costType: "Intangible confidence gap", confidence: "Unpriced", decision: "Complete pricing rules and cost catalogue", insight: "Unpriced assets make financial exposure look artificially low and weaken audit confidence.", level3Area: "compliance", level3Key: "unpriced-assets" })
+    ].filter((item) => item.count > 0 || item.value > 0);
+
+    const complianceByGap = [
+        row({ key: "software-compliance", label: "Software classification compliance", count: metrics.unclassifiedSoftware, value: metrics.softwareComplianceScore, valueFmt: `${metrics.softwareComplianceScore}%`, tone: "cyan", impactType: "Audit compliance", riskType: "Software category evidence", costType: "License / policy confidence", confidence: `${metrics.unclassifiedSoftware.toLocaleString()} unclassified`, metricLabel: "Compliance score", decision: "Classify software and flag unauthorized applications", insight: "Software compliance needs category evidence; unclassified applications weaken license, audit and removal decisions.", level3Area: "software", level3Key: "software-compliance" }),
+        row({ key: "network-evidence", label: "Network evidence integrity", count: metrics.networkRiskItems, value: metrics.networkIntegrityScore, valueFmt: `${metrics.networkIntegrityScore}%`, tone: "purple", impactType: "Audit compliance", riskType: "IP / endpoint reconciliation", costType: "Control confidence", confidence: `${metrics.networkKnownIps.toLocaleString()} IP record(s)`, metricLabel: "Integrity score", decision: "Reconcile unmanaged and duplicate IP records", insight: "Network evidence helps prove whether endpoint inventory is complete or missing reachable devices.", level3Area: "network", level3Key: "network-evidence" }),
+        row({ key: "geo-evidence", label: "Location evidence freshness", count: metrics.geoRiskItems, value: metrics.geoIntegrityScore, valueFmt: `${metrics.geoIntegrityScore}%`, tone: "amber", impactType: "Audit compliance", riskType: "Custody and movement proof", costType: "Audit evidence", confidence: `${metrics.geoUnknownLocations.toLocaleString()} unknown`, metricLabel: "Freshness score", decision: "Resolve stale and unknown geolocation records", insight: "Geolocation evidence proves custody and movement. Stale or unknown location weakens audit and asset recovery decisions.", level3Area: "geolocation", level3Key: "geo-evidence" }),
+        row({ key: "pricing-coverage", label: "Pricing evidence coverage", count: metrics.pricedAssets, value: metrics.pricingCoverage, valueFmt: `${metrics.pricingCoverage}%`, tone: "cyan", impactType: "Audit compliance", riskType: "Cost evidence", costType: "Evidence completeness", confidence: `${metrics.pricingCoverage}% priced`, metricLabel: "Coverage", decision: "Strengthen pricing rules for uncovered assets", insight: "Pricing evidence is required to trust financial exposure, CAPEX and savings numbers.", level3Area: "compliance", level3Key: "pricing-coverage" }),
+        row({ key: "identity-completeness", label: "Asset identity completeness", count: metrics.identityGaps, value: identityCleanupValue, valueFmt: `${metrics.identityGaps.toLocaleString()} gap(s)`, tone: "purple", impactType: "Audit compliance", riskType: "CMDB / asset identity", costType: "Intangible audit effort", confidence: "Identity gap", metricLabel: "Data gaps", decision: "Fix device, model, owner and IP evidence", insight: "Auditors and managers need identity proof before they trust ownership and lifecycle status.", level3Area: "compliance", level3Key: "data-quality" }),
+        row({ key: "telemetry-evidence", label: "Telemetry evidence recency", count: rowsBy.stale.length, value: staleRecoveryValue, valueFmt: `${rowsBy.stale.length.toLocaleString()} stale record(s)`, tone: "amber", impactType: "Audit compliance", riskType: "Evidence freshness", costType: "Control confidence", confidence: "Stale evidence", metricLabel: "Stale records", decision: "Refresh telemetry and reconcile inactive records", insight: "Fresh telemetry is evidence. Without it, endpoint visibility becomes an audit exception.", level3Area: "risk", level3Key: "stale" }),
+        row({ key: "sla-governance", label: "SLA governance exceptions", count: incidents.slaBreached, value: slaProductivityValue, valueFmt: `${incidents.slaBreached.toLocaleString()} ticket(s)`, tone: "red", impactType: "Audit compliance", riskType: "Service governance", costType: "Productivity / reputation", confidence: "SLA exception", metricLabel: "Breach candidates", decision: "Escalate ownership and closure evidence", insight: "SLA breach candidates are governance signals because they show delayed service control.", level3Area: "compliance", level3Key: "sla-breach" }),
+        row({ key: "audit-risk", label: "Audit pack readiness", count: auditRiskRows.length + incidents.slaBreached, value: intangibleExposure, valueFmt: mdMoneyValue(intangibleExposure), tone: "pink", impactType: "Auditor risk", riskType: "Evidence pack", costType: "Intangible exposure", confidence: "Management estimate", decision: "Prepare pricing, identity, telemetry and SLA proof", insight: "Audit readiness should combine asset pricing, identity, telemetry and service evidence instead of one compliance score.", level3Area: "compliance", level3Key: "audit-risk" })
+    ];
+
+    const savingsByType = [
+        row({ key: "monitor-reuse", label: "Monitor-stage hardware reuse", count: rowsBy.monitor.filter((row) => row.isOnline).length, value: metrics.savingsOpportunity, valueFmt: mdMoneyValue(metrics.savingsOpportunity), tone: "green", impactType: "Cost optimization", riskType: "Reuse / deferment", costType: "Avoided spend", decision: "Review devices for reuse or deferment", insight: "Online monitor-stage hardware may not need immediate replacement, creating avoided spend.", level3Area: "saving", level3Key: "monitor-reuse" }),
+        row({ key: "refresh-deferment", label: "Refresh deferment reserve", count: rowsBy.monitor.length, value: Math.round(metrics.monitorExposure * 0.15), valueFmt: mdMoneyValue(Math.round(metrics.monitorExposure * 0.15)), tone: "cyan", impactType: "Cost optimization", riskType: "Budget timing", costType: "Avoided / delayed CAPEX", decision: "Split deferable vs must-refresh devices", insight: "Not every monitor-stage device is a buy-now item; deferment protects budget without hiding risk.", level3Area: "capex", level3Key: "refresh-watch" }),
+        row({ key: "stale-device-review", label: "Stale device recovery", count: rowsBy.stale.length, value: staleRecoveryValue, valueFmt: mdMoneyValue(staleRecoveryValue), tone: "amber", impactType: "Cost optimization", riskType: "Recovery / retirement", costType: "Intangible recovery", decision: "Recover, retire or reconnect stale endpoints", insight: "Stale cleanup can recover assets, reduce noise and improve license/support planning.", level3Area: "saving", level3Key: "stale-device-review" }),
+        row({ key: "pricing-cleanup", label: "Pricing cleanup confidence gain", count: rowsBy.unpriced.length, value: pricingCleanupValue, valueFmt: mdMoneyValue(pricingCleanupValue), tone: "purple", impactType: "Cost optimization", riskType: "Cost catalogue", costType: "Financial confidence", confidence: "Unpriced", decision: "Complete missing pricing rules", insight: "Pricing cleanup may not save cash directly, but it prevents under-budgeting and weak CAPEX approval evidence.", level3Area: "compliance", level3Key: "unpriced-assets" }),
+        row({ key: "sla-productivity", label: "SLA productivity leakage", count: incidents.slaBreached, value: slaProductivityValue, valueFmt: mdMoneyValue(slaProductivityValue), tone: "red", impactType: "Cost optimization", riskType: "Support productivity", costType: "Intangible productivity", confidence: "Estimated", decision: "Reduce breach backlog and repeat work", insight: "Service delay creates hidden cost through follow-up work, dissatisfaction and escalation time.", level3Area: "compliance", level3Key: "sla-breach" })
+    ].filter((item) => item.count > 0 || item.value > 0);
+
+    return { riskRows, resourcesByDepartment, capexByCategory, complianceByGap, savingsByType };
+}
+
+function mdBuildTrend(assets, incidents, metrics, rule) {
+    const keys = mdLastMonthKeys(6);
+    const map = new Map(keys.map((key) => [key, {
+        month: key,
+        label: mdMonthLabel(key),
+        financialExposure: 0,
+        riskExposure: 0,
+        serviceRisk: 0,
+        signals: 0
+    }]));
+    const first = keys[0];
+    const current = keys[keys.length - 1];
+    assets.forEach((row) => {
+        if (!row.isAging && !row.isMonitor && row.riskScore < 35) return;
+        let dueKey = mdMonthKey(row.dueDate || row.lastSeen || new Date());
+        if (!map.has(dueKey)) {
+            dueKey = row.dueDate && row.dueDate < new Date(`${first}-01`) ? current : current;
+        }
+        const bucket = map.get(dueKey) || map.get(current);
+        bucket.financialExposure += row.isAging || row.isMonitor ? row.replacementCost : 0;
+        bucket.riskExposure += row.riskScore >= 35 ? row.replacementCost : 0;
+        bucket.signals += row.riskScore >= 35 ? 1 : 0;
+    });
+    (incidents.rows || []).forEach((row) => {
+        const key = mdMonthKey(row.CreatedAt || row.createdAt || row.SlaDue || row.slaDue);
+        if (map.has(key)) map.get(key).serviceRisk += 1;
+    });
+    return Array.from(map.values()).map((row) => ({
+        ...row,
+        financialExposure: Math.round(row.financialExposure),
+        riskExposure: Math.round(row.riskExposure),
+        serviceRisk: row.serviceRisk,
+        signals: row.signals
+    }));
+}
+
+function mdBuildBoardActions(metrics, incidents) {
+    const rows = [];
+    if (metrics.riskCandidates > 0) rows.push({ area: "Risk", key: "risk:aging", issue: `${metrics.riskCandidates.toLocaleString()} endpoint(s) require management attention`, impact: mdMoneyValue(metrics.riskExposure), decision: "Approve remediation owner and lifecycle plan", priority: mdPriority(metrics.riskCandidates, 25, 8) });
+    if (metrics.stale > 0) rows.push({ area: "Operations", key: "risk:stale", issue: `${metrics.stale.toLocaleString()} stale / inactive telemetry record(s)`, impact: "Visibility risk", decision: "Validate agent health and network reachability", priority: mdPriority(metrics.stale, 25, 8) });
+    if (metrics.unpricedAssets > 0) rows.push({ area: "Compliance", key: "compliance:unpriced-assets", issue: `${metrics.unpricedAssets.toLocaleString()} asset(s) missing pricing evidence`, impact: "CAPEX confidence", decision: "Complete pricing rule coverage", priority: mdPriority(metrics.unpricedAssets, 20, 6) });
+    if (incidents.slaBreached > 0) rows.push({ area: "Service", key: "compliance:sla-breach", issue: `${incidents.slaBreached.toLocaleString()} SLA breach candidate record(s)`, impact: "Service risk", decision: "Escalate support queue and ownership", priority: mdPriority(incidents.slaBreached, 10, 2) });
+    if (metrics.savingsOpportunity > 0) rows.push({ area: "Saving", key: "saving:monitor-reuse", issue: `${mdMoneyValue(metrics.savingsOpportunity)} potential saving opportunity`, impact: mdMoneyValue(metrics.savingsOpportunity), decision: "Review reuse and deferment policy", priority: mdPriority(metrics.savingsOpportunity, 100000, 25000) });
+    if (metrics.softwareRiskItems > 0) rows.push({ area: "Software", key: "software:software-risk", issue: `${metrics.softwareRiskItems.toLocaleString()} software risk signal(s)`, impact: mdMoneyValue(metrics.softwareRiskExposure), decision: "Classify, approve or remove risky software", priority: mdPriority(metrics.softwareRiskItems, 100, 20) });
+    if (metrics.networkRiskItems > 0) rows.push({ area: "Network", key: "network:network-risk", issue: `${metrics.networkRiskItems.toLocaleString()} network control signal(s)`, impact: mdMoneyValue(metrics.networkRiskExposure), decision: "Reconcile unmanaged IP and duplicate addressing", priority: mdPriority(metrics.networkRiskItems, 50, 10) });
+    if (metrics.geoRiskItems > 0) rows.push({ area: "Geolocation", key: "geolocation:geolocation-risk", issue: `${metrics.geoRiskItems.toLocaleString()} location evidence issue(s)`, impact: mdMoneyValue(metrics.geoRiskExposure), decision: "Validate stale, missing or unknown location records", priority: mdPriority(metrics.geoRiskItems, 100, 25) });
+    if (rows.length === 0) rows.push({ area: "Operations", key: "resources:", issue: "No critical management exception detected", impact: "Stable", decision: "Continue scheduled monitoring", priority: "Low" });
+    return rows.slice(0, 8);
+}
+
+function mdBuildOverviewPayload(assets, incidents, rule, domains = {}) {
+    const total = assets.length;
+    const online = assets.filter((row) => row.isOnline).length;
+    const offline = total - online;
+    const stale = assets.filter((row) => row.isStale).length;
+    const aging = assets.filter((row) => row.isAging).length;
+    const monitor = assets.filter((row) => row.isMonitor).length;
+    const identityGaps = assets.filter((row) => row.missingIdentity).length;
+    const hardwareLifecycleRiskItems = assets.filter((row) => row.isAging || row.isMonitor || row.isStale || row.missingIdentity || row.riskScore >= 35).length;
+    const pricedAssets = assets.filter((row) => row.isPriced).length;
+    const unpricedAssets = total - pricedAssets;
+    const endpointRiskCandidates = assets.filter((row) => row.riskScore >= 35).length;
+    const softwareRows = Array.isArray(domains.softwareRows) ? domains.softwareRows : [];
+    const networkRows = Array.isArray(domains.networkRows) ? domains.networkRows : [];
+    const geoRows = Array.isArray(domains.geoRows) ? domains.geoRows : [];
+    const deviceIdsWithSoftware = new Set(softwareRows.map((row) => mdText(row.assetId)).filter(Boolean));
+    const softwareRiskItems = softwareRows.filter((row) => row.riskScore >= 35 || row.isUnclassified || row.isStale || row.isSensitive).length;
+    const unclassifiedSoftware = softwareRows.filter((row) => row.isUnclassified).length;
+    const staleSoftwareEvidence = softwareRows.filter((row) => row.isStale).length;
+    const softwareInstallations = softwareRows.length;
+    const uniqueSoftware = new Set(softwareRows.map((row) => mdText(row.deviceName).toLowerCase()).filter(Boolean)).size;
+    const softwareDevices = deviceIdsWithSoftware.size;
+    const softwareComplianceScore = Math.max(0, Math.min(100, Math.round(100 - mdPercent(unclassifiedSoftware + staleSoftwareEvidence, Math.max(softwareInstallations, 1)))));
+    const ipMap = new Map();
+    assets.forEach((row) => { const ip = mdText(row.ipAddress); if (!ip) return; if (!ipMap.has(ip)) ipMap.set(ip, []); ipMap.get(ip).push(row); });
+    const duplicateIpRows = Array.from(ipMap.entries()).filter(([, rows]) => rows.length > 1).flatMap(([ip, rows]) => rows.map((row) => ({ ...row, category: "Duplicate IP", riskScore: Math.max(row.riskScore, 45), riskSeverity: row.riskScore >= 70 ? row.riskSeverity : "Medium", replacementCostFmt: row.replacementCostFmt, ipAddress: ip })));
+    const networkKnownIps = networkRows.length || ipMap.size;
+    const networkUnregisteredRows = networkRows.filter((row) => row.registered === false || /unregistered|unmapped/i.test(mdText(row.status)));
+    const networkRiskItems = networkUnregisteredRows.length + duplicateIpRows.length;
+    const networkSubnets = new Set([...networkRows.map((row) => mdText(row.ipAddress)), ...assets.map((row) => mdText(row.ipAddress))].filter(Boolean).map((ip) => ip.split(".").slice(0, 3).join("."))).size;
+    const networkIntegrityScore = Math.max(0, Math.min(100, Math.round(100 - mdPercent(networkRiskItems, Math.max(networkKnownIps || ipMap.size, 1)))));
+    const trackedGeoIds = new Set(geoRows.map((row) => mdText(row.assetId)).filter(Boolean));
+    const geoTrackedDevices = trackedGeoIds.size;
+    const geoStaleLocations = geoRows.filter((row) => row.isStale).length;
+    const geoUnknownLocations = geoRows.filter((row) => row.isUnknown || !row.hasCoordinate).length;
+    const geoMissingDevices = Math.max(total - geoTrackedDevices, 0);
+    const geoRiskItems = geoMissingDevices + geoStaleLocations + geoUnknownLocations;
+    const geoIntegrityScore = Math.max(0, Math.min(100, Math.round(100 - mdPercent(geoStaleLocations + geoUnknownLocations, Math.max(geoRows.length, 1)))));
+    const softwareRiskExposure = softwareRiskItems * 150;
+    const networkRiskExposure = networkRiskItems * 300;
+    const geoRiskExposure = geoRiskItems * 200;
+    const domainRiskItems = softwareRiskItems + networkRiskItems + geoRiskItems;
+    const riskCandidates = endpointRiskCandidates + domainRiskItems;
+    const capexExposure = assets.filter((row) => row.isAging).reduce((sum, row) => sum + row.replacementCost, 0);
+    const monitorExposure = assets.filter((row) => row.isMonitor).reduce((sum, row) => sum + row.replacementCost, 0);
+    const endpointRiskExposure = assets.filter((row) => row.riskScore >= 35).reduce((sum, row) => sum + row.replacementCost, 0);
+    const riskExposure = endpointRiskExposure + softwareRiskExposure + networkRiskExposure + geoRiskExposure;
+    const savingsOpportunity = Math.round(assets.filter((row) => row.isMonitor && row.isOnline).reduce((sum, row) => sum + row.replacementCost * 0.25, 0));
+    const staleRecoveryEstimate = stale * 250;
+    const pricingCleanupEstimate = unpricedAssets * 250;
+    const identityCleanupEstimate = identityGaps * 150;
+    const slaProductivityEstimate = incidents.slaBreached * 500;
+    const intangibleExposure = staleRecoveryEstimate + pricingCleanupEstimate + identityCleanupEstimate + slaProductivityEstimate + softwareRiskExposure + networkRiskExposure + geoRiskExposure;
+    const tangibleExposure = capexExposure + monitorExposure;
+    const totalFinancialExposure = tangibleExposure + riskExposure + intangibleExposure;
+    const totalSavingsOpportunity = savingsOpportunity + staleRecoveryEstimate + pricingCleanupEstimate + slaProductivityEstimate;
+    const onlineRate = mdPercent(online, total);
+    const pricingCoverage = mdPercent(pricedAssets, total);
+    const compliancePenalty = mdPercent(unpricedAssets + identityGaps, total) * 0.55 + mdPercent(incidents.slaBreached, Math.max(incidents.openTickets, 1)) * 0.25;
+    const complianceScore = Math.max(0, Math.min(100, Math.round(100 - compliancePenalty)));
+    const healthPenalty = mdPercent(riskCandidates, total) * 0.5 + mdPercent(stale, total) * 0.24 + mdPercent(offline, total) * 0.16 + mdPercent(incidents.slaBreached, Math.max(incidents.openTickets, 1)) * 0.1;
+    const healthScore = Math.max(0, Math.min(100, Math.round(100 - healthPenalty)));
+    const metrics = {
+        totalEndpoints: total,
+        online,
+        offline,
+        stale,
+        aging,
+        monitor,
+        identityGaps,
+        pcAgingRuleEnabled: rule?.enabled !== false,
+        pcAgingAgeSource: mdText(rule?.ageSource, "RegDate"),
+        pcAgingHealthyMaxYears: mdNumber(rule?.healthyMaxYears, 3),
+        pcAgingMonitorMaxYears: mdNumber(rule?.monitorMaxYears, mdNumber(rule?.healthyMaxYears, 3)),
+        pcAgingMinYears: mdNumber(rule?.agingMinYears, 5),
+        pcAgingIncludeUnknownAge: rule?.includeUnknownAge === true || rule?.includeUnknownAge === 1 || String(rule?.includeUnknownAge).toLowerCase() === "true",
+        hardwareLifecycleRiskItems,
+        hardwareAgingItems: aging,
+        hardwareMonitorItems: monitor,
+        hardwareStaleItems: stale,
+        hardwareIdentityGapItems: identityGaps,
+        pricedAssets,
+        unpricedAssets,
+        riskCandidates,
+        capexExposure,
+        monitorExposure,
+        riskExposure,
+        savingsOpportunity: totalSavingsOpportunity,
+        reuseSavingsOpportunity: savingsOpportunity,
+        staleRecoveryEstimate,
+        pricingCleanupEstimate,
+        identityCleanupEstimate,
+        slaProductivityEstimate,
+        intangibleExposure,
+        tangibleExposure,
+        totalFinancialExposure,
+        onlineRate,
+        pricingCoverage,
+        complianceScore,
+        healthScore,
+        endpointRiskCandidates,
+        softwareInstallations,
+        uniqueSoftware,
+        softwareDevices,
+        softwareRiskItems,
+        unclassifiedSoftware,
+        staleSoftwareEvidence,
+        softwareRiskExposure,
+        softwareComplianceScore,
+        networkKnownIps,
+        networkRiskItems,
+        networkUnregisteredIps: networkUnregisteredRows.length,
+        networkDuplicateIps: duplicateIpRows.length,
+        networkSubnets,
+        networkRiskExposure,
+        networkIntegrityScore,
+        geoTrackedDevices,
+        geoMissingDevices,
+        geoStaleLocations,
+        geoUnknownLocations,
+        geoRiskItems,
+        geoRiskExposure,
+        geoIntegrityScore,
+        domainRiskItems,
+        boardAttention: 0,
+        totalTickets: incidents.totalTickets,
+        openTickets: incidents.openTickets,
+        slaBreached: incidents.slaBreached,
+        highPriority: incidents.highPriority
+    };
+    const groups = mdBuildGroups(assets, incidents, metrics, { ...domains, duplicateIpRows });
+    const boardActions = mdBuildBoardActions(metrics, incidents);
+    metrics.boardAttention = boardActions.filter((row) => row.priority !== "Low").length || boardActions.length;
+    const trend = mdBuildTrend(assets, incidents, metrics, rule);
+    return {
+        generatedAt: new Date().toISOString(),
+        metrics,
+        executiveKpis: [
+            { title: "Overall IT Health", value: String(healthScore), subValue: "/100", note: healthScore >= 80 ? "Healthy" : healthScore >= 60 ? "Monitor" : "Needs attention", tone: healthScore >= 80 ? "green" : healthScore >= 60 ? "amber" : "red", icon: "health", area: "resources" },
+            { title: "Financial Exposure", value: mdMoneyValue(totalFinancialExposure), note: "Tangible + risk + intangible exposure", tone: "blue", icon: "money", area: "capex" },
+            { title: "Risk Exposure", value: mdMoneyValue(riskExposure), note: `${endpointRiskCandidates.toLocaleString()} endpoint + ${domainRiskItems.toLocaleString()} software/network/geo signal(s)`, tone: riskCandidates > 0 ? "red" : "green", icon: "risk", area: "risk" },
+            { title: "Compliance Score", value: `${complianceScore}%`, note: `${pricingCoverage}% pricing coverage`, tone: complianceScore >= 80 ? "green" : "amber", icon: "audit", area: "compliance" },
+            { title: "Savings Opportunity", value: mdMoneyValue(totalSavingsOpportunity), note: "Reuse, recovery, cleanup and SLA opportunity", tone: "cyan", icon: "saving", area: "saving" },
+            { title: "Board Attention", value: String(metrics.boardAttention), note: "Decision item(s)", tone: metrics.boardAttention > 0 ? "orange" : "green", icon: "list", area: "actions" }
+        ],
+        pillars: [
+            { id: "risk", title: "Risk Management", scoreTitle: "Risk Score", scoreValue: String(Math.max(0, 100 - healthScore)), scoreUnit: "/100", scoreStatus: riskCandidates > 0 ? "Action required" : "Controlled", secondTitle: "Risk Exposure", secondValue: mdMoneyValue(riskExposure), secondNote: `${riskCandidates.toLocaleString()} risk candidate(s)`, details: groups.riskRows.slice(0, 4).map((row) => ({ label: row.label, value: row.valueFmt || mdMoneyValue(row.value), key: row.key, tone: "red" })), tone: "purple", icon: "risk", area: "risk" },
+            { id: "resources", title: "Resources Management", scoreTitle: "Resource Score", scoreValue: String(onlineRate), scoreUnit: "%", scoreStatus: `${online.toLocaleString()} online`, secondTitle: "Total Endpoints", secondValue: total.toLocaleString(), secondNote: `${onlineRate}% online`, details: [{ label: "Online coverage", value: `${onlineRate}%`, key: "online", tone: "green" }, { label: "Open tickets", value: incidents.openTickets.toLocaleString(), key: "open-tickets", tone: "blue" }, { label: "Devices due for refresh", value: aging.toLocaleString(), key: "aging", tone: "amber" }], tone: "blue", icon: "endpoint", area: "resources" },
+            { id: "compliance", title: "Audit Compliance", scoreTitle: "Compliance Score", scoreValue: String(complianceScore), scoreUnit: "%", scoreStatus: complianceScore >= 80 ? "Healthy" : "Needs improvement", secondTitle: "Evidence Coverage", secondValue: `${pricingCoverage}%`, secondNote: `${unpricedAssets.toLocaleString()} unpriced endpoint(s)`, details: groups.complianceByGap.slice(0, 4).map((row) => ({ label: row.label, value: row.valueFmt, key: row.key, tone: "purple" })), tone: "cyan", icon: "audit", area: "compliance" },
+            { id: "saving", title: "Cost Saving", scoreTitle: "Savings Opportunity", scoreValue: mdMoneyValue(savingsOpportunity), scoreStatus: savingsOpportunity > 0 ? "Actionable" : "Stable", secondTitle: "CAPEX Watch", secondValue: mdMoneyValue(monitorExposure), secondNote: `${monitor.toLocaleString()} monitor-stage device(s)`, details: groups.savingsByType.slice(0, 4).map((row) => ({ label: row.label, value: row.valueFmt, key: row.key, tone: "green" })), tone: "orange", icon: "saving", area: "saving" }
+        ],
+        finance: {
+            capexOpex: trend.map((row) => ({ month: row.label, capex: row.financialExposure, opex: row.riskExposure, count: row.signals })),
+            tangibleCost: tangibleExposure,
+            intangibleCost: intangibleExposure,
+            totalCost: totalFinancialExposure,
+            capexYtd: capexExposure,
+            opexYtd: intangibleExposure,
+            riskCost: riskExposure,
+            avgMonthlyCost: Math.round(totalFinancialExposure / Math.max(1, trend.length)),
+            potentialSavings: totalSavingsOpportunity
+        },
+        analysis: {
+            headline: `${total.toLocaleString()} endpoint(s), ${riskCandidates.toLocaleString()} cross-domain risk signal(s), ${softwareInstallations.toLocaleString()} software install(s), ${networkKnownIps.toLocaleString()} network record(s), ${geoTrackedDevices.toLocaleString()} geo-tracked device(s).`,
+            trend,
+            mix: {
+                risk: Math.max(0, 100 - healthScore),
+                control: healthScore,
+                savings: mdPercent(totalSavingsOpportunity, totalFinancialExposure + totalSavingsOpportunity)
+            },
+            signals: [
+                ...groups.riskRows.slice(0, 2).map((row) => ({ id: row.key, title: row.label, subtitle: `${row.count.toLocaleString()} record(s), ${mdMoneyValue(row.value)} exposure`, value: row.valueFmt || mdMoneyValue(row.value), area: row.level3Area || "risk", key: row.level3Key || row.key, tone: "red", icon: "risk" })),
+                ...groups.complianceByGap.filter((row) => row.count > 0).slice(0, 2).map((row) => ({ id: row.key, title: row.label, subtitle: row.valueFmt, value: row.valueFmt, area: row.level3Area || "compliance", key: row.level3Key || row.key, tone: "purple", icon: "audit" })),
+                ...groups.savingsByType.filter((row) => row.value > 0).slice(0, 1).map((row) => ({ id: row.key, title: row.label, subtitle: row.valueFmt, value: row.valueFmt, area: row.level3Area || "saving", key: row.level3Key || row.key, tone: "green", icon: "saving" }))
+            ].slice(0, 5)
+        },
+        level2: {
+            risk: groups.riskRows.map((row) => ({ ...row, valueFmt: row.valueFmt || mdMoneyValue(row.value) })),
+            resources: groups.resourcesByDepartment,
+            compliance: groups.complianceByGap,
+            capex: groups.capexByCategory,
+            saving: groups.savingsByType,
+            actions: []
+        },
+        boardActions
+    };
+}
+
+function mdFilterDrilldownRows(assets, incidents, area, key, domains = {}) {
+    const a = mdText(area).toLowerCase();
+    const k = mdText(key).toLowerCase();
+    const softwareRows = Array.isArray(domains.softwareRows) ? domains.softwareRows : [];
+    const networkRows = Array.isArray(domains.networkRows) ? domains.networkRows : [];
+    const geoRows = Array.isArray(domains.geoRows) ? domains.geoRows : [];
+    const duplicateIpRows = Array.isArray(domains.duplicateIpRows) ? domains.duplicateIpRows : [];
+    if (a === "software") {
+        if (!k || k === "software-scope") return softwareRows;
+        if (k === "software-compliance") return softwareRows.filter((row) => row.isUnclassified || row.isSensitive);
+        return softwareRows.filter((row) => row.riskScore >= 35 || row.isUnclassified || row.isStale || row.isSensitive);
+    }
+    if (a === "network") {
+        if (!k || k === "network-scope") return networkRows.concat(duplicateIpRows);
+        if (k === "network-evidence") return networkRows.filter((row) => row.riskScore > 0 || row.registered === false).concat(duplicateIpRows);
+        return networkRows.filter((row) => row.riskScore >= 35 || row.registered === false).concat(duplicateIpRows);
+    }
+    if (a === "geolocation") {
+        if (!k || k === "geolocation-scope") return geoRows;
+        if (k === "geo-evidence") return geoRows.filter((row) => row.isStale || row.isUnknown || !row.hasCoordinate);
+        return geoRows.filter((row) => row.riskScore >= 35 || row.isStale || row.isUnknown || !row.hasCoordinate);
+    }
+    if (a === "capex") {
+        if (!k || k === "aging-assets" || k === "lifecycle-replacement") return assets.filter((row) => row.isAging);
+        if (k === "refresh-watch" || k === "refresh-deferment") return assets.filter((row) => row.isMonitor);
+        if (k === "risk-adjusted-replacement") return assets.filter((row) => row.riskScore >= 35);
+        if (k === "intangible-exposure") return assets.filter((row) => row.missingIdentity || !row.isPriced || row.isStale);
+        if (k === "unpriced-blindspot") return assets.filter((row) => !row.isPriced);
+        return assets.filter((row) => (row.isAging || row.isMonitor) && mdText(row.category).toLowerCase() === k);
+    }
+    if (a === "resources") {
+        if (!k) return assets;
+        if (k === "online" || k === "online-fleet") return assets.filter((row) => row.isOnline);
+        if (k === "offline-fleet") return assets.filter((row) => !row.isOnline);
+        if (k === "stale-telemetry") return assets.filter((row) => row.isStale);
+        if (k === "unassigned-owner") return assets.filter((row) => mdText(row.department, "Unassigned").toLowerCase() === "unassigned");
+        if (k === "refresh-queue") return assets.filter((row) => row.isAging || row.isMonitor);
+        if (k === "ticket-load") return [];
+        return assets.filter((row) => mdText(row.department).toLowerCase() === k || mdText(row.category).toLowerCase() === k);
+    }
+    if (a === "compliance") {
+        if (k === "data-quality" || k === "identity-completeness") return assets.filter((row) => row.missingIdentity);
+        if (k === "unpriced-assets" || k === "pricing-cleanup") return assets.filter((row) => !row.isPriced);
+        if (k === "pricing-coverage") return assets.filter((row) => row.isPriced);
+        if (k === "telemetry-evidence") return assets.filter((row) => row.isStale);
+        if (k === "audit-risk" || k === "audit-pack") return assets.filter((row) => row.missingIdentity || !row.isPriced || row.isStale);
+        if (k === "sla-breach" || k === "sla-governance" || k === "sla-productivity") return [];
+        return assets.filter((row) => row.missingIdentity || !row.isPriced || row.isStale);
+    }
+    if (a === "saving") {
+        if (k === "monitor-reuse") return assets.filter((row) => row.isMonitor && row.isOnline);
+        if (k === "refresh-deferment") return assets.filter((row) => row.isMonitor);
+        if (k === "stale-device-review") return assets.filter((row) => row.isStale);
+        if (k === "pricing-cleanup") return assets.filter((row) => !row.isPriced);
+        if (k === "sla-productivity") return [];
+        return assets.filter((row) => row.isMonitor || row.isStale || !row.isPriced);
+    }
+    if (a === "risk") {
+        if (k === "stale") return assets.filter((row) => row.isStale);
+        if (k === "offline") return assets.filter((row) => !row.isOnline);
+        if (k === "aging" || k === "pc-lifecycle" || k === "hardware-lifecycle") {
+            return assets.filter((row) => row.isAging || row.isMonitor || row.isStale || row.missingIdentity || row.riskScore >= 35);
+        }
+        if (k === "data-quality") return assets.filter((row) => row.missingIdentity);
+        if (k === "financial-risk") return assets.filter((row) => row.riskScore >= 35);
+        if (k === "visibility-risk") return assets.filter((row) => row.isStale || !row.isOnline);
+        if (k === "control-risk") return assets.filter((row) => row.riskScore >= 40 || row.isStale || !row.isOnline);
+        return assets.filter((row) => row.riskScore >= 35);
+    }
+    return assets;
+}
+
+async function mdLoadDashboardContext(pool) {
+    const rule = await mdLoadPcAgingRule(pool);
+    const [assetRows, pricing, incidents, softwareRows, networkRows, geoRows] = await Promise.all([
+        mdFetchAssetRows(pool, rule),
+        mdFetchPricing(pool),
+        mdFetchIncidents(pool),
+        mdFetchSoftwareRows(pool),
+        mdFetchNetworkRows(pool),
+        mdFetchGeoRows(pool)
+    ]);
+    const assets = mdNormalizeAssets(assetRows, pricing, rule);
+    return { assets, pricing, incidents, rule, softwareRows, networkRows, geoRows };
+}
+
+app.get("/api/management-dashboard/overview", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const context = await mdLoadDashboardContext(pool);
+        return res.json({ success: true, data: mdBuildOverviewPayload(context.assets, context.incidents, context.rule, context) });
+    } catch (err) {
+        console.error("GET /api/management-dashboard/overview error:", err);
+        return res.status(500).json({ success: false, message: "Failed to load management dashboard overview.", error: err.message });
+    }
+});
+
+app.get("/api/management-dashboard/drilldown", authenticateToken, async (req, res) => {
+    try {
+        const area = mdText(req.query.area || "risk");
+        const key = mdText(req.query.key || "");
+        const level = mdNumber(req.query.level, 2);
+        const pool = await sql.connect(dbConfig);
+        const context = await mdLoadDashboardContext(pool);
+        const ipMap = new Map();
+        context.assets.forEach((row) => { const ip = mdText(row.ipAddress); if (!ip) return; if (!ipMap.has(ip)) ipMap.set(ip, []); ipMap.get(ip).push(row); });
+        const duplicateIpRows = Array.from(ipMap.entries()).filter(([, rows]) => rows.length > 1).flatMap(([ip, rows]) => rows.map((row) => ({ ...row, category: "Duplicate IP", riskScore: Math.max(row.riskScore, 45), riskSeverity: row.riskScore >= 70 ? row.riskSeverity : "Medium", ipAddress: ip })));
+        const filtered = mdFilterDrilldownRows(context.assets, context.incidents, area, key, { ...context, duplicateIpRows });
+        if (level >= 3) {
+            return res.json({
+                success: true,
+                data: {
+                    area,
+                    key,
+                    level: 3,
+                    title: `${area} evidence`,
+                    total: filtered.length,
+                    rows: filtered.sort((a, b) => b.riskScore - a.riskScore || b.replacementCost - a.replacementCost).slice(0, 500).map((row) => ({
+                        assetKey: row.assetKey,
+                        objectAgent: row.objectAgent,
+                        assetId: row.assetId,
+                        deviceName: row.deviceName,
+                        department: row.department,
+                        category: row.category,
+                        brand: row.brand,
+                        model: row.model,
+                        platform: row.platform,
+                        status: row.status,
+                        lastSeen: row.lastSeenLabel,
+                        age: row.ageLabel,
+                        ipAddress: row.ipAddress,
+                        riskScore: row.riskScore,
+                        riskSeverity: row.riskSeverity,
+                        replacementCost: row.replacementCostFmt || row.replacementCost
+                    }))
+                }
+            });
+        }
+        const groupFn = area === "resources" ? (row) => row.category : (row) => row.department;
+        const rows = mdTopGroups(filtered, groupFn, (row) => row.replacementCost, 20).map((row) => ({
+            ...row,
+            valueFmt: area === "resources" ? `${row.count.toLocaleString()} endpoint(s)` : mdMoneyValue(row.value),
+            level3Area: area,
+            level3Key: row.key
+        }));
+        return res.json({ success: true, data: { area, key, level: 2, title: `${area} breakdown`, total: filtered.length, rows } });
+    } catch (err) {
+        console.error("GET /api/management-dashboard/drilldown error:", err);
+        return res.status(500).json({ success: false, message: "Failed to load management dashboard drilldown.", error: err.message });
+    }
+});
+
+function mdStoryText(value, fallback = "") {
+    if (value === undefined || value === null) return fallback;
+    const text = String(value).trim();
+    return text || fallback;
+}
+
+function mdStoryArray(value) {
+    if (!Array.isArray(value)) return [];
+    return value.map((item) => mdStoryText(item)).filter(Boolean);
+}
+
+function mdStoryToNumber(value, fallback = 0) {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function mdStoryFallback(overview = {}, reason = "") {
+    const metrics = overview.metrics || {};
+    const finance = overview.finance || {};
+    const boardActions = Array.isArray(overview.boardActions) ? overview.boardActions : [];
+    const kpis = Array.isArray(overview.executiveKpis) ? overview.executiveKpis : [];
+
+    const healthKpi = kpis.find((item) => /health/i.test(item.title || ""));
+    const complianceKpi = kpis.find((item) => /compliance/i.test(item.title || ""));
+    const healthScore = mdStoryToNumber(metrics.healthScore ?? healthKpi?.value, 0);
+    const riskSignals = mdStoryToNumber(metrics.riskCandidates, 0);
+    const boardItems = mdStoryToNumber(metrics.boardItems, boardActions.length);
+    const pricingCoverage = mdStoryToNumber(metrics.pricingCoverage ?? complianceKpi?.value, 0);
+    const totalExposure = mdStoryToNumber(finance.totalCost, 0);
+    const exposureText = typeof mdMoneyValue === "function" ? mdMoneyValue(totalExposure) : `RM ${Math.round(totalExposure).toLocaleString()}`;
+
+    const tone = healthScore < 50 || riskSignals >= 20
+        ? "red"
+        : healthScore < 75 || boardItems > 0
+            ? "amber"
+            : "green";
+
+    const status = tone === "red" ? "Needs attention" : tone === "amber" ? "Watch closely" : "Healthy posture";
+
+    return {
+        status,
+        tone,
+        headline: `${status}: ${exposureText} exposure with ${Math.round(riskSignals).toLocaleString()} risk signal(s).`,
+        summary: `Current dashboard posture is ${status.toLowerCase()} based on endpoint health, lifecycle exposure, compliance coverage and action queue evidence.`,
+        narrative: `Current estate health is ${Math.round(healthScore)}% with ${Math.round(pricingCoverage)}% evidence coverage. Management should prioritise the highest-risk endpoint groups, refresh planning and open decision items before exposure grows further.`,
+        keySignals: [
+            `${Math.round(riskSignals).toLocaleString()} risk signal(s)`,
+            `${boardItems.toLocaleString()} board action(s)`,
+            `${Math.round(pricingCoverage)}% evidence coverage`,
+            `${exposureText} total exposure`
+        ],
+        boardRecommendation: boardItems > 0
+            ? "Review open board actions and assign ownership for risk remediation, lifecycle refresh and evidence closure."
+            : "Continue weekly monitoring and keep management evidence ready for the next governance cycle.",
+        actionItems: [
+            "Validate the highest exposure endpoint groups.",
+            "Assign owner and target date for risk remediation.",
+            "Close pricing and compliance evidence gaps before the next review."
+        ],
+        source: "local",
+        fallbackReason: reason || undefined,
+        generatedAt: new Date().toISOString()
+    };
+}
+
+function mdBuildStoryAiContext(req, overview = {}) {
+    const metrics = overview.metrics || {};
+    const finance = overview.finance || {};
+    const analysis = overview.analysis || {};
+
+    return {
+        currentUser: {
+            console_Idn: req.user?.console_Idn || null,
+            userID: req.user?.userID || "",
+            menuIndex: req.user?.menuIndex || null
+        },
+        policy: {
+            access: "read-only",
+            scope: "Management Dashboard executive storytelling. Use only the provided dashboard facts.",
+            blocked: ["create", "update", "delete", "approve", "assign", "raw SQL", "tokens", "passwords"]
+        },
+        allowedModules: ["Management Dashboard", "Endpoint Lifecycle", "Risk Exposure", "Compliance Evidence", "Board Action Queue"],
+        data: {
+            dashboard: {
+                generatedAt: overview.generatedAt || new Date().toISOString(),
+                metrics,
+                executiveKpis: (overview.executiveKpis || []).slice(0, 8).map((item) => ({
+                    title: item.title,
+                    value: item.value,
+                    subValue: item.subValue,
+                    note: item.note,
+                    trend: item.trend
+                })),
+                finance: {
+                    totalCost: finance.totalCost || 0,
+                    riskCost: finance.riskCost || 0,
+                    capexYtd: finance.capexYtd || 0,
+                    potentialSavings: finance.potentialSavings || 0,
+                    avgMonthlyCost: finance.avgMonthlyCost || 0
+                },
+                signals: (analysis.signals || []).slice(0, 5).map((item) => ({
+                    title: item.title,
+                    subtitle: item.subtitle,
+                    value: item.value,
+                    tone: item.tone
+                })),
+                boardActions: (overview.boardActions || []).slice(0, 5).map((item) => ({
+                    title: item.title,
+                    priority: item.priority,
+                    owner: item.owner,
+                    impact: item.impact,
+                    due: item.due
+                })),
+                riskBreakdown: (overview.level2?.risk || []).slice(0, 6).map((item) => ({
+                    label: item.label,
+                    count: item.count,
+                    value: item.value,
+                    valueFmt: item.valueFmt
+                })),
+                complianceBreakdown: (overview.level2?.compliance || []).slice(0, 6).map((item) => ({
+                    label: item.label,
+                    count: item.count,
+                    valueFmt: item.valueFmt
+                }))
+            }
+        }
+    };
+}
+
+function mdParseGeminiStory(answer, overview = {}) {
+    const raw = mdStoryText(answer);
+    if (!raw) return null;
+
+    let jsonText = raw;
+    const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fenced?.[1]) jsonText = fenced[1].trim();
+
+    const firstBrace = jsonText.indexOf("{");
+    const lastBrace = jsonText.lastIndexOf("}");
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+        jsonText = jsonText.slice(firstBrace, lastBrace + 1);
+    }
+
+    try {
+        const parsed = JSON.parse(jsonText);
+        const fallback = mdStoryFallback(overview);
+        const tone = mdStoryText(parsed.tone, fallback.tone).toLowerCase();
+        const safeTone = ["green", "amber", "red", "blue", "purple"].includes(tone) ? tone : fallback.tone;
+
+        return {
+            status: mdStoryText(parsed.status, fallback.status),
+            tone: safeTone,
+            headline: mdStoryText(parsed.headline, fallback.headline),
+            summary: mdStoryText(parsed.summary, fallback.summary),
+            narrative: mdStoryText(parsed.narrative, parsed.summary || fallback.narrative),
+            keySignals: mdStoryArray(parsed.keySignals).length ? mdStoryArray(parsed.keySignals).slice(0, 4) : fallback.keySignals,
+            boardRecommendation: mdStoryText(parsed.boardRecommendation, fallback.boardRecommendation),
+            actionItems: mdStoryArray(parsed.actionItems).length ? mdStoryArray(parsed.actionItems).slice(0, 3) : fallback.actionItems,
+            source: "gemini",
+            generatedAt: new Date().toISOString()
+        };
+    } catch (err) {
+        const fallback = mdStoryFallback(overview);
+        return {
+            ...fallback,
+            narrative: raw,
+            source: "gemini",
+            generatedAt: new Date().toISOString()
+        };
+    }
+}
+
+async function handleManagementDashboardStorytelling(req, res) {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const context = await mdLoadDashboardContext(pool);
+        const overview = mdBuildOverviewPayload(context.assets, context.incidents, context.rule);
+        const fallback = mdStoryFallback(overview);
+
+        if (!process.env.GEMINI_API_KEY) {
+            return res.json({
+                success: true,
+                data: fallback,
+                model: "local-executive-rule",
+                hasGeminiKey: false
+            });
+        }
+
+        const aiContext = mdBuildStoryAiContext(req, overview);
+        const prompt = [
+            "Generate an executive storytelling block for the Management Dashboard.",
+            "Return JSON only. Do not use markdown.",
+            "Schema: { status, tone, headline, summary, narrative, keySignals, boardRecommendation, actionItems }.",
+            "tone must be one of: red, amber, green, blue, purple.",
+            "Write for C-level and board users in clear business English.",
+            "Do not mention internal routes, SQL, API, backend, database names, raw payloads or implementation details.",
+            "Do not invent facts. Use only the connected dashboard data.",
+            "Keep headline short. Keep narrative to 1-2 sentences. actionItems must be 3 short items."
+        ].join("\n");
+
+        try {
+            const answer = await askGeminiWithEmaContext(prompt, aiContext, []);
+            const story = mdParseGeminiStory(answer, overview) || fallback;
+
+            return res.json({
+                success: true,
+                data: story,
+                model: GEMINI_MODEL,
+                hasGeminiKey: true
+            });
+        } catch (geminiErr) {
+            console.warn("Management dashboard Gemini storytelling fallback:", getGeminiErrorMessage(geminiErr));
+            return res.json({
+                success: true,
+                data: mdStoryFallback(overview, getGeminiErrorMessage(geminiErr)),
+                model: "local-executive-rule",
+                hasGeminiKey: true,
+                geminiFallback: true
+            });
+        }
+    } catch (err) {
+        console.error("GET /api/management-dashboard/storytelling error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to build management dashboard storytelling.",
+            error: err.message
+        });
+    }
+}
+
+app.get("/api/management-dashboard/storytelling", authenticateToken, handleManagementDashboardStorytelling);
+app.post("/api/management-dashboard/storytelling", authenticateToken, handleManagementDashboardStorytelling);
 
 /*
 |--------------------------------------------------------------------------
