@@ -388,12 +388,30 @@ const urgencyToSlaPriority: Record<string, string> = {
   Low: 'P4',
 };
 
+const SLA_PAUSED_STATUSES = new Set(['pending approval', 'pending user', 'pending vendor']);
+
+function getSlaPriorityCode(priority: string) {
+  return urgencyToSlaPriority[String(priority || '').trim()] || 'P3';
+}
+
+function formatSlaDuration(totalMinutes: number) {
+  const safeMinutes = Math.max(0, Math.floor(Math.abs(totalMinutes)));
+  const days = Math.floor(safeMinutes / 1440);
+  const hours = Math.floor((safeMinutes % 1440) / 60);
+  const minutes = safeMinutes % 60;
+
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
 const emptyForm = () => ({
   id: '',
   userType: 'Internal User',
   title: '',
   description: '',
   priority: 'Medium',
+  slaPriority: 'P3',
   status: 'Awaiting',
   category: '',
   subcategory: '',
@@ -655,11 +673,19 @@ function AppPagination({
   };
 
   return (
-    <div className={cn("uam-pagination global-style", className)}>
+    <div
+      className={cn("uam-pagination global-style", className)}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "auto minmax(0, 1fr) auto",
+        alignItems: "center",
+        columnGap: "1rem",
+        width: "calc(100% - 1.5rem)",
+        margin: "0.9rem 0.75rem 0",
+        padding: "0",
+      }}
+    >
       <div className="uam-page-summary">Page {safeCurrentPage} / {safeTotalPages}</div>
-      <div className="uam-page-status">
-        Showing {firstItem}-{lastItem} of {safeTotalItems}
-      </div>
       <div className="uam-pagination-controls global-style">
         <button className="uam-page-icon" type="button" disabled={safeCurrentPage <= 1} onClick={() => goToPage(1)}>«</button>
         <button className="uam-page-icon" type="button" disabled={safeCurrentPage <= 1} onClick={() => goToPage(safeCurrentPage - 1)}>‹</button>
@@ -1147,34 +1173,54 @@ function priorityRank(priority: string) {
 }
 
 function getSlaMeta(incident: any, now: Date) {
-  if (incident?.status === 'Resolved' || incident?.status === 'Rejected') {
+  const normalizedStatus = normalizeStatus(incident?.status);
+
+  if (normalizedStatus === 'resolved' || normalizedStatus === 'rejected') {
     return {
-      label: 'Closed',
+      label: 'Resolved',
       detail: incident?.resolvedAt ? normalizeDateTime(incident.resolvedAt) : 'Completed',
       className: 'resolved',
+      statusKey: 'Resolved',
       minutes: 0,
+      dueText: incident?.slaDue ? normalizeDateTime(incident.slaDue) : '—',
+    };
+  }
+
+  if (SLA_PAUSED_STATUSES.has(normalizedStatus)) {
+    return {
+      label: 'SLA Paused',
+      detail: incident?.status || 'Pending',
+      className: 'paused',
+      statusKey: 'Paused',
+      minutes: Infinity,
+      dueText: incident?.slaDue ? normalizeDateTime(incident.slaDue) : '—',
     };
   }
 
   if (!incident?.slaDue) {
-    return { label: 'No SLA', detail: 'Not calculated', className: 'unknown', minutes: Infinity };
+    return { label: 'No SLA', detail: 'Not calculated', className: 'unknown', statusKey: 'Unknown', minutes: Infinity, dueText: '—' };
   }
 
   const due = parseApiDate(incident.slaDue);
   if (!due) {
-    return { label: 'Invalid', detail: String(incident.slaDue), className: 'unknown', minutes: Infinity };
+    return { label: 'Invalid', detail: String(incident.slaDue), className: 'unknown', statusKey: 'Unknown', minutes: Infinity, dueText: String(incident.slaDue) };
   }
 
-  const diffMs = due.getTime() - now.getTime();
-  const totalMinutes = Math.floor(Math.abs(diffMs) / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const mins = totalMinutes % 60;
-  const label = `${diffMs < 0 ? '-' : ''}${hours}h ${mins}m`;
+  const diffMinutes = Math.floor((due.getTime() - now.getTime()) / 60000);
+  const duration = formatSlaDuration(diffMinutes);
+  const dueText = normalizeDateTime(incident.slaDue);
 
-  if (diffMs < 0) return { label, detail: 'Overdue', className: 'overdue', minutes: diffMs / 60000 };
-  if (diffMs <= 240 * 60000) return { label, detail: 'Near due', className: 'near', minutes: diffMs / 60000 };
-  return { label, detail: 'On track', className: 'ontrack', minutes: diffMs / 60000 };
+  if (diffMinutes < 0) {
+    return { label: 'Overdue', detail: `${duration} overdue`, className: 'overdue', statusKey: 'Overdue', minutes: diffMinutes, dueText };
+  }
+
+  if (diffMinutes <= 24 * 60) {
+    return { label: 'Near Due', detail: `Due in ${duration}`, className: 'near', statusKey: 'Near Due', minutes: diffMinutes, dueText };
+  }
+
+  return { label: 'On Time', detail: `Due in ${duration}`, className: 'ontrack', statusKey: 'On Time', minutes: diffMinutes, dueText };
 }
+
 
 function isActiveUser(user: any) {
   if (user?.isActive === false) return false;
@@ -1262,6 +1308,7 @@ export default function ServiceDesk() {
   const [toast, setToast] = useState<ToastState>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>(null);
   const [confirmReason, setConfirmReason] = useState('');
+  const [acknowledgedUnavailableEngineerKey, setAcknowledgedUnavailableEngineerKey] = useState('');
 
   const [incidents, setIncidents] = useState<any[]>([]);
   const [slaConfigs, setSlaConfigs] = useState<SlaConfig[]>([]);
@@ -1281,6 +1328,7 @@ export default function ServiceDesk() {
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterPriority, setFilterPriority] = useState('All');
   const [filterAssignedTo, setFilterAssignedTo] = useState('All');
+  const [filterSlaStatus, setFilterSlaStatus] = useState('All');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
     key: 'createdAt',
     direction: 'desc',
@@ -1559,7 +1607,7 @@ export default function ServiceDesk() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeQueue, searchTerm, filterStatus, filterPriority, filterAssignedTo, showAdvanced, advancedFilters]);
+  }, [activeQueue, searchTerm, filterStatus, filterPriority, filterAssignedTo, filterSlaStatus, showAdvanced, advancedFilters]);
 
   async function loadData(silent = false) {
     if (!silent) setIsLoading(true);
@@ -1717,6 +1765,23 @@ export default function ServiceDesk() {
         return { ...prev, assignedLevel: value, assignedTo: '' };
       }
 
+      if (field === 'priority') {
+        return {
+          ...prev,
+          priority: value,
+          slaPriority: getSlaPriorityCode(value),
+          slaDue: calculateSlaDue({ ...prev, priority: value, slaPriority: getSlaPriorityCode(value), slaDue: '' }, { force: true }),
+        };
+      }
+
+      if (field === 'createdAt') {
+        return {
+          ...prev,
+          createdAt: value,
+          slaDue: calculateSlaDue({ ...prev, createdAt: value, slaDue: '' }, { force: true }),
+        };
+      }
+
       return { ...prev, [field]: value };
     });
   }
@@ -1784,15 +1849,22 @@ export default function ServiceDesk() {
     return current;
   }
 
-  function calculateSlaDue(data: any) {
+  function getSlaConfigForPriority(priority: string) {
+    const slaCode = getSlaPriorityCode(priority);
+    return slaConfigs.find((item) =>
+      String(item.priority || '').trim() === slaCode ||
+      String(item.label || '').trim().toLowerCase() === String(priority || '').trim().toLowerCase()
+    );
+  }
+
+  function calculateSlaDue(data: any, options: { force?: boolean } = {}) {
     const existingSlaDue = toIsoDateOrEmpty(data.slaDue);
 
-    if (existingSlaDue) {
+    if (existingSlaDue && !options.force) {
       return existingSlaDue;
     }
 
-    const slaCode = urgencyToSlaPriority[data.priority];
-    const config = slaConfigs.find((item) => item.priority === slaCode || item.label === data.priority);
+    const config = getSlaConfigForPriority(data.priority);
 
     if (!config?.resolutionTimeHrs) {
       return '';
@@ -1804,6 +1876,36 @@ export default function ServiceDesk() {
     return calculatedDue.toISOString();
   }
 
+  function getSlaPreview(data: any) {
+    const config = getSlaConfigForPriority(data.priority);
+    const due = calculateSlaDue({ ...data, slaDue: '' }, { force: true });
+
+    return {
+      code: getSlaPriorityCode(data.priority),
+      config,
+      due,
+      meta: getSlaMeta({ ...data, slaDue: due }, now),
+    };
+  }
+
+  function showEngineerAvailabilityReminder(engineer: EngineerOption) {
+    const engineerKey = getEngineerKey(engineer) || getUserName(engineer);
+    const engineerName = getUserName(engineer) || 'Selected engineer';
+
+    setConfirmReason('');
+    setConfirmDialog({
+      tone: 'warning',
+      title: 'Engineer not available',
+      message: getEngineerLeaveMessage(engineer),
+      meta: `${engineerName} is still assigned to this ticket. You can continue if this assignment is intentional.`,
+      confirmLabel: 'OK, Continue',
+      cancelLabel: 'Close',
+      onConfirm: () => {
+        setAcknowledgedUnavailableEngineerKey(engineerKey);
+      },
+    });
+  }
+
   async function checkEngineerAvailability(assignedTo: string) {
     if (!assignedTo) return true;
 
@@ -1811,10 +1913,10 @@ export default function ServiceDesk() {
       assignableEngineers.find((engineer) => getUserName(engineer) === assignedTo || getEngineerKey(engineer) === assignedTo) || null;
 
     if (selectedEngineer && isEngineerOnLeave(selectedEngineer)) {
-      setToast({
-        message: getEngineerLeaveMessage(selectedEngineer),
-        type: 'warning',
-      });
+      const engineerKey = getEngineerKey(selectedEngineer) || getUserName(selectedEngineer);
+      if (engineerKey !== acknowledgedUnavailableEngineerKey) {
+        showEngineerAvailabilityReminder(selectedEngineer);
+      }
     }
 
     return true;
@@ -1823,17 +1925,20 @@ export default function ServiceDesk() {
   function handleAssignedEngineerChange(value: string) {
     updateFormField('assignedTo', value);
 
-    if (!value) return;
+    if (!value) {
+      setAcknowledgedUnavailableEngineerKey('');
+      return;
+    }
 
     const selectedEngineer = assignableEngineers.find(
       (engineer) => getUserName(engineer) === value || getEngineerKey(engineer) === value
     );
 
     if (selectedEngineer && isEngineerOnLeave(selectedEngineer)) {
-      setToast({
-        message: getEngineerLeaveMessage(selectedEngineer),
-        type: 'warning',
-      });
+      setAcknowledgedUnavailableEngineerKey('');
+      showEngineerAvailabilityReminder(selectedEngineer);
+    } else {
+      setAcknowledgedUnavailableEngineerKey('');
     }
   }
 
@@ -2047,6 +2152,7 @@ export default function ServiceDesk() {
       ...incident,
       id: getId(incident),
       createdAt: toIsoDateOrEmpty(incident.createdAt) || new Date().toISOString(),
+      slaPriority: incident.slaPriority || incident.SlaPriority || getSlaPriorityCode(incident.priority || 'Medium'),
       slaDue: toIsoDateOrEmpty(incident.slaDue),
       firstResponseAt: toIsoDateOrEmpty(incident.firstResponseAt),
       resolvedAt: toIsoDateOrEmpty(incident.resolvedAt),
@@ -2136,7 +2242,8 @@ export default function ServiceDesk() {
         reporterId: formMode === 'create' ? currentRequesterId : formData.reporterId,
         id: getId(formData) || makeIncidentId(),
         createdAt: toIsoDateOrEmpty(formData.createdAt) || new Date().toISOString(),
-        slaDue: calculateSlaDue(formData),
+        slaPriority: getSlaPriorityCode(formData.priority),
+        slaDue: calculateSlaDue(formData, { force: formMode === 'create' || selectedIncident?.priority !== formData.priority }),
         firstResponseAt: toIsoDateOrEmpty(formData.firstResponseAt),
         resolvedAt: toIsoDateOrEmpty(formData.resolvedAt),
         additionalMemo: operationalReason || formData.additionalMemo || '',
@@ -2313,6 +2420,7 @@ export default function ServiceDesk() {
       if (filterStatus !== 'All' && incident.status !== filterStatus) return false;
       if (filterPriority !== 'All' && incident.priority !== filterPriority) return false;
       if (filterAssignedTo !== 'All' && (incident.assignedTo || '') !== filterAssignedTo) return false;
+      if (filterSlaStatus !== 'All' && sla.statusKey !== filterSlaStatus) return false;
 
       const haystack = [
         getId(incident),
@@ -2350,11 +2458,7 @@ export default function ServiceDesk() {
         if (adv.dateFrom && createdDate && createdDate < new Date(`${adv.dateFrom}T00:00:00${MALAYSIA_UTC_OFFSET}`)) return false;
         if (adv.dateTo && createdDate && createdDate > new Date(`${adv.dateTo}T23:59:59${MALAYSIA_UTC_OFFSET}`)) return false;
 
-        if (adv.slaStatus !== 'All') {
-          if (adv.slaStatus === 'Overdue' && sla.className !== 'overdue') return false;
-          if (adv.slaStatus === 'Near Due' && sla.className !== 'near') return false;
-          if (adv.slaStatus === 'On Track' && sla.className !== 'ontrack') return false;
-        }
+        if (adv.slaStatus !== 'All' && sla.statusKey !== adv.slaStatus) return false;
       }
 
       return true;
@@ -2364,6 +2468,7 @@ export default function ServiceDesk() {
     advancedFilters,
     currentUser?.name,
     filterAssignedTo,
+    filterSlaStatus,
     filterPriority,
     filterStatus,
     now,
@@ -2743,6 +2848,7 @@ export default function ServiceDesk() {
     const statusLabel = filterStatus === 'All' ? 'All statuses' : filterStatus;
     const urgencyLabel = filterPriority === 'All' ? 'All urgencies' : filterPriority;
     const assigneeLabel = filterAssignedTo === 'All' ? 'All assignees' : filterAssignedTo || 'Unassigned';
+    const slaFilterLabel = filterSlaStatus === 'All' ? 'All SLA statuses' : filterSlaStatus;
 
     const rows = sortedIncidents.map((incident, index) => {
       const sla = getSlaMeta(incident, now);
@@ -3053,6 +3159,7 @@ export default function ServiceDesk() {
     filterStatus !== 'All' ||
     filterPriority !== 'All' ||
     filterAssignedTo !== 'All' ||
+    filterSlaStatus !== 'All' ||
     hasAdvancedFilter;
 
   function resetRegistryFilters() {
@@ -3060,6 +3167,7 @@ export default function ServiceDesk() {
     setFilterStatus('All');
     setFilterPriority('All');
     setFilterAssignedTo('All');
+    setFilterSlaStatus('All');
     setAdvancedFilters(emptyAdvancedFilters());
     setShowAdvanced(false);
     setCurrentPage(1);
@@ -3098,6 +3206,10 @@ export default function ServiceDesk() {
     };
   }, []);
 
+  const ticketTableColumns =
+    '52px minmax(112px, .86fr) 106px minmax(132px, 1fr) minmax(96px, .72fr) minmax(220px, 1.55fr) 102px minmax(118px, .92fr) 104px 108px 104px';
+  const ticketTableMinWidth = '100%';
+
   if (isLoading) {
     return (
       <div className="settings-module-root ema-settings-pro container-fluid p-3 p-xl-4 d-grid place-items-center text-center">
@@ -3110,39 +3222,759 @@ export default function ServiceDesk() {
 
   // Service Desk uses the existing Settings layout/classes.
   return (
-    <main className="settings-module-root ema-module-root ema-settings-pro container-fluid p-3 p-xl-4" data-section="service-desk">
-      {toast && typeof document !== 'undefined' && createPortal(
-        <div className="settings-toast-layer" aria-live="polite" aria-atomic="true">
-          <div
-            className={cn('settings-toast', `settings-toast-${toast.type}`, `is-${toast.type}`, 'service-desk-toast')}
-            role="status"
-          >
-            <i className="settings-toast-icon">
-              {toast.type === 'success' ? <CheckCircle2 size={18} /> : toast.type === 'error' ? <ShieldAlert size={18} /> : <Clock size={18} />}
-            </i>
-            <div>
-              <strong>
-                {toast.type === 'success'
-                  ? 'Success'
-                  : toast.type === 'error'
-                    ? 'Action failed'
-                    : toast.type === 'warning'
-                      ? 'Attention'
-                      : 'Information'}
-              </strong>
-              <span>{toast.message}</span>
-            </div>
-            <button
-              type="button"
-              className="settings-toast-close"
-              onClick={() => setToast(null)}
-              aria-label="Dismiss notification"
-            >
-              <X size={14} />
-            </button>
+    <main className="settings-module-root ema-settings-pro container-fluid p-3 p-xl-4" data-section="service-desk">
+      <style>{`
+        main[data-section="service-desk"] .service-desk-hero {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) minmax(620px, 820px) !important;
+          align-items: center !important;
+          gap: 1rem !important;
+          min-height: 7.25rem !important;
+          max-height: 7.25rem !important;
+          overflow: hidden !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kpi-row {
+          display: grid !important;
+          grid-template-columns: repeat(4, minmax(135px, 1fr)) !important;
+          gap: .62rem !important;
+          width: 100% !important;
+          max-width: 820px !important;
+          justify-self: end !important;
+          align-items: stretch !important;
+          overflow: hidden !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kpi-card {
+          min-width: 0 !important;
+          min-height: 4.65rem !important;
+          max-height: 4.65rem !important;
+          padding: .68rem .76rem !important;
+          overflow: hidden !important;
+          display: grid !important;
+          align-content: center !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kpi-card span,
+        main[data-section="service-desk"] .service-desk-kpi-card small {
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kpi-card strong {
+          line-height: 1 !important;
+          margin-top: .16rem !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kpi-force-row,
+        main[data-section="service-desk"] .settings-score.service-desk-kpi-force-row,
+        main[data-section="service-desk"] .users-hero-score.service-desk-kpi-force-row {
+          display: flex !important;
+          flex-direction: row !important;
+          flex-wrap: nowrap !important;
+          align-items: stretch !important;
+          justify-content: flex-end !important;
+          gap: .62rem !important;
+          width: max-content !important;
+          max-width: none !important;
+          min-width: 0 !important;
+          justify-self: end !important;
+          overflow: visible !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kpi-force-row > .service-desk-kpi-card,
+        main[data-section="service-desk"] .service-desk-kpi-force-row > .score-box {
+          flex: 0 0 150px !important;
+          width: 150px !important;
+          min-width: 150px !important;
+          max-width: 150px !important;
+          min-height: 4.55rem !important;
+          max-height: 4.55rem !important;
+          padding: .66rem .72rem !important;
+          overflow: hidden !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-hero {
+          grid-template-columns: minmax(0, 1fr) max-content !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-commandbar {
+          display: grid !important;
+          grid-template-columns: minmax(260px, 1fr) 150px 150px 150px max-content !important;
+          align-items: center !important;
+          gap: .55rem !important;
+          overflow: visible !important;
+          padding: .95rem 1rem !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-commandbar .section-search {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: none !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-filter-select {
+          width: 150px !important;
+          min-width: 0 !important;
+          max-width: 150px !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-filter-select .setting-select-trigger,
+        main[data-section="service-desk"] .service-desk-filter-select .uam-filter-trigger {
+          width: 100% !important;
+          min-width: 0 !important;
+          height: 2.38rem !important;
+          min-height: 2.38rem !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-command-actions {
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: flex-end !important;
+          gap: .42rem !important;
+          flex-wrap: nowrap !important;
+          min-width: max-content !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-command-actions .primary-btn,
+        main[data-section="service-desk"] .service-desk-reset-btn {
+          height: 2.38rem !important;
+          min-height: 2.38rem !important;
+          padding-inline: .82rem !important;
+          white-space: nowrap !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-command-actions .mini-btn,
+        main[data-section="service-desk"] .service-desk-command-actions .icon-only {
+          width: 2.38rem !important;
+          min-width: 2.38rem !important;
+          height: 2.38rem !important;
+        }
+
+
+
+        main[data-section="service-desk"] .service-desk-advanced-panel {
+          margin: .85rem 1rem 1rem !important;
+          padding: 1rem !important;
+          border: 1px solid rgba(148, 163, 184, 0.22) !important;
+          border-radius: 1.1rem !important;
+          background: #ffffff !important;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-advanced-head {
+          display: grid !important;
+          grid-template-columns: 2.35rem minmax(0, 1fr) auto !important;
+          align-items: center !important;
+          gap: .72rem !important;
+          padding-bottom: .85rem !important;
+          margin-bottom: .9rem !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.9) !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-advanced-head i {
+          width: 2.35rem !important;
+          height: 2.35rem !important;
+          display: grid !important;
+          place-items: center !important;
+          border-radius: .9rem !important;
+          color: #1d4ed8 !important;
+          background: rgba(37, 99, 235, 0.08) !important;
+          border: 1px solid rgba(37, 99, 235, 0.14) !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-advanced-head strong {
+          display: block !important;
+          color: #0f172a !important;
+          font-size: .9rem !important;
+          font-weight: 900 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-advanced-head span {
+          display: block !important;
+          margin-top: .12rem !important;
+          color: #64748b !important;
+          font-size: .7rem !important;
+          font-weight: 700 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-advanced-grid {
+          display: grid !important;
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          gap: .75rem !important;
+          align-items: end !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-advanced-field {
+          display: grid !important;
+          gap: .35rem !important;
+          min-width: 0 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-advanced-field label {
+          margin: 0 !important;
+          color: #475569 !important;
+          font-size: .62rem !important;
+          font-weight: 900 !important;
+          text-transform: uppercase !important;
+          letter-spacing: .055em !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-advanced-field input,
+        main[data-section="service-desk"] .service-desk-advanced-field .uam-filter-trigger,
+        main[data-section="service-desk"] .service-desk-advanced-field .setting-select-trigger {
+          width: 100% !important;
+          min-height: 2.48rem !important;
+          border-radius: .86rem !important;
+          border: 1px solid rgba(148, 163, 184, 0.34) !important;
+          background: #f8fafc !important;
+          color: #0f172a !important;
+          font-size: .74rem !important;
+          font-weight: 780 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-advanced-field input {
+          padding: 0 .78rem !important;
+          outline: none !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-advanced-field input:focus {
+          border-color: rgba(37, 99, 235, 0.52) !important;
+          background: #ffffff !important;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.09) !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-table-wrap {
+          width: 100% !important;
+          max-width: 100% !important;
+          overflow-x: hidden !important;
+          overflow-y: hidden !important;
+          scrollbar-gutter: auto !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-table-wrap .user-row {
+          width: 100% !important;
+          min-width: 100% !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-table-wrap .user-cell {
+          min-width: 0 !important;
+          overflow: hidden !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-table-wrap .user-row.head {
+          min-height: 3.05rem !important;
+          align-items: center !important;
+          overflow: visible !important;
+          position: relative !important;
+          z-index: 2 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-table-wrap .user-row.head .user-cell {
+          overflow: visible !important;
+          display: flex !important;
+          align-items: center !important;
+          min-width: 0 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-table-wrap .user-row.head .soft-btn {
+          width: auto !important;
+          min-width: max-content !important;
+          max-width: 100% !important;
+          height: 2rem !important;
+          min-height: 2rem !important;
+          padding: 0 .62rem !important;
+          border-radius: .72rem !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: .24rem !important;
+          overflow: visible !important;
+          white-space: nowrap !important;
+          line-height: 1 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-table-wrap .user-row .user-cell:last-child {
+          overflow: visible !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-table-wrap .row-actions.user-row-action-wrap.clean {
+          display: inline-flex !important;
+          flex-direction: row !important;
+          align-items: center !important;
+          justify-content: center !important;
+          flex-wrap: nowrap !important;
+          gap: .38rem !important;
+          width: auto !important;
+          min-width: max-content !important;
+          overflow: visible !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-table-wrap .row-actions.user-row-action-wrap.clean .mini-btn {
+          width: 2.08rem !important;
+          min-width: 2.08rem !important;
+          height: 2.08rem !important;
+          min-height: 2.08rem !important;
+          margin: 0 !important;
+          flex: 0 0 2.08rem !important;
+        }
+
+        main[data-section="service-desk"] .uam-pagination.global-style {
+          width: calc(100% - 1.5rem) !important;
+          margin: .9rem .75rem 0 !important;
+          padding: 0 !important;
+          display: grid !important;
+          grid-template-columns: auto minmax(0, 1fr) auto !important;
+          align-items: center !important;
+          column-gap: 1rem !important;
+        }
+
+        main[data-section="service-desk"] .uam-pagination-info {
+          text-align: center !important;
+        }
+
+        @media (max-width: 1480px) {
+          main[data-section="service-desk"] .service-desk-hero {
+            grid-template-columns: minmax(0, 1fr) minmax(560px, 680px) !important;
+          }
+
+          main[data-section="service-desk"] .service-desk-kpi-row {
+            grid-template-columns: repeat(4, minmax(125px, 1fr)) !important;
+            max-width: 680px !important;
+          }
+
+          main[data-section="service-desk"] .service-desk-commandbar {
+            grid-template-columns: minmax(240px, 1fr) 140px 140px 140px max-content !important;
+          }
+
+          main[data-section="service-desk"] .service-desk-filter-select {
+            width: 140px !important;
+            max-width: 140px !important;
+          }
+        }
+
+        @media (max-width: 1280px) {
+          main[data-section="service-desk"] .service-desk-hero {
+            grid-template-columns: 1fr !important;
+            max-height: none !important;
+          }
+
+          main[data-section="service-desk"] .service-desk-kpi-row {
+            max-width: none !important;
+            justify-self: stretch !important;
+          }
+
+          main[data-section="service-desk"] .service-desk-commandbar {
+            grid-template-columns: 1fr 1fr !important;
+          }
+
+          main[data-section="service-desk"] .service-desk-filter-select {
+            width: 100% !important;
+            max-width: none !important;
+          }
+
+          main[data-section="service-desk"] .service-desk-command-actions {
+            justify-self: start !important;
+          }
+        }
+      
+        /* =========================================================
+           Knowledge Base section redesign
+           Scoped to Service Desk only. No function logic changed.
+        ========================================================= */
+        main[data-section="service-desk"] .service-desk-kb-panel {
+          position: relative !important;
+          overflow: hidden !important;
+          border-radius: 1.35rem !important;
+          border: 1px solid rgba(203, 213, 225, 0.78) !important;
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,251,254,0.96)) !important;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.045) !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-head {
+          padding: 1.05rem 1.15rem .88rem !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.92) !important;
+          background:
+            radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.08), transparent 16rem),
+            #ffffff !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-head h2 {
+          margin: .12rem 0 .18rem !important;
+          color: #0f2746 !important;
+          font-size: clamp(1.35rem, 2.1vw, 2.05rem) !important;
+          font-weight: 950 !important;
+          letter-spacing: -0.045em !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-head p {
+          margin: 0 !important;
+          color: #64748b !important;
+          font-size: .74rem !important;
+          font-weight: 760 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-head .content-actions button {
+          width: 2.1rem !important;
+          height: 2.1rem !important;
+          display: inline-grid !important;
+          place-items: center !important;
+          border-radius: .72rem !important;
+          border: 1px solid rgba(148, 163, 184, 0.32) !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-head .content-actions button:hover {
+          border-color: rgba(37, 99, 235, 0.34) !important;
+          background: rgba(37, 99, 235, 0.07) !important;
+          color: #1d4ed8 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-toolbar {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: .8rem !important;
+          margin: 1rem 1.15rem .75rem !important;
+          padding: .72rem !important;
+          border: 1px solid rgba(226, 232, 240, 0.95) !important;
+          border-radius: 1rem !important;
+          background: #f8fafc !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-toolbar .ema-search-field {
+          width: min(100%, 26rem) !important;
+          min-height: 2.65rem !important;
+          display: grid !important;
+          grid-template-columns: 1.1rem minmax(0, 1fr) !important;
+          align-items: center !important;
+          gap: .52rem !important;
+          margin: 0 !important;
+          padding: 0 .85rem !important;
+          border: 1px solid rgba(148, 163, 184, 0.32) !important;
+          border-radius: .9rem !important;
+          background: #ffffff !important;
+          color: #64748b !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-toolbar .ema-search-field input {
+          width: 100% !important;
+          min-width: 0 !important;
+          border: 0 !important;
+          outline: 0 !important;
+          background: transparent !important;
+          color: #0f172a !important;
+          font-size: .78rem !important;
+          font-weight: 760 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-summary {
+          margin: 0 1.15rem .85rem !important;
+          min-height: 3rem !important;
+          padding: .78rem .92rem !important;
+          border: 1px solid rgba(37, 99, 235, 0.14) !important;
+          border-radius: 1rem !important;
+          background: rgba(37, 99, 235, 0.045) !important;
+          color: #475569 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-summary span {
+          color: #475569 !important;
+          font-size: .72rem !important;
+          font-weight: 780 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-summary strong {
+          color: #0f2746 !important;
+          font-weight: 950 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-table-card {
+          margin: 0 1.15rem 1.15rem !important;
+          border: 1px solid rgba(226, 232, 240, 0.95) !important;
+          border-radius: 1.08rem !important;
+          background: #ffffff !important;
+          overflow: hidden !important;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-table {
+          width: 100% !important;
+          margin: 0 !important;
+          table-layout: fixed !important;
+          border-collapse: separate !important;
+          border-spacing: 0 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-table th {
+          padding: .82rem .95rem !important;
+          background: #f8fafc !important;
+          color: #475569 !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.94) !important;
+          font-size: .66rem !important;
+          font-weight: 950 !important;
+          text-transform: uppercase !important;
+          letter-spacing: .07em !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-table td {
+          padding: .84rem .95rem !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.78) !important;
+          vertical-align: middle !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-table tbody tr:last-child td {
+          border-bottom: 0 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-table tbody tr:hover td {
+          background: rgba(37, 99, 235, 0.035) !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-table .row-index-pill {
+          min-width: 2.15rem !important;
+          min-height: 2rem !important;
+          display: inline-grid !important;
+          place-items: center !important;
+          border-radius: .78rem !important;
+          border: 1px solid rgba(37, 99, 235, 0.16) !important;
+          background: rgba(37, 99, 235, 0.055) !important;
+          color: #334155 !important;
+          font-size: .7rem !important;
+          font-weight: 900 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-title {
+          color: #0f172a !important;
+          font-size: .82rem !important;
+          font-weight: 920 !important;
+          line-height: 1.35 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-actions {
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: flex-start !important;
+          gap: .45rem !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-actions button {
+          width: 2rem !important;
+          height: 2rem !important;
+          display: inline-grid !important;
+          place-items: center !important;
+          border-radius: .68rem !important;
+          border: 1px solid rgba(148, 163, 184, 0.34) !important;
+          background: #ffffff !important;
+          color: #334155 !important;
+          box-shadow: none !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-actions button:hover {
+          border-color: rgba(37, 99, 235, 0.34) !important;
+          background: rgba(37, 99, 235, 0.07) !important;
+          color: #1d4ed8 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-actions button[title="Delete article"]:hover {
+          border-color: rgba(239, 68, 68, 0.36) !important;
+          background: rgba(239, 68, 68, 0.08) !important;
+          color: #dc2626 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-modal {
+          width: min(94vw, 860px) !important;
+          max-height: min(86vh, 760px) !important;
+          overflow: hidden !important;
+          border-radius: 1.35rem !important;
+          border: 1px solid rgba(203, 213, 225, 0.72) !important;
+          background: #ffffff !important;
+          box-shadow: 0 28px 70px rgba(15, 23, 42, 0.26) !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-modal-head {
+          padding: 1.1rem 1.2rem .92rem !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.94) !important;
+          background:
+            radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.10), transparent 15rem),
+            #ffffff !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-modal-head span {
+          color: #64748b !important;
+          font-size: .68rem !important;
+          font-weight: 900 !important;
+          text-transform: uppercase !important;
+          letter-spacing: .07em !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-modal-head h2 {
+          margin: .12rem 0 .18rem !important;
+          color: #0f2746 !important;
+          font-size: clamp(1.4rem, 2vw, 2rem) !important;
+          font-weight: 950 !important;
+          letter-spacing: -0.045em !important;
+          line-height: 1.06 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-modal-head p {
+          margin: 0 !important;
+          color: #64748b !important;
+          font-size: .74rem !important;
+          font-weight: 730 !important;
+          line-height: 1.45 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-close {
+          width: 2.05rem !important;
+          height: 2.05rem !important;
+          display: inline-grid !important;
+          place-items: center !important;
+          border-radius: .68rem !important;
+          border: 1px solid rgba(148, 163, 184, 0.35) !important;
+          background: #ffffff !important;
+          color: #0f172a !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-modal-body {
+          max-height: calc(min(86vh, 760px) - 10.5rem) !important;
+          overflow: auto !important;
+          display: grid !important;
+          gap: .85rem !important;
+          padding: 1rem 1.2rem !important;
+          background: #f8fafc !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-detail-block,
+        main[data-section="service-desk"] .service-desk-kb-form-card {
+          padding: .95rem !important;
+          border: 1px solid rgba(226, 232, 240, 0.95) !important;
+          border-radius: 1rem !important;
+          background: #ffffff !important;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035) !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-detail-block .section-tag {
+          display: inline-flex !important;
+          margin-bottom: .45rem !important;
+          color: #1d4ed8 !important;
+          font-size: .65rem !important;
+          font-weight: 950 !important;
+          text-transform: uppercase !important;
+          letter-spacing: .075em !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-detail-block p {
+          margin: 0 !important;
+          color: #334155 !important;
+          font-size: .78rem !important;
+          font-weight: 680 !important;
+          line-height: 1.55 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-modal-actions {
+          padding: .85rem 1.2rem 1rem !important;
+          border-top: 1px solid rgba(226, 232, 240, 0.94) !important;
+          background: #ffffff !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-form-grid {
+          display: grid !important;
+          grid-template-columns: 1fr !important;
+          gap: .8rem !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-form-grid label {
+          display: grid !important;
+          gap: .38rem !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-form-grid label > span {
+          color: #475569 !important;
+          font-size: .67rem !important;
+          font-weight: 930 !important;
+          text-transform: uppercase !important;
+          letter-spacing: .055em !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-form-grid input,
+        main[data-section="service-desk"] .service-desk-kb-form-grid textarea {
+          width: 100% !important;
+          border: 1px solid rgba(148, 163, 184, 0.36) !important;
+          border-radius: .9rem !important;
+          background: #f8fafc !important;
+          color: #0f172a !important;
+          outline: 0 !important;
+          font-size: .78rem !important;
+          font-weight: 720 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-form-grid input {
+          min-height: 2.7rem !important;
+          padding: 0 .9rem !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-form-grid textarea {
+          min-height: 7.5rem !important;
+          padding: .82rem .9rem !important;
+          line-height: 1.5 !important;
+          resize: vertical !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-form-grid input:focus,
+        main[data-section="service-desk"] .service-desk-kb-form-grid textarea:focus {
+          border-color: rgba(37, 99, 235, 0.55) !important;
+          background: #ffffff !important;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.09) !important;
+        }
+
+        @media (max-width: 760px) {
+          main[data-section="service-desk"] .service-desk-kb-toolbar,
+          main[data-section="service-desk"] .service-desk-kb-summary,
+          main[data-section="service-desk"] .service-desk-kb-table-card {
+            margin-left: .85rem !important;
+            margin-right: .85rem !important;
+          }
+
+          main[data-section="service-desk"] .service-desk-kb-table {
+            min-width: 660px !important;
+          }
+
+          main[data-section="service-desk"] .service-desk-kb-modal {
+            width: 94vw !important;
+          }
+        }
+
+`}</style>
+
+      {toast && (
+        <div className={cn('settings-toast', `is-${toast.type}`)} role="status" aria-live="polite">
+          <i className="settings-toast-icon">
+            {toast.type === 'success' ? <CheckCircle2 size={18} /> : toast.type === 'error' ? <ShieldAlert size={18} /> : <Clock size={18} />}
+          </i>
+          <div>
+            <strong>
+              {toast.type === 'success'
+                ? 'Success'
+                : toast.type === 'error'
+                  ? 'Action failed'
+                  : toast.type === 'warning'
+                    ? 'Attention'
+                    : 'Information'}
+            </strong>
+            <span>{toast.message}</span>
           </div>
-        </div>,
-        document.body
+          <button type="button" onClick={() => setToast(null)} aria-label="Dismiss notification">
+            <X size={14} />
+          </button>
+        </div>
       )}
 
       {confirmDialog && typeof document !== 'undefined' && createPortal(
@@ -3182,17 +4014,34 @@ export default function ServiceDesk() {
             {confirmDialog.meta && <div className="settings-inline-alert">{confirmDialog.meta}</div>}
 
             {confirmDialog.requiresReason && (
-              <label className="form-field service-desk-confirm-reason-field">
-                <span>{confirmDialog.reasonLabel || 'Reason'}</span>
+              <label
+                className="form-field"
+                style={{ display: 'grid', gap: 8, marginTop: 14, textAlign: 'left' }}
+              >
+                <span style={{ color: '#6078a2', fontSize: 11, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  {confirmDialog.reasonLabel || 'Reason'}
+                </span>
                 <textarea
-                  className="setting-textarea service-desk-confirm-reason-textarea"
                   value={confirmReason}
                   onChange={(event) => setConfirmReason(event.target.value)}
                   disabled={confirmDialog.loading}
                   placeholder={confirmDialog.reasonPlaceholder || 'Enter reason'}
                   rows={4}
+                  style={{
+                    width: '100%',
+                    resize: 'vertical',
+                    border: '1px solid #d7e3f4',
+                    borderRadius: 14,
+                    padding: '12px 14px',
+                    color: '#12284f',
+                    fontSize: 12,
+                    fontWeight: 750,
+                    lineHeight: 1.5,
+                    background: '#f8fbff',
+                    outline: 'none',
+                  }}
                 />
-                <small className="form-helper-text">
+                <small style={{ color: '#7b8fb0', fontSize: 10.5, fontWeight: 750 }}>
                   Reason is required before this action can continue.
                 </small>
               </label>
@@ -3266,19 +4115,51 @@ export default function ServiceDesk() {
       </aside>
 
       <section className="settings-content d-grid gap-3">
-        <div className="settings-hero ema-panel-surface service-desk-hero">
+        <div
+          className="settings-hero ema-panel-surface service-desk-hero"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) minmax(620px, 820px)',
+            alignItems: 'center',
+            gap: '1rem',
+            minHeight: '7.25rem',
+            maxHeight: '7.25rem',
+            overflow: 'hidden',
+          }}
+        >
           <div>
             <span className="eyebrow">INCIDENT COMMAND CENTER</span>
             <h2>Service Desk</h2>
             <p>Manage tickets, assignments, SLA risk and support activity.</p>
           </div>
-          <div className="settings-score users-hero-score service-desk-kpi-row service-desk-kpi-force-row">
+          <div
+            className="settings-score users-hero-score service-desk-kpi-row service-desk-kpi-force-row"
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              flexWrap: 'nowrap',
+              gap: '.62rem',
+              width: 'max-content',
+              maxWidth: 'none',
+              justifySelf: 'end',
+              alignItems: 'stretch',
+              overflow: 'visible',
+            }}
+          >
             {kpis.slice(0, 4).map((kpi) => (
               <div
-                className="score-box ema-kpi-card is-compact service-desk-kpi-card"
-                data-service-desk-kpi="true"
-                key={kpi.label}
-              >
+                  className="score-box ema-kpi-card is-compact service-desk-kpi-card" data-service-desk-kpi="true"
+                  key={kpi.label}
+                  style={{
+                    flex: '0 0 150px',
+                    width: 150,
+                    minWidth: 150,
+                    maxWidth: 150,
+                    minHeight: '4.55rem',
+                    maxHeight: '4.55rem',
+                    overflow: 'hidden',
+                  }}
+                >
                 <span>{kpi.label}</span>
                 <strong>{kpi.value}</strong>
                 <small>{kpi.note}</small>
@@ -3290,15 +4171,81 @@ export default function ServiceDesk() {
         <div className="content-shell ema-panel-surface roles-content-shell">
 
         {viewMode === 'list' && (
-          <section className="content-panel clean service-desk-registry-panel">
-            <header className="content-head service-desk-registry-head">
-              <div>
-                <span className="eyebrow">Ticket Registry</span>
-                <h3>Support Requests</h3>
-                <p>Search, filter and manage active service desk tickets in one clean table.</p>
-              </div>
+          <section className="content-panel clean">
+            <div
+              className="content-toolbar users-toolbar service-desk-commandbar"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(260px, 1fr) 150px 150px 150px 150px max-content',
+                alignItems: 'center',
+                gap: '.55rem',
+                overflow: 'visible',
+              }}
+            >
+              <label className="section-search user-search-inline">
+                <Search size={15} />
+                <input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Search request no, requester, asset, incident..."
+                />
+              </label>
 
-              <div className="content-actions service-desk-command-actions service-desk-header-actions">
+              <ServiceDeskSelect
+                className="service-desk-filter-select"
+                style={{ width: 150, maxWidth: 150, minWidth: 0 }}
+                value={filterStatus}
+                ariaLabel="Filter tickets by status"
+                placeholder="Status: All"
+                onChange={setFilterStatus}
+                options={[
+                  { value: 'All', label: 'Status: All' },
+                  ...STATUS_OPTIONS.map((status) => ({ value: status, label: `Status: ${status}` })),
+                ]}
+              />
+
+              <ServiceDeskSelect
+                className="service-desk-filter-select"
+                style={{ width: 150, maxWidth: 150, minWidth: 0 }}
+                value={filterPriority}
+                ariaLabel="Filter tickets by urgency"
+                placeholder="Urgency: All"
+                onChange={setFilterPriority}
+                options={[
+                  { value: 'All', label: 'Urgency: All' },
+                  ...PRIORITY_OPTIONS.map((priority) => ({ value: priority, label: `Urgency: ${priority}` })),
+                ]}
+              />
+
+              <ServiceDeskSelect
+                className="service-desk-filter-select"
+                style={{ width: 150, maxWidth: 150, minWidth: 0 }}
+                value={filterAssignedTo}
+                ariaLabel="Filter tickets by assigned engineer"
+                placeholder="Assignee: All"
+                onOpen={() => void ensureLookupsLoaded()}
+                onChange={setFilterAssignedTo}
+                options={[
+                  { value: 'All', label: 'Assignee: All' },
+                  { value: '', label: 'Assignee: Unassigned' },
+                  ...engineers.map((user) => ({ value: getUserName(user), label: `Assignee: ${getUserName(user)}` })),
+                ]}
+              />
+
+              <div
+                className="content-actions service-desk-command-actions"
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'nowrap', gap: '0.42rem', minWidth: 'max-content' }}
+              >
+                <button
+                  type="button"
+                  className="soft-btn service-desk-reset-btn"
+                  disabled={!hasActiveFilters}
+                  onClick={resetRegistryFilters}
+                >
+                  <X size={14} />
+                  <span>Reset</span>
+                </button>
+
                 <button type="button" className="primary-btn" onClick={openCreateForm}>
                   <Plus size={15} />
                   <span>Create Ticket</span>
@@ -3336,78 +4283,17 @@ export default function ServiceDesk() {
                   <Printer size={15} />
                 </button>
               </div>
-            </header>
-
-            <div className="content-toolbar users-toolbar service-desk-commandbar">
-              <label className="section-search user-search-inline">
-                <Search size={15} />
-                <input
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Search request no, requester, asset, incident..."
-                />
-              </label>
-
-              <div className="service-desk-filter-grid">
-                <ServiceDeskSelect
-                  className="service-desk-filter-select"
-                  value={filterStatus}
-                  ariaLabel="Filter tickets by status"
-                  placeholder="Status: All"
-                  onChange={setFilterStatus}
-                  options={[
-                    { value: 'All', label: 'Status: All' },
-                    ...STATUS_OPTIONS.map((status) => ({ value: status, label: `Status: ${status}` })),
-                  ]}
-                />
-
-                <ServiceDeskSelect
-                  className="service-desk-filter-select"
-                  value={filterPriority}
-                  ariaLabel="Filter tickets by urgency"
-                  placeholder="Urgency: All"
-                  onChange={setFilterPriority}
-                  options={[
-                    { value: 'All', label: 'Urgency: All' },
-                    ...PRIORITY_OPTIONS.map((priority) => ({ value: priority, label: `Urgency: ${priority}` })),
-                  ]}
-                />
-
-                <ServiceDeskSelect
-                  className="service-desk-filter-select"
-                  value={filterAssignedTo}
-                  ariaLabel="Filter tickets by assigned engineer"
-                  placeholder="Assignee: All"
-                  onOpen={() => void ensureLookupsLoaded()}
-                  onChange={setFilterAssignedTo}
-                  options={[
-                    { value: 'All', label: 'Assignee: All' },
-                    { value: '', label: 'Assignee: Unassigned' },
-                    ...engineers.map((user) => ({ value: getUserName(user), label: `Assignee: ${getUserName(user)}` })),
-                  ]}
-                />
-              </div>
-
-              <button
-                type="button"
-                className="soft-btn service-desk-reset-btn"
-                disabled={!hasActiveFilters}
-                onClick={resetRegistryFilters}
-              >
-                <X size={14} />
-                <span>Reset</span>
-              </button>
             </div>
 
             {showAdvanced && (
-              <div className="settings-helper-card">
-                <div className="content-head">
+              <div className="settings-helper-card service-desk-advanced-panel">
+                <div className="service-desk-advanced-head">
                   <i>
                     <Filter size={16} />
                   </i>
                   <div>
                     <strong>Find Incident</strong>
-                    <span>Advanced search using fields already supported by the incident record.</span>
+                    <span>Use specific ticket fields to narrow the Service Desk registry.</span>
                   </div>
                   <AppButton
                     type="button"
@@ -3419,54 +4305,85 @@ export default function ServiceDesk() {
                     Reset Advanced
                   </AppButton>
                 </div>
-                <div className="form-grid">
-                  <input
-                    value={advancedFilters.reqNo}
-                    onChange={(e) => setAdvancedFilters((p) => ({ ...p, reqNo: e.target.value }))}
-                    placeholder="Req No"
-                  />
-                  <input
-                    value={advancedFilters.requester}
-                    onChange={(e) => setAdvancedFilters((p) => ({ ...p, requester: e.target.value }))}
-                    placeholder="Requester"
-                  />
-                  <input
-                    value={advancedFilters.incidentTitle}
-                    onChange={(e) => setAdvancedFilters((p) => ({ ...p, incidentTitle: e.target.value }))}
-                    placeholder="Incident title / description"
-                  />
-                  <input
-                    value={advancedFilters.assetTag}
-                    onChange={(e) => setAdvancedFilters((p) => ({ ...p, assetTag: e.target.value }))}
-                    placeholder="Asset tag"
-                  />
-                  <ServiceDeskSelect
-                    value={advancedFilters.category}
-                    placeholder="All Categories"
-                    onChange={(value) => setAdvancedFilters((p) => ({ ...p, category: value, subcategory: '', detail: '' }))}
-                    options={[
-                      { value: '', label: 'All Categories' },
-                      ...categories.map((category) => ({ value: getCategoryName(category), label: getCategoryName(category) })),
-                    ]}
-                  />
-                  <ServiceDeskSelect
-                    value={advancedFilters.slaStatus}
-                    placeholder="All SLA Status"
-                    onChange={(value) => setAdvancedFilters((p) => ({ ...p, slaStatus: value }))}
-                    options={['All', 'Overdue', 'Near Due', 'On Track'].map((status) => ({ value: status, label: status }))}
-                  />
-                  <input
-                    type="date"
-                    value={advancedFilters.dateFrom}
-                    onChange={(e) => setAdvancedFilters((p) => ({ ...p, dateFrom: e.target.value }))}
-                  />
-                  <input
-                    type="date"
-                    value={advancedFilters.dateTo}
-                    onChange={(e) => setAdvancedFilters((p) => ({ ...p, dateTo: e.target.value }))}
-                  />
-                </div>
 
+                <div className="service-desk-advanced-grid">
+                  <div className="service-desk-advanced-field">
+                    <label>Request No</label>
+                    <input
+                      value={advancedFilters.reqNo}
+                      onChange={(e) => setAdvancedFilters((p) => ({ ...p, reqNo: e.target.value }))}
+                      placeholder="Example: INC-0001"
+                    />
+                  </div>
+
+                  <div className="service-desk-advanced-field">
+                    <label>Requester</label>
+                    <input
+                      value={advancedFilters.requester}
+                      onChange={(e) => setAdvancedFilters((p) => ({ ...p, requester: e.target.value }))}
+                      placeholder="Requester name"
+                    />
+                  </div>
+
+                  <div className="service-desk-advanced-field">
+                    <label>Incident</label>
+                    <input
+                      value={advancedFilters.incidentTitle}
+                      onChange={(e) => setAdvancedFilters((p) => ({ ...p, incidentTitle: e.target.value }))}
+                      placeholder="Title or description"
+                    />
+                  </div>
+
+                  <div className="service-desk-advanced-field">
+                    <label>Asset Tag</label>
+                    <input
+                      value={advancedFilters.assetTag}
+                      onChange={(e) => setAdvancedFilters((p) => ({ ...p, assetTag: e.target.value }))}
+                      placeholder="Asset tag"
+                    />
+                  </div>
+
+                  <div className="service-desk-advanced-field">
+                    <label>Category</label>
+                    <ServiceDeskSelect
+                      value={advancedFilters.category}
+                      placeholder="All Categories"
+                      onChange={(value) => setAdvancedFilters((p) => ({ ...p, category: value, subcategory: '', detail: '' }))}
+                      options={[
+                        { value: '', label: 'All Categories' },
+                        ...categories.map((category) => ({ value: getCategoryName(category), label: getCategoryName(category) })),
+                      ]}
+                    />
+                  </div>
+
+                  <div className="service-desk-advanced-field">
+                    <label>SLA Status</label>
+                    <ServiceDeskSelect
+                      value={advancedFilters.slaStatus}
+                      placeholder="All SLA Status"
+                      onChange={(value) => setAdvancedFilters((p) => ({ ...p, slaStatus: value }))}
+                      options={['All', 'On Time', 'Near Due', 'Overdue', 'Resolved'].map((status) => ({ value: status, label: status }))}
+                    />
+                  </div>
+
+                  <div className="service-desk-advanced-field">
+                    <label>Date From</label>
+                    <input
+                      type="date"
+                      value={advancedFilters.dateFrom}
+                      onChange={(e) => setAdvancedFilters((p) => ({ ...p, dateFrom: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="service-desk-advanced-field">
+                    <label>Date To</label>
+                    <input
+                      type="date"
+                      value={advancedFilters.dateTo}
+                      onChange={(e) => setAdvancedFilters((p) => ({ ...p, dateTo: e.target.value }))}
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -3489,8 +4406,8 @@ export default function ServiceDesk() {
                   </div>
                 </div>
               ) : (
-                <div className="user-access-table advanced clean-table service-desk-table-wrap">
-                  <div className="user-row head advanced clean-table-row">
+                <div className="user-access-table advanced clean-table service-desk-table-wrap" style={{ overflowX: 'hidden', overflowY: 'hidden', maxWidth: '100%', width: '100%' }}>
+                  <div className="user-row head advanced clean-table-row" style={{ gridTemplateColumns: ticketTableColumns, minWidth: ticketTableMinWidth, width: '100%', alignItems: 'center' }}>
                     <div className="user-cell">No</div>
                     <div className="user-cell">
                       <button
@@ -3586,6 +4503,7 @@ export default function ServiceDesk() {
                         key={getId(incident)}
                         data-ticket-row="true"
                         className={cn('user-row advanced clean-table-row', isSelected && 'is-selected')}
+                        style={{ gridTemplateColumns: ticketTableColumns, minWidth: ticketTableMinWidth, width: '100%' }}
                         onClick={() => setSelectedIncidentId(getId(incident))}
                       >
                         <div className="user-cell row-number">
@@ -3638,6 +4556,7 @@ export default function ServiceDesk() {
                         <div className={cn('user-cell role-info-cell', sla.className)}>
                           <strong>{sla.label}</strong>
                           <small>{sla.detail}</small>
+                          <small>Due: {sla.dueText}</small>
                         </div>
 
                         <div className="user-cell">
@@ -3647,7 +4566,7 @@ export default function ServiceDesk() {
                         </div>
 
                         <div className="user-cell" onClick={(event) => event.stopPropagation()}>
-                          <div className="row-actions user-row-action-wrap clean service-desk-row-actions">
+                          <div className="row-actions user-row-action-wrap clean" style={{ display: 'inline-flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'nowrap', gap: '.38rem', minWidth: 'max-content' }}>
                             <button
                               type="button"
                               className="mini-btn icon-only edit"
@@ -3696,30 +4615,26 @@ export default function ServiceDesk() {
                 <h2>Knowledge Base</h2>
                 <p>Manage and reference previous incident resolutions</p>
               </div>
-              <div className="content-actions service-desk-kb-actions">
+              <div className="content-actions service-desk-row-actions">
                 {canCreate && (
                   <button
                     type="button"
-                    className="primary-btn service-desk-kb-create-btn"
                     onClick={() => {
                       setKbFormData({ id: '', title: '', incidentDetails: '', resolution: '' });
                       setKbFormOpen(true);
                     }}
                   >
-                    <Plus size={15} />
-                    <span>New Article</span>
+                    <Plus size={16} />
                   </button>
                 )}
                 <button
                   type="button"
-                  className="soft-btn service-desk-kb-back-btn"
                   onClick={() => {
                     setViewMode('list');
                     setActiveQueue('all');
                   }}
                 >
-                  <Ticket size={15} />
-                  <span>Ticket Registry</span>
+                  <Ticket size={16} />
                 </button>
               </div>
             </header>
@@ -3732,8 +4647,8 @@ export default function ServiceDesk() {
             )}
 
             <div className="ema-toolbar content-toolbar users-toolbar service-desk-kb-toolbar">
-              <label className="section-search user-search-inline service-desk-kb-search">
-                <Search size={15} />
+              <label className="ema-search-field">
+                <Search size={16} />
                 <input
                   value={kbSearch}
                   onChange={(event) => setKbSearch(event.target.value)}
@@ -3760,16 +4675,7 @@ export default function ServiceDesk() {
                 <thead>
                   <tr>
                     <th>No</th>
-                    <th>
-                      <button
-                        type="button"
-                        className="resource-sort-button"
-                        onClick={toggleKbTitleSort}
-                      >
-                        <span>Knowledge Base</span>
-                        <i>{kbSortDirection === 'asc' ? '↑' : '↓'}</i>
-                      </button>
-                    </th>
+                    <th onClick={() => handleKbSort('title')}>Knowledge Base</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -3791,17 +4697,15 @@ export default function ServiceDesk() {
 
                       <td>
                         <div>
-                          <strong>{kb.title || 'Untitled article'}</strong>
+                          <strong className="service-desk-kb-title">{kb.title || 'Untitled article'}</strong>
                         </div>
                       </td>
 
                       <td>
-                        <div className="row-actions user-row-action-wrap clean">
+                        <div className="row-actions user-row-action-wrap clean service-desk-kb-actions">
                           <button
                             type="button"
-                            className="mini-btn icon-only view"
                             title="View resolution"
-                            aria-label="View resolution"
                             onClick={() => setSelectedKbArticle(kb)}
                           >
                             <Eye size={14} />
@@ -3810,9 +4714,7 @@ export default function ServiceDesk() {
                           {canEdit && (
                             <button
                               type="button"
-                              className="mini-btn icon-only edit"
                               title="Edit article"
-                              aria-label="Edit article"
                               onClick={() => {
                                 setKbFormData(kb);
                                 setKbFormOpen(true);
@@ -3825,9 +4727,7 @@ export default function ServiceDesk() {
                           {canDelete && (
                             <button
                               type="button"
-                              className="mini-btn icon-only delete"
                               title="Delete article"
-                              aria-label="Delete article"
                               onClick={() => deleteKb(kb)}
                             >
                               <Trash2 size={14} />
@@ -3848,25 +4748,25 @@ export default function ServiceDesk() {
 
       {selectedKbArticle && (
         <div className="settings-confirm-backdrop open" onClick={() => setSelectedKbArticle(null)}>
-          <section className="settings-confirm-modal" onClick={(event) => event.stopPropagation()}>
-            <header className="content-head">
+          <section className="settings-confirm-modal service-desk-kb-modal service-desk-kb-view-modal" onClick={(event) => event.stopPropagation()}>
+            <header className="content-head service-desk-kb-modal-head">
               <div>
                 <span>Knowledge Article</span>
                 <h2>{selectedKbArticle.title || 'Untitled article'}</h2>
                 <p>{selectedKbArticle.incidentDetails || 'No incident details provided.'}</p>
               </div>
-              <button type="button" onClick={() => setSelectedKbArticle(null)} aria-label="Close knowledge article">
+              <button className="service-desk-kb-close" type="button" onClick={() => setSelectedKbArticle(null)} aria-label="Close knowledge article">
                 <X size={18} />
               </button>
             </header>
 
-            <div className="content-body">
-              <section>
+            <div className="content-body service-desk-kb-modal-body">
+              <section className="service-desk-kb-detail-block">
                 <span className="section-tag">Incident Details</span>
                 <p>{selectedKbArticle.incidentDetails || 'No incident details provided.'}</p>
               </section>
 
-              <section>
+              <section className="service-desk-kb-detail-block">
                 <span className="section-tag">Resolution</span>
                 {splitKnowledgeSteps(selectedKbArticle.resolution).length > 1 ? (
                   <div className="policy-list">
@@ -3882,7 +4782,7 @@ export default function ServiceDesk() {
               </section>
             </div>
 
-            <footer className="content-actions service-desk-row-actions">
+            <footer className="content-actions service-desk-row-actions service-desk-kb-modal-actions">
               <AppButton
                 type="button"
                 variant="outline-secondary"
@@ -3956,6 +4856,14 @@ export default function ServiceDesk() {
               <div>
                 <span>SLA Due</span>
                 <strong>{normalizeDateTime(selectedIncident.slaDue)}</strong>
+              </div>
+              <div>
+                <span>SLA Status</span>
+                <strong>{getSlaMeta(selectedIncident, now).label}</strong>
+              </div>
+              <div>
+                <span>SLA Timer</span>
+                <strong>{getSlaMeta(selectedIncident, now).detail}</strong>
               </div>
             </div>
 
@@ -4180,7 +5088,7 @@ export default function ServiceDesk() {
                               Loading assets...
                             </div>
                           ) : filteredClientAssets.length === 0 ? (
-                            <div className="settings-inline-alert">No assets found.</div>
+                            <div className="settings-inline-alert">No asset found from API. Check /api/assets response or try another keyword.</div>
                           ) : (
                             filteredClientAssets.map((asset) => {
                               const value = getAssetValue(asset);
@@ -4401,10 +5309,26 @@ export default function ServiceDesk() {
                     <span>SLA Due</span>
                     <input
                       type="datetime-local"
-                      value={toDateTimeLocalInput(formData.slaDue)}
-                      onChange={(e) => updateFormField('slaDue', fromMalaysiaDateTimeLocalInput(e.target.value))}
+                      value={toDateTimeLocalInput(getSlaPreview(formData).due || formData.slaDue)}
+                      readOnly
+                      disabled
+                      aria-readonly="true"
+                      title="SLA due date is calculated automatically from Settings SLA rules and working hours."
                     />
+                    <small className="service-desk-field-hint">
+                      Auto-calculated from Settings SLA rules and working hours.
+                    </small>
                   </label>
+
+                  <div className={cn('settings-helper-card', 'form-field', getSlaPreview(formData).meta.className)}>
+                    <strong>SLA Preview</strong>
+                    <p>
+                      {getSlaPreview(formData).code} · {getSlaPreview(formData).config?.label || formData.priority || 'Medium'} · {getSlaPreview(formData).meta.label}
+                    </p>
+                    <small>
+                      Due: {getSlaPreview(formData).due ? normalizeDateTime(getSlaPreview(formData).due) : 'Not calculated'} · {getSlaPreview(formData).meta.detail}
+                    </small>
+                  </div>
 
                   <label className="form-field">
                     <span>Root Cause</span>
@@ -4549,21 +5473,21 @@ export default function ServiceDesk() {
 
       {kbFormOpen && (
         <div className="settings-confirm-backdrop open" onClick={() => setKbFormOpen(false)}>
-          <form className="settings-confirm-modal user-modal" onSubmit={saveKb} onClick={(event) => event.stopPropagation()}>
-            <header className="content-head">
+          <form className="settings-confirm-modal user-modal service-desk-kb-modal service-desk-kb-form-modal" onSubmit={saveKb} onClick={(event) => event.stopPropagation()}>
+            <header className="content-head service-desk-kb-modal-head">
               <div>
                 <span>Knowledge Base</span>
                 <h2>{kbFormData.id ? 'Edit Resolution Article' : 'New Resolution Article'}</h2>
                 <p>Knowledge base records use the existing KnowledgeBaseService API.</p>
               </div>
-              <button type="button" onClick={() => setKbFormOpen(false)}>
+              <button className="service-desk-kb-close" type="button" onClick={() => setKbFormOpen(false)}>
                 <X size={18} />
               </button>
             </header>
 
-            <div className="content-body">
-              <section className="settings-helper-card">
-                <div className="form-grid single">
+            <div className="content-body service-desk-kb-modal-body">
+              <section className="settings-helper-card service-desk-kb-form-card">
+                <div className="form-grid single service-desk-kb-form-grid">
                   <label>
                     <span>Title</span>
                     <input value={kbFormData.title || ''} onChange={(e) => setKbFormData((prev: any) => ({ ...prev, title: e.target.value }))} />
@@ -4583,7 +5507,7 @@ export default function ServiceDesk() {
               </section>
             </div>
 
-            <footer className="content-actions service-desk-row-actions">
+            <footer className="content-actions service-desk-row-actions service-desk-kb-modal-actions">
               <AppButton
                 type="button"
                 variant="outline-secondary"

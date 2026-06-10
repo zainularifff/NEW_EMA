@@ -1439,3 +1439,394 @@
   display: none !important;
   content: none !important;
 }
+
+/* =========================================================
+   Incident Config - SLA & Working Hours full-width layout
+========================================================= */
+.settings-module-root[data-section="incident"] .incident-sla-panel,
+.settings-module-root[data-section="incident"] .incident-working-panel {
+  width: 100%;
+  max-width: none;
+  padding: 1.05rem;
+  overflow: hidden;
+}
+
+.settings-module-root[data-section="incident"] .incident-sla-panel .resource-card-head,
+.settings-module-root[data-section="incident"] .incident-working-panel .resource-card-head {
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.92);
+}
+
+.settings-module-root[data-section="incident"] .incident-sla-panel .table-shell,
+.settings-module-root[data-section="incident"] .incident-working-panel .table-shell {
+  width: 100%;
+  max-width: none;
+  overflow-x: auto;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 1rem;
+  background: #ffffff;
+}
+
+.settings-module-root[data-section="incident"] .incident-sla-panel .settings-table,
+.settings-module-root[data-section="incident"] .incident-working-panel .settings-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.settings-module-root[data-section="incident"] .incident-sla-panel .settings-table th,
+.settings-module-root[data-section="incident"] .incident-working-panel .settings-table th {
+  padding: 0.82rem 0.9rem;
+  background: #f5f8fc;
+  color: #475569;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.96);
+  text-align: left;
+}
+
+.settings-module-root[data-section="incident"] .incident-sla-panel .settings-table td,
+.settings-module-root[data-section="incident"] .incident-working-panel .settings-table td {
+  padding: 0.76rem 0.9rem;
+  color: #10233f;
+  font-size: 0.78rem;
+  font-weight: 720;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.82);
+  vertical-align: middle;
+}
+
+.settings-module-root[data-section="incident"] .incident-sla-panel .settings-table tr:last-child td,
+.settings-module-root[data-section="incident"] .incident-working-panel .settings-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.settings-module-root[data-section="incident"] .incident-sla-panel .settings-table td:first-child,
+.settings-module-root[data-section="incident"] .incident-working-panel .settings-table td:first-child {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.settings-module-root[data-section="incident"] .incident-sla-panel .settings-table th:nth-child(1) { width: 9%; }
+.settings-module-root[data-section="incident"] .incident-sla-panel .settings-table th:nth-child(2) { width: 15%; }
+.settings-module-root[data-section="incident"] .incident-sla-panel .settings-table th:nth-child(3) { width: 15%; }
+.settings-module-root[data-section="incident"] .incident-sla-panel .settings-table th:nth-child(4) { width: 15%; }
+.settings-module-root[data-section="incident"] .incident-sla-panel .settings-table th:nth-child(5) { width: 46%; }
+
+.settings-module-root[data-section="incident"] .incident-working-panel .settings-table th:nth-child(1) { width: 18%; }
+.settings-module-root[data-section="incident"] .incident-working-panel .settings-table th:nth-child(2) { width: 20%; }
+.settings-module-root[data-section="incident"] .incident-working-panel .settings-table th:nth-child(3) { width: 20%; }
+.settings-module-root[data-section="incident"] .incident-working-panel .settings-table th:nth-child(4) { width: 20%; }
+.settings-module-root[data-section="incident"] .incident-working-panel .settings-table th:nth-child(5) { width: 22%; }
+
+.settings-module-root[data-section="incident"] .incident-sla-panel .setting-input,
+.settings-module-root[data-section="incident"] .incident-working-panel .setting-input {
+  width: 100%;
+  min-height: 2.45rem;
+}
+
+.settings-module-root[data-section="incident"] .incident-sla-panel textarea.setting-input,
+.settings-module-root[data-section="incident"] .incident-sla-panel .resource-textarea {
+  min-height: 4.85rem;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.settings-module-root[data-section="incident"] .incident-working-panel .setting-select,
+.settings-module-root[data-section="incident"] .incident-working-panel .setting-select-trigger {
+  width: 100%;
+}
+
+.settings-module-root[data-section="incident"] .incident-working-panel input[type="time"] {
+  font-weight: 850;
+  letter-spacing: 0.01em;
+}
+
+.settings-module-root[data-section="incident"] .incident-working-panel .status-pill {
+  min-width: 7.2rem;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .settings-module-root[data-section="incident"] .incident-sla-panel .settings-table,
+  .settings-module-root[data-section="incident"] .incident-working-panel .settings-table {
+    min-width: 880px;
+  }
+}
+
+/* =========================================================
+   Incident Config - Category Setup editable layout
+========================================================= */
+.settings-module-root[data-section="incident"] .incident-command-card h3 {
+  margin-bottom: 0.22rem;
+}
+
+.settings-module-root[data-section="incident"] .incident-config-tabs {
+  justify-content: flex-start !important;
+  gap: 0.55rem !important;
+  margin: 1rem 0 !important;
+  flex-wrap: wrap;
+}
+
+.settings-module-root[data-section="incident"] .incident-category-panel {
+  width: 100%;
+  max-width: none;
+  padding: 1.05rem;
+  overflow: hidden;
+}
+
+.settings-module-root[data-section="incident"] .incident-category-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.92);
+}
+
+.settings-module-root[data-section="incident"] .incident-category-stats {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.settings-module-root[data-section="incident"] .incident-category-stats span {
+  min-height: 2.15rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.75rem;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.055);
+  color: #475569;
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.settings-module-root[data-section="incident"] .incident-category-stats strong {
+  color: #0f2746;
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+
+.settings-module-root[data-section="incident"] .incident-category-layout {
+  display: grid;
+  grid-template-columns: minmax(17rem, 0.34fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.settings-module-root[data-section="incident"] .incident-category-sidebar,
+.settings-module-root[data-section="incident"] .incident-category-editor,
+.settings-module-root[data-section="incident"] .incident-editor-card {
+  border: 1px solid rgba(226, 232, 240, 0.96);
+  border-radius: 1rem;
+  background: #ffffff;
+}
+
+.settings-module-root[data-section="incident"] .incident-category-sidebar {
+  display: grid;
+  gap: 0.8rem;
+  padding: 0.85rem;
+  position: sticky;
+  top: 0.85rem;
+}
+
+.settings-module-root[data-section="incident"] .incident-category-add-row,
+.settings-module-root[data-section="incident"] .incident-add-inline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.settings-module-root[data-section="incident"] .incident-category-list {
+  display: grid;
+  gap: 0.5rem;
+  max-height: 34rem;
+  overflow: auto;
+  padding-right: 0.18rem;
+}
+
+.settings-module-root[data-section="incident"] .incident-category-list-item {
+  width: 100%;
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.74rem 0.82rem;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 0.85rem;
+  background: #f8fbfe;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-module-root[data-section="incident"] .incident-category-list-item span,
+.settings-module-root[data-section="incident"] .incident-subcategory-select strong {
+  color: #0f2746;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.settings-module-root[data-section="incident"] .incident-category-list-item small,
+.settings-module-root[data-section="incident"] .incident-subcategory-select small {
+  color: #64748b;
+  font-size: 0.64rem;
+  font-weight: 750;
+}
+
+.settings-module-root[data-section="incident"] .incident-category-list-item.active {
+  border-color: rgba(37, 99, 235, 0.34);
+  background: rgba(37, 99, 235, 0.075);
+  box-shadow: inset 3px 0 0 #2563eb;
+}
+
+.settings-module-root[data-section="incident"] .incident-category-editor {
+  display: grid;
+  gap: 0.82rem;
+  padding: 0.85rem;
+  background: #f8fbfe;
+}
+
+.settings-module-root[data-section="incident"] .incident-editor-card {
+  display: grid;
+  gap: 0.72rem;
+  padding: 0.9rem;
+}
+
+.settings-module-root[data-section="incident"] .incident-editor-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.settings-module-root[data-section="incident"] .incident-editor-title h5 {
+  margin: 0.18rem 0 0;
+  color: #0f2746;
+  font-size: 0.9rem;
+  font-weight: 950;
+}
+
+.settings-module-root[data-section="incident"] .incident-editor-actions,
+.settings-module-root[data-section="incident"] .incident-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
+/* Keep Incident Config delete buttons on the global danger/delete style.
+   Do not override .danger-btn here; this avoids duplicate delete button styling. */
+
+.settings-module-root[data-section="incident"] .incident-subcategory-list,
+.settings-module-root[data-section="incident"] .incident-detail-list {
+  display: grid;
+  gap: 0.58rem;
+}
+
+.settings-module-root[data-section="incident"] .incident-subcategory-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.38fr) minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.58rem;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 0.9rem;
+  background: #ffffff;
+}
+
+.settings-module-root[data-section="incident"] .incident-subcategory-row.active {
+  border-color: rgba(37, 99, 235, 0.28);
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.settings-module-root[data-section="incident"] .incident-subcategory-select {
+  min-width: 0;
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.45rem 0.55rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-module-root[data-section="incident"] .incident-detail-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.58rem;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 0.9rem;
+  background: #ffffff;
+}
+
+.settings-module-root[data-section="incident"] .incident-empty-state {
+  min-height: 3.2rem;
+  display: grid;
+  place-items: center;
+  padding: 0.9rem;
+  border: 1px dashed rgba(148, 163, 184, 0.52);
+  border-radius: 0.9rem;
+  background: #f8fbfe;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 760;
+  text-align: center;
+}
+
+.settings-module-root[data-section="incident"] .incident-empty-state.large {
+  min-height: 18rem;
+}
+
+@media (max-width: 1180px) {
+  .settings-module-root[data-section="incident"] .incident-category-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-module-root[data-section="incident"] .incident-category-sidebar {
+    position: static;
+  }
+
+  .settings-module-root[data-section="incident"] .incident-subcategory-row {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-module-root[data-section="incident"] .incident-row-actions,
+  .settings-module-root[data-section="incident"] .incident-editor-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 720px) {
+  .settings-module-root[data-section="incident"] .incident-category-head,
+  .settings-module-root[data-section="incident"] .incident-editor-title {
+    flex-direction: column;
+  }
+
+  .settings-module-root[data-section="incident"] .incident-category-add-row,
+  .settings-module-root[data-section="incident"] .incident-add-inline,
+  .settings-module-root[data-section="incident"] .incident-detail-row {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-module-root[data-section="incident"] .incident-category-add-row .primary-btn,
+  .settings-module-root[data-section="incident"] .incident-add-inline .primary-btn,
+  .settings-module-root[data-section="incident"] .incident-row-actions .soft-btn,
+  .settings-module-root[data-section="incident"] .incident-row-actions .danger-btn {
+    width: 100%;
+  }
+}

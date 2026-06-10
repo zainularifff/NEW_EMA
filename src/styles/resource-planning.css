@@ -309,3 +309,35 @@
 .resource-table {
   min-width: 720px;
 }
+
+/* =========================================================
+   Resource Planning - form action placement cleanup
+   Clear / Add Leave belong to the leave form, aligned to the right.
+========================================================= */
+.resource-planning-module .resource-form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.62rem;
+  margin-top: 0.95rem;
+  padding-top: 0.95rem;
+  border-top: 1px solid rgba(226, 232, 240, 0.95);
+}
+
+.resource-planning-module .resource-form-actions .soft-btn,
+.resource-planning-module .resource-form-actions .primary-btn {
+  min-width: 5.6rem;
+}
+
+@media (max-width: 760px) {
+  .resource-planning-module .resource-form-actions {
+    justify-content: stretch;
+    flex-wrap: wrap;
+  }
+
+  .resource-planning-module .resource-form-actions .soft-btn,
+  .resource-planning-module .resource-form-actions .primary-btn {
+    flex: 1 1 8rem;
+  }
+}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import "../styles/resource-planning.css";
 
-type SectionKey = "roles" | "users" | "modules" | "access" | "audit" | "pricing" | "aging" | "risk" | "resources";
+type SectionKey = "roles" | "users" | "modules" | "access" | "incident" | "audit" | "pricing" | "aging" | "risk" | "resources";
 type RoleStatus = "Active" | "Review" | "Locked" | "Inactive";
 type ModalMode = "add" | "edit" | "delete";
 type ToastTone = "success" | "info" | "warning" | "error";
@@ -428,6 +428,113 @@ type PcAgingApiResponse = {
   };
 };
 
+type SlaConfigRow = {
+  id: number | string;
+  priority: "P1" | "P2" | "P3" | "P4" | string;
+  label: string;
+  responseTimeMin: number;
+  resolutionTimeHrs: number;
+  escalationPolicy: string;
+  isActive?: boolean;
+};
+
+type WorkingHourRow = {
+  id: string;
+  day: string;
+  enabled: boolean;
+  start: string;
+  end: string;
+  isRestDay?: boolean;
+  sortOrder?: number;
+};
+
+
+type IncidentDetailSetupRow = {
+  id: number | string;
+  name: string;
+  sortOrder?: number;
+  isActive?: boolean;
+};
+
+type IncidentSubcategorySetupRow = {
+  id: number | string;
+  name: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  details: IncidentDetailSetupRow[];
+};
+
+type IncidentCategorySetupRow = {
+  id: number | string;
+  name: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  subcategories: IncidentSubcategorySetupRow[];
+};
+
+type IncidentConfigDeleteTarget =
+  | { kind: "category"; category: IncidentCategorySetupRow }
+  | { kind: "subcategory"; categoryId: number | string; subcategory: IncidentSubcategorySetupRow }
+  | { kind: "detail"; categoryId: number | string; subcategoryId: number | string; detail: IncidentDetailSetupRow };
+
+type ResourceDeleteTarget = { row: ResourceSchedule; scheduleId: number; engineerName: string };
+
+type IncidentConfigMeta = {
+  eyebrow: string;
+  title: string;
+  description: string;
+  scoreOneLabel: string;
+  scoreOne: string;
+  scoreOneCaption: string;
+  scoreTwoLabel: string;
+  scoreTwo: string;
+  scoreTwoCaption: string;
+  commandTitle: string;
+  commandDescription: string;
+  saveLabel: string;
+};
+
+type IncidentConfigTab = "sla" | "workingHours" | "categories";
+
+type IncidentConfigContentProps = {
+  activeTab: IncidentConfigTab;
+  meta: IncidentConfigMeta;
+  slaRows: SlaConfigRow[];
+  workingHours: WorkingHourRow[];
+  categories: IncidentCategorySetupRow[];
+  selectedCategoryId: string;
+  selectedSubcategoryId: string;
+  newCategoryName: string;
+  newSubcategoryName: string;
+  newDetailName: string;
+  categorySavingKey: string;
+  loading: boolean;
+  saving: boolean;
+  error: string;
+  onTabChange: (tab: IncidentConfigTab) => void;
+  onReload: () => void;
+  onSlaChange: (id: number | string, patch: Partial<SlaConfigRow>) => void;
+  onWorkingHourChange: (id: string, patch: Partial<WorkingHourRow>) => void;
+  onSelectCategory: (id: string) => void;
+  onSelectSubcategory: (id: string) => void;
+  onNewCategoryNameChange: (value: string) => void;
+  onNewSubcategoryNameChange: (value: string) => void;
+  onNewDetailNameChange: (value: string) => void;
+  onCategoryNameChange: (id: number | string, value: string) => void;
+  onSubcategoryNameChange: (categoryId: number | string, subcategoryId: number | string, value: string) => void;
+  onDetailNameChange: (categoryId: number | string, subcategoryId: number | string, detailId: number | string, value: string) => void;
+  onAddCategory: () => void;
+  onUpdateCategory: (category: IncidentCategorySetupRow) => void;
+  onDeleteCategory: (category: IncidentCategorySetupRow) => void;
+  onAddSubcategory: () => void;
+  onUpdateSubcategory: (categoryId: number | string, subcategory: IncidentSubcategorySetupRow) => void;
+  onDeleteSubcategory: (categoryId: number | string, subcategory: IncidentSubcategorySetupRow) => void;
+  onAddDetail: () => void;
+  onUpdateDetail: (categoryId: number | string, subcategoryId: number | string, detail: IncidentDetailSetupRow) => void;
+  onDeleteDetail: (categoryId: number | string, subcategoryId: number | string, detail: IncidentDetailSetupRow) => void;
+  onSave: () => void;
+};
+
 type AgingContentProps = {
   rule: PcAgingRule;
   loading: boolean;
@@ -438,6 +545,23 @@ type AgingContentProps = {
   onSave: () => void;
   onReset: () => void;
 };
+
+const DEFAULT_SLA_CONFIGS: SlaConfigRow[] = [
+  { id: 1, priority: "P1", label: "Critical", responseTimeMin: 15, resolutionTimeHrs: 4, escalationPolicy: "Immediate escalation to L2/L3 support and IT manager." },
+  { id: 2, priority: "P2", label: "High", responseTimeMin: 30, resolutionTimeHrs: 8, escalationPolicy: "Escalate to L2 support if no progress within response target." },
+  { id: 3, priority: "P3", label: "Medium", responseTimeMin: 60, resolutionTimeHrs: 24, escalationPolicy: "Review during operational follow-up and escalate when required." },
+  { id: 4, priority: "P4", label: "Low", responseTimeMin: 120, resolutionTimeHrs: 48, escalationPolicy: "Handle during normal support queue review." },
+];
+
+const DEFAULT_WORKING_HOURS: WorkingHourRow[] = [
+  { id: "Monday", day: "Monday", enabled: true, start: "09:00", end: "18:00", sortOrder: 1 },
+  { id: "Tuesday", day: "Tuesday", enabled: true, start: "09:00", end: "18:00", sortOrder: 2 },
+  { id: "Wednesday", day: "Wednesday", enabled: true, start: "09:00", end: "18:00", sortOrder: 3 },
+  { id: "Thursday", day: "Thursday", enabled: true, start: "09:00", end: "18:00", sortOrder: 4 },
+  { id: "Friday", day: "Friday", enabled: true, start: "09:00", end: "18:00", sortOrder: 5 },
+  { id: "Saturday", day: "Saturday", enabled: false, start: "09:00", end: "18:00", sortOrder: 6 },
+  { id: "Sunday", day: "Sunday", enabled: false, start: "09:00", end: "18:00", sortOrder: 7 },
+];
 
 const sections: Record<SectionKey, SectionItem> = {
   roles: {
@@ -483,6 +607,17 @@ const sections: Record<SectionKey, SectionItem> = {
     scoreOne: "6",
     scoreTwo: "2FA",
     subtitle: "Policies",
+  },
+  incident: {
+    key: "incident",
+    title: "Incident Config",
+    desc: "Configure Service Desk SLA rules and working hours used to calculate incident due dates.",
+    tag: "Service Desk Config",
+    icon: "matrix",
+    count: 2,
+    scoreOne: "4",
+    scoreTwo: "7",
+    subtitle: "SLA rules",
   },
   audit: {
     key: "audit",
@@ -541,7 +676,7 @@ const sections: Record<SectionKey, SectionItem> = {
   },
 };
 
-const sectionOrder: SectionKey[] = ["roles", "users", "modules", "access", "audit", "pricing", "aging", "risk", "resources"];
+const sectionOrder: SectionKey[] = ["roles", "users", "modules", "access", "incident", "audit", "pricing", "aging", "risk", "resources"];
 
 const defaultAccessRoles: AccessRole[] = [
   { roleKey: "system_administrator", name: "System Administrator", description: "Full configuration access including roles, settings, pricing and risk rules.", type: "Administrator", defaultAccess: "Full Access", approvalRequired: true, status: "Active", assignedUsers: 0 },
@@ -676,6 +811,156 @@ function normalizeAccessPolicy(row: AccessPolicyApiRow = {}): AccessPolicy {
     isSystemPolicy: boolFromRoleApi(row.isSystemPolicy ?? row.IsSystemPolicy, false),
     sortOrder: Number(row.sortOrder ?? row.SortOrder ?? 0) || 0,
     updatedAt: row.updatedAt ?? row.UpdatedAt ?? null,
+  };
+}
+
+function normalizeSlaConfigRow(row: Partial<SlaConfigRow> & Record<string, unknown> = {}, index = 0): SlaConfigRow {
+  const fallback = DEFAULT_SLA_CONFIGS[index] || DEFAULT_SLA_CONFIGS[0];
+  const priority = String(row.priority ?? row.Priority ?? fallback.priority).trim() || fallback.priority;
+
+  return {
+    id: (row.id as number | string | undefined) ?? (row.SlaConfigID as number | string | undefined) ?? (row.ConfigID as number | string | undefined) ?? fallback.id ?? priority,
+    priority,
+    label: String(row.label ?? row.Label ?? fallback.label).trim() || fallback.label,
+    responseTimeMin: Number(row.responseTimeMin ?? row.ResponseTimeMin ?? fallback.responseTimeMin) || 0,
+    resolutionTimeHrs: Number(row.resolutionTimeHrs ?? row.ResolutionTimeHrs ?? fallback.resolutionTimeHrs) || 0,
+    escalationPolicy: String(row.escalationPolicy ?? row.EscalationPolicy ?? fallback.escalationPolicy ?? "").trim(),
+    isActive: boolFromApi(row.isActive ?? row.IsActive, true),
+  };
+}
+
+function normalizeWorkingHourRow(row: Partial<WorkingHourRow> & Record<string, unknown> = {}, index = 0): WorkingHourRow {
+  const fallback = DEFAULT_WORKING_HOURS[index] || DEFAULT_WORKING_HOURS[0];
+  const day = String(row.day ?? row.DayOfWeek ?? row.id ?? fallback.day).trim() || fallback.day;
+  const isRestDay = boolFromApi(row.isRestDay ?? row.IsRestDay, !fallback.enabled);
+  const enabled = row.enabled !== undefined || row.Enabled !== undefined
+    ? boolFromApi(row.enabled ?? row.Enabled, fallback.enabled)
+    : !isRestDay;
+
+  return {
+    id: String(row.id ?? row.DayOfWeek ?? day),
+    day,
+    enabled,
+    start: String(row.start ?? row.StartTime ?? fallback.start ?? "09:00").slice(0, 5),
+    end: String(row.end ?? row.EndTime ?? fallback.end ?? "18:00").slice(0, 5),
+    isRestDay: !enabled,
+    sortOrder: Number(row.sortOrder ?? row.SortOrder ?? fallback.sortOrder ?? index + 1) || index + 1,
+  };
+}
+
+function sortSlaConfigs(rows: SlaConfigRow[]): SlaConfigRow[] {
+  const order = ["P1", "P2", "P3", "P4"];
+  return [...rows].sort((a, b) => order.indexOf(String(a.priority)) - order.indexOf(String(b.priority)));
+}
+
+function sortWorkingHours(rows: WorkingHourRow[]): WorkingHourRow[] {
+  return [...rows].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+}
+
+
+function getIncidentSetupId(row: Record<string, unknown>, fallback: string): string {
+  return String(row.id ?? row.categoryID ?? row.CategoryID ?? row.subcategoryID ?? row.SubcategoryID ?? row.detailID ?? row.DetailID ?? fallback);
+}
+
+function normalizeIncidentDetailRow(row: Record<string, unknown> = {}, index = 0): IncidentDetailSetupRow {
+  const name = String(row.name ?? row.Name ?? row.detailName ?? row.DetailName ?? row.incidentDetail ?? row.IncidentDetail ?? `Incident Detail ${index + 1}`).trim();
+  return {
+    id: getIncidentSetupId(row, `detail-${index}-${name || Date.now()}`),
+    name: name || `Incident Detail ${index + 1}`,
+    sortOrder: Number(row.sortOrder ?? row.SortOrder ?? index + 1) || index + 1,
+    isActive: boolFromApi(row.isActive ?? row.IsActive, true),
+  };
+}
+
+function normalizeIncidentSubcategoryRow(row: Record<string, unknown> = {}, index = 0): IncidentSubcategorySetupRow {
+  const name = String(row.name ?? row.Name ?? row.subcategoryName ?? row.SubcategoryName ?? `Subcategory ${index + 1}`).trim();
+  const detailsSource = Array.isArray(row.details) ? row.details : Array.isArray(row.Details) ? row.Details : Array.isArray(row.incidentDetails) ? row.incidentDetails : Array.isArray(row.IncidentDetails) ? row.IncidentDetails : [];
+  return {
+    id: getIncidentSetupId(row, `subcategory-${index}-${name || Date.now()}`),
+    name: name || `Subcategory ${index + 1}`,
+    sortOrder: Number(row.sortOrder ?? row.SortOrder ?? index + 1) || index + 1,
+    isActive: boolFromApi(row.isActive ?? row.IsActive, true),
+    details: detailsSource.map((detail, detailIndex) => normalizeIncidentDetailRow((detail || {}) as Record<string, unknown>, detailIndex)).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0)),
+  };
+}
+
+function normalizeIncidentCategoryRow(row: Record<string, unknown> = {}, index = 0): IncidentCategorySetupRow {
+  const name = String(row.name ?? row.Name ?? row.categoryName ?? row.CategoryName ?? `Category ${index + 1}`).trim();
+  const subcategoriesSource = Array.isArray(row.subcategories) ? row.subcategories : Array.isArray(row.Subcategories) ? row.Subcategories : Array.isArray(row.children) ? row.children : [];
+  return {
+    id: getIncidentSetupId(row, `category-${index}-${name || Date.now()}`),
+    name: name || `Category ${index + 1}`,
+    sortOrder: Number(row.sortOrder ?? row.SortOrder ?? index + 1) || index + 1,
+    isActive: boolFromApi(row.isActive ?? row.IsActive, true),
+    subcategories: subcategoriesSource.map((subcategory, subcategoryIndex) => normalizeIncidentSubcategoryRow((subcategory || {}) as Record<string, unknown>, subcategoryIndex)).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0)),
+  };
+}
+
+function normalizeIncidentCategories(rows: unknown[]): IncidentCategorySetupRow[] {
+  return rows
+    .map((row, index) => normalizeIncidentCategoryRow((row || {}) as Record<string, unknown>, index))
+    .filter((category) => category.isActive !== false)
+    .sort((a, b) => (Number(a.sortOrder || 0) - Number(b.sortOrder || 0)) || a.name.localeCompare(b.name));
+}
+
+function getIncidentCategoryCounts(categories: IncidentCategorySetupRow[]) {
+  const subcategoryCount = categories.reduce((total, category) => total + category.subcategories.filter((item) => item.isActive !== false).length, 0);
+  const detailCount = categories.reduce((total, category) => total + category.subcategories.reduce((subTotal, subcategory) => subTotal + subcategory.details.filter((item) => item.isActive !== false).length, 0), 0);
+  return { categoryCount: categories.length, subcategoryCount, detailCount };
+}
+
+function getIncidentConfigMeta(activeTab: IncidentConfigTab, slaRows: SlaConfigRow[], workingHours: WorkingHourRow[], categories: IncidentCategorySetupRow[]): IncidentConfigMeta {
+  const workingDayCount = workingHours.filter((day) => day.enabled).length;
+  const restDayCount = workingHours.filter((day) => !day.enabled).length;
+  const categoryCounts = getIncidentCategoryCounts(categories);
+
+  if (activeTab === "workingHours") {
+    return {
+      eyebrow: "INCIDENT CONFIG",
+      title: "Working Hours Setup",
+      description: "Configure the working days and time windows used by Service Desk when calculating SLA due dates.",
+      scoreOneLabel: "WORKING DAYS",
+      scoreOne: String(workingDayCount),
+      scoreOneCaption: "Enabled days",
+      scoreTwoLabel: "REST DAYS",
+      scoreTwo: String(restDayCount),
+      scoreTwoCaption: "Excluded from SLA",
+      commandTitle: "Working Hours",
+      commandDescription: "These values control when the SLA timer is counted for incident due date calculation.",
+      saveLabel: "Save Working Hours",
+    };
+  }
+
+  if (activeTab === "categories") {
+    return {
+      eyebrow: "INCIDENT CONFIG",
+      title: "Category Setup",
+      description: "Configure the incident category, subcategory and detail options used in the Service Desk form and filters.",
+      scoreOneLabel: "CATEGORIES",
+      scoreOne: String(categoryCounts.categoryCount),
+      scoreOneCaption: "Main groups",
+      scoreTwoLabel: "DETAILS",
+      scoreTwo: String(categoryCounts.detailCount),
+      scoreTwoCaption: `${categoryCounts.subcategoryCount} subcategories`,
+      commandTitle: "Category Setup",
+      commandDescription: "These values populate the Category, Subcategory and Incident Detail dropdowns in Service Desk.",
+      saveLabel: "Saved per item",
+    };
+  }
+
+  return {
+    eyebrow: "INCIDENT CONFIG",
+    title: "SLA Rules Setup",
+    description: "Configure priority-based response and resolution targets used by Service Desk to calculate SLA due dates.",
+    scoreOneLabel: "SLA RULES",
+    scoreOne: String(slaRows.length),
+    scoreOneCaption: "Priority rules",
+    scoreTwoLabel: "RESOLUTION HRS",
+    scoreTwo: String(slaRows.reduce((total, row) => total + Number(row.resolutionTimeHrs || 0), 0)),
+    scoreTwoCaption: "Total target hours",
+    commandTitle: "SLA Rules",
+    commandDescription: "These values define Service Desk SLA priority labels, response time, resolution time and escalation notes.",
+    saveLabel: "Save SLA Rules",
   };
 }
 
@@ -1153,6 +1438,22 @@ export default function Settings() {
   const [resourceSaving, setResourceSaving] = useState(false);
   const [resourceError, setResourceError] = useState("");
   const [resourceLoaded, setResourceLoaded] = useState(false);
+  const [incidentConfigTab, setIncidentConfigTab] = useState<IncidentConfigTab>("sla");
+  const [slaConfigs, setSlaConfigs] = useState<SlaConfigRow[]>(DEFAULT_SLA_CONFIGS);
+  const [workingHours, setWorkingHours] = useState<WorkingHourRow[]>(DEFAULT_WORKING_HOURS);
+  const [incidentConfigLoading, setIncidentConfigLoading] = useState(false);
+  const [incidentConfigSaving, setIncidentConfigSaving] = useState(false);
+  const [incidentConfigError, setIncidentConfigError] = useState("");
+  const [incidentConfigLoaded, setIncidentConfigLoaded] = useState(false);
+  const [incidentCategories, setIncidentCategories] = useState<IncidentCategorySetupRow[]>([]);
+  const [selectedIncidentCategoryId, setSelectedIncidentCategoryId] = useState("");
+  const [selectedIncidentSubcategoryId, setSelectedIncidentSubcategoryId] = useState("");
+  const [newIncidentCategoryName, setNewIncidentCategoryName] = useState("");
+  const [newIncidentSubcategoryName, setNewIncidentSubcategoryName] = useState("");
+  const [newIncidentDetailName, setNewIncidentDetailName] = useState("");
+  const [categorySavingKey, setCategorySavingKey] = useState("");
+  const [incidentDeleteTarget, setIncidentDeleteTarget] = useState<IncidentConfigDeleteTarget | null>(null);
+  const [resourceDeleteTarget, setResourceDeleteTarget] = useState<ResourceDeleteTarget | null>(null);
   const [userDeleteTarget, setUserDeleteTarget] = useState<{ user: UserAccess; index: number } | null>(null);
   const [settingsToast, setSettingsToast] = useState<SettingsToastState>(null);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
@@ -1169,6 +1470,9 @@ export default function Settings() {
   const moduleActiveRoleCount = accessRoles.filter((role) => role.status === "Active").length;
   const accessPolicyTotalCount = accessPolicies.length;
   const accessPolicyActiveCount = accessPolicies.filter((policy) => policy.status === "Active").length;
+  const incidentConfigMeta = getIncidentConfigMeta(incidentConfigTab, slaConfigs, workingHours, incidentCategories);
+  const activeHeroTitle = activeSection === "incident" ? incidentConfigMeta.title : active.title;
+  const activeHeroDesc = activeSection === "incident" ? incidentConfigMeta.description : active.desc;
   const auditTodayStart = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime();
   const auditTotalCount = auditTotalRecords || auditLogs.length;
   const auditTodayCount = auditLogs.filter((log) => getAuditTimestampMs(log) >= auditTodayStart).length;
@@ -1191,8 +1495,8 @@ export default function Settings() {
   const auditModuleOptions = Array.from(new Set([...auditBaseModuleOptions, ...auditLogs.map((log) => log.module).filter(Boolean)])).sort((a, b) => a.localeCompare(b));
   const auditSeverityOptions = ["Success", "Info", "Warning", "Error"];
   const filteredAuditLogs = auditLogs;
-  const heroScoreOne = activeSection === "users" ? String(usersTotalCount) : activeSection === "roles" ? String(rolesTotalCount) : activeSection === "modules" ? String(moduleTotalCount) : activeSection === "access" ? String(accessPolicyTotalCount) : activeSection === "audit" ? String(auditTotalCount) : activeSection === "aging" ? String(pcAgingRule.monitorMaxYears) : activeSection === "resources" ? String(resourceSchedules.length) : active.scoreOne;
-  const heroScoreTwo = activeSection === "users" ? String(usersLockedCount) : activeSection === "roles" ? String(rolesActiveCount) : activeSection === "modules" ? String(moduleActiveRoleCount) : activeSection === "access" ? String(accessPolicyActiveCount) : activeSection === "audit" ? String(auditTodayCount) : activeSection === "aging" ? String(pcAgingRule.agingMinYears) : activeSection === "resources" ? String(resourceEngineers.length) : active.scoreTwo;
+  const heroScoreOne = activeSection === "users" ? String(usersTotalCount) : activeSection === "roles" ? String(rolesTotalCount) : activeSection === "modules" ? String(moduleTotalCount) : activeSection === "access" ? String(accessPolicyTotalCount) : activeSection === "audit" ? String(auditTotalCount) : activeSection === "incident" ? incidentConfigMeta.scoreOne : activeSection === "aging" ? String(pcAgingRule.monitorMaxYears) : activeSection === "resources" ? String(resourceSchedules.length) : active.scoreOne;
+  const heroScoreTwo = activeSection === "users" ? String(usersLockedCount) : activeSection === "roles" ? String(rolesActiveCount) : activeSection === "modules" ? String(moduleActiveRoleCount) : activeSection === "access" ? String(accessPolicyActiveCount) : activeSection === "audit" ? String(auditTodayCount) : activeSection === "incident" ? incidentConfigMeta.scoreTwo : activeSection === "aging" ? String(pcAgingRule.agingMinYears) : activeSection === "resources" ? String(resourceEngineers.length) : active.scoreTwo;
 
   const showToast = (tone: ToastTone, title: string, message: string) => {
     const toastId = Date.now();
@@ -1333,6 +1637,25 @@ export default function Settings() {
     } finally {
       auditLoadInFlightRef.current = false;
       setAuditLoading(false);
+    }
+  };
+
+  const logIncidentConfigAudit = async (action: string, details: string, entityType = "", entityID: number | string = "") => {
+    try {
+      await apiRequest("/api/settings/audit-logs", {
+        method: "POST",
+        body: JSON.stringify({
+          module: "Incident Config",
+          action,
+          severity: "Success",
+          details,
+          entityType,
+          entityID: String(entityID || ""),
+        }),
+      });
+      setAuditLoaded(false);
+    } catch (error) {
+      console.warn("Incident Config audit logging skipped:", error);
     }
   };
 
@@ -1827,6 +2150,270 @@ export default function Settings() {
     }
   };
 
+  const loadIncidentConfig = async () => {
+    if (incidentConfigLoading) return;
+
+    setIncidentConfigLoading(true);
+    setIncidentConfigError("");
+
+    try {
+      const [slaPayload, workingPayload, categoryPayload] = await Promise.all([
+        apiRequest<unknown>("/api/settings/incident-config/sla"),
+        apiRequest<unknown>("/api/settings/incident-config/working-hours"),
+        apiRequest<unknown>("/api/settings/incident-config/categories"),
+      ]);
+
+      const slaRows = readArrayPayload<Record<string, unknown>>(slaPayload).map(normalizeSlaConfigRow);
+      const workingRows = readArrayPayload<Record<string, unknown>>(workingPayload).map(normalizeWorkingHourRow);
+      const categoryRows = normalizeIncidentCategories(readArrayPayload<Record<string, unknown>>(categoryPayload));
+
+      setSlaConfigs(sortSlaConfigs(slaRows.length ? slaRows : DEFAULT_SLA_CONFIGS));
+      setWorkingHours(sortWorkingHours(workingRows.length ? workingRows : DEFAULT_WORKING_HOURS));
+      setIncidentCategories(categoryRows);
+      setSelectedIncidentCategoryId((current) => current && categoryRows.some((category) => String(category.id) === current) ? current : String(categoryRows[0]?.id ?? ""));
+      setSelectedIncidentSubcategoryId((current) => {
+        const baseCategory = categoryRows.find((category) => String(category.id) === selectedIncidentCategoryId) || categoryRows[0];
+        return current && baseCategory?.subcategories.some((subcategory) => String(subcategory.id) === current) ? current : String(baseCategory?.subcategories[0]?.id ?? "");
+      });
+      setIncidentConfigLoaded(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load incident configuration.";
+      setIncidentConfigError(message);
+      showToast("error", "Incident config load failed", message);
+    } finally {
+      setIncidentConfigLoading(false);
+    }
+  };
+
+  const updateSlaConfig = (id: number | string, patch: Partial<SlaConfigRow>) => {
+    setSlaConfigs((current) => current.map((row) => (String(row.id) === String(id) ? { ...row, ...patch } : row)));
+  };
+
+  const updateWorkingHour = (id: string, patch: Partial<WorkingHourRow>) => {
+    setWorkingHours((current) => current.map((row) => (String(row.id) === String(id) ? { ...row, ...patch, isRestDay: patch.enabled === undefined ? row.isRestDay : !patch.enabled } : row)));
+  };
+
+  const updateCategoryNameLocal = (id: number | string, value: string) => {
+    setIncidentCategories((rows) => rows.map((category) => String(category.id) === String(id) ? { ...category, name: value } : category));
+  };
+
+  const updateSubcategoryNameLocal = (categoryId: number | string, subcategoryId: number | string, value: string) => {
+    setIncidentCategories((rows) => rows.map((category) => String(category.id) === String(categoryId)
+      ? { ...category, subcategories: category.subcategories.map((subcategory) => String(subcategory.id) === String(subcategoryId) ? { ...subcategory, name: value } : subcategory) }
+      : category));
+  };
+
+  const updateDetailNameLocal = (categoryId: number | string, subcategoryId: number | string, detailId: number | string, value: string) => {
+    setIncidentCategories((rows) => rows.map((category) => String(category.id) === String(categoryId)
+      ? {
+          ...category,
+          subcategories: category.subcategories.map((subcategory) => String(subcategory.id) === String(subcategoryId)
+            ? { ...subcategory, details: subcategory.details.map((detail) => String(detail.id) === String(detailId) ? { ...detail, name: value } : detail) }
+            : subcategory),
+        }
+      : category));
+  };
+
+  const saveIncidentConfig = async () => {
+    if (incidentConfigTab === "categories") {
+      showToast("info", "Category setup", "Category, subcategory and detail changes are saved per item.");
+      return;
+    }
+
+    const invalidSla = slaConfigs.find((row) => !row.priority || !row.label || Number(row.responseTimeMin) < 0 || Number(row.resolutionTimeHrs) <= 0);
+    if (invalidSla) {
+      const message = "Every SLA rule needs a priority, label, response time and resolution time greater than zero.";
+      setIncidentConfigError(message);
+      showToast("warning", "SLA config not saved", message);
+      return;
+    }
+
+    const invalidWorkingHour = workingHours.find((row) => row.enabled && (!row.start || !row.end || row.end <= row.start));
+    if (invalidWorkingHour) {
+      const message = `${invalidWorkingHour.day} working hours are invalid. End time must be later than start time.`;
+      setIncidentConfigError(message);
+      showToast("warning", "Working hours not saved", message);
+      return;
+    }
+
+    setIncidentConfigSaving(true);
+    setIncidentConfigError("");
+
+    try {
+      await Promise.all([
+        apiRequest("/api/settings/incident-config/sla", {
+          method: "PUT",
+          body: JSON.stringify(slaConfigs),
+        }),
+        apiRequest("/api/settings/incident-config/working-hours", {
+          method: "PUT",
+          body: JSON.stringify(workingHours),
+        }),
+      ]);
+
+      const auditAction = incidentConfigTab === "sla"
+        ? "Updated SLA rules"
+        : incidentConfigTab === "workingHours"
+          ? "Updated working hours"
+          : "Updated category setup";
+      const auditDetails = incidentConfigTab === "sla"
+        ? `Saved ${slaConfigs.length} SLA rule configuration(s).`
+        : incidentConfigTab === "workingHours"
+          ? `Saved ${workingHours.length} working hour configuration(s).`
+          : `Saved category setup containing ${incidentCategories.length} categor${incidentCategories.length === 1 ? "y" : "ies"}.`;
+      await logIncidentConfigAudit(auditAction, auditDetails, "IncidentConfig", incidentConfigTab);
+      showToast("success", "Incident config saved", "SLA rules and working hours have been updated.");
+      await loadIncidentConfig();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save incident configuration.";
+      setIncidentConfigError(message);
+      showToast("error", "Incident config save failed", message);
+    } finally {
+      setIncidentConfigSaving(false);
+    }
+  };
+
+
+  const reloadIncidentCategories = async () => {
+    const payload = await apiRequest<unknown>("/api/settings/incident-config/categories");
+    const rows = normalizeIncidentCategories(readArrayPayload<Record<string, unknown>>(payload));
+    setIncidentCategories(rows);
+    setSelectedIncidentCategoryId((current) => current && rows.some((category) => String(category.id) === current) ? current : String(rows[0]?.id ?? ""));
+    setSelectedIncidentSubcategoryId((current) => {
+      const nextCategory = rows.find((category) => String(category.id) === selectedIncidentCategoryId) || rows[0];
+      return current && nextCategory?.subcategories.some((subcategory) => String(subcategory.id) === current) ? current : String(nextCategory?.subcategories[0]?.id ?? "");
+    });
+  };
+
+  const runCategoryAction = async (
+    key: string,
+    action: () => Promise<void>,
+    successTitle: string,
+    successMessage: string,
+    auditAction = successTitle,
+    entityType = "IncidentCategorySetup",
+    entityID: number | string = ""
+  ) => {
+    setCategorySavingKey(key);
+    setIncidentConfigError("");
+    try {
+      await action();
+      await logIncidentConfigAudit(auditAction, successMessage, entityType, entityID);
+      await reloadIncidentCategories();
+      showToast("success", successTitle, successMessage);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update category setup.";
+      setIncidentConfigError(message);
+      showToast("error", "Category setup failed", message);
+    } finally {
+      setCategorySavingKey("");
+    }
+  };
+
+  const addIncidentCategory = () => {
+    const name = newIncidentCategoryName.trim();
+    if (!name) {
+      showToast("warning", "Category name required", "Enter a category name before adding it.");
+      return;
+    }
+    void runCategoryAction("category:add", async () => {
+      await apiRequest("/api/settings/incident-config/categories", { method: "POST", body: JSON.stringify({ name }) });
+      setNewIncidentCategoryName("");
+    }, "Category added", `${name} has been added.`, "Added incident category", "HD_IncidentCategories");
+  };
+
+  const updateIncidentCategory = (category: IncidentCategorySetupRow) => {
+    const name = category.name.trim();
+    if (!name) {
+      showToast("warning", "Category name required", "Category name cannot be empty.");
+      return;
+    }
+    void runCategoryAction(`category:${category.id}:save`, async () => {
+      await apiRequest(`/api/settings/incident-config/categories/${category.id}`, { method: "PUT", body: JSON.stringify({ name }) });
+    }, "Category saved", `${name} has been saved.`, "Updated incident category", "HD_IncidentCategories", category.id);
+  };
+
+  const requestDeleteIncidentCategory = (category: IncidentCategorySetupRow) => {
+    setIncidentDeleteTarget({ kind: "category", category });
+  };
+
+  const confirmDeleteIncidentCategory = (category: IncidentCategorySetupRow) => {
+    void runCategoryAction(`category:${category.id}:delete`, async () => {
+      await apiRequest(`/api/settings/incident-config/categories/${category.id}`, { method: "DELETE" });
+      setIncidentDeleteTarget(null);
+    }, "Category deleted", `${category.name} has been removed.`, "Deleted incident category", "HD_IncidentCategories", category.id);
+  };
+
+  const addIncidentSubcategory = () => {
+    const categoryId = selectedIncidentCategoryId;
+    const name = newIncidentSubcategoryName.trim();
+    if (!categoryId || !name) {
+      showToast("warning", "Subcategory required", "Select a category and enter a subcategory name.");
+      return;
+    }
+    void runCategoryAction(`category:${categoryId}:subcategory:add`, async () => {
+      await apiRequest(`/api/settings/incident-config/categories/${categoryId}/subcategories`, { method: "POST", body: JSON.stringify({ name }) });
+      setNewIncidentSubcategoryName("");
+    }, "Subcategory added", `${name} has been added.`, "Added incident subcategory", "HD_IncidentSubcategories", categoryId);
+  };
+
+  const updateIncidentSubcategory = (_categoryId: number | string, subcategory: IncidentSubcategorySetupRow) => {
+    const name = subcategory.name.trim();
+    if (!name) {
+      showToast("warning", "Subcategory name required", "Subcategory name cannot be empty.");
+      return;
+    }
+    void runCategoryAction(`subcategory:${subcategory.id}:save`, async () => {
+      await apiRequest(`/api/settings/incident-config/subcategories/${subcategory.id}`, { method: "PUT", body: JSON.stringify({ name }) });
+    }, "Subcategory saved", `${name} has been saved.`, "Updated incident subcategory", "HD_IncidentSubcategories", subcategory.id);
+  };
+
+  const requestDeleteIncidentSubcategory = (categoryId: number | string, subcategory: IncidentSubcategorySetupRow) => {
+    setIncidentDeleteTarget({ kind: "subcategory", categoryId, subcategory });
+  };
+
+  const confirmDeleteIncidentSubcategory = (categoryId: number | string, subcategory: IncidentSubcategorySetupRow) => {
+    void runCategoryAction(`subcategory:${subcategory.id}:delete`, async () => {
+      await apiRequest(`/api/settings/incident-config/subcategories/${subcategory.id}`, { method: "DELETE" });
+      setIncidentDeleteTarget(null);
+    }, "Subcategory deleted", `${subcategory.name} has been removed.`, "Deleted incident subcategory", "HD_IncidentSubcategories", subcategory.id);
+  };
+
+  const addIncidentDetail = () => {
+    const subcategoryId = selectedIncidentSubcategoryId;
+    const name = newIncidentDetailName.trim();
+    if (!subcategoryId || !name) {
+      showToast("warning", "Incident detail required", "Select a subcategory and enter an incident detail name.");
+      return;
+    }
+    void runCategoryAction(`subcategory:${subcategoryId}:detail:add`, async () => {
+      await apiRequest(`/api/settings/incident-config/subcategories/${subcategoryId}/details`, { method: "POST", body: JSON.stringify({ name }) });
+      setNewIncidentDetailName("");
+    }, "Incident detail added", `${name} has been added.`, "Added incident detail", "HD_IncidentDetails", subcategoryId);
+  };
+
+  const updateIncidentDetail = (_categoryId: number | string, _subcategoryId: number | string, detail: IncidentDetailSetupRow) => {
+    const name = detail.name.trim();
+    if (!name) {
+      showToast("warning", "Incident detail required", "Incident detail name cannot be empty.");
+      return;
+    }
+    void runCategoryAction(`detail:${detail.id}:save`, async () => {
+      await apiRequest(`/api/settings/incident-config/details/${detail.id}`, { method: "PUT", body: JSON.stringify({ name }) });
+    }, "Incident detail saved", `${name} has been saved.`, "Updated incident detail", "HD_IncidentDetails", detail.id);
+  };
+
+  const requestDeleteIncidentDetail = (categoryId: number | string, subcategoryId: number | string, detail: IncidentDetailSetupRow) => {
+    setIncidentDeleteTarget({ kind: "detail", categoryId, subcategoryId, detail });
+  };
+
+  const confirmDeleteIncidentDetail = (categoryId: number | string, subcategoryId: number | string, detail: IncidentDetailSetupRow) => {
+    void runCategoryAction(`detail:${detail.id}:delete`, async () => {
+      await apiRequest(`/api/settings/incident-config/details/${detail.id}`, { method: "DELETE" });
+      setIncidentDeleteTarget(null);
+    }, "Incident detail deleted", `${detail.name} has been removed.`, "Deleted incident detail", "HD_IncidentDetails", detail.id);
+  };
+
   const loadResourcePlanning = async () => {
     if (resourceLoading) return;
 
@@ -1910,14 +2497,16 @@ export default function Settings() {
     }
   };
 
-  const deleteResourceSchedule = async (row: ResourceSchedule) => {
+  const requestDeleteResourceSchedule = (row: ResourceSchedule) => {
     const scheduleId = getResourceScheduleId(row);
     if (!scheduleId) return;
+    setResourceDeleteTarget({ row, scheduleId, engineerName: getResourceScheduleName(row) || "this engineer" });
+  };
 
-    const engineerName = getResourceScheduleName(row) || "this engineer";
-    const confirmed = window.confirm(`Remove leave schedule for ${engineerName}?`);
-    if (!confirmed) return;
+  const confirmDeleteResourceSchedule = async () => {
+    if (!resourceDeleteTarget) return;
 
+    const { scheduleId } = resourceDeleteTarget;
     setResourceSaving(true);
 
     try {
@@ -1926,6 +2515,7 @@ export default function Settings() {
       });
 
       showToast("success", "Leave removed", "Engineer leave schedule removed.");
+      setResourceDeleteTarget(null);
       if (resourceEditingId === scheduleId) resetResourcePlanningForm();
       await loadResourcePlanning();
     } catch (error) {
@@ -1981,6 +2571,11 @@ export default function Settings() {
   }, [activeSection, pcAgingLoaded, pcAgingLoading]);
 
   useEffect(() => {
+    if (activeSection !== "incident" || incidentConfigLoaded || incidentConfigLoading) return;
+    void loadIncidentConfig();
+  }, [activeSection, incidentConfigLoaded, incidentConfigLoading]);
+
+  useEffect(() => {
     if (activeSection !== "resources" || resourceLoaded || resourceLoading) return;
     void loadResourcePlanning();
   }, [activeSection, resourceLoaded, resourceLoading]);
@@ -1989,6 +2584,14 @@ export default function Settings() {
     // Right-side audit snapshot panel was removed from the Settings screen.
     // Keep this no-op so existing save/user/role handlers remain stable.
   };
+
+  useEffect(() => {
+    if (activeSection !== "incident") return;
+    const selectedCategory = incidentCategories.find((category) => String(category.id) === selectedIncidentCategoryId);
+    if (!selectedCategory) return;
+    if (selectedIncidentSubcategoryId && selectedCategory.subcategories.some((subcategory) => String(subcategory.id) === selectedIncidentSubcategoryId)) return;
+    setSelectedIncidentSubcategoryId(String(selectedCategory.subcategories[0]?.id ?? ""));
+  }, [activeSection, incidentCategories, selectedIncidentCategoryId, selectedIncidentSubcategoryId]);
 
   const resetSection = () => {
     setSectionSearch("");
@@ -2022,6 +2625,11 @@ export default function Settings() {
       return;
     }
 
+    if (activeSection === "incident") {
+      void loadIncidentConfig();
+      return;
+    }
+
     if (activeSection === "aging") {
       setPcAgingRule(DEFAULT_PC_AGING_RULE);
       setPcAgingError("");
@@ -2044,6 +2652,11 @@ export default function Settings() {
 
     if (activeSection === "pricing") {
       void saveDevicePricing();
+      return;
+    }
+
+    if (activeSection === "incident") {
+      void saveIncidentConfig();
       return;
     }
 
@@ -2273,8 +2886,8 @@ export default function Settings() {
           <div className={`settings-hero ema-panel-surface ${active.key === "users" ? "users-hero" : ""}`}>
             <div>
               <span className="eyebrow">ADMINISTRATION CONTROL</span>
-              <h2 id="heroTitle">{active.title}</h2>
-              <p id="heroDesc">{active.desc}</p>
+              <h2 id="heroTitle">{activeHeroTitle}</h2>
+              <p id="heroDesc">{activeHeroDesc}</p>
             </div>
             <div className={`settings-score ${active.key === "users" ? "users-hero-score" : ""}`}>
               {active.key === "users" ? (
@@ -2339,6 +2952,19 @@ export default function Settings() {
                     <small>Security Rules Enabled</small>
                   </div>
                 </>
+              ) : active.key === "incident" ? (
+                <>
+                  <div className="score-box">
+                    <span>{incidentConfigMeta.scoreOneLabel}</span>
+                    <strong id="scoreOne">{heroScoreOne}</strong>
+                    <small>{incidentConfigMeta.scoreOneCaption}</small>
+                  </div>
+                  <div className="score-box">
+                    <span>{incidentConfigMeta.scoreTwoLabel}</span>
+                    <strong id="scoreTwo">{heroScoreTwo}</strong>
+                    <small>{incidentConfigMeta.scoreTwoCaption}</small>
+                  </div>
+                </>
               ) : (
                 <>
                   <div className="score-box">
@@ -2356,7 +2982,7 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className={`content-shell ema-panel-surface ${activeSection === "users" ? "users-content-shell" : activeSection === "roles" ? "roles-content-shell" : activeSection === "modules" ? "modules-content-shell" : activeSection === "access" ? "access-content-shell" : activeSection === "audit" ? "audit-content-shell" : ""}`}>
+          <div className={`content-shell ema-panel-surface ${activeSection === "users" ? "users-content-shell" : activeSection === "roles" ? "roles-content-shell" : activeSection === "modules" ? "modules-content-shell" : activeSection === "access" ? "access-content-shell" : activeSection === "audit" ? "audit-content-shell" : activeSection === "incident" ? "incident-content-shell" : ""}`}>
             {false && (
               <div className={`content-head ${activeSection === "audit" ? "audit-export-only-head" : ""}`}>
                 {activeSection !== "audit" && (
@@ -2376,12 +3002,12 @@ export default function Settings() {
                     <button className="primary-btn" type="button" onClick={exportAuditLogs} disabled={auditLoading || filteredAuditLogs.length === 0}>Export CSV</button>
                   ) : (
                     <>
-                      <button className="soft-btn" id="resetBtn" type="button" onClick={resetSection} disabled={(activeSection === "pricing" && pricingSaving) || (activeSection === "aging" && pcAgingSaving)}>Reset</button>
+                      <button className="soft-btn" id="resetBtn" type="button" onClick={resetSection} disabled={(activeSection === "pricing" && pricingSaving) || (activeSection === "aging" && pcAgingSaving) || (activeSection === "incident" && incidentConfigSaving)}>Reset</button>
                       {activeSection === "pricing" && (
                         <button className="soft-btn" type="button" onClick={addPricingRow}>+ Add Custom Pricing</button>
                       )}
-                      <button className="primary-btn" id="saveBtn" type="button" onClick={saveSection} disabled={(activeSection === "pricing" && pricingSaving) || (activeSection === "aging" && pcAgingSaving)}>
-                        {activeSection === "pricing" ? (pricingSaving ? "Saving..." : "Save Pricing") : activeSection === "aging" ? (pcAgingSaving ? "Saving..." : "Save Changes") : "Save Changes"}
+                      <button className="primary-btn" id="saveBtn" type="button" onClick={saveSection} disabled={(activeSection === "pricing" && pricingSaving) || (activeSection === "aging" && pcAgingSaving) || (activeSection === "incident" && incidentConfigSaving)}>
+                        {activeSection === "pricing" ? (pricingSaving ? "Saving..." : "Save Pricing") : activeSection === "aging" ? (pcAgingSaving ? "Saving..." : "Save Changes") : activeSection === "incident" ? (incidentConfigSaving ? "Saving..." : "Save Incident Config") : "Save Changes"}
                       </button>
                     </>
                   )}
@@ -2389,7 +3015,7 @@ export default function Settings() {
               </div>
             )}
 
-            {activeSection !== "users" && activeSection !== "access" && activeSection !== "audit" && activeSection !== "aging" && activeSection !== "resources" && (
+            {activeSection !== "users" && activeSection !== "access" && activeSection !== "audit" && activeSection !== "incident" && activeSection !== "aging" && activeSection !== "resources" && (
               <div className={`content-toolbar ${activeSection === "users" ? "users-toolbar" : activeSection === "roles" ? "roles-toolbar" : activeSection === "modules" ? "modules-toolbar" : ""}`}>
                 <label className="section-search">
                   <SearchSvg />
@@ -2411,7 +3037,7 @@ export default function Settings() {
                     <button className="soft-btn" type="button" onClick={loadModuleAccess} disabled={moduleLoading}>{moduleLoading ? "Loading..." : "Refresh"}</button>
                   </div>
                 )}
-                {activeSection !== "users" && activeSection !== "roles" && activeSection !== "modules" && activeSection !== "audit" && activeSection !== "resources" && (
+                {activeSection !== "users" && activeSection !== "roles" && activeSection !== "modules" && activeSection !== "audit" && activeSection !== "incident" && activeSection !== "resources" && (
                   <div className="settings-toolbar-right">
                     <SettingSelect
                       className="section-filter-select"
@@ -2428,12 +3054,12 @@ export default function Settings() {
 
                     {(activeSection === "pricing" || activeSection === "aging") && (
                       <div className="content-actions toolbar-actions settings-primary-actions">
-                        <button className="soft-btn" id="resetBtn" type="button" onClick={resetSection} disabled={(activeSection === "pricing" && pricingSaving) || (activeSection === "aging" && pcAgingSaving)}>Reset</button>
+                        <button className="soft-btn" id="resetBtn" type="button" onClick={resetSection} disabled={(activeSection === "pricing" && pricingSaving) || (activeSection === "aging" && pcAgingSaving) || (activeSection === "incident" && incidentConfigSaving)}>Reset</button>
                         {activeSection === "pricing" && (
                           <button className="soft-btn" type="button" onClick={addPricingRow}>+ Add Custom Pricing</button>
                         )}
-                        <button className="primary-btn" id="saveBtn" type="button" onClick={saveSection} disabled={(activeSection === "pricing" && pricingSaving) || (activeSection === "aging" && pcAgingSaving)}>
-                          {activeSection === "pricing" ? (pricingSaving ? "Saving..." : "Save Pricing") : activeSection === "aging" ? (pcAgingSaving ? "Saving..." : "Save Changes") : "Save Changes"}
+                        <button className="primary-btn" id="saveBtn" type="button" onClick={saveSection} disabled={(activeSection === "pricing" && pricingSaving) || (activeSection === "aging" && pcAgingSaving) || (activeSection === "incident" && incidentConfigSaving)}>
+                          {activeSection === "pricing" ? (pricingSaving ? "Saving..." : "Save Pricing") : activeSection === "aging" ? (pcAgingSaving ? "Saving..." : "Save Changes") : activeSection === "incident" ? (incidentConfigSaving ? "Saving..." : "Save Incident Config") : "Save Changes"}
                         </button>
                       </div>
                     )}
@@ -2472,6 +3098,50 @@ export default function Settings() {
                   exportDisabled={auditLoading || auditExporting || auditTotalRecords === 0}
                 />
               )}
+              {activeSection === "incident" && (
+                <IncidentConfigContent
+                  activeTab={incidentConfigTab}
+                  meta={incidentConfigMeta}
+                  slaRows={slaConfigs}
+                  workingHours={workingHours}
+                  categories={incidentCategories}
+                  selectedCategoryId={selectedIncidentCategoryId}
+                  selectedSubcategoryId={selectedIncidentSubcategoryId}
+                  newCategoryName={newIncidentCategoryName}
+                  newSubcategoryName={newIncidentSubcategoryName}
+                  newDetailName={newIncidentDetailName}
+                  categorySavingKey={categorySavingKey}
+                  loading={incidentConfigLoading}
+                  saving={incidentConfigSaving}
+                  error={incidentConfigError}
+                  onTabChange={setIncidentConfigTab}
+                  onReload={loadIncidentConfig}
+                  onSlaChange={updateSlaConfig}
+                  onWorkingHourChange={updateWorkingHour}
+                  onSelectCategory={(id) => {
+                    setSelectedIncidentCategoryId(id);
+                    const nextCategory = incidentCategories.find((category) => String(category.id) === id);
+                    setSelectedIncidentSubcategoryId(String(nextCategory?.subcategories[0]?.id ?? ""));
+                  }}
+                  onSelectSubcategory={setSelectedIncidentSubcategoryId}
+                  onNewCategoryNameChange={setNewIncidentCategoryName}
+                  onNewSubcategoryNameChange={setNewIncidentSubcategoryName}
+                  onNewDetailNameChange={setNewIncidentDetailName}
+                  onCategoryNameChange={updateCategoryNameLocal}
+                  onSubcategoryNameChange={updateSubcategoryNameLocal}
+                  onDetailNameChange={updateDetailNameLocal}
+                  onAddCategory={addIncidentCategory}
+                  onUpdateCategory={updateIncidentCategory}
+                  onDeleteCategory={requestDeleteIncidentCategory}
+                  onAddSubcategory={addIncidentSubcategory}
+                  onUpdateSubcategory={updateIncidentSubcategory}
+                  onDeleteSubcategory={requestDeleteIncidentSubcategory}
+                  onAddDetail={addIncidentDetail}
+                  onUpdateDetail={updateIncidentDetail}
+                  onDeleteDetail={requestDeleteIncidentDetail}
+                  onSave={saveIncidentConfig}
+                />
+              )}
               {activeSection === "pricing" && <PricingContent search={filteredContentTerm} rows={pricingRows} categoryOptions={categoryOptions} brandOptionsByCategory={brandOptionsByCategory} modelOptionsByKey={modelOptionsByKey} loading={pricingLoading} saving={pricingSaving} savingRowId={pricingRowSavingId} error={pricingError} onAdd={addPricingRow} onChange={updatePricingRow} onSaveRow={savePricingRow} onRequestDelete={requestDeletePricingRow} />}
               {activeSection === "aging" && (
                 <AgingContent
@@ -2499,7 +3169,7 @@ export default function Settings() {
                   onFormChange={(patch) => setResourceForm((current) => ({ ...current, ...patch }))}
                   onSave={saveResourceSchedule}
                   onEdit={editResourceSchedule}
-                  onDelete={deleteResourceSchedule}
+                  onDelete={requestDeleteResourceSchedule}
                   onReset={resetResourcePlanningForm}
                   onReload={loadResourcePlanning}
                 />
@@ -2563,9 +3233,275 @@ export default function Settings() {
         onClose={() => setPricingDeleteTarget(null)}
         onConfirm={confirmDeletePricingRow}
       />
+      <IncidentConfigDeleteModal
+        target={incidentDeleteTarget}
+        loading={Boolean(categorySavingKey)}
+        onClose={() => setIncidentDeleteTarget(null)}
+        onConfirm={() => {
+          if (!incidentDeleteTarget) return;
+          if (incidentDeleteTarget.kind === "category") confirmDeleteIncidentCategory(incidentDeleteTarget.category);
+          if (incidentDeleteTarget.kind === "subcategory") confirmDeleteIncidentSubcategory(incidentDeleteTarget.categoryId, incidentDeleteTarget.subcategory);
+          if (incidentDeleteTarget.kind === "detail") confirmDeleteIncidentDetail(incidentDeleteTarget.categoryId, incidentDeleteTarget.subcategoryId, incidentDeleteTarget.detail);
+        }}
+      />
+      <ResourceDeleteModal
+        target={resourceDeleteTarget}
+        loading={resourceSaving}
+        onClose={() => setResourceDeleteTarget(null)}
+        onConfirm={confirmDeleteResourceSchedule}
+      />
 
       <SettingsToast toast={settingsToast} onClose={() => setSettingsToast(null)} />
     </main>
+  );
+}
+
+
+function IncidentConfigContent({
+  activeTab,
+  meta,
+  slaRows,
+  workingHours,
+  categories,
+  selectedCategoryId,
+  selectedSubcategoryId,
+  newCategoryName,
+  newSubcategoryName,
+  newDetailName,
+  categorySavingKey,
+  loading,
+  saving,
+  error,
+  onTabChange,
+  onReload,
+  onSlaChange,
+  onWorkingHourChange,
+  onSelectCategory,
+  onSelectSubcategory,
+  onNewCategoryNameChange,
+  onNewSubcategoryNameChange,
+  onNewDetailNameChange,
+  onCategoryNameChange,
+  onSubcategoryNameChange,
+  onDetailNameChange,
+  onAddCategory,
+  onUpdateCategory,
+  onDeleteCategory,
+  onAddSubcategory,
+  onUpdateSubcategory,
+  onDeleteSubcategory,
+  onAddDetail,
+  onUpdateDetail,
+  onDeleteDetail,
+  onSave,
+}: IncidentConfigContentProps) {
+  const selectedCategory = categories.find((category) => String(category.id) === selectedCategoryId) || categories[0];
+  const selectedSubcategory = selectedCategory?.subcategories.find((subcategory) => String(subcategory.id) === selectedSubcategoryId) || selectedCategory?.subcategories[0];
+  const categoryCounts = getIncidentCategoryCounts(categories);
+  const categoriesDisabled = loading || Boolean(categorySavingKey);
+
+  return (
+    <div className="incident-config-module">
+      {error && (
+        <div className="settings-inline-alert error">
+          <strong>Incident Config API error</strong>
+          <span>{error}</span>
+        </div>
+      )}
+
+      <section className="resource-command-card incident-command-card">
+        <div>
+          <span className="section-tag">{meta.eyebrow}</span>
+          <h3>{meta.commandTitle}</h3>
+          <p>{meta.commandDescription}</p>
+        </div>
+        <div className="resource-command-actions">
+          <button className="soft-btn" type="button" onClick={onReload} disabled={loading || saving || Boolean(categorySavingKey)}>
+            {loading ? "Loading..." : "Refresh"}
+          </button>
+          <button className="primary-btn" type="button" onClick={onSave} disabled={loading || saving || Boolean(categorySavingKey)}>
+            {saving ? "Saving..." : meta.saveLabel}
+          </button>
+        </div>
+      </section>
+
+      <div className="incident-config-tabs resource-command-actions">
+        <button className={activeTab === "sla" ? "primary-btn" : "soft-btn"} type="button" onClick={() => onTabChange("sla")}>
+          SLA Rules
+        </button>
+        <button className={activeTab === "workingHours" ? "primary-btn" : "soft-btn"} type="button" onClick={() => onTabChange("workingHours")}>
+          Working Hours
+        </button>
+        <button className={activeTab === "categories" ? "primary-btn" : "soft-btn"} type="button" onClick={() => onTabChange("categories")}>
+          Category Setup
+        </button>
+      </div>
+
+      {activeTab === "sla" && (
+        <section className="content-panel incident-sla-panel">
+          <div className="resource-card-head">
+            <div>
+              <span className="section-tag">SLA CONFIGURATION</span>
+              <h4>Priority-based SLA Rules</h4>
+              <p>Resolution time is the main SLA due date source. Response time is stored for future first-response tracking.</p>
+            </div>
+          </div>
+
+          <div className="table-shell role-table-wrap">
+            <table className="settings-table role-table">
+              <thead>
+                <tr>
+                  <th>Priority Code</th>
+                  <th>Label</th>
+                  <th>Response Time (Min)</th>
+                  <th>Resolution Time (Hrs)</th>
+                  <th>Escalation Policy / Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                {slaRows.map((row) => (
+                  <tr key={String(row.id)}>
+                    <td><strong>{row.priority}</strong></td>
+                    <td><input className="setting-input" value={row.label} onChange={(event) => onSlaChange(row.id, { label: event.target.value })} /></td>
+                    <td><input className="setting-input" type="number" min="0" value={row.responseTimeMin} onChange={(event) => onSlaChange(row.id, { responseTimeMin: Number(event.target.value) })} /></td>
+                    <td><input className="setting-input" type="number" min="1" value={row.resolutionTimeHrs} onChange={(event) => onSlaChange(row.id, { resolutionTimeHrs: Number(event.target.value) })} /></td>
+                    <td><textarea className="setting-input resource-textarea" value={row.escalationPolicy} onChange={(event) => onSlaChange(row.id, { escalationPolicy: event.target.value })} placeholder="Escalation note for this SLA priority" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {activeTab === "workingHours" && (
+        <section className="content-panel incident-working-panel">
+          <div className="resource-card-head">
+            <div>
+              <span className="section-tag">WORKING HOURS</span>
+              <h4>SLA Counting Window</h4>
+              <p>SLA timer should only count inside enabled working days and configured time range.</p>
+            </div>
+          </div>
+
+          <div className="table-shell role-table-wrap">
+            <table className="settings-table role-table">
+              <thead>
+                <tr><th>Day</th><th>Enabled</th><th>Start Time</th><th>End Time</th><th>Status</th></tr>
+              </thead>
+              <tbody>
+                {workingHours.map((row) => (
+                  <tr key={row.id}>
+                    <td><strong>{row.day}</strong></td>
+                    <td>
+                      <SettingSelect value={row.enabled ? "enabled" : "rest"} options={[{ value: "enabled", label: "Enabled" }, { value: "rest", label: "Rest Day" }]} onChange={(value) => onWorkingHourChange(row.id, { enabled: value === "enabled" })} ariaLabel={`${row.day} working status`} />
+                    </td>
+                    <td><input className="setting-input" type="time" value={row.start} disabled={!row.enabled} onChange={(event) => onWorkingHourChange(row.id, { start: event.target.value })} /></td>
+                    <td><input className="setting-input" type="time" value={row.end} disabled={!row.enabled} onChange={(event) => onWorkingHourChange(row.id, { end: event.target.value })} /></td>
+                    <td><span className={`status-pill ${row.enabled ? "active" : "locked"}`}>{row.enabled ? "Working Day" : "Rest Day"}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {activeTab === "categories" && (
+        <section className="content-panel incident-category-panel">
+          <div className="resource-card-head incident-category-head">
+            <div>
+              <span className="section-tag">CATEGORY SETUP</span>
+              <h4>Incident Category Hierarchy</h4>
+              <p>Maintain editable Category → Subcategory → Incident Detail options used by the Service Desk form and filter.</p>
+            </div>
+            <div className="incident-category-stats">
+              <span><strong>{categoryCounts.categoryCount}</strong> Categories</span>
+              <span><strong>{categoryCounts.subcategoryCount}</strong> Subcategories</span>
+              <span><strong>{categoryCounts.detailCount}</strong> Details</span>
+            </div>
+          </div>
+
+          <div className="incident-category-layout">
+            <aside className="incident-category-sidebar">
+              <div className="incident-category-add-row">
+                <input className="setting-input" value={newCategoryName} onChange={(event) => onNewCategoryNameChange(event.target.value)} placeholder="New category name" disabled={categoriesDisabled} />
+                <button className="primary-btn" type="button" onClick={onAddCategory} disabled={categoriesDisabled || !newCategoryName.trim()}>{categorySavingKey === "category:add" ? "Adding..." : "+ Add"}</button>
+              </div>
+
+              <div className="incident-category-list">
+                {categories.length === 0 ? <div className="incident-empty-state">No category yet. Add the first incident category.</div> : categories.map((category) => (
+                  <button key={String(category.id)} className={`incident-category-list-item ${String(category.id) === String(selectedCategory?.id) ? "active" : ""}`} type="button" onClick={() => onSelectCategory(String(category.id))}>
+                    <span>{category.name || "Untitled Category"}</span>
+                    <small>{category.subcategories.length} subcategories</small>
+                  </button>
+                ))}
+              </div>
+            </aside>
+
+            <div className="incident-category-editor">
+              {selectedCategory ? (
+                <>
+                  <section className="incident-editor-card">
+                    <div className="incident-editor-title">
+                      <div><span className="section-tag">CATEGORY</span><h5>Edit Selected Category</h5></div>
+                      <div className="incident-editor-actions">
+                        <button className="soft-btn" type="button" onClick={() => onUpdateCategory(selectedCategory)} disabled={categoriesDisabled || !selectedCategory.name.trim()}>{categorySavingKey === `category:${selectedCategory.id}:save` ? "Saving..." : "Save"}</button>
+                        <button className="danger-btn" type="button" onClick={() => onDeleteCategory(selectedCategory)} disabled={categoriesDisabled}>{categorySavingKey === `category:${selectedCategory.id}:delete` ? "Deleting..." : "Delete"}</button>
+                      </div>
+                    </div>
+                    <input className="setting-input" value={selectedCategory.name} onChange={(event) => onCategoryNameChange(selectedCategory.id, event.target.value)} placeholder="Category name" disabled={categoriesDisabled} />
+                  </section>
+
+                  <section className="incident-editor-card">
+                    <div className="incident-editor-title"><div><span className="section-tag">SUBCATEGORY</span><h5>Subcategories under {selectedCategory.name || "selected category"}</h5></div></div>
+                    <div className="incident-add-inline">
+                      <input className="setting-input" value={newSubcategoryName} onChange={(event) => onNewSubcategoryNameChange(event.target.value)} placeholder="New subcategory name" disabled={categoriesDisabled} />
+                      <button className="primary-btn" type="button" onClick={onAddSubcategory} disabled={categoriesDisabled || !newSubcategoryName.trim()}>{categorySavingKey === `category:${selectedCategory.id}:subcategory:add` ? "Adding..." : "+ Add Subcategory"}</button>
+                    </div>
+                    <div className="incident-subcategory-list">
+                      {selectedCategory.subcategories.length === 0 ? <div className="incident-empty-state">No subcategory yet for this category.</div> : selectedCategory.subcategories.map((subcategory) => (
+                        <div key={String(subcategory.id)} className={`incident-subcategory-row ${String(subcategory.id) === String(selectedSubcategory?.id) ? "active" : ""}`}>
+                          <button type="button" className="incident-subcategory-select" onClick={() => onSelectSubcategory(String(subcategory.id))}><strong>{subcategory.name || "Untitled Subcategory"}</strong><small>{subcategory.details.length} details</small></button>
+                          <input className="setting-input" value={subcategory.name} onChange={(event) => onSubcategoryNameChange(selectedCategory.id, subcategory.id, event.target.value)} disabled={categoriesDisabled} />
+                          <div className="incident-row-actions">
+                            <button className="soft-btn" type="button" onClick={() => onUpdateSubcategory(selectedCategory.id, subcategory)} disabled={categoriesDisabled || !subcategory.name.trim()}>{categorySavingKey === `subcategory:${subcategory.id}:save` ? "Saving..." : "Save"}</button>
+                            <button className="danger-btn" type="button" onClick={() => onDeleteSubcategory(selectedCategory.id, subcategory)} disabled={categoriesDisabled}>{categorySavingKey === `subcategory:${subcategory.id}:delete` ? "Deleting..." : "Delete"}</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="incident-editor-card">
+                    <div className="incident-editor-title"><div><span className="section-tag">INCIDENT DETAIL</span><h5>{selectedSubcategory ? `Details under ${selectedSubcategory.name}` : "Select a subcategory"}</h5></div></div>
+                    {selectedSubcategory ? (
+                      <>
+                        <div className="incident-add-inline">
+                          <input className="setting-input" value={newDetailName} onChange={(event) => onNewDetailNameChange(event.target.value)} placeholder="New incident detail" disabled={categoriesDisabled} />
+                          <button className="primary-btn" type="button" onClick={onAddDetail} disabled={categoriesDisabled || !newDetailName.trim()}>{categorySavingKey === `subcategory:${selectedSubcategory.id}:detail:add` ? "Adding..." : "+ Add Detail"}</button>
+                        </div>
+                        <div className="incident-detail-list">
+                          {selectedSubcategory.details.length === 0 ? <div className="incident-empty-state">No incident detail yet for this subcategory.</div> : selectedSubcategory.details.map((detail) => (
+                            <div key={String(detail.id)} className="incident-detail-row">
+                              <input className="setting-input" value={detail.name} onChange={(event) => onDetailNameChange(selectedCategory.id, selectedSubcategory.id, detail.id, event.target.value)} disabled={categoriesDisabled} />
+                              <div className="incident-row-actions">
+                                <button className="soft-btn" type="button" onClick={() => onUpdateDetail(selectedCategory.id, selectedSubcategory.id, detail)} disabled={categoriesDisabled || !detail.name.trim()}>{categorySavingKey === `detail:${detail.id}:save` ? "Saving..." : "Save"}</button>
+                                <button className="danger-btn" type="button" onClick={() => onDeleteDetail(selectedCategory.id, selectedSubcategory.id, detail)} disabled={categoriesDisabled}>{categorySavingKey === `detail:${detail.id}:delete` ? "Deleting..." : "Delete"}</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : <div className="incident-empty-state">Select or add a subcategory before adding incident details.</div>}
+                  </section>
+                </>
+              ) : <div className="incident-empty-state large">Add a category first to start configuring Service Desk category setup.</div>}
+            </div>
+          </div>
+        </section>
+      )}
+    </div>
   );
 }
 
@@ -2762,12 +3698,6 @@ function ResourcePlanningContent({
           <button className="soft-btn" type="button" onClick={onReload} disabled={loading || saving}>
             {loading ? "Loading..." : "Refresh"}
           </button>
-          <button className="soft-btn" type="button" onClick={onReset} disabled={saving}>
-            Clear
-          </button>
-          <button className="primary-btn" type="button" onClick={onSave} disabled={saving || loading}>
-            {saving ? "Saving..." : editingId ? "Update Leave" : "Add Leave"}
-          </button>
         </div>
       </section>
 
@@ -2853,6 +3783,15 @@ function ResourcePlanningContent({
                 placeholder="Example: Annual leave / site visit / training day"
               />
             </label>
+          </div>
+
+          <div className="resource-form-actions resource-command-actions">
+            <button className="soft-btn" type="button" onClick={onReset} disabled={saving}>
+              Clear
+            </button>
+            <button className="primary-btn" type="button" onClick={onSave} disabled={saving || loading}>
+              {saving ? "Saving..." : editingId ? "Update Leave" : "Add Leave"}
+            </button>
           </div>
 
           {selectedEngineer && (
@@ -4369,6 +5308,67 @@ function PricingDeleteModal({ row, loading, onClose, onConfirm }: { row: Pricing
         <div className="pricing-confirm-actions">
           <button className="soft-btn" type="button" onClick={onClose} disabled={loading}>Cancel</button>
           <button className="danger-btn" type="button" onClick={onConfirm} disabled={loading}>{loading ? "Deleting..." : "Delete"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function IncidentConfigDeleteModal({ target, loading, onClose, onConfirm }: { target: IncidentConfigDeleteTarget | null; loading: boolean; onClose: () => void; onConfirm: () => void }) {
+  if (!target) return null;
+
+  const label = target.kind === "category"
+    ? target.category.name
+    : target.kind === "subcategory"
+      ? target.subcategory.name
+      : target.detail.name;
+  const title = target.kind === "category"
+    ? "Delete category?"
+    : target.kind === "subcategory"
+      ? "Delete subcategory?"
+      : "Delete incident detail?";
+  const message = target.kind === "category"
+    ? "This will remove the category and hide its related subcategories and incident details from Service Desk selections."
+    : target.kind === "subcategory"
+      ? "This will remove the subcategory and hide its related incident details from Service Desk selections."
+      : "This will remove the incident detail from Service Desk category selection.";
+  const buttonLabel = target.kind === "category"
+    ? "Delete Category"
+    : target.kind === "subcategory"
+      ? "Delete Subcategory"
+      : "Delete Detail";
+
+  return (
+    <div className="user-delete-backdrop open" onClick={(event) => { if (event.target === event.currentTarget && !loading) onClose(); }}>
+      <div className="user-delete-modal" role="dialog" aria-modal="true" aria-labelledby="incidentConfigDeleteTitle">
+        <div className="user-delete-icon">!</div>
+        <div className="user-delete-copy">
+          <h3 id="incidentConfigDeleteTitle">{title}</h3>
+          <p>Are you sure you want to delete <b>{label}</b>? {message}</p>
+        </div>
+        <div className="user-delete-actions">
+          <button className="soft-btn" type="button" onClick={onClose} disabled={loading}>Cancel</button>
+          <button className="danger-btn" type="button" onClick={onConfirm} disabled={loading}>{loading ? "Deleting..." : buttonLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ResourceDeleteModal({ target, loading, onClose, onConfirm }: { target: ResourceDeleteTarget | null; loading: boolean; onClose: () => void; onConfirm: () => void }) {
+  if (!target) return null;
+
+  return (
+    <div className="user-delete-backdrop open" onClick={(event) => { if (event.target === event.currentTarget && !loading) onClose(); }}>
+      <div className="user-delete-modal" role="dialog" aria-modal="true" aria-labelledby="resourceDeleteTitle">
+        <div className="user-delete-icon">!</div>
+        <div className="user-delete-copy">
+          <h3 id="resourceDeleteTitle">Remove leave schedule?</h3>
+          <p>Are you sure you want to remove the leave schedule for <b>{target.engineerName}</b>? Service Desk assignment will stop showing this leave warning after removal.</p>
+        </div>
+        <div className="user-delete-actions">
+          <button className="soft-btn" type="button" onClick={onClose} disabled={loading}>Cancel</button>
+          <button className="danger-btn" type="button" onClick={onConfirm} disabled={loading}>{loading ? "Removing..." : "Remove Leave"}</button>
         </div>
       </div>
     </div>
