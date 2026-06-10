@@ -1,50 +1,29 @@
-import api from './api';
-import { extractData } from './response';
+import api, { unwrapArray, unwrapData } from "./apiClient";
+
+type AnyRecord = Record<string, any>;
+
+function getId(row: AnyRecord) {
+  return row?.id ?? row?.KnowledgeID ?? row?.knowledgeID ?? row?.kbId ?? row?.KBID;
+}
 
 export const knowledgeBase = {
-  getAll: async () => {
-    const res = await api.get('/api/knowledge-base');
-    return extractData<any[]>(res) || [];
+  async getAll() {
+    const payload = await api.get("/api/knowledge-base");
+    return unwrapArray<AnyRecord>(payload);
   },
-
-  get: async (id: number) => {
-    const res = await api.get(`/api/knowledge-base/${id}`);
-    return extractData(res);
+  async create(payload: AnyRecord) {
+    const response = await api.post("/api/knowledge-base", payload);
+    return unwrapData(response, response);
   },
-
-  create: async (data: any) => {
-    const res = await api.post('/api/knowledge-base', data);
-    return extractData(res);
+  async update(payload: AnyRecord) {
+    const id = getId(payload);
+    if (!id) throw new Error("Knowledge base id is required for update.");
+    const response = await api.put(`/api/knowledge-base/${id}`, payload);
+    return unwrapData(response, response);
   },
-
-  update: async (data: any) => {
-    const res = await api.put(`/api/knowledge-base/${data.id}`, data);
-    return extractData(res);
-  },
-
-  delete: async (id: number) => {
-    const res = await api.delete(`/api/knowledge-base/${id}`);
-    return extractData(res);
-  },
-
-  uploadAttachment: async (kbId: number, file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const res = await api.post(`/api/knowledge-base/${kbId}/attachments`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-
-    return extractData(res);
-  },
-
-  getAttachments: async (kbId: number) => {
-    const res = await api.get(`/api/knowledge-base/${kbId}/attachments`);
-    return extractData<any[]>(res) || [];
-  },
-
-  deleteAttachment: async (kbId: number, filename: string) => {
-    const res = await api.delete(`/api/knowledge-base/${kbId}/attachments/${filename}`);
-    return extractData(res);
+  async delete(id: number | string) {
+    return api.delete(`/api/knowledge-base/${id}`);
   },
 };
+
+export default { knowledgeBase };

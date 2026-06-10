@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 
+import hardwareService from "../services/hardwareService";
 
 type StatusType = "Online" | "Locked" | "Stale Sync" | "Offline";
 type KpiFilter = "all" | "recent" | "stale" | "locked" | "running";
@@ -222,6 +223,9 @@ type ApiAsset = {
   Object_DeviceID?: string;
   ComputerName?: string;
   Object_Full_Name?: string;
+  Object_Rel_Name?: string;
+  Object_Rel_Idn?: number | string;
+  Object_PR_Idn?: number | string;
   PlatformType?: string;
   Model?: string;
   ConnectionTime?: string;
@@ -380,26 +384,6 @@ type DepartmentPath = {
 };
 
 const PAGE_SIZE = 10;
-function resolveApiBaseUrl() {
-  const envUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
-  if (envUrl) return envUrl.replace(/\/$/, "");
-
-  if (typeof window !== "undefined") {
-    const { hostname, port, protocol } = window.location;
-    const isLocalHost = hostname === "localhost" || hostname === "127.0.0.1";
-    const isViteDevPort = port === "5173" || port === "5174" || port === "3000";
-
-    if (isLocalHost && isViteDevPort) {
-      return `${protocol}//${hostname}:3001`;
-    }
-  }
-
-  return "";
-}
-
-const API_BASE_URL = resolveApiBaseUrl();
-const TOKEN_STORAGE_KEYS = ["ema-access-token", "ema-token", "accessToken", "token", "authToken"];
-const AUTH_PAYLOAD_KEYS = ["ema-auth", "auth", "user", "ema-user", "currentUser", "authUser", "ema-current-user"];
 const TABLE_FILTER_DEFAULTS: TableFilters = { status: "all", platform: "all" };
 
 const emptyDevice: Device = {
@@ -716,108 +700,6 @@ function pickValue(record: Record<string, unknown> | null, keys: string[]) {
   return "";
 }
 
-function findTokenInValue(value: unknown, depth = 0): string {
-  if (!value || depth > 5) return "";
-
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (trimmed.startsWith("eyJ")) return trimmed;
-
-    try {
-      return findTokenInValue(JSON.parse(trimmed), depth + 1);
-    } catch {
-      return "";
-    }
-  }
-
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const token = findTokenInValue(item, depth + 1);
-      if (token) return token;
-    }
-    return "";
-  }
-
-  if (typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    const nestedData = asRecord(record.data);
-    const directToken =
-      record.token ||
-      record.accessToken ||
-      record.authToken ||
-      record.jwt ||
-      record.jwtToken ||
-      record.bearerToken ||
-      nestedData?.token ||
-      nestedData?.accessToken;
-
-    if (typeof directToken === "string" && directToken.trim()) return directToken.trim();
-
-    for (const item of Object.values(record)) {
-      const token = findTokenInValue(item, depth + 1);
-      if (token) return token;
-    }
-  }
-
-  return "";
-}
-
-function getStoredAccessToken() {
-  const storages = [window.localStorage, window.sessionStorage];
-
-  for (const storage of storages) {
-    for (const key of TOKEN_STORAGE_KEYS) {
-      const directValue = storage.getItem(key);
-      if (directValue?.trim()) return directValue.trim();
-    }
-
-    for (const key of AUTH_PAYLOAD_KEYS) {
-      const token = findTokenInValue(storage.getItem(key));
-      if (token) return token;
-    }
-
-    for (let index = 0; index < storage.length; index += 1) {
-      const key = storage.key(index);
-      if (!key) continue;
-      const token = findTokenInValue(storage.getItem(key));
-      if (token) return token;
-    }
-  }
-
-  return "";
-}
-
-async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<ApiEnvelope<T>> {
-  const token = getStoredAccessToken();
-  if (!token) throw new Error("Access token missing. Please login again.");
-
-  const headers = new Headers(options.headers);
-  headers.set("Accept", "application/json");
-  if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
-  headers.set("Authorization", `Bearer ${token}`);
-
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-    credentials: "include",
-  });
-
-  const rawBody = await response.text();
-  let payload: ApiEnvelope<T>;
-
-  try {
-    payload = rawBody ? JSON.parse(rawBody) : ({ success: response.ok, data: undefined as T } as ApiEnvelope<T>);
-  } catch {
-    throw new Error("Unable to read server response.");
-  }
-
-  if (!response.ok || payload.success === false) {
-    throw new Error(payload.errorMessage || payload.message || `Request failed: ${response.status}`);
-  }
-
-  return payload;
-}
-
 function mapDepartmentTree(departments: ApiDepartment[]): TreeNode[] {
   return [
     {
@@ -855,6 +737,29 @@ function collectDepartmentPaths(nodes: TreeNode[], parentKeys: string[] = [], pa
 
     return [...currentPath, ...(node.children ? collectDepartmentPaths(node.children, currentKeys, currentLabels) : [])];
   });
+}
+
+const ORGANIZATION_DEPARTMENT_PATH: DepartmentPath = {
+  key: "organization",
+  relationID: 0,
+  label: "Organization",
+  pathKeys: ["organization"],
+  groupPath: "Organization",
+};
+
+function resolveAssetDepartment(asset: ApiAsset, departmentByRelation: Map<number, DepartmentPath>) {
+  const relationID = Number(asset.Object_Rel_Idn ?? asset.objectRelIdn ?? asset.relationID ?? asset.relationId ?? 0);
+  if (Number.isFinite(relationID) && departmentByRelation.has(relationID)) {
+    return departmentByRelation.get(relationID)!;
+  }
+
+  const groupPath = String(asset.Object_Full_Name || asset.Object_Rel_Name || "").trim();
+  if (groupPath) {
+    const matchedDepartment = Array.from(departmentByRelation.values()).find((department) => department.groupPath === groupPath || department.label === groupPath);
+    if (matchedDepartment) return matchedDepartment;
+  }
+
+  return ORGANIZATION_DEPARTMENT_PATH;
 }
 
 function flattenTree(nodes: TreeNode[]): TreeNode[] {
@@ -1883,22 +1788,35 @@ export default function HardwareInventory() {
     setApiError("");
 
     try {
-      const departmentsResponse = await apiRequest<ApiDepartment[]>("/api/departments");
-      const departmentTree = mapDepartmentTree(departmentsResponse.data || []);
+      const departments = await hardwareService.getDepartments() as ApiDepartment[];
+      const departmentTree = mapDepartmentTree(departments || []);
       const departmentPaths = collectDepartmentPaths(departmentTree);
+      const departmentByRelation = new Map(departmentPaths.map((department) => [department.relationID, department]));
 
       setDepartmentOptions(departmentPaths);
       setTreeNodes(departmentTree);
 
-      const assetResults = await Promise.allSettled(
-        departmentPaths.map(async (department) => {
-          const response = await apiRequest<ApiAsset[]>(`/api/assets/${department.relationID}`);
-          return (response.data || []).map((asset) => mapApiAssetToDevice(asset, department));
-        })
-      );
+      let assets: ApiAsset[] = [];
+      let usedLegacyLoader = false;
 
-      const nextDevices = assetResults
-        .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
+      try {
+        assets = await hardwareService.getHardwareInventoryAssets({ limit: 10000 }) as ApiAsset[];
+      } catch (fastLoadError) {
+        console.warn("Fast hardware inventory API failed. Falling back to per-department asset loading.", fastLoadError);
+        usedLegacyLoader = true;
+
+        const assetResults = await Promise.allSettled(
+          departmentPaths.map(async (department) => {
+            const departmentAssets = await hardwareService.getAssetsByRelationID(department.relationID) as ApiAsset[];
+            return (departmentAssets || []).map((asset) => ({ ...asset, Object_Rel_Idn: asset.Object_Rel_Idn ?? department.relationID }));
+          })
+        );
+
+        assets = assetResults.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
+      }
+
+      const nextDevices = (assets || [])
+        .map((asset) => mapApiAssetToDevice(asset, resolveAssetDepartment(asset, departmentByRelation)))
         .map(applyPersistentLockState)
         .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -1907,7 +1825,11 @@ export default function HardwareInventory() {
       setShowDeviceDetails(false);
       setDetailDeviceId("NO-DEVICE");
       setActiveModal(null);
-      setNote(`Loaded ${nextDevices.length} devices. Select a device row to view available actions.`);
+      setNote(
+        usedLegacyLoader
+          ? `Loaded ${nextDevices.length} devices using legacy per-department loading. Update server.js to enable the faster one-request loader.`
+          : `Loaded ${nextDevices.length} devices. Select a device row to view available actions.`
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load hardware inventory.";
       setApiError(message);
@@ -1924,8 +1846,8 @@ export default function HardwareInventory() {
 
     try {
       setNote(`Loading live details for ${device.name}...`);
-      const response = await apiRequest<unknown>(`/api/asset/${device.objectAgent}/${device.assetId}`);
-      const enrichedDevice = enrichDeviceWithDetails(device, response.data);
+      const response = await hardwareService.getAssetDetail(device.objectAgent, device.assetId);
+      const enrichedDevice = enrichDeviceWithDetails(device, response);
       setApiDevices((current) => current.map((item) => (item.id === device.id ? enrichedDevice : item)));
       setNote(`${device.name} live details loaded.`);
     } catch (error) {
@@ -2085,11 +2007,8 @@ export default function HardwareInventory() {
     setFolderNameError("");
 
     try {
-      const response = await apiRequest<ApiDepartment>("/api/departments", {
-        method: "POST",
-        body: JSON.stringify({ name: cleanName, parentID }),
-      });
-      const newRelationID = response.data?.Object_Rel_Idn;
+      const response = await hardwareService.createDepartment({ name: cleanName, parentID }) as ApiDepartment;
+      const newRelationID = response?.Object_Rel_Idn;
       closeModal();
       setFolderNameInput("");
       await loadHardwareInventory();
@@ -2133,10 +2052,7 @@ export default function HardwareInventory() {
     setFolderActionError("");
 
     try {
-      await apiRequest<ApiDepartment>(`/api/departments/${node.key}`, {
-        method: "PUT",
-        body: JSON.stringify({ name: cleanName }),
-      });
+      await hardwareService.updateDepartment(node.key, { name: cleanName });
       closeModal();
       setFolderActionNode(null);
       setFolderActionInput("");
@@ -2169,7 +2085,7 @@ export default function HardwareInventory() {
     setFolderActionError("");
 
     try {
-      await apiRequest<{ Object_Rel_Idn: number }>(`/api/departments/${node.key}`, { method: "DELETE" });
+      await hardwareService.deleteDepartment(node.key);
       closeModal();
       setFolderActionNode(null);
       await loadHardwareInventory();
@@ -2282,37 +2198,37 @@ export default function HardwareInventory() {
       let description = descriptionPrefix;
 
       if (selectedStatistic === "conn-summary") {
-        const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-statistics/${relationID}/connection-summary`);
+        const response = await hardwareService.getHardwareStatistic(relationID, "connection-summary");
         rows = normalizeHardwareRows(response);
         description = "Connection period summary";
       } else if (selectedStatistic === "conn-list") {
-        const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-statistics/${relationID}/connection-list`);
+        const response = await hardwareService.getHardwareStatistic(relationID, "connection-list");
         rows = normalizeHardwareRows(response);
         description = "Client connection list";
       } else if (selectedStatistic === "client-version") {
-        const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-statistics/${relationID}/client-version`);
+        const response = await hardwareService.getHardwareStatistic(relationID, "client-version");
         rows = normalizeHardwareRows(response);
         description = "Client version distribution";
       } else if (selectedStatistic === "changed-items") {
-        const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-management/${relationID}/changed-items`);
+        const response = await hardwareService.getChangedItems(relationID);
         rows = normalizeHardwareRows(response);
         description = "Changed hardware item statistics";
       } else if (selectedStatistic === "duplicated-ip") {
-        const response = await apiRequest<HardwareApiRow[]>("/api/hardware-management/duplicate-ips");
+        const response = await hardwareService.getDuplicateIps();
         rows = normalizeHardwareRows(response);
         description = "Duplicated IP list";
       } else if (selectedStatistic.startsWith("stat-")) {
         const categoryKey = STATISTIC_CATEGORY_KEY_MAP[selectedStatistic];
-        const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-statistics/${relationID}/category/${categoryKey}`);
+        const response = await hardwareService.getHardwareStatisticCategory(relationID, categoryKey);
         rows = normalizeHardwareRows(response);
         description = `${title} distribution`;
       } else if (selectedStatistic === "report-inventory") {
-        const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-reports/${relationID}/client-list`);
+        const response = await hardwareService.getClientListReport(relationID);
         rows = normalizeHardwareRows(response);
         description = "Hardware inventory report list";
       } else if (selectedStatistic.startsWith("report-")) {
         const reportKey = REPORT_KEY_MAP[selectedStatistic];
-        const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-reports/${relationID}/${reportKey}`);
+        const response = await hardwareService.getHardwareReport(relationID, reportKey);
         rows = normalizeHardwareRows(response);
         description = `${title} report`;
       }
@@ -2389,9 +2305,7 @@ export default function HardwareInventory() {
     setNote(`Refreshing hardware inventory for ${targetLabel}...`);
 
     try {
-      const response = await apiRequest<HardwareScanResult>("/api/hardware-inventory/scan", {
-        method: "POST",
-        body: JSON.stringify({
+      const response = await hardwareService.createHardwareScanJob({
           scanMode: mode,
           objectRelIdn: mode === "folder" ? relationID : undefined,
           relationID: mode === "folder" ? relationID : undefined,
@@ -2407,11 +2321,11 @@ export default function HardwareInventory() {
               : mode === "folder"
                 ? `Hardware inventory refresh - ${selectedFolderLabel}`
                 : `Hardware inventory refresh - ${selectedDevice.name}`,
-        }),
-      });
+        });
 
-      const jobId = response.data?.Job_Idn ? ` Job ID: ${response.data.Job_Idn}.` : "";
-      const targetCount = response.data?.targetCount ? ` Target: ${response.data.targetCount}.` : "";
+      const scanResult = response.data as HardwareScanResult | undefined;
+      const jobId = scanResult?.Job_Idn ? ` Job ID: ${scanResult.Job_Idn}.` : "";
+      const targetCount = scanResult?.targetCount ? ` Target: ${scanResult.targetCount}.` : "";
       showToast("success", "Inventory refresh started", `Hardware inventory refresh has started.${targetCount}`);
       setNote(`Hardware inventory refresh started.${targetCount}`);
     } catch (error) {
@@ -2459,10 +2373,7 @@ export default function HardwareInventory() {
     setMoveLoading(true);
 
     try {
-      await apiRequest(`/api/assets/${selectedDevice.objectAgent}/${selectedDevice.assetId}/department`, {
-        method: "PUT",
-        body: JSON.stringify({ relationID: targetDepartment.relationID }),
-      });
+      await hardwareService.moveAssetDepartment(selectedDevice.objectAgent, selectedDevice.assetId, targetDepartment.relationID);
       setApiDevices((current) =>
         current.map((device) =>
           device.id === selectedDevice.id
@@ -2517,20 +2428,17 @@ export default function HardwareInventory() {
     setMessageError("");
 
     try {
-      const endpoint = broadcastMessage ? "/api/mdm/text-message/platform" : "/api/mdm/text-message";
-      const response = await apiRequest<SendMessageApiResult[]>(endpoint, {
-        method: "POST",
-        body: JSON.stringify(
-          buildSelectedDeviceMdmPayload({
-            Subject: cleanSubject,
-            Body: cleanBody,
-            ForceRead: forceRead,
-            ReadNotification: true,
-            PlatformType: selectedDevice.os,
-            MDM_DeviceID: selectedDevice.objectAgent === "MDM" ? selectedDevice.deviceIdentifier : undefined,
-          })
-        ),
-      });
+      const response = await hardwareService.sendTextMessage(
+        buildSelectedDeviceMdmPayload({
+          Subject: cleanSubject,
+          Body: cleanBody,
+          ForceRead: forceRead,
+          ReadNotification: true,
+          PlatformType: selectedDevice.os,
+          MDM_DeviceID: selectedDevice.objectAgent === "MDM" ? selectedDevice.deviceIdentifier : undefined,
+        }),
+        broadcastMessage
+      ) as ApiEnvelope<SendMessageApiResult[]>;
 
       const rows = response.data || [];
       const successCount = response.summary?.SuccessCount ?? rows.filter((row) => normalizeApiMessage(row.message).toLowerCase() === "success").length;
@@ -2649,12 +2557,7 @@ export default function HardwareInventory() {
 
   const requestGeolocationRows = async (sync: boolean, queryType: "Live" | "All") => {
     const requestConfig = buildGeolocationApiRequest(sync, queryType);
-    const response = await apiRequest<unknown>(requestConfig.endpoint, {
-      method: "POST",
-      body: JSON.stringify(requestConfig.payload),
-    });
-
-    const envelope = response as ApiEnvelope<unknown> & { sync?: unknown; status?: number };
+    const envelope = await hardwareService.requestGeolocation(queryType, requestConfig.payload) as ApiEnvelope<unknown> & { sync?: unknown; status?: number };
     const rows = uniqueGeoRows([...getGeoRowsFromUnknown(envelope.data), ...getGeoRowsFromUnknown(envelope.sync)]);
     const coordinateRows = rows.filter((row) => getGeoLatitude(row) && getGeoLongitude(row));
     const latestRow = getLatestGeoRow(coordinateRows) || getLatestGeoRow(rows);
@@ -2850,16 +2753,13 @@ export default function HardwareInventory() {
     setRemoteLoading(true);
 
     try {
-      const response = await apiRequest<RemoteControlApiResult[]>("/api/mdm/remote-control", {
-        method: "POST",
-        body: JSON.stringify(
-          buildSelectedDeviceMdmPayload({
-            ShowOnlyRemoteScreen: showOnlyRemoteScreen,
-            ScrBgClr: "null",
-            ScrImg: "null",
-          })
-        ),
-      });
+      const response = await hardwareService.getRemoteControl(
+        buildSelectedDeviceMdmPayload({
+          ShowOnlyRemoteScreen: showOnlyRemoteScreen,
+          ScrBgClr: "null",
+          ScrImg: "null",
+        })
+      ) as ApiEnvelope<RemoteControlApiResult[]>;
 
       const remoteUrl = response.data?.[0]?.url;
 
@@ -2907,17 +2807,14 @@ export default function HardwareInventory() {
     setLockActionLoading(true);
 
     try {
-      const response = await apiRequest<LockUnlockApiResult[]>("/api/mdm/lock-unlock", {
-        method: "POST",
-        body: JSON.stringify(
-          buildSelectedDeviceMdmPayload({
-            action,
-            Message: cleanReason || undefined,
-            Reason: cleanReason || undefined,
-            Duration: action === "lock" ? lockDuration : undefined,
-          })
-        ),
-      });
+      const response = await hardwareService.lockUnlockDevice(
+        buildSelectedDeviceMdmPayload({
+          action,
+          Message: cleanReason || undefined,
+          Reason: cleanReason || undefined,
+          Duration: action === "lock" ? lockDuration : undefined,
+        })
+      ) as ApiEnvelope<LockUnlockApiResult[]>;
 
       const result = response.data?.[0];
       const nextStatus: StatusType = action === "lock" ? "Locked" : "Online";

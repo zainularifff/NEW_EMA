@@ -2,15 +2,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ButtonHTMLAttributes, CSSProperties, FormEvent, ReactNode } from 'react';
 
-import {
-  incidents as incidentsService,
-  incidentConfig as incidentConfigService,
-  incidentCategories as incidentCategoriesService,
-} from '../services/IncidentService';
-import { users as usersService, roles as rolesService } from '../services/UserService';
-import { assets as assetsService } from '../services/AssetService';
-import { knowledgeBase as knowledgeBaseService } from '../services/KnowledgeBaseService';
-import { engineerAvailability as engineerAvailabilityService } from '../services/EngineerAvailabilityService';
+import serviceDeskService from '../services/ServiceDeskService';
+
+const {
+  incidents: incidentsService,
+  incidentConfig: incidentConfigService,
+  incidentCategories: incidentCategoriesService,
+  users: usersService,
+  roles: rolesService,
+  assets: assetsService,
+  knowledgeBase: knowledgeBaseService,
+  engineerAvailability: engineerAvailabilityService,
+} = serviceDeskService;
 
 import {
   ArrowRightLeft,
@@ -115,6 +118,8 @@ type EngineerOption = {
   department?: string;
   currentStatus?: string;
   status?: string;
+  AvailabilityStatus?: string;
+  availabilityStatus?: string;
   isOnLeave?: boolean;
   leaveStatus?: string;
   leaveReason?: string;
@@ -853,25 +858,6 @@ function ServiceDeskSelect({
       {menuNode}
     </div>
   );
-}
-
-async function safeApi<T>(
-  label: string,
-  request: Promise<T>,
-  fallback: T,
-  required = false
-): Promise<T> {
-  try {
-    return await request;
-  } catch (error) {
-    console.error(`Service Desk API failed: ${label}`, error);
-
-    if (required) {
-      throw error;
-    }
-
-    return fallback;
-  }
 }
 
 function getId(row: any) {
@@ -1656,7 +1642,7 @@ export default function ServiceDesk() {
     if (!silent) setIsLoading(true);
 
     try {
-      const incidentsData = await safeApi('GET /api/incidents', incidentsService.getAll(), [], true);
+      const incidentsData = await incidentsService.getAll();
       const nextIncidents = Array.isArray(incidentsData) ? incidentsData : [];
 
       setIncidents(nextIncidents);
@@ -1687,12 +1673,12 @@ export default function ServiceDesk() {
   async function loadEssentialConfig() {
     try {
       const [slaData, workingHoursData, visibilityData] = await Promise.all([
-        safeApi('GET /api/incident-config', incidentConfigService.getAll(), []),
-        safeApi('GET /api/incident-config/working-hours', incidentConfigService.getWorkingHours(), []),
-        safeApi('GET /api/incident-config/visibility', incidentConfigService.getVisibilityConfig(), {}),
+        incidentConfigService.getAll(),
+        incidentConfigService.getWorkingHours(),
+        incidentConfigService.getVisibilityConfig(),
       ]);
 
-      setSlaConfigs(Array.isArray(slaData) ? slaData : []);
+      setSlaConfigs(Array.isArray(slaData) ? (slaData as SlaConfig[]) : []);
       setWorkingHoursConfigs(Array.isArray(workingHoursData) ? workingHoursData : []);
       setVisibilityConfig(visibilityData || {});
     } catch (error) {
@@ -1707,9 +1693,9 @@ export default function ServiceDesk() {
 
     try {
       const [rolesData, usersData, catsData] = await Promise.all([
-        safeApi('GET /api/roles', rolesService.getAll(), []),
-        safeApi('GET /api/users', usersService.getAll(), []),
-        safeApi('GET /api/incident-categories', incidentCategoriesService.getAll(), []),
+        rolesService.getAll(),
+        usersService.getAll(),
+        incidentCategoriesService.getAll(),
       ]);
 
       setRoles(Array.isArray(rolesData) ? rolesData : []);
@@ -1733,7 +1719,7 @@ export default function ServiceDesk() {
     setHasLoadedKb(false);
 
     try {
-      const kbData = await safeApi('GET /api/knowledge-base', knowledgeBaseService.getAll(), []);
+      const kbData = await knowledgeBaseService.getAll();
       setKnowledgeBaseEntries(Array.isArray(kbData) ? kbData : []);
     } catch (error) {
       console.error('Failed to load knowledge base', error);
@@ -2033,18 +2019,11 @@ export default function ServiceDesk() {
     openAssetDropdown();
 
     try {
-      const requests: Promise<any[]>[] = [
-        safeApi('GET /api/assets all', assetsService.getAll(), []),
-      ];
+      const assetsData = queryName && queryName.toLowerCase() !== 'all'
+        ? await assetsService.getByCustomer(queryName)
+        : await assetsService.getAll();
 
-      if (queryName && queryName.toLowerCase() !== 'all') {
-        requests.unshift(safeApi('GET /api/assets by requester', assetsService.getByCustomer(queryName), []));
-      }
-
-      const results = await Promise.all(requests);
-      const mergedAssets = mergeAssetRows(...results.filter(Array.isArray));
-
-      setClientAssets(mergedAssets);
+      setClientAssets(Array.isArray(assetsData) ? assetsData : []);
       openAssetDropdown();
     } catch (error) {
       console.error('Failed to load assets from DB', error);
@@ -2074,17 +2053,8 @@ export default function ServiceDesk() {
     setIsLoadingAssets(true);
 
     try {
-      const [globalResults, allAssets] = await Promise.all([
-        safeApi('GET /api/assets search global', assetsService.search(term), []),
-        clientAssets.length > 0 ? Promise.resolve(clientAssets) : safeApi('GET /api/assets all fallback', assetsService.getAll(), []),
-      ]);
-
-      const mergedAssets = mergeAssetRows(
-        Array.isArray(globalResults) ? globalResults : [],
-        Array.isArray(allAssets) ? allAssets.filter((asset) => getAssetSearchText(asset).includes(term.toLowerCase())) : []
-      );
-
-      setClientAssets(mergedAssets);
+      const globalResults = await assetsService.search(term);
+      setClientAssets(Array.isArray(globalResults) ? globalResults : []);
       openAssetDropdown();
     } catch (error) {
       console.error('Asset search failed', error);
@@ -4856,7 +4826,7 @@ export default function ServiceDesk() {
                 <thead>
                   <tr>
                     <th>No</th>
-                    <th onClick={() => handleKbSort('title')}>Knowledge Base</th>
+                    <th onClick={toggleKbTitleSort}>Knowledge Base</th>
                     <th>Actions</th>
                   </tr>
                 </thead>

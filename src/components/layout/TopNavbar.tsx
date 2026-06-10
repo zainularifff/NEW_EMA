@@ -8,9 +8,22 @@ import { useTheme } from "../../context/ThemeContext";
 import { getStoredAccessUser, type AccessUser } from "../../routes/accessControl";
 import EmaAssistWidget from "../AIAssist/EmaAssistWidget";
 
-const pageMeta: Record<string, { title: string; subtitle: string; searchPlaceholder: string }> = {
+type PageMeta = { title: string; subtitle: string; searchPlaceholder: string };
+
+const defaultPageMeta: PageMeta = {
+  title: "EMA System",
+  subtitle: "Operations Console",
+  searchPlaceholder: "Search assets, users, devices...",
+};
+
+const pageMeta: Record<string, PageMeta> = {
   "/dashboard": {
-    title: "Dashboard",
+    title: "IT OperationDashboard",
+    subtitle: "Overview of your EMA workspace.",
+    searchPlaceholder: "Search assets, users, devices...",
+  },
+  "/management-dashboard": {
+    title: "Management Dashboard",
     subtitle: "Overview of your EMA workspace.",
     searchPlaceholder: "Search assets, users, devices...",
   },
@@ -19,10 +32,40 @@ const pageMeta: Record<string, { title: string; subtitle: string; searchPlacehol
     subtitle: "Track assets, ownership and lifecycle status.",
     searchPlaceholder: "Search asset tag, user, device or IP...",
   },
-  "/settings": {
-    title: "Settings",
-    subtitle: "Control access, rules and system configuration.",
-    searchPlaceholder: "Search settings, roles, users or clients...",
+  "/software": {
+    title: "Software Inventory",
+    subtitle: "Track applications, versions and classification status.",
+    searchPlaceholder: "Search software, publisher, version or device...",
+  },
+  "/network-inventory": {
+    title: "Network Inventory",
+    subtitle: "Monitor IP records, workgroups and network coverage.",
+    searchPlaceholder: "Search IP, hostname, subnet or workgroup...",
+  },
+  "/appmetering": {
+    title: "Application Metering",
+    subtitle: "Review application usage and performance metrics.",
+    searchPlaceholder: "Search application, user, device or usage data...",
+  },
+  "/internet-metering": {
+    title: "Internet Metering",
+    subtitle: "Review internet usage and performance metrics.",
+    searchPlaceholder: "Search internet usage, user, device or usage data...",
+  },
+  "/app-restriction": {
+    title: "Application Restriction",
+    subtitle: "Manage and review application restriction policies.",
+    searchPlaceholder: "Search applications, users, devices or restriction rules...",
+  },
+  "/patch-management": {
+    title: "Patch Management",
+    subtitle: "Manage and deploy software updates and patches.",
+    searchPlaceholder: "Search patches, devices, users or update status...",
+  },
+  "/software-distribution": {
+    title: "Software Distribution",
+    subtitle: "Manage and deploy software packages and installations.",
+    searchPlaceholder: "Search software, users, devices or distribution status...",
   },
   "/service-desk": {
     title: "Service Desk",
@@ -34,9 +77,56 @@ const pageMeta: Record<string, { title: string; subtitle: string; searchPlacehol
     subtitle: "Monitor command jobs and endpoint execution.",
     searchPlaceholder: "Search task ID, command, state or ordered by...",
   },
+    "/settings": {
+    title: "Settings",
+    subtitle: "Control access, rules and system configuration.",
+    searchPlaceholder: "Search settings, roles, users or clients...",
+  },
+    "/report": {
+    title: "Report",
+    subtitle: "Generate and review EMA operational reports.",
+    searchPlaceholder: "Search reports, modules, users or assets...",
+  },
 };
 
-const searchableRoutes = new Set(["/hardware", "/settings", "/service-desk", "/tasklist"]);
+const searchableRoutes = new Set([
+  "/dashboard",
+  "/hardware",
+  "/software",
+  "/network",
+  "/geolocation",
+  "/settings",
+  "/service-desk",
+  "/tasklist",
+  "/report",
+  "/reports",
+  "/module",
+]);
+
+function normalizePathname(pathname: string) {
+  if (!pathname || pathname === "/") return "/dashboard";
+  return pathname.replace(/\/+$/, "") || "/dashboard";
+}
+
+function resolvePageMeta(pathname: string) {
+  const cleanPath = normalizePathname(pathname);
+  if (pageMeta[cleanPath]) return pageMeta[cleanPath];
+
+  const matchedBase = Object.keys(pageMeta)
+    .sort((a, b) => b.length - a.length)
+    .find((route) => cleanPath === route || cleanPath.startsWith(`${route}/`));
+
+  return matchedBase ? pageMeta[matchedBase] : defaultPageMeta;
+}
+
+function resolveSearchDestination(pathname: string) {
+  const cleanPath = normalizePathname(pathname);
+  const matchedBase = Array.from(searchableRoutes)
+    .sort((a, b) => b.length - a.length)
+    .find((route) => cleanPath === route || cleanPath.startsWith(`${route}/`));
+
+  return matchedBase || "/tasklist";
+}
 
 function openEmaAssistant() {
   window.dispatchEvent(new CustomEvent("ema-ai-assist-open"));
@@ -134,16 +224,8 @@ export function TopNavbar() {
   const { isDark, toggleTheme } = useTheme();
   const [searchTerm, setSearchTerm] = useState(() => getUrlSearchValue(location.search));
 
-  const current = pageMeta[location.pathname] || {
-    title: "EMA System",
-    subtitle: "Operations Console",
-    searchPlaceholder: "Search assets, users, devices...",
-  };
-
-  const searchDestination = useMemo(() => {
-    if (searchableRoutes.has(location.pathname)) return location.pathname;
-    return "/tasklist";
-  }, [location.pathname]);
+  const current = useMemo(() => resolvePageMeta(location.pathname), [location.pathname]);
+  const searchDestination = useMemo(() => resolveSearchDestination(location.pathname), [location.pathname]);
 
   useEffect(() => {
     setSearchTerm(getUrlSearchValue(location.search));
@@ -173,7 +255,7 @@ export function TopNavbar() {
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
 
-    if (searchableRoutes.has(location.pathname)) {
+    if (resolveSearchDestination(location.pathname) === normalizePathname(location.pathname)) {
       emitGlobalSearch(value, location.pathname);
     }
   };
@@ -182,7 +264,7 @@ export function TopNavbar() {
     setSearchTerm("");
     emitGlobalSearch("", location.pathname);
 
-    if (searchableRoutes.has(location.pathname) && location.search) {
+    if (resolveSearchDestination(location.pathname) === normalizePathname(location.pathname) && location.search) {
       navigate(location.pathname, { replace: true });
     }
   };

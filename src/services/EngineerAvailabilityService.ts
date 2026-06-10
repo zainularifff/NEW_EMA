@@ -1,52 +1,31 @@
-import api from './api';
-import { extractData } from './response';
+import api, { unwrapArray, unwrapData, type QueryParams } from "./apiClient";
 
-type EngineerAvailabilityFilter = {
-  userId?: number;
-};
+type AnyRecord = Record<string, any>;
 
 export const engineerAvailability = {
-  getAll: async (filters?: EngineerAvailabilityFilter) => {
-    const res = await api.get('/api/engineer-availability', {
-      params: filters,
-    });
-
-    return extractData<any[]>(res) || [];
+  async getAll(params?: QueryParams) {
+    const payload = await api.get("/api/engineer-availability", { params });
+    return unwrapArray<AnyRecord>(payload);
   },
-
-  create: async (data: any) => {
-    const res = await api.post('/api/engineer-availability', data);
-    return extractData(res);
+  async getAvailableEngineers(date?: string, supportLevel?: string) {
+    const payload = await api.get("/api/engineer-availability/available-engineers", { params: { date, supportLevel } });
+    return unwrapArray<AnyRecord>(payload);
   },
-
-  update: async (id: number, data: any) => {
-    const res = await api.put(`/api/engineer-availability/${id}`, data);
-    return extractData(res);
+  async getEngineers(params?: QueryParams) {
+    const payload = await api.get("/api/engineers", { params });
+    return unwrapArray<AnyRecord>(payload);
   },
-
-  delete: async (id: number) => {
-    const res = await api.delete(`/api/engineer-availability/${id}`);
-    return extractData(res);
+  async create(payload: AnyRecord) {
+    const response = await api.post("/api/engineer-availability", payload);
+    return unwrapData(response, response);
   },
-
-  getAvailableEngineers: async (date: string) => {
-    const res = await api.get('/api/engineer-availability/available-engineers', {
-      params: { date },
-    });
-
-    return extractData<any[]>(res) || [];
+  async update(id: number | string, payload: AnyRecord) {
+    const response = await api.put(`/api/engineer-availability/${id}`, payload);
+    return unwrapData(response, response);
   },
-
-  getAllEngineers: async () => {
-    const res = await api.get('/api/engineers');
-    return extractData<any[]>(res) || [];
-  },
-
-  getUnavailableByDate: async (year: number, month: number) => {
-    const res = await api.get('/api/engineer-availability/unavailable-by-date', {
-      params: { year, month },
-    });
-
-    return extractData<Record<string, any[]>>(res) || {};
+  async delete(id: number | string) {
+    return api.delete(`/api/engineer-availability/${id}`);
   },
 };
+
+export default { engineerAvailability };

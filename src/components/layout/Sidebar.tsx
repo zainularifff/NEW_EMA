@@ -46,17 +46,17 @@ const navSections: NavSection[] = [
     icon: LayoutDashboard,
     collapsible: true,
     items: [
-      { label: "Operation Dashboard", path: "/dashboard", icon: Gauge },
+      { label: "IT Operation Dashboard", path: "/dashboard", icon: Gauge },
       { label: "Management Dashboard", path: "/management-dashboard", icon: BarChart3 },
     ],
   },
   {
-    title: "Inventory",
+    title: "Module",
     icon: Boxes,
     collapsible: true,
     items: [
-      { label: "Hardware", path: "/hardware", icon: HardDrive },
-      { label: "Software", path: "/software", icon: Monitor },
+      { label: "Hardware Inventory", path: "/hardware", icon: HardDrive },
+      { label: "Software Inventory", path: "/software", icon: Monitor },
       { label: "Network Inventory", path: "/network-inventory", icon: Network },
       { label: "App Metering", path: "/appmetering", icon: Activity },
       { label: "Internet Metering", path: "/internet-metering", icon: Globe2 },

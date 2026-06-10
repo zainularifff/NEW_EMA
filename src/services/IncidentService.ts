@@ -1,79 +1,59 @@
-import api from './api';
-import { extractData } from './response';
+import api, { unwrapArray, unwrapData, type QueryParams } from "./apiClient";
+
+type AnyRecord = Record<string, any>;
+
+function getId(row: AnyRecord) {
+  return row?.id ?? row?.IncidentID ?? row?.incidentID ?? row?.ticketId ?? row?.TicketID;
+}
 
 export const incidents = {
-  getAll: async () => {
-    const res = await api.get('/api/incidents');
-    return extractData<any[]>(res) || [];
+  async getAll(params?: QueryParams) {
+    const payload = await api.get("/api/incidents", { params });
+    return unwrapArray<AnyRecord>(payload);
   },
-
-  get: async (id: string) => {
-    const res = await api.get(`/api/incidents/${id}`);
-    return extractData(res);
+  async getById(id: number | string) {
+    const payload = await api.get(`/api/incidents/${id}`);
+    return unwrapData<AnyRecord>(payload, {});
   },
-
-  create: async (data: any) => {
-    const res = await api.post('/api/incidents', data);
-    return extractData(res);
+  async search(payload: AnyRecord) {
+    const response = await api.post("/api/incidents/search", payload);
+    return unwrapData(response, response);
   },
-
-  update: async (data: any) => {
-    const res = await api.put(`/api/incidents/${data.id}`, data);
-    return extractData(res);
+  async create(payload: AnyRecord) {
+    const response = await api.post("/api/incidents", payload);
+    return unwrapData(response, response);
   },
-
-  delete: async (id: string) => {
-    const res = await api.delete(`/api/incidents/${id}`);
-    return extractData(res);
+  async update(payload: AnyRecord) {
+    const id = getId(payload);
+    if (!id) throw new Error("Incident id is required for update.");
+    const response = await api.put(`/api/incidents/${id}`, payload);
+    return unwrapData(response, response);
   },
-
-  advancedSearch: async (filters: any) => {
-    const res = await api.post('/api/incidents/search', filters);
-    return extractData(res);
-  },
-
-  uploadAttachment: async (incidentId: string, file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const res = await api.post(`/api/incidents/${incidentId}/attachments`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-
-    return extractData(res);
-  },
-
-  getAttachments: async (incidentId: string) => {
-    const res = await api.get(`/api/incidents/${incidentId}/attachments`);
-    return extractData<any[]>(res) || [];
-  },
-
-  deleteAttachment: async (incidentId: string, filename: string) => {
-    const res = await api.delete(`/api/incidents/${incidentId}/attachments/${filename}`);
-    return extractData(res);
+  async delete(id: number | string) {
+    return api.delete(`/api/incidents/${id}`);
   },
 };
 
 export const incidentConfig = {
-  getAll: async () => {
-    const res = await api.get('/api/incident-config');
-    return extractData<any[]>(res) || [];
+  async getAll() {
+    const payload = await api.get("/api/incident-config");
+    return unwrapArray<AnyRecord>(payload);
   },
-
-  getWorkingHours: async () => {
-    const res = await api.get('/api/incident-config/working-hours');
-    return extractData<any[]>(res) || [];
+  async getWorkingHours() {
+    const payload = await api.get("/api/incident-config/working-hours");
+    return unwrapArray<AnyRecord>(payload);
   },
-
-  getVisibilityConfig: async () => {
-    const res = await api.get('/api/incident-config/visibility');
-    return extractData<Record<string, boolean>>(res) || {};
+  async getVisibilityConfig() {
+    const payload = await api.get("/api/incident-config/visibility");
+    return unwrapData<AnyRecord>(payload, {});
   },
 };
 
 export const incidentCategories = {
-  getAll: async () => {
-    const res = await api.get('/api/incident-categories');
-    return extractData<any[]>(res) || [];
+  async getAll() {
+    const payload = await api.get("/api/incident-categories");
+    return unwrapArray<AnyRecord>(payload);
   },
 };
+
+export default { incidents, incidentConfig, incidentCategories };

@@ -1609,11 +1609,6 @@ export default function AppWebRestriction() {
                   <Building2 size={14} />
                   <span>Organization</span>
                 </div>
-                {loading && treeNodes.length === 0 ? (
-                  <div className="ema-sidebar-empty">Preparing organization view...</div>
-                ) : filteredTreeNodes.length > 0 ? renderTree(filteredTreeNodes) : (
-                  <div className="ema-sidebar-empty">{targetTreeSearch ? "No matching organization found." : "No organization entries found."}</div>
-                )}
               </div>
             </div>
           </div>

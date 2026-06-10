@@ -26,6 +26,8 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
+import internetMeteringService from '../services/internetMeteringService';
+
 type NodeKind = 'all' | 'folder' | 'device' | 'url-folder' | 'url';
 
 type TreeNodeType = {
@@ -81,8 +83,6 @@ const WEB_METERING_JOB_TYPE = 10300;
 const WEB_METERING_START_COMMAND = 1404;
 const WEB_METERING_COLLECT_COMMAND = 1407;
 const WEB_METERING_STOP_COMMAND = 1409;
-const CREATE_METHOD = ['P', 'O', 'S', 'T'].join('');
-const REMOVE_METHOD = ['D', 'E', 'L', 'E', 'T', 'E'].join('');
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 const daysAgoIso = (days: number) => {
@@ -170,53 +170,6 @@ function writeInternetMeteringCache<T>(key: string, value: T) {
   }
 }
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL ||
-  localStorage.getItem('apiBaseUrl') ||
-  'http://localhost:3001'
-).replace(/\/+$/, '');
-
-function buildApiUrl(url: string) {
-  if (/^https?:\/\//i.test(url)) return url;
-  const normalizedUrl = url.startsWith('/') ? url : `/${url}`;
-  return `${API_BASE_URL}${normalizedUrl}`;
-}
-
-function getAuthHeaders(): Record<string, string> {
-  const token =
-    localStorage.getItem('token') ||
-    localStorage.getItem('accessToken') ||
-    localStorage.getItem('authToken') ||
-    localStorage.getItem('jwt');
-
-  return token ? { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` } : {};
-}
-
-async function apiRequest<T>(url: string, init: RequestInit = {}): Promise<T> {
-  const finalUrl = buildApiUrl(url);
-  const headers: Record<string, string> = {
-    Accept: 'application/json',
-    ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-    ...getAuthHeaders(),
-    ...(init.headers as Record<string, string> | undefined),
-  };
-
-  const response = await fetch(finalUrl, { ...init, headers, credentials: 'include' });
-  const contentType = response.headers.get('content-type') || '';
-  const payload = contentType.includes('application/json') ? await response.json() : await response.text();
-
-  if (!response.ok || (payload && typeof payload === 'object' && payload.success === false)) {
-    const message =
-      typeof payload === 'object'
-        ? payload.message || payload.error || payload.errorMessage
-        : payload;
-
-    throw new Error(`${finalUrl} - ${message || `Request failed: ${response.status}`}`);
-  }
-
-  return payload as T;
-}
-
 const extractDepartmentRows = (payload: any): any[] => {
   if (Array.isArray(payload?.data?.departments)) return payload.data.departments;
   if (Array.isArray(payload?.departments)) return payload.departments;
@@ -288,7 +241,7 @@ async function preloadDepartmentNode(row: any, index: number, visited = new Set<
   let assetRows: any[] = [];
 
   try {
-    const folderPayload = await apiRequest<unknown>(`/api/departments/${baseNode.objectRelIdn}`);
+    const folderPayload = await internetMeteringService.getDepartmentChildren(baseNode.objectRelIdn);
     const endpointDepartments = extractDepartmentRows(folderPayload);
     const endpointAssets = extractAssetRows(folderPayload);
 
@@ -300,7 +253,7 @@ async function preloadDepartmentNode(row: any, index: number, visited = new Set<
 
   if (assetRows.length === 0) {
     try {
-      const assetPayload = await apiRequest<unknown>(`/api/assets/${baseNode.objectRelIdn}`);
+      const assetPayload = await internetMeteringService.getAssetsByRelationID(baseNode.objectRelIdn);
       assetRows = extractAssetRows(assetPayload);
     } catch {
       assetRows = [];
@@ -407,6 +360,14 @@ function makeResultTarget(selectedUrl: TreeNodeType, restrictFilter: number, sel
 function getUsageTargetKey(node: TreeNodeType): string {
   if (node.type === 'url') return `url:${node.urlMainIdn || node.url || node.id}`;
   return `folder:${node.restrict ?? 'all'}:${node.id}`;
+}
+
+function queryParamsFromSearch(params: URLSearchParams): Record<string, string> {
+  const record: Record<string, string> = {};
+  params.forEach((value, key) => {
+    record[key] = value;
+  });
+  return record;
 }
 
 type CompactPaginationProps = {
@@ -791,16 +752,16 @@ export default function InternetMetering() {
       let assets: TreeNodeType[] = [];
 
       if (node.type === 'all') {
-        const payload = await apiRequest<unknown>('/api/departments');
+        const payload = await internetMeteringService.getDepartments();
         const departmentRows = extractDepartmentRows(payload);
         departments = departmentRows.map((row, index) => mapDepartment(row, index));
       } else if (node.type === 'folder' && node.objectRelIdn) {
-        const folderPayload = await apiRequest<unknown>(`/api/departments/${node.objectRelIdn}`).catch(() => ({ data: { departments: [], assets: [] } }));
+        const folderPayload = await internetMeteringService.getDepartmentChildren(node.objectRelIdn).catch(() => ({ departments: [], assets: [] }));
         const departmentRows = extractDepartmentRows(folderPayload);
         let assetRows = extractAssetRows(folderPayload);
 
         if (assetRows.length === 0) {
-          const assetPayload = await apiRequest<unknown>(`/api/assets/${node.objectRelIdn}`).catch(() => ({ data: [] }));
+          const assetPayload = await internetMeteringService.getAssetsByRelationID(node.objectRelIdn).catch(() => []);
           assetRows = extractAssetRows(assetPayload);
         }
 
@@ -833,7 +794,7 @@ export default function InternetMetering() {
     }
 
     try {
-      const assetPayload = await apiRequest<unknown>('/api/assets');
+      const assetPayload = await internetMeteringService.getAssets();
       const assetRows = extractAssetRows(assetPayload);
       const nextCount = assetRows.length;
       if (nextCount > 0) {
@@ -873,7 +834,7 @@ export default function InternetMetering() {
         limit: String(URL_RULE_PAGE_SIZE),
       });
 
-      const payload = await apiRequest<ApiResponse<unknown[]>>(`/api/internet-metering/urls/tree?${params.toString()}`);
+      const payload = await internetMeteringService.getUrlTreePayload(queryParamsFromSearch(params)) as ApiResponse<unknown[]>;
       if (requestId !== urlLoadSeq.current) return;
 
       const children = extractArray<any>(payload).map((row, index) => mapUrlNode(row, index, activeRestrict));
@@ -948,7 +909,7 @@ export default function InternetMetering() {
 
     try {
       setError('');
-      const usagePayload = await apiRequest<ApiResponse<unknown[]>>(`/api/internet-metering/usage?${params.toString()}`);
+      const usagePayload = await internetMeteringService.getUsagePayload(queryParamsFromSearch(params)) as ApiResponse<unknown[]>;
       if (requestId !== meterLoadSeq.current) return;
 
       const normalizedRows = extractArray<any>(usagePayload).map(mapUsageRow);
@@ -967,7 +928,7 @@ export default function InternetMetering() {
       writeInternetMeteringCache(cacheKey, snapshot);
       setLoading(false);
 
-      apiRequest<ApiResponse<InternetStats>>(`/api/internet-metering/stats?${params.toString()}`)
+      (internetMeteringService.getStatsPayload(queryParamsFromSearch(params)) as Promise<ApiResponse<InternetStats>>)
         .then((statsPayload) => {
           if (requestId !== meterLoadSeq.current) return;
           const statsData = statsPayload.data;
@@ -1165,16 +1126,17 @@ export default function InternetMetering() {
     const endpoint = action === 'start' ? '/api/internet-metering/start' : action === 'stop' ? '/api/internet-metering/stop' : '/api/internet-metering/collect';
     const label = action === 'start' ? 'Metering started' : action === 'stop' ? 'Metering stopped' : 'Collection sent';
 
-    const result = await apiRequest<ApiResponse<any>>(endpoint, {
-      method: CREATE_METHOD,
-      body: JSON.stringify(buildMeteringPayload(node, commandID, `${label} - ${getScopeTypeLabel(node)}`)),
-    });
+    const result = await internetMeteringService.runMeteringAction(
+      action,
+      buildMeteringPayload(node, commandID, `${label} - ${getScopeTypeLabel(node)}`),
+    ) as ApiResponse<any> | any;
 
     if (action === 'start') setScopeRunning(node, true);
     if (action === 'stop') setScopeRunning(node, false);
 
-    const jobId = result.data?.Job_Idn ? `Job #${result.data.Job_Idn}` : label;
-    const targetCount = result.data?.targetCount !== undefined ? ` · ${result.data.targetCount} targets` : '';
+    const resultData = result?.data ?? result;
+    const jobId = resultData?.Job_Idn ? `Job #${resultData.Job_Idn}` : label;
+    const targetCount = resultData?.targetCount !== undefined ? ` · ${resultData.targetCount} targets` : '';
     setToast(`${jobId}${targetCount}`);
   };
 
@@ -1221,10 +1183,7 @@ export default function InternetMetering() {
 
     try {
       setUrlLoading(true);
-      await apiRequest('/api/internet-metering/urls', {
-        method: CREATE_METHOD,
-        body: JSON.stringify({ urlMain: cleanUrl, restrictID: urlEntryType }),
-      });
+      await internetMeteringService.createUrl({ urlMain: cleanUrl, restrictID: urlEntryType });
       setNewUrl('');
       setToast(`${urlEntryType === 1 ? 'Restricted' : 'Managed'}: ${cleanUrl}`);
       await loadUrlTree();
@@ -1247,17 +1206,11 @@ export default function InternetMetering() {
       setActionMenuId(null);
 
       if (action === 'remove') {
-        await apiRequest('/api/internet-metering/urls', {
-          method: REMOVE_METHOD,
-          body: JSON.stringify({ urlMain: targetUrl }),
-        });
+        await internetMeteringService.deleteUrl({ urlMain: targetUrl });
         setToast(`Removed: ${targetUrl}`);
       } else {
         const restrictID = action === 'restrict' ? 1 : 0;
-        await apiRequest('/api/internet-metering/urls', {
-          method: CREATE_METHOD,
-          body: JSON.stringify({ urlMain: targetUrl, restrictID }),
-        });
+        await internetMeteringService.createUrl({ urlMain: targetUrl, restrictID });
         setToast(`${restrictID === 1 ? 'Restricted' : 'Managed'}: ${targetUrl}`);
       }
 

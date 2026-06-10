@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
+import softwareService from "../services/softwareService";
 
 type ApiSoftwareRecord = {
   SoftwareID?: number | string | null;
@@ -131,24 +132,6 @@ type ToastState = {
 
 type ApiRowsPayload = unknown[] | { data?: unknown[] | Record<string, unknown>; success?: boolean; totalRecords?: number };
 
-const API_BASE_CANDIDATES = Array.from(
-  new Set(
-    [
-      (import.meta.env.VITE_API_BASE_URL as string | undefined),
-      (import.meta.env.VITE_API_URL as string | undefined),
-      "",
-      typeof window !== "undefined" && window.location.hostname
-        ? `${window.location.protocol}//${window.location.hostname}:3001`
-        : "http://localhost:3001",
-      "http://localhost:3001",
-      "http://127.0.0.1:3001",
-      "http://localhost:3000",
-    ]
-      .filter((value): value is string => Boolean(value !== undefined && value !== null))
-      .map((value) => String(value).replace(/\/$/, ""))
-  )
-);
-
 const PAGE_SIZE = 10;
 const EMPTY_VALUE = "-";
 
@@ -188,16 +171,6 @@ const fallbackDeviceTree: TreeNode[] = [
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
-}
-
-function buildApiUrl(baseUrl: string, path: string) {
-  if (!baseUrl) return path;
-  return `${baseUrl}${path}`;
-}
-
-function isHtmlPayload(text: string, contentType: string) {
-  const trimmed = text.trim().toLowerCase();
-  return contentType.toLowerCase().includes("text/html") || trimmed.startsWith("<!doctype") || trimmed.startsWith("<html");
 }
 
 function safeString(value: unknown, fallback = EMPTY_VALUE) {
@@ -260,105 +233,6 @@ function formatDateTime(value: unknown) {
 
 function normalizeForCompare(value: string) {
   return value === EMPTY_VALUE ? "" : value.toLowerCase();
-}
-
-function getStoredToken() {
-  const directKeys = ["ema-access-token", "accessToken", "token", "jwtToken", "bearerToken"];
-
-  for (const key of directKeys) {
-    const value = localStorage.getItem(key);
-    if (value && value.trim()) return value.trim();
-  }
-
-  const objectKeys = ["ema-auth", "auth", "user", "ema-user"];
-
-  for (const key of objectKeys) {
-    const value = localStorage.getItem(key);
-    if (!value) continue;
-
-    try {
-      const parsed = JSON.parse(value) as Record<string, unknown>;
-      const token =
-        parsed.accessToken ||
-        parsed.token ||
-        parsed.jwtToken ||
-        parsed.bearerToken ||
-        (parsed.data as Record<string, unknown> | undefined)?.accessToken ||
-        (parsed.data as Record<string, unknown> | undefined)?.token;
-
-      if (typeof token === "string" && token.trim()) return token.trim();
-    } catch {
-      // ignore malformed localStorage values
-    }
-  }
-
-  return "";
-}
-
-async function readJsonResponse<T>(response: Response, url: string): Promise<T> {
-  const text = await response.text();
-  const contentType = response.headers.get("content-type") || "";
-
-  if (isHtmlPayload(text, contentType)) {
-    throw new Error(`API returned HTML instead of JSON from ${url}.`);
-  }
-
-  let payload: unknown = null;
-  try {
-    payload = text ? JSON.parse(text) : null;
-  } catch {
-    throw new Error(`API returned invalid JSON from ${url}.`);
-  }
-
-  if (!response.ok) {
-    const apiPayload = payload as { message?: string; error?: string } | null;
-    throw new Error(apiPayload?.message || apiPayload?.error || `API request failed with status ${response.status} at ${url}.`);
-  }
-
-  return payload as T;
-}
-
-async function apiGet<T>(path: string): Promise<T> {
-  const token = getStoredToken();
-  if (!token) throw new Error("Access token missing. Please login again.");
-
-  let lastError: Error | null = null;
-  for (const baseUrl of API_BASE_CANDIDATES) {
-    const url = buildApiUrl(baseUrl, path);
-    try {
-      const response = await fetch(url, {
-        method: "GET",
-        headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
-        credentials: "include",
-      });
-      return await readJsonResponse<T>(response, url);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-    }
-  }
-  throw lastError || new Error(`Unable to load API path ${path}.`);
-}
-
-async function apiPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
-  const token = getStoredToken();
-  if (!token) throw new Error("Access token missing. Please login again.");
-
-  let lastError: Error | null = null;
-  for (const baseUrl of API_BASE_CANDIDATES) {
-    const url = buildApiUrl(baseUrl, path);
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        credentials: "include",
-        body: JSON.stringify(body),
-      });
-      return await readJsonResponse<T>(response, url);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-    }
-  }
-  throw lastError || new Error(`Unable to post API path ${path}.`);
 }
 
 function unwrapRows(payload: ApiRowsPayload): Record<string, unknown>[] {
@@ -651,14 +525,12 @@ export default function Software() {
     setApiError("");
 
     const [softwareResult, categoriesResult] = await Promise.allSettled([
-      apiGet<ApiSoftwareRecord[] | { data?: ApiSoftwareRecord[] }>("/api/software"),
-      apiGet<string[] | { data?: string[] }>("/api/software/categories"),
+      softwareService.getSoftware() as Promise<ApiSoftwareRecord[]>,
+      softwareService.getSoftwareCategories() as Promise<string[]>,
     ]);
 
     if (softwareResult.status === "fulfilled") {
-      const softwareResponse = softwareResult.value;
-      const softwarePayload = Array.isArray(softwareResponse) ? softwareResponse : Array.isArray(softwareResponse.data) ? softwareResponse.data : [];
-      setSoftwareRecords(softwarePayload.map(normalizeSoftwareRecord));
+      setSoftwareRecords(softwareResult.value.map(normalizeSoftwareRecord));
     } else {
       const message = softwareResult.reason instanceof Error ? softwareResult.reason.message : "Unable to load software data.";
       setApiError(message);
@@ -667,9 +539,7 @@ export default function Software() {
     }
 
     if (categoriesResult.status === "fulfilled") {
-      const categoriesResponse = categoriesResult.value;
-      const categoryPayload = Array.isArray(categoriesResponse) ? categoriesResponse : Array.isArray(categoriesResponse.data) ? categoriesResponse.data : [];
-      setCategoriesFromApi(categoryPayload.map((item) => cleanCategory(item)).filter(Boolean));
+      setCategoriesFromApi(categoriesResult.value.map((item) => cleanCategory(item)).filter(Boolean));
     } else {
       setCategoriesFromApi([]);
     }
@@ -681,8 +551,7 @@ export default function Software() {
     setTreeLoading(true);
     setTreeError("");
     try {
-      const response = await apiGet<DepartmentNode[] | { data?: DepartmentNode[] }>("/api/departments");
-      const departments = Array.isArray(response) ? response : Array.isArray(response.data) ? response.data : [];
+      const departments = await softwareService.getDepartments() as DepartmentNode[];
       setDeviceTree(buildDeviceTreeFromDepartments(departments));
     } catch (error) {
       const message = "Organization view is not available right now.";
@@ -815,8 +684,7 @@ export default function Software() {
 
     setDeviceTree((prev) => updateTreeNode(prev, node.id, (target) => ({ ...target, devicesLoading: true })));
     try {
-      const response = await apiGet<AssetItem[] | { data?: AssetItem[] }>(`/api/assets/${node.relationId}`);
-      const assets = Array.isArray(response) ? response : Array.isArray(response.data) ? response.data : [];
+      const assets = await softwareService.getAssetsByRelationID(node.relationId) as AssetItem[];
       const deviceChildren = assets.map((asset) => mapAssetToDeviceNode(asset, node.relationId));
 
       setDeviceTree((prev) => updateTreeNode(prev, node.id, (target) => {
@@ -838,16 +706,23 @@ export default function Software() {
     });
   };
 
+  const loadSoftwarePayloadForTable = async (tableKey: Exclude<TableKey, "registry">, relationID: number): Promise<ApiRowsPayload> => {
+    if (tableKey === "licenseStatus") {
+      return softwareService.getSoftwarePackagesByRelation(relationID, { mode: "stat1" }) as Promise<ApiRowsPayload>;
+    }
+
+    if (tableKey === "fileExtensionExe" || tableKey === "fileExtensionDll" || tableKey === "fileExtensionIni") {
+      return softwareService.getSoftwareFilesByRelation(relationID, { mode: "list", extension: getExtensionFromTableKey(tableKey) }) as Promise<ApiRowsPayload>;
+    }
+
+    return softwareService.getInstalledSoftwareByRelation(relationID, { mode: "summary1" }) as Promise<ApiRowsPayload>;
+  };
+
   const loadRowsForTable = async (tableKey: Exclude<TableKey, "registry">, relationID = currentRelationId) => {
     setTableLoading(true);
     setTableError("");
     try {
-      let path = `/api/software/relation/${relationID}/installed?mode=summary1`;
-      if (tableKey === "licenseStatus") path = `/api/software/relation/${relationID}/packages?mode=stat1`;
-      if (tableKey === "fileExtensionExe" || tableKey === "fileExtensionDll" || tableKey === "fileExtensionIni") {
-        path = `/api/software/relation/${relationID}/files?mode=list&extension=${getExtensionFromTableKey(tableKey)}`;
-      }
-      const payload = await apiGet<ApiRowsPayload>(path);
+      const payload = await loadSoftwarePayloadForTable(tableKey, relationID);
       const rows = rowsToTableRows(tableKey, unwrapRows(payload));
       setTableRows((prev) => ({ ...prev, [tableKey]: rows }));
       return rows;
@@ -868,10 +743,9 @@ export default function Software() {
     setTableError("");
     try {
       const agent = (node.objectAgent || "EM").toUpperCase();
-      const path = agent === "MDM" && node.objectDeviceId
-        ? `/api/software/mdm/${encodeURIComponent(node.objectDeviceId)}`
-        : `/api/software/client/${node.assetId}`;
-      const payload = await apiGet<ApiRowsPayload>(path);
+      const payload = agent === "MDM" && node.objectDeviceId
+        ? await softwareService.getSoftwareByMdmDevice(node.objectDeviceId)
+        : await softwareService.getSoftwareByClient(node.assetId);
       const rows = rowsToTableRows("installedSoftware", unwrapRows(payload));
       setTableRows((prev) => ({ ...prev, installedSoftware: rows }));
       setSelected({ mode: "device", tableKey: "installedSoftware", label: node.label, relationId: node.relationId, assetId: node.assetId, objectAgent: node.objectAgent, objectDeviceId: node.objectDeviceId });
@@ -949,9 +823,9 @@ export default function Software() {
         body.Object_Root_Idn = selectedDevice.assetId;
         body.Object_DeviceID = selectedDevice.objectDeviceId;
       }
-      const response = await apiPost<{ data?: { Job_Idn?: number; targetCount?: number }; message?: string }>("/api/software-inventory/scan", body);
-      const jobId = response.data?.Job_Idn || "-";
-      const targetCount = response.data?.targetCount ?? "-";
+      const response = await softwareService.createSoftwareInventoryScan(body) as { Job_Idn?: number; targetCount?: number; message?: string };
+      const jobId = response.Job_Idn || "-";
+      const targetCount = response.targetCount ?? "-";
       showToast({ type: "success", title: "Software scan job created", message: `Job ${jobId} created for ${targetCount} target(s).` });
     } catch (error) {
       showToast({ type: "error", title: "Scan job failed", message: error instanceof Error ? error.message : "Failed to create software scan job." });

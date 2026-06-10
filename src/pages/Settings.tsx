@@ -1,6 +1,17 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import "../styles/resource-planning.css";
+import {
+  accessControls as settingsAccessControls,
+  auditLogs as settingsAuditLogs,
+  devicePricing as settingsDevicePricing,
+  incidentSettings as settingsIncidentConfig,
+  moduleAccess as settingsModuleAccess,
+  pcAgingRule as settingsPcAgingRule,
+  resourcePlanning as settingsResourcePlanning,
+  settingsRoles,
+  settingsUsers,
+} from "../services/settingsService";
 
 type SectionKey = "roles" | "users" | "modules" | "access" | "incident" | "audit" | "pricing" | "aging" | "risk" | "resources";
 type RoleStatus = "Active" | "Review" | "Locked" | "Inactive";
@@ -1049,60 +1060,6 @@ function addAccessForRole(defaultAccess: string) {
   return defaultAccess === "Full Access" || defaultAccess === "Management Access" ? 1 : 0;
 }
 
-const VITE_ENV = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
-const API_BASE = (VITE_ENV.VITE_API_BASE_URL || VITE_ENV.VITE_API_URL || "http://localhost:3001").replace(/\/$/, "");
-
-function getStoredToken() {
-  return (
-    localStorage.getItem("token") ||
-    localStorage.getItem("accessToken") ||
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("emaToken") ||
-    ""
-  );
-}
-
-async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getStoredToken();
-  const headers = new Headers(options.headers || {});
-
-  if (!headers.has("Content-Type") && options.body) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  if (token && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-    credentials: "include",
-  });
-
-  const text = await response.text();
-  let payload: any = null;
-
-  if (text) {
-    try {
-      payload = JSON.parse(text);
-    } catch (parseError) {
-      const isHtml = text.trim().toLowerCase().startsWith("<!doctype") || text.trim().toLowerCase().startsWith("<html");
-      const hint = isHtml
-        ? "Backend returned an HTML page instead of JSON. The API route is missing, the backend was not restarted, or the request is hitting the frontend dev server."
-        : "Backend returned a non-JSON response.";
-      throw new Error(`${hint} [${response.status} ${response.statusText}] ${API_BASE}${path}`);
-    }
-  }
-
-  if (!response.ok) {
-    const message = payload?.message || payload?.error || payload?.errorMessage || `Request failed with status ${response.status}`;
-    throw new Error(message);
-  }
-
-  return payload as T;
-}
-
 function readArrayPayload<T = unknown>(payload: unknown): T[] {
   if (Array.isArray(payload)) return payload as T[];
   if (payload && typeof payload === "object") {
@@ -1513,8 +1470,7 @@ export default function Settings() {
     setUsersError("");
 
     try {
-      const payload = await apiRequest<UsersApiResponse>("/api/settings/users");
-      const rows = Array.isArray(payload.data) ? payload.data : [];
+      const rows = await settingsUsers.getAll() as UserApiRow[];
       const activeRows = rows
         .map(mapUserApiRow)
         .filter((user) => user.isActive !== false && user.status !== "Inactive");
@@ -1538,8 +1494,7 @@ export default function Settings() {
     setRolesError("");
 
     try {
-      const payload = await apiRequest<RolesApiResponse>("/api/settings/roles");
-      const rows = Array.isArray(payload.data) ? payload.data : [];
+      const rows = await settingsRoles.getAll() as RoleApiRow[];
       setAccessRoles(sortAccessRoles(rows.map(normalizeAccessRole)));
       setRolesLoaded(true);
     } catch (error) {
@@ -1560,10 +1515,10 @@ export default function Settings() {
     setModuleError("");
 
     try {
-      const payload = await apiRequest<ModuleAccessApiResponse>("/api/settings/module-access");
-      const modules = (payload.data?.modules || []).map((row) => normalizeModuleRow(row));
-      const permissions = (payload.data?.permissions || []).map((row) => normalizeModulePermission(row));
-      const roles = payload.data?.roles;
+      const payload = await settingsModuleAccess.get() as NonNullable<ModuleAccessApiResponse["data"]>;
+      const modules = (payload.modules || []).map((row) => normalizeModuleRow(row));
+      const permissions = (payload.permissions || []).map((row) => normalizeModulePermission(row));
+      const roles = payload.roles;
 
       setModuleCatalog([...modules].sort((a, b) => (Number(a.sortOrder || 0) - Number(b.sortOrder || 0)) || a.moduleName.localeCompare(b.moduleName)));
       setModulePermissions(permissions);
@@ -1589,8 +1544,7 @@ export default function Settings() {
     setAccessPoliciesError("");
 
     try {
-      const payload = await apiRequest<AccessPoliciesApiResponse>("/api/settings/access-controls");
-      const rows = Array.isArray(payload.data) ? payload.data : [];
+      const rows = await settingsAccessControls.getAll() as AccessPolicyApiRow[];
       setAccessPolicies(sortAccessPolicies(rows.map(normalizeAccessPolicy)));
       setAccessPoliciesLoaded(true);
     } catch (error) {
@@ -1623,7 +1577,7 @@ export default function Settings() {
     setAuditError("");
 
     try {
-      const payload = await apiRequest<AuditLogsApiResponse>(`/api/settings/audit-logs?${buildAuditQueryString(page)}`);
+      const payload = await settingsAuditLogs.get(buildAuditQueryString(page)) as AuditLogsApiResponse;
       const rows = Array.isArray(payload.data) ? payload.data : [];
       setAuditLogs(rows.map(mapAuditLogApiRow).sort((a, b) => getAuditTimestampMs(b) - getAuditTimestampMs(a)));
       setAuditTotalRecords(Number(payload.totalRecords || rows.length || 0));
@@ -1642,16 +1596,13 @@ export default function Settings() {
 
   const logIncidentConfigAudit = async (action: string, details: string, entityType = "", entityID: number | string = "") => {
     try {
-      await apiRequest("/api/settings/audit-logs", {
-        method: "POST",
-        body: JSON.stringify({
-          module: "Incident Config",
-          action,
-          severity: "Success",
-          details,
-          entityType,
-          entityID: String(entityID || ""),
-        }),
+      await settingsAuditLogs.create({
+        module: "Incident Config",
+        action,
+        severity: "Success",
+        details,
+        entityType,
+        entityID: String(entityID || ""),
       });
       setAuditLoaded(false);
     } catch (error) {
@@ -1672,7 +1623,7 @@ export default function Settings() {
       const exportRows: AuditLog[] = [];
 
       do {
-        const payload = await apiRequest<AuditLogsApiResponse>(`/api/settings/audit-logs?${buildAuditQueryString(currentPage, exportPageSize)}`);
+        const payload = await settingsAuditLogs.get(buildAuditQueryString(currentPage, exportPageSize)) as AuditLogsApiResponse;
         const rows = Array.isArray(payload.data) ? payload.data : [];
         exportRows.push(...rows.map(mapAuditLogApiRow));
         totalPagesToRead = Math.max(1, Number(payload.totalPages || 1));
@@ -1712,19 +1663,16 @@ export default function Settings() {
       URL.revokeObjectURL(url);
 
       try {
-        await apiRequest("/api/settings/audit-logs/export-event", {
-          method: "POST",
-          body: JSON.stringify({
-            recordCount: rows.length,
-            filters: {
-              search: filteredContentTerm,
-              module: auditModuleFilter,
-              severity: auditSeverityFilter,
-              dateRange: auditDateFilter,
-              exportMode: "all-filtered-records",
-              maxExportRecords,
-            },
-          }),
+        await settingsAuditLogs.exportEvent({
+          recordCount: rows.length,
+          filters: {
+            search: filteredContentTerm,
+            module: auditModuleFilter,
+            severity: auditSeverityFilter,
+            dateRange: auditDateFilter,
+            exportMode: "all-filtered-records",
+            maxExportRecords,
+          },
         });
       } catch (error) {
         console.warn("Audit export event logging skipped:", error);
@@ -1764,14 +1712,12 @@ export default function Settings() {
 
     try {
       if (editingAccessPolicyIndex === null) {
-        const response = await apiRequest<AccessPoliciesApiResponse>("/api/settings/access-controls", { method: "POST", body: JSON.stringify(payload) });
-        const created = Array.isArray(response.data) ? response.data[0] : response.data;
+        const created = await settingsAccessControls.create(payload) as AccessPolicyApiRow;
         setAccessPolicies((current) => sortAccessPolicies([...current, normalizeAccessPolicy(created || payload)]));
         showToast("success", "Access control added", `${name} has been added.`);
       } else {
         const policyId = getAccessPolicyId(accessPolicyForm);
-        const response = await apiRequest<AccessPoliciesApiResponse>(`/api/settings/access-controls/${policyId}`, { method: "PUT", body: JSON.stringify(payload) });
-        const updated = Array.isArray(response.data) ? response.data[0] : response.data;
+        const updated = await settingsAccessControls.update(policyId, payload) as AccessPolicyApiRow;
         setAccessPolicies((current) => sortAccessPolicies(current.map((item, index) => index === editingAccessPolicyIndex ? normalizeAccessPolicy(updated || { ...item, ...payload }) : item)));
         showToast("success", "Access control updated", `${name} has been updated.`);
       }
@@ -1791,7 +1737,7 @@ export default function Settings() {
     const { policy, index } = accessPolicyDeleteTarget;
 
     try {
-      await apiRequest(`/api/settings/access-controls/${getAccessPolicyId(policy)}`, { method: "DELETE" });
+      await settingsAccessControls.remove(getAccessPolicyId(policy));
       setAccessPolicies((current) => current.filter((_, itemIndex) => itemIndex !== index));
       setAccessPolicyDeleteTarget(null);
       showToast("success", "Access control deleted", `${policy.name} has been deleted.`);
@@ -1822,10 +1768,7 @@ export default function Settings() {
     });
 
     try {
-      await apiRequest("/api/settings/module-access", {
-        method: "PUT",
-        body: JSON.stringify({ moduleId, roleId, canView: nextCanView }),
-      });
+      await settingsModuleAccess.save({ moduleId, roleId, canView: nextCanView });
       showToast("success", "Module access updated", `${role.name} ${nextCanView ? "can access" : "cannot access"} ${module.moduleName}.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to save module access.";
@@ -1863,12 +1806,12 @@ export default function Settings() {
 
     try {
       if (editingAccessRoleIndex === null) {
-        await apiRequest<RolesApiResponse>("/api/settings/roles", { method: "POST", body: JSON.stringify(payload) });
+        await settingsRoles.create(payload);
         showToast("success", "Role created", `${roleName} has been added to Role Based Control.`);
       } else {
         const roleId = accessRoleForm.id || accessRoleForm.roleID;
         if (!roleId) throw new Error("Role ID is missing. Please reload the role list.");
-        await apiRequest<RolesApiResponse>(`/api/settings/roles/${roleId}`, { method: "PUT", body: JSON.stringify(payload) });
+        await settingsRoles.update(roleId, payload);
         showToast("success", "Role updated", `${roleName} has been updated.`);
       }
 
@@ -1898,7 +1841,7 @@ export default function Settings() {
     try {
       if (isProtectedSuperAdminRole(roleDeleteTarget.role)) throw new Error("Super Admin is a protected system role and cannot be deleted.");
       if (!roleId) throw new Error("Role ID is missing. Please reload the role list.");
-      await apiRequest(`/api/settings/roles/${roleId}`, { method: "DELETE" });
+      await settingsRoles.remove(roleId);
       setRoleDeleteTarget(null);
       showToast("success", "Role deleted", `${roleDeleteTarget.role.name} has been deleted.`);
       await loadAccessRoles();
@@ -1914,7 +1857,7 @@ export default function Settings() {
     setPcAgingError("");
 
     try {
-      const payload = await apiRequest<PcAgingApiResponse>("/api/settings/pc-aging-rule");
+      const payload = await settingsPcAgingRule.get() as PcAgingApiResponse;
       setPcAgingRule(normalizePcAgingRule(payload.data?.rule || DEFAULT_PC_AGING_RULE));
       setPcAgingLoaded(true);
     } catch (error) {
@@ -1933,10 +1876,7 @@ export default function Settings() {
     setPcAgingError("");
 
     try {
-      await apiRequest<PcAgingApiResponse>("/api/settings/pc-aging-rule", {
-        method: "POST",
-        body: JSON.stringify(normalizedRule),
-      });
+      await settingsPcAgingRule.save(normalizedRule);
       setPcAgingLoaded(true);
       addActivity("Saved PC aging rule", `Aging threshold set to ${normalizedRule.monitorMaxYears} years · just now`);
       showToast("success", "Aging rule saved", "PC aging rule has been applied successfully.");
@@ -1967,8 +1907,7 @@ export default function Settings() {
 
   const loadPricingCategories = async () => {
     try {
-      const payload = await apiRequest<unknown>("/api/settings/device-pricing/categories");
-      const options = readArrayPayload<string>(payload).filter(Boolean);
+      const options = (await settingsDevicePricing.getCategories()).filter(Boolean);
       setCategoryOptions(options.length ? options : ["Others"]);
     } catch (error) {
       console.error("Failed to load pricing categories:", error);
@@ -1981,8 +1920,7 @@ export default function Settings() {
     if (!cleanCategory || brandOptionsByCategory[cleanCategory]) return;
 
     try {
-      const payload = await apiRequest<unknown>(`/api/settings/device-pricing/brands?category=${encodeURIComponent(cleanCategory)}`);
-      const options = readArrayPayload<string>(payload).filter(Boolean);
+      const options = (await settingsDevicePricing.getBrands(cleanCategory)).filter(Boolean);
       setBrandOptionsByCategory((current) => ({ ...current, [cleanCategory]: options }));
     } catch (error) {
       console.error("Failed to load pricing brands:", error);
@@ -1997,8 +1935,7 @@ export default function Settings() {
     if (!cleanCategory || !cleanBrand || modelOptionsByKey[key]) return;
 
     try {
-      const payload = await apiRequest<unknown>(`/api/settings/device-pricing/models?category=${encodeURIComponent(cleanCategory)}&brand=${encodeURIComponent(cleanBrand)}`);
-      const options = readArrayPayload<string>(payload).filter(Boolean);
+      const options = (await settingsDevicePricing.getModels(cleanCategory, cleanBrand)).filter(Boolean);
       setModelOptionsByKey((current) => ({ ...current, [key]: options }));
     } catch (error) {
       console.error("Failed to load pricing models:", error);
@@ -2011,8 +1948,7 @@ export default function Settings() {
     setPricingError("");
 
     try {
-      const payload = await apiRequest<unknown>("/api/settings/device-pricing");
-      const rows = readArrayPayload<PricingPayloadRow>(payload).map((row, index) => makePricingRow(row, index));
+      const rows = (await settingsDevicePricing.getAll() as PricingPayloadRow[]).map((row, index) => makePricingRow(row, index));
       setPricingRows(rows);
       rows.forEach((row) => {
         if (row.Category) void loadBrandsForCategory(row.Category);
@@ -2073,12 +2009,9 @@ export default function Settings() {
     setPricingError("");
 
     try {
-      const payload = await apiRequest<{ success?: boolean; data?: PricingPayloadRow }>("/api/settings/device-pricing/row", {
-        method: "POST",
-        body: JSON.stringify(row),
-      });
+      const payload = await settingsDevicePricing.saveRow(row) as PricingPayloadRow;
 
-      const savedRow = payload?.data ? makePricingRow(payload.data) : row;
+      const savedRow = payload ? makePricingRow(payload) : row;
       setPricingRows((current) => current.map((item) => (item.id === id ? { ...savedRow, id: savedRow.PricingID ? `pricing-${savedRow.PricingID}` : item.id } : item)));
       showToast("success", "Pricing saved", `${row.Category}${row.Brand ? ` • ${row.Brand}` : ""}${row.Model ? ` • ${row.Model}` : ""} has been saved.`);
     } catch (error) {
@@ -2103,7 +2036,7 @@ export default function Settings() {
 
     try {
       if (row.PricingID) {
-        await apiRequest(`/api/settings/device-pricing/${row.PricingID}`, { method: "DELETE" });
+        await settingsDevicePricing.remove(row.PricingID);
       }
 
       setPricingRows((current) => current.filter((item) => item.id !== row.id));
@@ -2132,11 +2065,8 @@ export default function Settings() {
     setPricingError("");
 
     try {
-      await apiRequest("/api/settings/device-pricing", {
-        method: "POST",
-        body: JSON.stringify({
-          pricing: pricingPayload(pricingRows),
-        }),
+      await settingsDevicePricing.saveAll({
+        pricing: pricingPayload(pricingRows),
       });
 
       await loadDevicePricing();
@@ -2158,9 +2088,9 @@ export default function Settings() {
 
     try {
       const [slaPayload, workingPayload, categoryPayload] = await Promise.all([
-        apiRequest<unknown>("/api/settings/incident-config/sla"),
-        apiRequest<unknown>("/api/settings/incident-config/working-hours"),
-        apiRequest<unknown>("/api/settings/incident-config/categories"),
+        settingsIncidentConfig.getSla(),
+        settingsIncidentConfig.getWorkingHours(),
+        settingsIncidentConfig.getCategories(),
       ]);
 
       const slaRows = readArrayPayload<Record<string, unknown>>(slaPayload).map(normalizeSlaConfigRow);
@@ -2241,14 +2171,8 @@ export default function Settings() {
 
     try {
       await Promise.all([
-        apiRequest("/api/settings/incident-config/sla", {
-          method: "PUT",
-          body: JSON.stringify(slaConfigs),
-        }),
-        apiRequest("/api/settings/incident-config/working-hours", {
-          method: "PUT",
-          body: JSON.stringify(workingHours),
-        }),
+        settingsIncidentConfig.saveSla(slaConfigs),
+        settingsIncidentConfig.saveWorkingHours(workingHours),
       ]);
 
       const auditAction = incidentConfigTab === "sla"
@@ -2275,7 +2199,7 @@ export default function Settings() {
 
 
   const reloadIncidentCategories = async () => {
-    const payload = await apiRequest<unknown>("/api/settings/incident-config/categories");
+    const payload = await settingsIncidentConfig.getCategories();
     const rows = normalizeIncidentCategories(readArrayPayload<Record<string, unknown>>(payload));
     setIncidentCategories(rows);
     setSelectedIncidentCategoryId((current) => current && rows.some((category) => String(category.id) === current) ? current : String(rows[0]?.id ?? ""));
@@ -2317,7 +2241,7 @@ export default function Settings() {
       return;
     }
     void runCategoryAction("category:add", async () => {
-      await apiRequest("/api/settings/incident-config/categories", { method: "POST", body: JSON.stringify({ name }) });
+      await settingsIncidentConfig.createCategory({ name });
       setNewIncidentCategoryName("");
     }, "Category added", `${name} has been added.`, "Added incident category", "HD_IncidentCategories");
   };
@@ -2329,7 +2253,7 @@ export default function Settings() {
       return;
     }
     void runCategoryAction(`category:${category.id}:save`, async () => {
-      await apiRequest(`/api/settings/incident-config/categories/${category.id}`, { method: "PUT", body: JSON.stringify({ name }) });
+      await settingsIncidentConfig.updateCategory(category.id, { name });
     }, "Category saved", `${name} has been saved.`, "Updated incident category", "HD_IncidentCategories", category.id);
   };
 
@@ -2339,7 +2263,7 @@ export default function Settings() {
 
   const confirmDeleteIncidentCategory = (category: IncidentCategorySetupRow) => {
     void runCategoryAction(`category:${category.id}:delete`, async () => {
-      await apiRequest(`/api/settings/incident-config/categories/${category.id}`, { method: "DELETE" });
+      await settingsIncidentConfig.deleteCategory(category.id);
       setIncidentDeleteTarget(null);
     }, "Category deleted", `${category.name} has been removed.`, "Deleted incident category", "HD_IncidentCategories", category.id);
   };
@@ -2352,7 +2276,7 @@ export default function Settings() {
       return;
     }
     void runCategoryAction(`category:${categoryId}:subcategory:add`, async () => {
-      await apiRequest(`/api/settings/incident-config/categories/${categoryId}/subcategories`, { method: "POST", body: JSON.stringify({ name }) });
+      await settingsIncidentConfig.createSubcategory(categoryId, { name });
       setNewIncidentSubcategoryName("");
     }, "Subcategory added", `${name} has been added.`, "Added incident subcategory", "HD_IncidentSubcategories", categoryId);
   };
@@ -2364,7 +2288,7 @@ export default function Settings() {
       return;
     }
     void runCategoryAction(`subcategory:${subcategory.id}:save`, async () => {
-      await apiRequest(`/api/settings/incident-config/subcategories/${subcategory.id}`, { method: "PUT", body: JSON.stringify({ name }) });
+      await settingsIncidentConfig.updateSubcategory(subcategory.id, { name });
     }, "Subcategory saved", `${name} has been saved.`, "Updated incident subcategory", "HD_IncidentSubcategories", subcategory.id);
   };
 
@@ -2374,7 +2298,7 @@ export default function Settings() {
 
   const confirmDeleteIncidentSubcategory = (categoryId: number | string, subcategory: IncidentSubcategorySetupRow) => {
     void runCategoryAction(`subcategory:${subcategory.id}:delete`, async () => {
-      await apiRequest(`/api/settings/incident-config/subcategories/${subcategory.id}`, { method: "DELETE" });
+      await settingsIncidentConfig.deleteSubcategory(subcategory.id);
       setIncidentDeleteTarget(null);
     }, "Subcategory deleted", `${subcategory.name} has been removed.`, "Deleted incident subcategory", "HD_IncidentSubcategories", subcategory.id);
   };
@@ -2387,7 +2311,7 @@ export default function Settings() {
       return;
     }
     void runCategoryAction(`subcategory:${subcategoryId}:detail:add`, async () => {
-      await apiRequest(`/api/settings/incident-config/subcategories/${subcategoryId}/details`, { method: "POST", body: JSON.stringify({ name }) });
+      await settingsIncidentConfig.createDetail(subcategoryId, { name });
       setNewIncidentDetailName("");
     }, "Incident detail added", `${name} has been added.`, "Added incident detail", "HD_IncidentDetails", subcategoryId);
   };
@@ -2399,7 +2323,7 @@ export default function Settings() {
       return;
     }
     void runCategoryAction(`detail:${detail.id}:save`, async () => {
-      await apiRequest(`/api/settings/incident-config/details/${detail.id}`, { method: "PUT", body: JSON.stringify({ name }) });
+      await settingsIncidentConfig.updateDetail(detail.id, { name });
     }, "Incident detail saved", `${name} has been saved.`, "Updated incident detail", "HD_IncidentDetails", detail.id);
   };
 
@@ -2409,7 +2333,7 @@ export default function Settings() {
 
   const confirmDeleteIncidentDetail = (categoryId: number | string, subcategoryId: number | string, detail: IncidentDetailSetupRow) => {
     void runCategoryAction(`detail:${detail.id}:delete`, async () => {
-      await apiRequest(`/api/settings/incident-config/details/${detail.id}`, { method: "DELETE" });
+      await settingsIncidentConfig.deleteDetail(detail.id);
       setIncidentDeleteTarget(null);
     }, "Incident detail deleted", `${detail.name} has been removed.`, "Deleted incident detail", "HD_IncidentDetails", detail.id);
   };
@@ -2421,13 +2345,12 @@ export default function Settings() {
     setResourceError("");
 
     try {
-      const [schedulePayload, engineerPayload] = await Promise.all([
-        apiRequest<unknown>("/api/engineer-availability"),
-        apiRequest<unknown>("/api/engineers"),
+      const [schedules, engineerPayload] = await Promise.all([
+        settingsResourcePlanning.getSchedules() as Promise<ResourceSchedule[]>,
+        settingsResourcePlanning.getEngineers() as Promise<ResourceEngineer[]>,
       ]);
 
-      const schedules = readArrayPayload<ResourceSchedule>(schedulePayload);
-      const engineers = readArrayPayload<ResourceEngineer>(engineerPayload).filter(isResourceSupportEngineer);
+      const engineers = engineerPayload.filter(isResourceSupportEngineer);
 
       setResourceSchedules(schedules);
       setResourceEngineers(engineers);
@@ -2477,14 +2400,11 @@ export default function Settings() {
     setResourceSaving(true);
 
     try {
-      const path = resourceEditingId
-        ? `/api/engineer-availability/${resourceEditingId}`
-        : "/api/engineer-availability";
-
-      await apiRequest(path, {
-        method: resourceEditingId ? "PUT" : "POST",
-        body: JSON.stringify(resourceForm),
-      });
+      if (resourceEditingId) {
+        await settingsResourcePlanning.update(resourceEditingId, resourceForm);
+      } else {
+        await settingsResourcePlanning.create(resourceForm);
+      }
 
       showToast("success", "Resource planning saved", resourceEditingId ? "Engineer leave schedule updated." : "Engineer leave schedule created.");
       resetResourcePlanningForm();
@@ -2510,9 +2430,7 @@ export default function Settings() {
     setResourceSaving(true);
 
     try {
-      await apiRequest(`/api/engineer-availability/${scheduleId}`, {
-        method: "DELETE",
-      });
+      await settingsResourcePlanning.remove(scheduleId);
 
       showToast("success", "Leave removed", "Engineer leave schedule removed.");
       setResourceDeleteTarget(null);
@@ -2762,11 +2680,8 @@ export default function Settings() {
 
     try {
       if (editingUserIndex === null) {
-        const response = await apiRequest<{ success?: boolean; data?: UserApiRow }>("/api/settings/users", {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-        const createdUser = mapUserApiRow(response.data || payload);
+        const response = await settingsUsers.create(payload) as UserApiRow;
+        const createdUser = mapUserApiRow(response || payload);
         setUsers((current) => sortUsersByCreatedDate([createdUser, ...current]));
         addActivity("Added user access", `${createdUser.name} · ${createdUser.role} · just now`);
         showToast("success", "User access added", `${createdUser.name} has been added.`);
@@ -2775,17 +2690,11 @@ export default function Settings() {
         const userId = existingUser?.id || existingUser?.userID;
         if (!userId) throw new Error("User ID is missing. Please reload the user list.");
 
-        const response = await apiRequest<{ success?: boolean; data?: UserApiRow }>(`/api/settings/users/${userId}`, {
-          method: "PUT",
-          body: JSON.stringify(payload),
-        });
-        let updatedUser = mapUserApiRow(response.data || { ...existingUser, ...payload });
+        const response = await settingsUsers.update(userId, payload) as UserApiRow;
+        let updatedUser = mapUserApiRow(response || { ...existingUser, ...payload });
         if (passwordProvided) {
-          const resetResponse = await apiRequest<{ success?: boolean; data?: UserApiRow }>(`/api/settings/users/${userId}/reset-password`, {
-            method: "PUT",
-            body: JSON.stringify({ password: passwordValue }),
-          });
-          updatedUser = mapUserApiRow(resetResponse.data || updatedUser);
+          const resetResponse = await settingsUsers.resetPassword(userId, { password: passwordValue }) as UserApiRow;
+          updatedUser = mapUserApiRow(resetResponse || updatedUser);
         }
         setUsers((current) => sortUsersByCreatedDate(current.map((user, index) => (index === editingUserIndex ? updatedUser : user))));
         addActivity("Updated user access", `${updatedUser.name} · ${updatedUser.role} · just now`);
@@ -2814,7 +2723,7 @@ export default function Settings() {
       const userId = user.id || user.userID;
       if (!userId) throw new Error("User ID is missing. Please reload the user list.");
 
-      await apiRequest(`/api/settings/users/${userId}`, { method: "DELETE" });
+      await settingsUsers.remove(userId);
       setUsers((current) => current.filter((item, itemIndex) => {
         const itemId = item.id || item.userID;
         if (itemId && userId) return String(itemId) !== String(userId);
@@ -3304,7 +3213,7 @@ function IncidentConfigContent({
     <div className="incident-config-module">
       {error && (
         <div className="settings-inline-alert error">
-          <strong>Incident Config API error</strong>
+          <strong>Incident Config load error</strong>
           <span>{error}</span>
         </div>
       )}
@@ -3679,7 +3588,7 @@ function ResourcePlanningContent({
     <div className="resource-planning-module">
       {error && (
         <div className="settings-inline-alert error">
-          <strong>Resource Planning API error</strong>
+          <strong>Resource Planning load error</strong>
           <span>{error}</span>
         </div>
       )}
@@ -3955,7 +3864,7 @@ function RoleContent({ roles, loading, error, search, onEdit, onDelete }: { role
     <div className="uam-panel clean">
       {error && (
         <div className="settings-inline-alert error">
-          <strong>Role API error</strong>
+          <strong>Role load error</strong>
           <span>{error}</span>
         </div>
       )}
@@ -4333,7 +4242,7 @@ function UserAccessContent({ users, sourceUsers, loading, error, search, onSearc
 
       {error && (
         <div className="settings-inline-alert error">
-          <strong>User API error</strong>
+          <strong>User access load error</strong>
           <span>{error}</span>
         </div>
       )}
@@ -4485,7 +4394,7 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
     <div className="uam-panel clean module-control-panel">
       {error && (
         <div className="settings-inline-alert error">
-          <strong>Module access API error</strong>
+          <strong>Module access load error</strong>
           <span>{error}</span>
         </div>
       )}
@@ -4561,7 +4470,7 @@ function AccessControlContent({ policies, loading, error, onReload, onAdd, onEdi
     <div className="uam-panel clean access-control-panel">
       {error && (
         <div className="settings-inline-alert error">
-          <strong>Access control API error</strong>
+          <strong>Access control load error</strong>
           <span>{error}</span>
         </div>
       )}
@@ -4666,7 +4575,7 @@ function AuditContent({
     <div className="audit-log-panel">
       {error && (
         <div className="settings-inline-alert error">
-          <strong>Audit log API error</strong>
+          <strong>Audit log load error</strong>
           <span>{error}</span>
         </div>
       )}

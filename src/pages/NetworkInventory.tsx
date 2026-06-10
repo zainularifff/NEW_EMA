@@ -29,23 +29,14 @@ import {
   Zap,
 } from "lucide-react";
 
+import networkService from "../services/networkService";
+
 type CountKey = "registered" | "notRegistered" | "notInstalled" | "otherDevice";
 type DeviceStatusTab = "device" | "network";
 type NetworkTreeMode = "organization" | "statistics";
 type ManualDeviceStatus = "Active" | "Inactive" | "Maintenance";
 type ScanMode = "all" | "subnet" | "ip";
 type CommandType = "push" | "schedule";
-
-type ApiResponse<T> = {
-  success?: boolean;
-  message?: string;
-  data?: T;
-  page?: number;
-  limit?: number;
-  totalRecords?: number;
-  totalPages?: number;
-  [key: string]: unknown;
-};
 
 type NetworkCounts = Record<CountKey, number>;
 
@@ -146,9 +137,6 @@ const emptyCounts: NetworkCounts = {
 
 const pageSize = 8;
 const statusDetailPageSize = 10;
-
-const API_BASE_URL = String((import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE_URL || "").replace(/\/$/, "");
-const tokenKeys = ["token", "access_token", "accessToken", "authToken", "emaToken", "ema_access_token", "jwt"];
 
 function cx(...items: Array<string | false | null | undefined>) {
   return items.filter(Boolean).join(" ");
@@ -284,58 +272,6 @@ function NetworkCustomSelect({
       {menuNode}
     </div>
   );
-}
-
-function readAuthToken() {
-  for (const key of tokenKeys) {
-    const value = window.localStorage.getItem(key);
-    if (value) return value;
-  }
-
-  const userJson = window.localStorage.getItem("user") || window.localStorage.getItem("emaUser");
-  if (!userJson) return "";
-
-  try {
-    const user = JSON.parse(userJson) as Record<string, unknown>;
-    return String(user.token || user.accessToken || user.access_token || "");
-  } catch {
-    return "";
-  }
-}
-
-async function apiRequest<T>(path: string, options: RequestInit = {}) {
-  const headers = new Headers(options.headers || {});
-  const token = readAuthToken();
-
-  if (token && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
-  if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
-
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-  });
-
-  let payload: ApiResponse<T>;
-  try {
-    payload = (await response.json()) as ApiResponse<T>;
-  } catch {
-    payload = { success: response.ok } as ApiResponse<T>;
-  }
-
-  if (!response.ok || payload.success === false) {
-    throw new Error(payload.message || `Request failed: ${response.status}`);
-  }
-
-  return payload;
-}
-
-function toQuery(params: Record<string, string | number | undefined | null>) {
-  const search = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && String(value).trim() !== "") search.set(key, String(value));
-  });
-  const value = search.toString();
-  return value ? `?${value}` : "";
 }
 
 function getString(value: unknown, fallback = "-") {
@@ -658,10 +594,10 @@ export default function NetworkInventory() {
   const loadManualDevices = useCallback(async () => {
     setManualLoading(true);
     try {
-      const response = await apiRequest<Record<string, unknown>[]>(
-        `/api/network/network-device-status${toQuery({ page: 1, limit: 500, search: manualSearch })}`
-      );
-      setManualRows((Array.isArray(response.data) ? response.data : []).map(normalizeManualDevice));
+      const response = await networkService.getNetworkDeviceStatus({ page: 1, limit: 500, search: manualSearch });
+      const payload = response as { data?: Record<string, unknown>[] };
+      const rows = Array.isArray(payload.data) ? payload.data : Array.isArray(response) ? response : [];
+      setManualRows(rows.map(normalizeManualDevice));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load network device status.");
     } finally {
@@ -676,13 +612,13 @@ export default function NetworkInventory() {
 
     try {
       const [hierarchyResult, dateResult, workgroupResult] = await Promise.allSettled([
-        apiRequest<NetworkHierarchyNode>("/api/network/hierarchy"),
-        apiRequest<{ LastSearchDateStr?: string }>("/api/network/search-date"),
-        apiRequest<Record<string, unknown>[]>("/api/network/workgroup-count"),
+        networkService.getHierarchy(),
+        networkService.getSearchDate(),
+        networkService.getWorkgroupCount(),
       ]);
 
-      if (hierarchyResult.status === "fulfilled" && hierarchyResult.value.data) {
-        const nextHierarchy = hierarchyResult.value.data;
+      if (hierarchyResult.status === "fulfilled" && hierarchyResult.value) {
+        const nextHierarchy = hierarchyResult.value as NetworkHierarchyNode;
         setHierarchy(nextHierarchy);
         setSelectedNodeId(nextHierarchy.id || null);
         setExpandedTreeIds(new Set<string>());
@@ -692,11 +628,12 @@ export default function NetworkInventory() {
       }
 
       if (dateResult.status === "fulfilled") {
-        setLastSearchDate(getString(dateResult.value.data?.LastSearchDateStr, "-"));
+        const datePayload = dateResult.value as { data?: { LastSearchDateStr?: string }; LastSearchDateStr?: string };
+        setLastSearchDate(getString(datePayload.data?.LastSearchDateStr ?? datePayload.LastSearchDateStr, "-"));
       }
 
       if (workgroupResult.status === "fulfilled") {
-        setWorkgroupApiRows(Array.isArray(workgroupResult.value.data) ? workgroupResult.value.data : []);
+        setWorkgroupApiRows(Array.isArray(workgroupResult.value) ? workgroupResult.value : []);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load network inventory.");
@@ -727,12 +664,12 @@ export default function NetworkInventory() {
 
     try {
       const [agentResponse, objectResponse] = await Promise.allSettled([
-        apiRequest<Record<string, unknown>[]>(`/api/network/ip/${encodeURIComponent(ip)}/agent`),
-        apiRequest<Record<string, unknown>[]>(`/api/network/ip/${encodeURIComponent(ip)}/object`),
+        networkService.getIpAgent(ip),
+        networkService.getIpObject(ip),
       ]);
 
-      const agentRow = agentResponse.status === "fulfilled" && Array.isArray(agentResponse.value.data) ? agentResponse.value.data[0] : undefined;
-      const objectRow = objectResponse.status === "fulfilled" && Array.isArray(objectResponse.value.data) ? objectResponse.value.data[0] : undefined;
+      const agentRow = agentResponse.status === "fulfilled" && Array.isArray(agentResponse.value) ? agentResponse.value[0] : undefined;
+      const objectRow = objectResponse.status === "fulfilled" && Array.isArray(objectResponse.value) ? objectResponse.value[0] : undefined;
 
       setIpDetail({
         ip,
@@ -807,16 +744,15 @@ export default function NetworkInventory() {
 
     try {
       if (canCallSubnetApi) {
-        const response = await apiRequest<DeviceDetail[]>(
-          `/api/network/subnet/${encodeURIComponent(selectedNode.label)}/details${toQuery({ type, page: nextPage, limit: statusDetailPageSize })}`
-        );
+        const response = await networkService.getSubnetDetails(selectedNode.label, { type, page: nextPage, limit: statusDetailPageSize });
+        const payload = response as { data?: DeviceDetail[]; page?: number; totalPages?: number; totalRecords?: number };
         setStatusDetail({
           type,
           title,
-          rows: normalizeStatusRows(response.data),
-          page: Number(response.page || nextPage),
-          totalPages: Number(response.totalPages || 1),
-          totalRecords: Number(response.totalRecords || 0),
+          rows: normalizeStatusRows(payload.data),
+          page: Number(payload.page || nextPage),
+          totalPages: Number(payload.totalPages || 1),
+          totalRecords: Number(payload.totalRecords || 0),
           source: "Subnet detail",
           loading: false,
           serverPaginated: true,
@@ -851,12 +787,12 @@ export default function NetworkInventory() {
     setBusy(true);
     try {
       if (clientId > 0) {
-        const response = await apiRequest<Record<string, unknown>[]>(`/api/network/client/${clientId}`);
-        const row = Array.isArray(response.data) ? response.data[0] : undefined;
+        const response = await networkService.getClient(clientId);
+        const row = Array.isArray(response) ? response[0] : undefined;
         setRecordDetail({ title: `Registered Network Client • ${clientId}`, rows: rowsFromObject(row), source: "spGetNIClient" });
       } else if (inventoryId > 0) {
-        const response = await apiRequest<Record<string, unknown>[]>(`/api/network/object/${inventoryId}`);
-        const row = Array.isArray(response.data) ? response.data[0] : undefined;
+        const response = await networkService.getObject(inventoryId);
+        const row = Array.isArray(response) ? response[0] : undefined;
         setRecordDetail({ title: `Network Object • ${inventoryId}`, rows: rowsFromObject(row), source: "spGetNIObject" });
       } else {
         setRecordDetail({ title: detail.computerName || detail.ipAddress || "Network Record", rows: rowsFromObject(raw), source: "current row" });
@@ -897,16 +833,10 @@ export default function NetworkInventory() {
     setBusy(true);
     try {
       if (editingDevice) {
-        await apiRequest(`/api/network/network-device-status/${editingDevice.id}`, {
-          method: "PUT",
-          body: JSON.stringify(payload),
-        });
+        await networkService.updateNetworkDeviceStatus(editingDevice.id, payload);
         showNotice("Network device updated.");
       } else {
-        await apiRequest("/api/network/network-device-status", {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
+        await networkService.createNetworkDeviceStatus(payload);
         showNotice("Network device added.");
       }
 
@@ -923,7 +853,7 @@ export default function NetworkInventory() {
   const handleDeleteDevice = async (device: ManualNetworkDevice) => {
     setBusy(true);
     try {
-      await apiRequest(`/api/network/network-device-status/${device.id}`, { method: "DELETE" });
+      await networkService.deleteNetworkDeviceStatus(device.id);
       showNotice("Network device removed.");
       setDeleteTarget(null);
       await loadManualDevices();
@@ -972,12 +902,9 @@ export default function NetworkInventory() {
 
     setBusy(true);
     try {
-      const response = await apiRequest<{ Job_Idn?: number; targetCount?: number }>("/api/network/scan", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
+      const response = await networkService.createNetworkScanJob(body);
       setScanDialog(null);
-      showNotice(`Scan job created${response.data?.Job_Idn ? `: #${response.data.Job_Idn}` : ""}. Target count: ${response.data?.targetCount ?? body.ips.length}.`);
+      showNotice(`Scan job created${response?.Job_Idn ? `: #${response.Job_Idn}` : ""}. Target count: ${response?.targetCount ?? body.ips.length}.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create scan job.");
     } finally {

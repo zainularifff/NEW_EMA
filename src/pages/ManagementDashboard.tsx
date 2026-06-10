@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import * as Icons from "lucide-react";
 
+import managementDashboardService from "../services/managementDashboardService";
+
 type IconComponent = React.ComponentType<{
   size?: number | string;
   strokeWidth?: number | string;
@@ -3511,42 +3513,6 @@ function Icon({ name, className = "" }: { name: keyof typeof IconSet; className?
   return <Cmp className={`md-icon ${className}`} strokeWidth={2.1} aria-hidden="true" />;
 }
 
-function getAuthHeaders() {
-  const token = localStorage.getItem("token") || localStorage.getItem("accessToken") || sessionStorage.getItem("token") || "";
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-function buildApiUrl(path: string) {
-  const env = (import.meta as any).env || {};
-  const explicitBase = env.VITE_API_URL || env.VITE_API_BASE_URL || "";
-
-  if (explicitBase) {
-    return `${String(explicitBase).replace(/\/$/, "")}${path}`;
-  }
-
-  // Development safety: when Vite runs on 5173/3000 and backend runs on 3001,
-  // a relative /api call returns the frontend HTML page. Force localhost:3001.
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-    const port = window.location.port;
-    const isLocal = host === "localhost" || host === "127.0.0.1";
-    if (isLocal && port && port !== "3001") {
-      return `${window.location.protocol}//${host}:3001${path}`;
-    }
-  }
-
-  return path;
-}
-
-async function readApiJson(res: Response, label: string) {
-  const text = await res.text();
-  try {
-    return text ? JSON.parse(text) : {};
-  } catch (err) {
-    throw new Error(`${label} returned non-JSON response.`);
-  }
-}
-
 function moneyValue(value: unknown) {
   const n = Number(value || 0);
   if (!Number.isFinite(n)) return 0;
@@ -4192,35 +4158,37 @@ export default function ManagementDashboard() {
     setTablePage(1);
   }, [drill.level, drill.area, drill.key]);
 
-  function loadExecutiveStory() {
+  async function loadExecutiveStory() {
     setStoryLoading(true);
-    return fetch(buildApiUrl("/api/management-dashboard/storytelling"), { headers: getAuthHeaders() })
-      .then(async (res) => {
-        const json = await readApiJson(res, "Management dashboard storytelling");
-        if (!res.ok || json?.success === false) throw new Error(json?.message || "Storytelling failed.");
-        setStory(json.data || null);
-      })
-      .catch(() => {
-        setStory(null);
-      })
-      .finally(() => setStoryLoading(false));
+    try {
+      const data = await managementDashboardService.getStorytelling();
+      setStory((data || null) as ExecutiveStory | null);
+    } catch {
+      setStory(null);
+    } finally {
+      setStoryLoading(false);
+    }
   }
 
-  function loadDashboard() {
+  async function loadDashboard() {
     setLoading(true);
     setError("");
-    return fetch(buildApiUrl("/api/management-dashboard/overview"), { headers: getAuthHeaders() })
-      .then(async (res) => {
-        const json = await readApiJson(res, "Management dashboard overview");
-        if (!res.ok || json?.success === false) throw new Error(json?.message || "Management dashboard failed to load.");
-        setDashboard(normalizeDashboard(json.data || json));
-        loadExecutiveStory();
-      })
-      .catch((err) => {
-        setDashboard(EMPTY_DASHBOARD);
-        setError(err?.message || "Management dashboard failed to load.");
-      })
-      .finally(() => setLoading(false));
+    try {
+      const overview = await managementDashboardService.getOverview();
+      setDashboard(normalizeDashboard(overview));
+      const scheduleStoryLoad = () => void loadExecutiveStory();
+      const idleCallback = (window as any).requestIdleCallback;
+      if (typeof idleCallback === "function") {
+        idleCallback(scheduleStoryLoad, { timeout: 2500 });
+      } else {
+        window.setTimeout(scheduleStoryLoad, 800);
+      }
+    } catch (err) {
+      setDashboard(EMPTY_DASHBOARD);
+      setError(err instanceof Error ? err.message : "Management dashboard failed to load.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { loadDashboard(); }, []);
@@ -4246,8 +4214,8 @@ export default function ManagementDashboard() {
   const pillars = useMemo(() => dashboard.pillars.slice(0, 4), [dashboard.pillars]);
   const actions = useMemo(() => dashboard.boardActions.slice(0, 8), [dashboard.boardActions]);
   const signals = useMemo(() => {
-    const apiSignals = dashboard.analysis?.signals || [];
-    if (apiSignals.length) return apiSignals.slice(0, 5);
+    const serviceSignals = dashboard.analysis?.signals || [];
+    if (serviceSignals.length) return serviceSignals.slice(0, 5);
     return pillars.flatMap((pillar) => (pillar.details || []).slice(0, 1).map((detail) => ({
       title: detail.label,
       subtitle: `${detail.value} from ${pillar.title}`,
@@ -4301,18 +4269,14 @@ export default function ManagementDashboard() {
         setDrill({ level: 2, area, key, title, rows, total: rows.length });
         return;
       }
-      // If the overview did not include a local breakdown, ask the backend for the live domain breakdown
-      // instead of showing a misleading empty screen.
+      // If the overview did not include a local breakdown, load the live domain breakdown.
     }
 
     setDrill({ level: 2, area, key, title, rows: [], total: 0, loading: true });
-    const params = new URLSearchParams({ area, key, level: "2" });
-    fetch(buildApiUrl(`/api/management-dashboard/drilldown?${params}`), { headers: getAuthHeaders() })
-      .then(async (res) => {
-        const json = await readApiJson(res, "Management dashboard drilldown");
-        if (!res.ok || json?.success === false) throw new Error(json?.message || "Breakdown failed.");
-        const data = json.data || {};
-        setDrill({ level: 2, area, key, title: title || data.title || "Management Breakdown", rows: data.rows || [], total: data.total || 0 });
+    managementDashboardService.getDrilldown({ area, key, level: "2" })
+      .then((data) => {
+        const result = (data || {}) as { title?: string; rows?: DrillRow[]; total?: number };
+        setDrill({ level: 2, area, key, title: title || result.title || "Management Breakdown", rows: result.rows || [], total: result.total || 0 });
       })
       .catch(() => setDrill({ level: 2, area, key, title, rows: [], total: 0 }));
   }
@@ -4322,16 +4286,10 @@ export default function ManagementDashboard() {
     const parent = drill.level === 2 ? { ...drill, loading: false } : undefined;
     const evidenceTitle = title || key || "Evidence Detail";
     setDrill({ level: 3, area, key, title: evidenceTitle, rows: [], total: 0, loading: true, parent });
-    const params = new URLSearchParams({ area, key, level: "3" });
-    fetch(buildApiUrl(`/api/management-dashboard/drilldown?${params}`), { headers: getAuthHeaders() })
-      .then(async (res) => {
-        const json = await readApiJson(res, "Management dashboard evidence");
-        if (!res.ok || json?.success === false) throw new Error(json?.message || "Evidence failed.");
-        const data = json.data || {};
-        // Keep the exact signal title the user clicked. The backend returns generic technical
-        // titles such as "resources evidence" for API context, which should not replace the
-        // management-facing label like "Offline fleet pressure".
-        setDrill({ level: 3, area, key, title: evidenceTitle, rows: data.rows || [], total: data.total || 0, parent });
+    managementDashboardService.getDrilldown({ area, key, level: "3" })
+      .then((data) => {
+        const result = (data || {}) as { rows?: EvidenceRow[]; total?: number };
+        setDrill({ level: 3, area, key, title: evidenceTitle, rows: result.rows || [], total: result.total || 0, parent });
       })
       .catch(() => setDrill({ level: 3, area, key, title: evidenceTitle, rows: [], total: 0, parent }));
   }
@@ -4359,8 +4317,9 @@ export default function ManagementDashboard() {
       if (["false", "0", "no", "n", "off", "disabled"].includes(text)) return false;
       return null;
     };
-    const countText = (value: number | null, unit = "") => value === null ? "Not recorded" : `${value.toLocaleString()}${unit ? ` ${unit}` : ""}`;
-    const percentText = (value: number | null) => value === null ? "Not recorded" : `${clampPercent(value)}%`;
+    const pendingText = loading ? "Loading..." : "Not recorded";
+    const countText = (value: number | null, unit = "") => value === null ? pendingText : `${value.toLocaleString()}${unit ? ` ${unit}` : ""}`;
+    const percentText = (value: number | null) => value === null ? pendingText : `${clampPercent(value)}%`;
     const exposureValue = typeof dashboard.finance.totalCost === "number" && dashboard.finance.totalCost > 0 ? dashboard.finance.totalCost : null;
     const totalEndpointsValue = metricNumber("totalEndpoints");
     const onlineCoverageValue = metricNumber("onlineCoverage") ?? metricNumber("onlineRate");
@@ -5158,17 +5117,24 @@ export default function ManagementDashboard() {
     );
   }
 
-  const hasData = dashboard.executiveKpis.length > 0 || dashboard.pillars.length > 0 || dashboard.boardActions.length > 0;
+  const hasData =
+    dashboard.executiveKpis.length > 0 ||
+    dashboard.pillars.length > 0 ||
+    dashboard.boardActions.length > 0 ||
+    Object.keys(dashboard.metrics || {}).length > 0 ||
+    Boolean(dashboard.analysis?.signals?.length || dashboard.analysis?.trend?.length) ||
+    Object.values(dashboard.level2 || {}).some((rows) => Array.isArray(rows) && rows.length > 0);
+
+  const shouldRenderDashboard = !error && (hasData || loading);
 
   return (
     <div className="management-center-page">
       <style>{MANAGEMENT_DASHBOARD_INLINE_CSS}</style>
       <main className="management-module-root">
         <div className="md-content">
-          {loading && <div className="md-state-panel">Loading management dashboard...</div>}
           {!loading && error && <div className="md-state-panel md-state-error">{error}</div>}
+          {shouldRenderDashboard && (drill.level === 2 ? renderBreakdownView() : drill.level === 3 ? renderEvidenceView() : renderOverview())}
           {!loading && !error && !hasData && <div className="md-state-panel">No management insight is available right now.</div>}
-          {!loading && !error && hasData && (drill.level === 2 ? renderBreakdownView() : drill.level === 3 ? renderEvidenceView() : renderOverview())}
         </div>
       </main>
     </div>

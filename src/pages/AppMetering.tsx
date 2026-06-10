@@ -22,6 +22,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import appMeteringService from "../services/appMeteringService";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -120,16 +121,6 @@ type UsageRow = {
   raw?: Record<string, unknown>;
 };
 
-type ApiEnvelope<T> = {
-  success?: boolean;
-  message?: string;
-  data?: T;
-  raw?: unknown;
-  totalRecords?: number;
-  procedure?: string;
-  [key: string]: unknown;
-};
-
 type ApiDepartment = {
   Object_Rel_Idn?: number;
   Object_Rel_Name?: string;
@@ -170,9 +161,6 @@ type MeteringActiveRecord = {
 
 type MeteringActiveMap = Record<string, MeteringActiveRecord>;
 
-const API_BASE_URL = ((import.meta.env.VITE_API_BASE_URL as string | undefined) || "http://localhost:3001").replace(/\/$/, "");
-const TOKEN_STORAGE_KEYS = ["ema-access-token", "ema-token", "accessToken", "token", "authToken"];
-const AUTH_PAYLOAD_KEYS = ["ema-auth", "auth", "user", "ema-user", "currentUser", "authUser", "ema-current-user"];
 const PAGE_SIZE = 10;
 const METERING_ACTIVE_STORAGE_KEY = "ema-application-metering-active-scopes";
 
@@ -276,120 +264,6 @@ function defaultStartDate() {
   const date = new Date();
   date.setDate(date.getDate() - 30);
   return formatDateInput(date);
-}
-
-function findTokenInValue(value: unknown, depth = 0): string {
-  if (!value || depth > 5) return "";
-
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (trimmed.startsWith("eyJ")) return trimmed;
-
-    try {
-      return findTokenInValue(JSON.parse(trimmed), depth + 1);
-    } catch {
-      return "";
-    }
-  }
-
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const token = findTokenInValue(item, depth + 1);
-      if (token) return token;
-    }
-    return "";
-  }
-
-  if (typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    const nestedData = asRecord(record.data);
-    const directToken =
-      record.token ||
-      record.accessToken ||
-      record.authToken ||
-      record.jwt ||
-      record.jwtToken ||
-      record.bearerToken ||
-      nestedData?.token ||
-      nestedData?.accessToken;
-
-    if (typeof directToken === "string" && directToken.trim()) return directToken.trim();
-
-    for (const item of Object.values(record)) {
-      const token = findTokenInValue(item, depth + 1);
-      if (token) return token;
-    }
-  }
-
-  return "";
-}
-
-function getStoredAccessToken() {
-  const storages = [window.localStorage, window.sessionStorage];
-
-  for (const storage of storages) {
-    for (const key of TOKEN_STORAGE_KEYS) {
-      const directValue = storage.getItem(key);
-      if (directValue?.trim()) return directValue.trim();
-    }
-
-    for (const key of AUTH_PAYLOAD_KEYS) {
-      const token = findTokenInValue(storage.getItem(key));
-      if (token) return token;
-    }
-
-    for (let index = 0; index < storage.length; index += 1) {
-      const key = storage.key(index);
-      if (!key) continue;
-      const token = findTokenInValue(storage.getItem(key));
-      if (token) return token;
-    }
-  }
-
-  return "";
-}
-
-async function apiRequest<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getStoredAccessToken();
-  if (!token) throw new Error("Access token missing. Please login again.");
-
-  const headers = new Headers(options.headers);
-  headers.set("Accept", "application/json");
-  if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
-  headers.set("Authorization", `Bearer ${token}`);
-
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-    credentials: "include",
-  });
-
-  const rawBody = await response.text();
-  let payload: ApiEnvelope<T> | T;
-
-  try {
-    payload = rawBody ? JSON.parse(rawBody) : ({ success: response.ok } as ApiEnvelope<T>);
-  } catch {
-    throw new Error(`Invalid API response from ${path}`);
-  }
-
-  const envelope = asRecord(payload);
-  if (!response.ok || envelope?.success === false) {
-    const messageParts = [
-      envelope?.message,
-      envelope?.stage ? `Stage: ${envelope.stage}` : "",
-      envelope?.error ? `Error: ${envelope.error}` : "",
-      envelope?.detail ? `Detail: ${envelope.detail}` : "",
-    ]
-      .map((value) => String(value || "").trim())
-      .filter(Boolean);
-
-    const apiError = new Error(messageParts.join(" · ") || `API request failed: ${response.status}`);
-    (apiError as Error & { payload?: unknown }).payload = payload;
-    throw apiError;
-  }
-
-  return payload as T;
 }
 
 function mapDepartmentNode(department: ApiDepartment): TreeNode {
@@ -966,8 +840,7 @@ export default function AppMetering() {
   const loadHierarchy = useCallback(async () => {
     setLoading((prev) => ({ ...prev, hierarchy: true }));
     try {
-      const payload = await apiRequest<unknown>("/api/departments");
-      const departments = getDataArray<ApiDepartment>(payload);
+      const departments = await appMeteringService.getDepartments() as ApiDepartment[];
       const baseTree = buildDepartmentTree(departments);
 
       // Do not load every /api/assets/:relationID record during initial render.
@@ -1008,7 +881,7 @@ export default function AppMetering() {
 
     setLoading((prev) => ({ ...prev, assets: true }));
     try {
-      const response = await apiRequest<unknown>(`/api/assets/${node.relationID}`);
+      const response = await appMeteringService.getAssetsByRelationID(node.relationID);
       const department = departmentPathFromNode(node);
       const rows = getDataArray<ApiAsset>(response)
         .map((asset, index) => normalizeAssetNode(asset, department, index))
@@ -1029,7 +902,7 @@ export default function AppMetering() {
   const loadPackages = useCallback(async () => {
     setLoading((prev) => ({ ...prev, packages: true }));
     try {
-      const payload = await apiRequest<unknown>("/api/application-metering/packages");
+      const payload = await appMeteringService.getPackages();
       const rows = getDataArray<unknown>(payload).map(normalizePackageRow);
       setPackages(rows);
     } catch (err) {
@@ -1047,7 +920,7 @@ export default function AppMetering() {
 
     setLoading((prev) => ({ ...prev, packageFiles: true }));
     try {
-      const payload = await apiRequest<unknown>(`/api/application-metering/packages/${packageId}/files`);
+      const payload = await appMeteringService.getPackageFiles(packageId);
       const objectPayload = getDataObject(payload);
       const rows = (Array.isArray(objectPayload.data) ? objectPayload.data : getDataArray<unknown>(payload)).map(normalizePackageFileRow);
       setPackageFiles(rows);
@@ -1086,12 +959,12 @@ export default function AppMetering() {
     setError("");
 
     try {
-      const usagePayload = await apiRequest<unknown>(`/api/application-metering/usage?${activeFilters.toString()}`);
+      const usagePayload = await appMeteringService.getUsage(Object.fromEntries(activeFilters.entries()));
       const normalizedUsage = getDataArray<unknown>(usagePayload).map(normalizeUsageRow);
       setUsageRows(normalizedUsage);
       setSelectedRowId((prev) => (normalizedUsage.some((row) => row.id === prev) ? prev : normalizedUsage[0]?.id || ""));
 
-      const statsPayload = await apiRequest<unknown>(`/api/application-metering/stats?${activeFilters.toString()}`);
+      const statsPayload = await appMeteringService.getStats(Object.fromEntries(activeFilters.entries()));
       const statsData = getEnvelopeData<AppMeteringStats>(statsPayload, {});
       setStats(statsData || {});
     } catch (err) {
@@ -1302,10 +1175,7 @@ export default function AppMetering() {
         throw new Error("No active Job_Idn is stored for this scope. Start metering once with the updated UI before stopping, so Stop Metering can update the same Task List job.");
       }
 
-      const response = await apiRequest<ApiEnvelope<unknown>>(`/api/application-metering/${action}`, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+      const response = await appMeteringService.runMeteringAction(action, payload);
 
       const responseJobIdn = getMeteringJobIdFromResponse(response) || activeRecord?.jobIdn || 0;
 

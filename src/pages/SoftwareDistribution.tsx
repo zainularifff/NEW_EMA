@@ -24,6 +24,7 @@ import {
   UploadCloud,
   X,
 } from "lucide-react";
+import softwareDistributionService from "../services/softwareDistributionService";
 
 type PackageStatus = "Ready" | "Draft" | "Deployed" | "Archived";
 type DeliveryMethod = "onprem" | "cloud" | "network";
@@ -93,38 +94,6 @@ const deliveryMethodLabels: Record<DeliveryMethod | "mixed" | "-", string> = {
   "-": "-",
 };
 
-function resolveApiBaseUrl() {
-  const envUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
-  if (envUrl) return envUrl.replace(/\/$/, "");
-
-  if (typeof window !== "undefined") {
-    const { protocol, hostname, port } = window.location;
-    const isLocalHost = hostname === "localhost" || hostname === "127.0.0.1";
-
-    // Vite can move from 5173 to 5174/5175/etc when a port is busy.
-    if (isLocalHost && port !== "3001") {
-      return `${protocol}//${hostname}:3001`;
-    }
-  }
-
-  return "";
-}
-
-const API_BASE_URL = resolveApiBaseUrl();
-
-function buildApiUrl(path: string, baseUrl = API_BASE_URL) {
-  if (/^https?:\/\//i.test(path)) return path;
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  return `${baseUrl}${cleanPath}`;
-}
-
-function getLocalBackendBaseUrl() {
-  if (typeof window === "undefined") return "";
-  const { protocol, hostname } = window.location;
-  const isLocalHost = hostname === "localhost" || hostname === "127.0.0.1";
-  return isLocalHost ? `${protocol}//${hostname}:3001` : "";
-}
-
 type CreatePackagePayload = {
   name: string;
   description: string;
@@ -139,74 +108,6 @@ type CreatePackagePayload = {
   fileVersion: string;
   files: File[];
 };
-
-function getAuthHeaders() {
-  const token =
-    localStorage.getItem("token") ||
-    localStorage.getItem("accessToken") ||
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("ema_access_token") ||
-    "";
-
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-async function readApiJson<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const requestHeaders = {
-    ...getAuthHeaders(),
-    ...(init.headers || {}),
-  };
-
-  const requestInit: RequestInit = {
-    ...init,
-    headers: requestHeaders,
-    credentials: "include",
-  };
-
-  const localFallbackBaseUrl = getLocalBackendBaseUrl();
-  const urls = [buildApiUrl(path)];
-
-  if (localFallbackBaseUrl && !urls[0].startsWith(localFallbackBaseUrl)) {
-    urls.push(buildApiUrl(path, localFallbackBaseUrl));
-  }
-
-  let lastError: Error | null = null;
-
-  for (const url of urls) {
-    try {
-      const response = await fetch(url, requestInit);
-      const text = await response.text();
-      const trimmedText = text.trim();
-      const contentType = response.headers.get("content-type") || "";
-      const looksLikeHtml = trimmedText.startsWith("<!DOCTYPE") || trimmedText.startsWith("<html") || contentType.includes("text/html");
-
-      if (looksLikeHtml) {
-        throw new Error(
-          `Service returned unexpected data for ${path}. Checked URL: ${url}`
-        );
-      }
-
-      let data: any = null;
-      if (trimmedText) {
-        try {
-          data = JSON.parse(trimmedText);
-        } catch (parseError) {
-          throw new Error(`Invalid JSON from ${path}. Checked URL: ${url}`);
-        }
-      }
-
-      if (!response.ok || data?.success === false) {
-        throw new Error(data?.message || data?.error || `Request failed: ${response.status}`);
-      }
-
-      return data as T;
-    } catch (err) {
-      lastError = err instanceof Error ? err : new Error(String(err));
-    }
-  }
-
-  throw lastError || new Error(`Request failed: ${path}`);
-}
 
 function formatBytesFromApi(value: unknown) {
   const bytes = Number(value || 0);
@@ -277,14 +178,12 @@ function normalizeTargetDevice(row: any): TargetDevice {
 }
 
 async function fetchPackagesFromApi() {
-  const response = await readApiJson<any>("/api/software-distribution/packages");
-  const rows = Array.isArray(response) ? response : response.data || [];
+  const rows = await softwareDistributionService.getPackages();
   return rows.map(normalizePackageRecord);
 }
 
 async function fetchTargetsFromApi() {
-  const response = await readApiJson<any>("/api/software-distribution/targets");
-  const rows = Array.isArray(response) ? response : response.data || [];
+  const rows = await softwareDistributionService.getTargets();
   return rows.map(normalizeTargetDevice);
 }
 
@@ -307,10 +206,7 @@ async function createPackageViaApi(payload: CreatePackagePayload) {
     formData.append("pkg_File_Versions", payload.fileVersion || "");
   });
 
-  return readApiJson<any>("/api/software-distribution/packages", {
-    method: "POST",
-    body: formData,
-  });
+  return softwareDistributionService.createPackage(formData);
 }
 
 async function deployPackagesViaApi(
@@ -350,11 +246,7 @@ async function deployPackagesViaApi(
       target,
     };
 
-    const response = await readApiJson<any>("/api/software-distribution/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const response = await softwareDistributionService.sendPackage(body);
 
     results.push({ packageName: packageItem.name, request: body, response });
   }
@@ -368,17 +260,12 @@ async function deployPackagesViaApi(
 }
 
 async function deletePackageViaApi(packageName: string) {
-  return readApiJson<any>(`/api/software-distribution/packages/${encodeURIComponent(packageName)}`, {
-    method: "DELETE",
-  });
+  return softwareDistributionService.deletePackage(packageName);
 }
 
 async function deletePackageVersionViaApi(packageName: string, version: string) {
   const versionNumber = String(version).replace(/^VER_/i, "").replace(/^v/i, "");
-  return readApiJson<any>(
-    `/api/software-distribution/packages/${encodeURIComponent(packageName)}/versions/${encodeURIComponent(versionNumber)}`,
-    { method: "DELETE" }
-  );
+  return softwareDistributionService.deletePackageVersion(packageName, versionNumber);
 }
 
 
@@ -1960,11 +1847,21 @@ export default function SoftwareDistribution() {
               );
             })}
 
-            {!treeRows.length && (
+            {hasMoreTreeRows && (
               <div className="settings-helper-card">
-                <Package size={20} />
-                <strong>No package found</strong>
-                <span>Use search or status filter to narrow the package tree.</span>
+                <div className="content-actions">
+                  <button
+                    type="button"
+                    className="soft-btn"
+                    onClick={() =>
+                      setTreeVisibleCount((current) =>
+                        Math.min(current + TREE_PAGE_SIZE, treePackages.length)
+                      )
+                    }
+                  >
+                    Load more packages
+                  </button>
+                </div>
               </div>
             )}
 
@@ -2227,18 +2124,6 @@ export default function SoftwareDistribution() {
                       </tr>
                     );
                   })}
-
-                  {!pageRows.length && (
-                    <tr>
-                      <td colSpan={8}>
-                        <div className="settings-helper-card">
-                          <Package size={26} />
-                          <strong>No package found</strong>
-                          <span>Try another search keyword or reset the filter.</span>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>

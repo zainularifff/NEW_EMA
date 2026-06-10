@@ -12,6 +12,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import taskListService from "../services/taskListService";
 
 type AppButtonVariant =
   | "primary"
@@ -297,9 +298,7 @@ type PendingAction = {
   task: TaskItem;
 } | null;
 
-const API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL || "http://localhost:3001").replace(/\/$/, "");
-
-const fallbackClassifications: SelectOption[] = [
+const DEFAULT_TASK_CLASSIFICATIONS: SelectOption[] = [
   { code: -1, label: "All" },
   { code: 10100, label: "Hardware Inventory" },
   { code: 10200, label: "Software Inventory" },
@@ -310,7 +309,7 @@ const fallbackClassifications: SelectOption[] = [
   { code: 11200, label: "Send Message" },
 ];
 
-const fallbackStates: SelectOption[] = [
+const DEFAULT_TASK_STATES: SelectOption[] = [
   { code: -1, label: "All" },
   { code: 2200, label: "Transferring" },
   { code: 2201, label: "Running" },
@@ -318,47 +317,6 @@ const fallbackStates: SelectOption[] = [
   { code: 2203, label: "Stop" },
   { code: 2204, label: "Cancelled" },
 ];
-
-function getAuthToken() {
-  return (
-    localStorage.getItem("accessToken") ||
-    localStorage.getItem("token") ||
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("ema_access_token") ||
-    ""
-  );
-}
-
-async function requestJson<T>(path: string, options: Omit<RequestInit, "body"> & { body?: unknown } = {}): Promise<T> {
-  const token = getAuthToken();
-  const headers = new Headers(options.headers || {});
-  let body = options.body as BodyInit | null | undefined;
-
-  if (token && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
-  if (body && typeof body !== "string" && !(body instanceof FormData)) {
-    headers.set("Content-Type", "application/json");
-    body = JSON.stringify(body);
-  }
-
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-    body,
-    credentials: "include",
-  });
-
-  const text = await response.text();
-  const payload = text ? JSON.parse(text) : null;
-
-  if (!response.ok || payload?.success === false) {
-    throw new Error(payload?.message || payload?.error || `Request failed with status ${response.status}`);
-  }
-
-  return payload as T;
-}
 
 function normalizeNumber(value: unknown, fallback = 0) {
   const parsed = Number(value);
@@ -561,8 +519,8 @@ const TaskList = () => {
   const [taskDetail, setTaskDetail] = useState<TaskDetailPayload | null>(null);
   const [progressDetails, setProgressDetails] = useState<ProgressDetailItem[]>([]);
   const [targets, setTargets] = useState<TargetItem[]>([]);
-  const [classificationOptions, setClassificationOptions] = useState<SelectOption[]>(fallbackClassifications);
-  const [stateOptions, setStateOptions] = useState<SelectOption[]>(fallbackStates);
+  const [classificationOptions, setClassificationOptions] = useState<SelectOption[]>(DEFAULT_TASK_CLASSIFICATIONS);
+  const [stateOptions, setStateOptions] = useState<SelectOption[]>(DEFAULT_TASK_STATES);
   const [isLoading, setIsLoading] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isProgressLoading, setIsProgressLoading] = useState(false);
@@ -599,17 +557,17 @@ const TaskList = () => {
 
   const loadOptions = useCallback(async () => {
     try {
-      const response = await requestJson<ApiEnvelope<{
+      const response = await taskListService.getOptions<{
         classifications: SelectOption[];
         states: SelectOption[];
-      }>>("/api/task-list/options");
+      }>();
 
-      setClassificationOptions(response.data.classifications?.length ? response.data.classifications : fallbackClassifications);
-      setStateOptions(response.data.states?.length ? response.data.states : fallbackStates);
+      setClassificationOptions(response.data.classifications?.length ? response.data.classifications : DEFAULT_TASK_CLASSIFICATIONS);
+      setStateOptions(response.data.states?.length ? response.data.states : DEFAULT_TASK_STATES);
     } catch (error) {
       console.warn("Task options fallback loaded:", error);
-      setClassificationOptions(fallbackClassifications);
-      setStateOptions(fallbackStates);
+      setClassificationOptions(DEFAULT_TASK_CLASSIFICATIONS);
+      setStateOptions(DEFAULT_TASK_STATES);
     }
   }, []);
 
@@ -618,15 +576,12 @@ const TaskList = () => {
     setErrorMessage("");
 
     try {
-      const response = await requestJson<ApiEnvelope<TaskItem[]>>("/api/task-list/search", {
-        method: "POST",
-        body: {
-          classification,
-          state,
-          fromDate,
-          job_starttime: fromDate,
-          limit: 1000,
-        },
+      const response = await taskListService.searchTasks<TaskItem[]>({
+        classification,
+        state,
+        fromDate,
+        job_starttime: fromDate,
+        limit: 1000,
       });
 
       const normalized = (response.data || []).map((task) => normalizeTask(task));
@@ -654,7 +609,7 @@ const TaskList = () => {
     setErrorMessage("");
 
     try {
-      const response = await requestJson<ApiEnvelope<TaskDetailPayload>>(`/api/task-list/${taskId}/detail`);
+      const response = await taskListService.getTaskDetail<TaskDetailPayload>(taskId);
       const detail = response.data;
       const normalizedTask = normalizeTask(detail.task || {});
       const normalizedProgress = normalizeProgress(detail.progress || {}, normalizedTask);
@@ -810,9 +765,8 @@ const TaskList = () => {
 
     setIsActionLoading(true);
     try {
-      const response = await requestJson<ApiEnvelope<Record<string, unknown>>>(`/api/task-list/${pendingAction.task.id}/action`, {
-        method: "POST",
-        body: { action: pendingAction.action },
+      const response = await taskListService.runTaskAction<Record<string, unknown>>(pendingAction.task.id, {
+        action: pendingAction.action,
       });
 
       showToast({

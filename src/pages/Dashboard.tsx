@@ -257,27 +257,6 @@ type ItOpsDashboardData = {
   attentionQueue: AttentionItem[];
 };
 
-type DailyAiInsight = {
-  status: string;
-  tone?: CardTone;
-  headline: string;
-  summary: string;
-  narrative?: string;
-  keySignals?: string[];
-  boardRecommendation?: string;
-  actionItems?: string[];
-  source?: string;
-  cacheStatus?: string;
-  refreshPolicy?: string;
-  generatedAt?: string | null;
-  nextRefreshAt?: string | null;
-  isStale?: boolean;
-  message?: string;
-  model?: string;
-  hasGeminiKey?: boolean;
-  fallbackReason?: string;
-};
-
 type FocusCard = {
   id: string;
   label: string;
@@ -443,6 +422,9 @@ function resolveApiBaseUrl() {
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
+
+const ITOPS_DASHBOARD_CLIENT_CACHE_MS = 45000;
+let itopsDashboardClientCache: { at: number; data: ItOpsDashboardData } | null = null;
 
 function safeParseJson<T>(raw: string | null): T | null {
   if (!raw) return null;
@@ -614,12 +596,18 @@ function normalizeDashboardData(raw: Partial<ItOpsDashboardData> | null | undefi
   };
 }
 
-async function fetchItOpsDashboardData() {
+async function fetchItOpsDashboardData(forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && itopsDashboardClientCache && now - itopsDashboardClientCache.at < ITOPS_DASHBOARD_CLIENT_CACHE_MS) {
+    return itopsDashboardClientCache.data;
+  }
+
   const token = getStoredAccessToken();
   const headers = new Headers({ Accept: 'application/json' });
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
-  const response = await fetch(`${API_BASE_URL}/api/dashboard/it-operations`, {
+  const refreshQuery = forceRefresh ? '?refresh=1' : '';
+  const response = await fetch(`${API_BASE_URL}/api/dashboard/it-operations${refreshQuery}`, {
     headers,
     credentials: 'include',
   });
@@ -630,49 +618,11 @@ async function fetchItOpsDashboardData() {
     throw new Error(payload?.error || payload?.message || `Dashboard API failed: ${response.status}`);
   }
 
-  return normalizeDashboardData(payload?.data ?? payload);
+  const data = normalizeDashboardData(payload?.data ?? payload);
+  itopsDashboardClientCache = { at: Date.now(), data };
+  return data;
 }
 
-
-async function fetchDailyDashboardInsight(): Promise<DailyAiInsight> {
-  const token = getStoredAccessToken();
-  const headers = new Headers({ Accept: 'application/json' });
-  if (token) headers.set('Authorization', `Bearer ${token}`);
-
-  const response = await fetch(`${API_BASE_URL}/api/management-dashboard/storytelling`, {
-    headers,
-    credentials: 'include',
-  });
-
-  const payload = await response.json().catch(() => null);
-
-  if (!response.ok || payload?.success === false) {
-    throw new Error(payload?.error || payload?.message || `Daily AI insight failed: ${response.status}`);
-  }
-
-  const data = payload?.data ?? payload ?? {};
-
-  return {
-    status: String(data.status || 'Daily AI Insight'),
-    tone: (data.tone || 'blue') as CardTone,
-    headline: String(data.headline || 'Daily AI insight is being prepared'),
-    summary: String(data.summary || data.message || 'The dashboard remains available while AI insight refreshes in the background.'),
-    narrative: data.narrative ? String(data.narrative) : undefined,
-    keySignals: Array.isArray(data.keySignals) ? data.keySignals.map(String).slice(0, 4) : [],
-    boardRecommendation: data.boardRecommendation ? String(data.boardRecommendation) : undefined,
-    actionItems: Array.isArray(data.actionItems) ? data.actionItems.map(String).slice(0, 3) : [],
-    source: data.source ? String(data.source) : undefined,
-    cacheStatus: String(data.cacheStatus || payload.cacheStatus || 'ready'),
-    refreshPolicy: String(data.refreshPolicy || payload.refreshPolicy || 'AI-generated insight is refreshed once daily.'),
-    generatedAt: data.generatedAt || null,
-    nextRefreshAt: data.nextRefreshAt || null,
-    isStale: Boolean(data.isStale),
-    message: data.message ? String(data.message) : undefined,
-    model: data.model || payload.model,
-    hasGeminiKey: Boolean(data.hasGeminiKey ?? payload.hasGeminiKey),
-    fallbackReason: data.fallbackReason ? String(data.fallbackReason) : undefined,
-  };
-}
 
 function exportJsonFile(name: string, data: unknown) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8;' });
@@ -720,51 +670,11 @@ function EmptyState({ label = 'No live data returned from API yet.' }: { label?:
 }
 
 
-function DailyAiInsightPanel({
-  insight,
-  loading,
-  error,
-  onRefresh,
-}: {
-  insight: DailyAiInsight | null;
-  loading: boolean;
-  error: string;
-  onRefresh: () => void;
-}) {
-  const cacheStatus = insight?.cacheStatus || (loading ? 'loading' : 'pending');
-  const statusLabel = insight?.isStale ? 'Latest available insight' : cacheStatus === 'ready' ? 'Daily AI insight' : 'AI insight refresh';
-
-  return (
-    <section className={`itops-pro-ai-panel itops-pro-ai-panel-${insight?.tone || 'blue'}`}>
-      <div className="itops-pro-ai-icon">
-        {loading ? <Loader2 size={20} className="itops-pro-spin" /> : error ? <AlertTriangle size={20} /> : <Sparkles size={20} />}
-      </div>
-      <div className="itops-pro-ai-content">
-        <div className="itops-pro-ai-meta">
-          <span>{statusLabel}</span>
-          <span>{insight?.refreshPolicy || 'AI-generated insight is refreshed once daily.'}</span>
-        </div>
-        <h3>{insight?.headline || (loading ? 'Loading cached AI insight...' : 'Daily AI insight is being prepared')}</h3>
-        <p>{error || insight?.summary || 'Dashboard data is available now. AI insight will update in the background without blocking the page.'}</p>
-        <div className="itops-pro-ai-foot">
-          <span>Last updated: {formatDateLabel(insight?.generatedAt)}</span>
-          <span>Next refresh: {formatDateLabel(insight?.nextRefreshAt)}</span>
-          {insight?.source && <span>Source: {insight.source === 'gemini' ? 'AI assisted' : insight.source}</span>}
-        </div>
-      </div>
-      <button type="button" className="itops-pro-ai-refresh" onClick={onRefresh} disabled={loading} title="Reload cached AI insight">
-        {loading ? <Loader2 size={15} className="itops-pro-spin" /> : <RefreshCw size={15} />}
-        Refresh insight
-      </button>
-    </section>
-  );
-}
-
 function KpiCard({ card, onOpen }: { card: FocusCard; onOpen: (view: string) => void }) {
   const Icon = card.icon;
 
   return (
-    <button type="button" className={`itops-pro-kpi itops-pro-kpi-${card.tone}`} onClick={() => onOpen(card.view)}>
+    <button type="button" className={`itops-pro-kpi itops-pro-kpi-${card.tone}`} onClick={() => onOpen(card.view)} aria-haspopup="dialog" data-drilldown-view={card.view}>
       <div className="itops-pro-kpi-top">
         <span className="itops-pro-kpi-icon"><Icon size={20} /></span>
         <StatusBadge status={card.status} />
@@ -1109,9 +1019,6 @@ export default function ITOperationsDashboard() {
   const [dashboardData, setDashboardData] = useState<ItOpsDashboardData>(EMPTY_DASHBOARD_DATA);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [dailyAiInsight, setDailyAiInsight] = useState<DailyAiInsight | null>(null);
-  const [isInsightLoading, setIsInsightLoading] = useState(false);
-  const [insightError, setInsightError] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('All Departments');
   const [search, setSearch] = useState('');
   const [activeView, setActiveView] = useState<string | null>(null);
@@ -1158,27 +1065,12 @@ export default function ITOperationsDashboard() {
   }, [activeView, viewHistory]);
   const pageRef = useRef<HTMLDivElement | null>(null);
 
-  const loadDailyAiInsight = useCallback(async () => {
-    setIsInsightLoading(true);
-    setInsightError('');
-
-    try {
-      const insight = await fetchDailyDashboardInsight();
-      setDailyAiInsight(insight);
-    } catch (loadError) {
-      console.warn('Daily AI insight could not be loaded:', loadError);
-      setInsightError(loadError instanceof Error ? loadError.message : 'Daily AI insight is temporarily unavailable.');
-    } finally {
-      setIsInsightLoading(false);
-    }
-  }, []);
-
-  const loadDashboard = useCallback(async () => {
+  const loadDashboard = useCallback(async (forceRefresh = false) => {
     setIsLoading(true);
     setError('');
 
     try {
-      const data = await fetchItOpsDashboardData();
+      const data = await fetchItOpsDashboardData(forceRefresh);
       setDashboardData(data);
     } catch (loadError) {
       console.error('Failed to load IT Operations dashboard:', loadError);
@@ -1194,98 +1086,14 @@ export default function ITOperationsDashboard() {
   }, [loadDashboard]);
 
   useEffect(() => {
-    void loadDailyAiInsight();
-  }, [loadDailyAiInsight]);
-
-  useEffect(() => {
-    const pageElement = pageRef.current;
-    const touched = new Map<HTMLElement, Map<string, { value: string; priority: string }>>();
-
-    const remember = (element: HTMLElement, property: string) => {
-      if (!touched.has(element)) touched.set(element, new Map());
-      const elementStyles = touched.get(element);
-      if (elementStyles && !elementStyles.has(property)) {
-        elementStyles.set(property, {
-          value: element.style.getPropertyValue(property),
-          priority: element.style.getPropertyPriority(property),
-        });
-      }
-    };
-
-    const forceStyle = (element: HTMLElement | null | undefined, property: string, value: string) => {
-      if (!element) return;
-      remember(element, property);
-      element.style.setProperty(property, value, 'important');
-    };
-
-    document.documentElement.classList.add('itops-dashboard-scroll-enabled');
-    document.body.classList.add('itops-dashboard-scroll-enabled');
-
-    forceStyle(document.documentElement, 'height', 'auto');
-    forceStyle(document.documentElement, 'min-height', '100%');
-    forceStyle(document.documentElement, 'max-height', 'none');
-    forceStyle(document.documentElement, 'overflow-y', 'auto');
-    forceStyle(document.documentElement, 'overflow-x', 'hidden');
-
-    forceStyle(document.body, 'height', 'auto');
-    forceStyle(document.body, 'min-height', '100%');
-    forceStyle(document.body, 'max-height', 'none');
-    forceStyle(document.body, 'overflow-y', 'auto');
-    forceStyle(document.body, 'overflow-x', 'hidden');
-
-    const scrollContainers = new Set<HTMLElement>();
-    const rootElement = document.getElementById('root');
-    if (rootElement) scrollContainers.add(rootElement);
-
-    let parent = pageElement?.parentElement || null;
-    while (parent && parent !== document.body && parent !== document.documentElement) {
-      scrollContainers.add(parent);
-      parent = parent.parentElement;
-    }
-
-    [
-      'main',
-      '.main-content',
-      '.page-content',
-      '.dashboard-page',
-      '.dashboard-content',
-      '.ema-main',
-      '.ema-main-content',
-      '.app-main',
-      '.app-content',
-      '.content-wrapper',
-      '.content-area',
-      '.layout-content',
-      '.page-container',
-      '.router-content',
-    ].forEach((selector) => {
-      document.querySelectorAll<HTMLElement>(selector).forEach((element) => scrollContainers.add(element));
-    });
-
-    scrollContainers.forEach((element) => {
-      forceStyle(element, 'height', 'auto');
-      forceStyle(element, 'min-height', '0');
-      forceStyle(element, 'max-height', 'none');
-      forceStyle(element, 'overflow-y', 'visible');
-      forceStyle(element, 'overflow-x', 'hidden');
-    });
-
-    forceStyle(pageElement, 'height', 'auto');
-    forceStyle(pageElement, 'min-height', '100vh');
-    forceStyle(pageElement, 'max-height', 'none');
-    forceStyle(pageElement, 'overflow-y', 'visible');
-    forceStyle(pageElement, 'overflow-x', 'hidden');
+    document.documentElement.classList.add('itops-dashboard-page-active', 'md-dashboard-page-active');
+    document.body.classList.add('itops-dashboard-page-active', 'md-dashboard-page-active');
+    document.documentElement.classList.remove('itops-dashboard-scroll-enabled', 'md-management-dashboard-active');
+    document.body.classList.remove('itops-dashboard-scroll-enabled', 'md-management-dashboard-active');
 
     return () => {
-      document.documentElement.classList.remove('itops-dashboard-scroll-enabled');
-      document.body.classList.remove('itops-dashboard-scroll-enabled');
-
-      touched.forEach((properties, element) => {
-        properties.forEach(({ value, priority }, property) => {
-          if (value) element.style.setProperty(property, value, priority);
-          else element.style.removeProperty(property);
-        });
-      });
+      document.documentElement.classList.remove('itops-dashboard-page-active', 'md-dashboard-page-active');
+      document.body.classList.remove('itops-dashboard-page-active', 'md-dashboard-page-active');
     };
   }, []);
 
@@ -2345,7 +2153,7 @@ export default function ITOperationsDashboard() {
           <button type="button" className="itops-pro-outline-btn" onClick={() => exportJsonFile('itops-dashboard-snapshot.json', dashboardData)}>
             <Download size={16} /> Export
           </button>
-          <button type="button" className="itops-pro-primary-btn" onClick={() => void loadDashboard()} disabled={isLoading}>
+          <button type="button" className="itops-pro-primary-btn" onClick={() => void loadDashboard(true)} disabled={isLoading}>
             {isLoading ? <Loader2 size={16} className="itops-pro-spin" /> : <RefreshCw size={16} />} Refresh
           </button>
         </div>
@@ -2360,13 +2168,6 @@ export default function ITOperationsDashboard() {
           </div>
         </div>
       )}
-
-      <DailyAiInsightPanel
-        insight={dailyAiInsight}
-        loading={isInsightLoading}
-        error={insightError}
-        onRefresh={() => void loadDailyAiInsight()}
-      />
 
       {renderCommandMode()}
 
@@ -2404,74 +2205,68 @@ export default function ITOperationsDashboard() {
 
 const ITOPS_PRO_STYLES = `
 .itops-pro-page {
-  position: relative;
-  min-height: 100vh;
-  height: auto;
-  max-height: none;
-  padding: 28px 28px 72px;
-  overflow: visible;
-  color: #101828;
-  background:
-    radial-gradient(circle at 12% 10%, rgba(47, 128, 237, 0.14), transparent 26%),
-    radial-gradient(circle at 88% 12%, rgba(124, 58, 237, 0.13), transparent 28%),
-    linear-gradient(180deg, #f8fbff 0%, #eef4fb 48%, #f8fafc 100%);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-
-html.itops-dashboard-scroll-enabled,
-body.itops-dashboard-scroll-enabled,
-html:has(.itops-pro-page),
-body:has(.itops-pro-page) {
-  height: auto !important;
-  min-height: 100% !important;
-  max-height: none !important;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
   overflow-y: auto !important;
   overflow-x: hidden !important;
+  margin: 0;
+  padding: 14px 14px 18px;
+  color: #101828;
+  background: linear-gradient(180deg, #f8fbff 0%, #f4f8fc 44%, #eef4fb 100%);
+  font-family: var(--ema-font-sans, var(--ema-font-body, "Aptos", "Inter", "Manrope", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif));
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
 }
 
-body.itops-dashboard-scroll-enabled #root,
-body:has(.itops-pro-page) #root {
-  height: auto !important;
-  min-height: 100% !important;
-  max-height: none !important;
-  overflow-y: visible !important;
-  overflow-x: hidden !important;
+.itops-pro-page::-webkit-scrollbar { width: 6px; }
+.itops-pro-page::-webkit-scrollbar-track { background: rgba(226, 232, 240, 0.55); border-radius: 999px; }
+.itops-pro-page::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.65); border-radius: 999px; border: 1px solid rgba(226, 232, 240, 0.55); }
+.itops-pro-page::-webkit-scrollbar-thumb:hover { background: rgba(71, 85, 105, 0.78); }
+
+html.itops-dashboard-page-active,
+body.itops-dashboard-page-active,
+body.itops-dashboard-page-active #root {
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+  background: #f4f8fc !important;
 }
 
-body.itops-dashboard-scroll-enabled main,
-body.itops-dashboard-scroll-enabled .main-content,
-body.itops-dashboard-scroll-enabled .page-content,
-body.itops-dashboard-scroll-enabled .dashboard-page,
-body.itops-dashboard-scroll-enabled .dashboard-content,
-body.itops-dashboard-scroll-enabled .ema-main,
-body.itops-dashboard-scroll-enabled .ema-main-content,
-body.itops-dashboard-scroll-enabled .app-main,
-body.itops-dashboard-scroll-enabled .app-content,
-body.itops-dashboard-scroll-enabled .content-wrapper,
-body.itops-dashboard-scroll-enabled .content-area,
-body.itops-dashboard-scroll-enabled .layout-content,
-body.itops-dashboard-scroll-enabled .page-container,
-body.itops-dashboard-scroll-enabled .router-content,
-body:has(.itops-pro-page) main,
-body:has(.itops-pro-page) .main-content,
-body:has(.itops-pro-page) .page-content,
-body:has(.itops-pro-page) .dashboard-page,
-body:has(.itops-pro-page) .dashboard-content,
-body:has(.itops-pro-page) .ema-main,
-body:has(.itops-pro-page) .ema-main-content,
-body:has(.itops-pro-page) .app-main,
-body:has(.itops-pro-page) .app-content,
-body:has(.itops-pro-page) .content-wrapper,
-body:has(.itops-pro-page) .content-area,
-body:has(.itops-pro-page) .layout-content,
-body:has(.itops-pro-page) .page-container,
-body:has(.itops-pro-page) .router-content {
-  height: auto !important;
+body.itops-dashboard-page-active .ema-main,
+body.itops-dashboard-page-active .ema-content,
+body.itops-dashboard-page-active .ema-content-area,
+body.itops-dashboard-page-active .app-main,
+body.itops-dashboard-page-active .app-content,
+body.itops-dashboard-page-active .layout-main,
+body.itops-dashboard-page-active .layout-content,
+body.itops-dashboard-page-active .main,
+body.itops-dashboard-page-active .main-content,
+body.itops-dashboard-page-active main {
   min-height: 0 !important;
-  max-height: none !important;
-  overflow-y: visible !important;
-  overflow-x: hidden !important;
+  overflow: hidden !important;
+  background: #f4f8fc !important;
+}
+
+body.itops-dashboard-page-active .ema-page,
+body.itops-dashboard-page-active .page-content,
+body.itops-dashboard-page-active .content,
+body.itops-dashboard-page-active .content-area,
+body.itops-dashboard-page-active .dashboard-page,
+body.itops-dashboard-page-active .dashboard-content,
+body.itops-dashboard-page-active .page-container,
+body.itops-dashboard-page-active .router-content {
+  height: calc(100dvh - 76px) !important;
+  max-height: calc(100dvh - 76px) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: #f4f8fc !important;
 }
 
 .itops-pro-bg-grid {
@@ -2479,119 +2274,30 @@ body:has(.itops-pro-page) .router-content {
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(16, 24, 40, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(16, 24, 40, 0.035) 1px, transparent 1px);
-  background-size: 42px 42px;
-  mask-image: linear-gradient(to bottom, black, transparent 86%);
+    linear-gradient(rgba(100, 116, 139, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 116, 139, 0.07) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(180deg, transparent 0%, black 12%, black 78%, transparent 100%);
+}
+
+.itops-pro-page > :not(style):not(.itops-pro-bg-grid):not(.itops-pro-modal-overlay) {
+  position: relative;
+  z-index: 1;
+}
+
+.itops-pro-page button,
+.itops-pro-page [role="button"],
+.itops-pro-kpi,
+.itops-pro-insight,
+.itops-pro-health,
+.itops-pro-queue-row,
+.itops-pro-drill-card,
+.itops-risk-command-summary,
+.itops-risk-severity {
+  pointer-events: auto;
 }
 
 .itops-pro-page * { box-sizing: border-box; }
-
-.itops-pro-hero,
-.itops-pro-tabs,
-.itops-pro-kpi-grid,
-.itops-pro-command-grid,
-.itops-pro-level-grid,
-.itops-pro-quick-grid,
-
-.itops-pro-ai-panel {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 16px;
-  margin: 18px 0;
-  padding: 16px 18px;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
-}
-
-.itops-pro-ai-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 18px;
-  color: #ffffff;
-  background: linear-gradient(135deg, #2563eb, #38bdf8);
-}
-
-.itops-pro-ai-content h3,
-.itops-pro-ai-content p {
-  margin: 0;
-}
-
-.itops-pro-ai-content h3 {
-  margin-top: 4px;
-  color: #0f172a;
-  font-size: 17px;
-  font-weight: 950;
-  letter-spacing: -0.02em;
-}
-
-.itops-pro-ai-content p {
-  margin-top: 4px;
-  color: #475569;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.45;
-}
-
-.itops-pro-ai-meta,
-.itops-pro-ai-foot {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.itops-pro-ai-foot {
-  margin-top: 9px;
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 800;
-}
-
-.itops-pro-ai-refresh {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 36px;
-  padding: 0 12px;
-  border: 1px solid #dbe3ef;
-  border-radius: 999px;
-  color: #0f172a;
-  background: #ffffff;
-  font-size: 12px;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.itops-pro-ai-refresh:disabled {
-  cursor: wait;
-  opacity: 0.65;
-}
-
-.itops-pro-ai-panel-amber .itops-pro-ai-icon { background: linear-gradient(135deg, #d97706, #fbbf24); }
-.itops-pro-ai-panel-red .itops-pro-ai-icon { background: linear-gradient(135deg, #dc2626, #fb7185); }
-.itops-pro-ai-panel-green .itops-pro-ai-icon { background: linear-gradient(135deg, #059669, #34d399); }
-.itops-pro-ai-panel-purple .itops-pro-ai-icon { background: linear-gradient(135deg, #7c3aed, #c084fc); }
-
-@media (max-width: 900px) {
-  .itops-pro-ai-panel {
-    grid-template-columns: 1fr;
-  }
-
-  .itops-pro-ai-refresh {
-    width: fit-content;
-  }
-}
 
 .itops-pro-error,
 .itops-pro-loading {
@@ -2600,6 +2306,8 @@ body:has(.itops-pro-page) .router-content {
 }
 
 .itops-pro-hero {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -3573,7 +3281,7 @@ body:has(.itops-pro-page) .router-content {
 .itops-pro-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: 3000 !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3937,7 +3645,7 @@ body:has(.itops-pro-page) .router-content {
 }
 
 @media (max-width: 980px) {
-  .itops-pro-page { padding: 16px 16px 56px; }
+  .itops-pro-page { padding: 10px 8px 18px; }
   .itops-pro-hero { flex-direction: column; padding: 22px; }
   .itops-pro-hero-actions { width: 100%; }
   .itops-pro-outline-btn,

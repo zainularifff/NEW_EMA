@@ -41,6 +41,50 @@ const { getMdmConfig } = require("./src/utils/mdmConfig");
 
 const app = express();
 
+
+// ============================================================
+// LIGHTWEIGHT DASHBOARD RESPONSE CACHE
+// Keeps expensive dashboard aggregation from running repeatedly
+// when users navigate between dashboards or refresh the same page.
+// Bypass with ?refresh=1 or ?noCache=1.
+// ============================================================
+const DASHBOARD_CACHE_TTL_MS = Number(process.env.DASHBOARD_CACHE_TTL_MS || 120000);
+const dashboardResponseCache = new Map();
+
+function cloneDashboardPayload(value) {
+    if (value === undefined || value === null) return value;
+    try {
+        return JSON.parse(JSON.stringify(value));
+    } catch (err) {
+        return value;
+    }
+}
+
+function readDashboardCache(key) {
+    if (!key || DASHBOARD_CACHE_TTL_MS <= 0) return null;
+    const entry = dashboardResponseCache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.createdAt > entry.ttlMs) {
+        dashboardResponseCache.delete(key);
+        return null;
+    }
+    return cloneDashboardPayload(entry.data);
+}
+
+function writeDashboardCache(key, data, ttlMs = DASHBOARD_CACHE_TTL_MS) {
+    if (!key || !data || ttlMs <= 0) return;
+    dashboardResponseCache.set(key, {
+        createdAt: Date.now(),
+        ttlMs,
+        data: cloneDashboardPayload(data)
+    });
+}
+
+function shouldBypassDashboardCache(req) {
+    const refresh = String(req?.query?.refresh || req?.query?.noCache || req?.query?.nocache || '').toLowerCase();
+    return refresh === '1' || refresh === 'true' || refresh === 'yes';
+}
+
 if (compression) {
     app.use(compression({
         threshold: 1024
@@ -1277,6 +1321,123 @@ WHERE a.Object_PR_Idn = @parentID
     return departments;
 }
 
+
+async function getAllHardwareInventoryAssets(pool, options = {}) {
+    const limit = Math.max(1, Math.min(parseInt(options.limit, 10) || 10000, 50000));
+    const relationID = parseInt(options.relationID, 10) || 0;
+    const searchText = normalizeAuthValue(options.search || options.q || "");
+
+    const [hasEmAssets, hasMdmAssets, hasRelation, hasMdmRelation, hasMdmMapping, includeBios] = await Promise.all([
+        tableExists(pool, "TS_OBJECT_ROOT"),
+        tableExists(pool, "TSMDM_ASSET"),
+        tableExists(pool, "TS_OBJECT_RELATION"),
+        tableExists(pool, "TSMDM_OBJECT_RELATION"),
+        tableExists(pool, "TSMDM_TS_OBJECT_MAPPING"),
+        hasBiosInventoryTables(pool)
+    ]);
+
+    if (!hasEmAssets && !hasMdmAssets) return [];
+
+    const parts = [];
+
+    if (hasEmAssets) {
+        const biosFragments = getBiosSqlFragments("em", "em", includeBios);
+        parts.push(`
+            SELECT
+                em.Object_Root_Idn AS _Idn,
+                'EM' AS Object_Agent,
+                em.Object_DeviceID,
+                em.ComputerName,
+                ${hasRelation ? "rel.Object_Full_Name" : "CAST(NULL AS NVARCHAR(500))"} AS Object_Full_Name,
+                ${hasRelation ? "rel.Object_Rel_Name" : "CAST(NULL AS NVARCHAR(255))"} AS Object_Rel_Name,
+                CAST(em.Object_Rel_Idn AS INT) AS Object_Rel_Idn,
+                ${hasRelation ? "CAST(rel.Object_PR_Idn AS INT)" : "CAST(NULL AS INT)"} AS Object_PR_Idn,
+                'Windows' AS PlatformType,
+                em.Model,
+                em.ConnectionTime,
+                CASE WHEN em.ConnectionStatus = 1 THEN 'Online' ELSE 'Offline' END AS ConnectionStatus,
+                em.IP,
+                ${biosFragments.select}
+            FROM TS_OBJECT_ROOT em WITH (NOLOCK)
+            ${hasRelation ? "LEFT JOIN TS_OBJECT_RELATION rel WITH (NOLOCK) ON em.Object_Rel_Idn = rel.Object_Rel_Idn" : ""}
+            ${biosFragments.join}
+            WHERE ISNULL(em.Object_Root_Idn, 0) > 0
+              AND (@RelationID = 0 OR em.Object_Rel_Idn = @RelationID)
+        `);
+    }
+
+    if (hasMdmAssets) {
+        const mdmRelationJoin = hasMdmRelation
+            ? "LEFT JOIN TSMDM_OBJECT_RELATION mor WITH (NOLOCK) ON mdm.MDM_Asset_Idn = mor.MDM_Asset_Idn"
+            : "";
+        const relationJoin = hasMdmRelation && hasRelation
+            ? "LEFT JOIN TS_OBJECT_RELATION rel WITH (NOLOCK) ON mor.Object_Rel_Idn = rel.Object_Rel_Idn"
+            : "";
+        const relationSelect = hasMdmRelation ? "CAST(mor.Object_Rel_Idn AS INT)" : "CAST(NULL AS INT)";
+        const mappingExclude = hasMdmMapping
+            ? "AND NOT EXISTS (SELECT 1 FROM TSMDM_TS_OBJECT_MAPPING map WITH (NOLOCK) WHERE map.MDM_Asset_Idn = mdm.MDM_Asset_Idn)"
+            : "";
+        parts.push(`
+            SELECT
+                mdm.MDM_Asset_Idn AS _Idn,
+                'MDM' AS Object_Agent,
+                mdm.DeviceID AS Object_DeviceID,
+                mdm.DeviceName AS ComputerName,
+                ${hasMdmRelation && hasRelation ? "rel.Object_Full_Name" : "CAST(NULL AS NVARCHAR(500))"} AS Object_Full_Name,
+                ${hasMdmRelation && hasRelation ? "rel.Object_Rel_Name" : "CAST(NULL AS NVARCHAR(255))"} AS Object_Rel_Name,
+                ${relationSelect} AS Object_Rel_Idn,
+                ${hasMdmRelation && hasRelation ? "CAST(rel.Object_PR_Idn AS INT)" : "CAST(NULL AS INT)"} AS Object_PR_Idn,
+                ISNULL(NULLIF(mdm.PlatformType, ''), 'MDM') AS PlatformType,
+                mdm.DeviceModelName AS Model,
+                mdm.DeviceTimeStamp AS ConnectionTime,
+                ISNULL(NULLIF(CAST(mdm.ConnectionStatus AS NVARCHAR(100)), ''), 'Unknown') AS ConnectionStatus,
+                CASE
+                    WHEN mdm.DeviceLocalIPAddress IS NULL OR mdm.DeviceLocalIPAddress = '' THEN mdm.DeviceIPAddress
+                    ELSE mdm.DeviceLocalIPAddress
+                END AS IP,
+                CAST(NULL AS NVARCHAR(100)) AS BiosDate,
+                CAST(NULL AS INT) AS PCAge
+            FROM TSMDM_ASSET mdm WITH (NOLOCK)
+            ${mdmRelationJoin}
+            ${relationJoin}
+            WHERE ISNULL(mdm.MDM_Asset_Idn, 0) > 0
+              AND (@RelationID = 0 ${hasMdmRelation ? "OR mor.Object_Rel_Idn = @RelationID" : ""})
+              ${mappingExclude}
+        `);
+    }
+
+    if (parts.length === 0) return [];
+
+    const result = await pool.request()
+        .input("Limit", sql.Int, limit)
+        .input("RelationID", sql.Int, relationID)
+        .input("SearchText", sql.NVarChar(255), searchText)
+        .query(`
+            ;WITH Assets AS (
+                ${parts.join("\nUNION ALL\n")}
+            )
+            SELECT TOP (@Limit) *
+            FROM Assets
+            WHERE
+                @SearchText = ''
+                OR ComputerName LIKE '%' + @SearchText + '%'
+                OR Object_DeviceID LIKE '%' + @SearchText + '%'
+                OR Model LIKE '%' + @SearchText + '%'
+                OR PlatformType LIKE '%' + @SearchText + '%'
+                OR IP LIKE '%' + @SearchText + '%'
+                OR Object_Full_Name LIKE '%' + @SearchText + '%'
+            ORDER BY ISNULL(Object_Full_Name, ''), ISNULL(ComputerName, Object_DeviceID), Object_Agent;
+        `);
+
+    return (result.recordset || []).map(row => {
+        const mappedRow = {};
+        Object.keys(row).forEach(columnName => {
+            mappedRow[columnName] = row[columnName];
+        });
+        return mappedRow;
+    });
+}
+
 async function getAssetsByRelationID(pool, relationID) {
     // let query = "";
     // switch (process.env.PROJECT_NAME) {
@@ -1920,6 +2081,34 @@ app.put("/api/assets/:objectAgent/:assetId/department", authenticateToken, handl
 app.patch("/api/assets/:objectAgent/:assetId/department", authenticateToken, handleMoveAssetDepartment);
 
 
+
+// GET /api/hardware-inventory/assets
+// Optimized Hardware Inventory loader. Returns all EM + unmapped MDM assets in one request
+// so the frontend does not need to call /api/assets/:relationID for every department.
+app.get("/api/hardware-inventory/assets", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const data = await getAllHardwareInventoryAssets(pool, {
+            limit: req.query.limit,
+            relationID: req.query.relationID || req.query.departmentID,
+            search: req.query.search || req.query.q
+        });
+
+        return res.json({
+            success: true,
+            totalRecords: data.length,
+            data
+        });
+    } catch (err) {
+        console.error("GET /api/hardware-inventory/assets error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to retrieve hardware inventory assets",
+            error: err.message
+        });
+    }
+});
+
 // GET /api/assets/:relationID
 app.get("/api/assets/:relationID", authenticateToken, async (req, res) => {
     try {
@@ -2009,75 +2198,100 @@ async function getEMAData(pool, Object_Root_Idn) {
     }
 }
 
-async function getTSMDMData(pool, MDM_Asset_Idn) {
+async function executeOptionalAssetQuery(pool, label, query, inputs = {}) {
     try {
-        const [
-            hwMainInfo,
-            diskDrives,
-            additionalMac,
-            phoneSignal
-
-        ] = await Promise.all([
-
-            executeQuery(
-                pool,
-                queries_TSMDM.query_HWMainInfo,
-                {
-                    input_MDM_Asset_Idn: {
-                        type: sql.Int,
-                        value: MDM_Asset_Idn
-                    }
-                }
-            ),
-
-            executeQuery(
-                pool,
-                queries_TSMDM.query_DISKDRIVES_WINDOWS,
-                {
-                    MDM_Asset_Idn: {
-                        type: sql.Int,
-                        value: MDM_Asset_Idn
-                    }
-                }
-            ),
-
-            executeQuery(
-                pool,
-                queries_TSMDM.query_AdditionalMac,
-                {
-                    MDM_Asset_Idn: {
-                        type: sql.Int,
-                        value: MDM_Asset_Idn
-                    }
-                }
-            ),
-
-            executeQuery(
-                pool,
-                queries_TSMDM.query_PhoneSignal,
-                {
-                    input_MDM_Asset_Idn: {
-                        type: sql.Int,
-                        value: MDM_Asset_Idn
-                    }
-                }
-            )
-
-        ]);
-
-        const responseObject = {
-            HWMainInfo: hwMainInfo,
-            DiskDrives: diskDrives,
-            AdditionalMac: additionalMac,
-            PhoneSignal: phoneSignal
+        return {
+            rows: await executeQuery(pool, query, inputs),
+            error: null
         };
-
-        return responseObject;
-
     } catch (err) {
-        console.error("getTSMDMData Error:", err);
-        throw err;
+        console.warn(`Optional asset detail query skipped (${label}):`, err.message);
+        return {
+            rows: [],
+            error: err.message
+        };
     }
+}
+
+async function getTSMDMData(pool, MDM_Asset_Idn) {
+    const [
+        hwMainInfoResult,
+        diskDrivesResult,
+        additionalMacResult,
+        phoneSignalResult
+    ] = await Promise.all([
+        executeOptionalAssetQuery(
+            pool,
+            "TSMDM HWMainInfo",
+            queries_TSMDM.query_HWMainInfo,
+            {
+                input_MDM_Asset_Idn: {
+                    type: sql.Int,
+                    value: MDM_Asset_Idn
+                }
+            }
+        ),
+
+        executeOptionalAssetQuery(
+            pool,
+            "TSMDM DiskDrives",
+            queries_TSMDM.query_DISKDRIVES_WINDOWS,
+            {
+                MDM_Asset_Idn: {
+                    type: sql.Int,
+                    value: MDM_Asset_Idn
+                }
+            }
+        ),
+
+        executeOptionalAssetQuery(
+            pool,
+            "TSMDM AdditionalMac",
+            queries_TSMDM.query_AdditionalMac,
+            {
+                MDM_Asset_Idn: {
+                    type: sql.Int,
+                    value: MDM_Asset_Idn
+                }
+            }
+        ),
+
+        executeOptionalAssetQuery(
+            pool,
+            "TSMDM PhoneSignal",
+            queries_TSMDM.query_PhoneSignal,
+            {
+                input_MDM_Asset_Idn: {
+                    type: sql.Int,
+                    value: MDM_Asset_Idn
+                }
+            }
+        )
+    ]);
+
+    const detailErrors = {
+        HWMainInfo: hwMainInfoResult.error,
+        DiskDrives: diskDrivesResult.error,
+        AdditionalMac: additionalMacResult.error,
+        PhoneSignal: phoneSignalResult.error
+    };
+
+    const responseObject = {
+        HWMainInfo: hwMainInfoResult.rows,
+        DiskDrives: diskDrivesResult.rows,
+        AdditionalMac: additionalMacResult.rows,
+        PhoneSignal: phoneSignalResult.rows
+    };
+
+    const activeErrors = Object.fromEntries(
+        Object.entries(detailErrors).filter(([, error]) => Boolean(error))
+    );
+
+    if (Object.keys(activeErrors).length) {
+        responseObject.DetailErrors = activeErrors;
+    }
+
+    return responseObject;
 }
 
 // GET /api/asset/:objectAgent/:assetId
@@ -2102,18 +2316,28 @@ app.get("/api/asset/:objectAgent/:assetId", authenticateToken, async (req, res) 
 
         const pool = await sql.connect(dbConfig);
 
+        const normalizedObjectAgent = String(objectAgent).trim().toUpperCase();
+
         let data = {};
-        if (objectAgent=='EM') {
+        if (normalizedObjectAgent === 'EM') {
             data = await getEMAData(pool, assetId);
 
-            let MDM_Asset_Idn = data['HWMainInfo'][0].MDM_Asset_Idn;
-            if (MDM_Asset_Idn)
-                data['MDM'] = await getTSMDMData(pool, MDM_Asset_Idn);
-            else
-                data['MDM'] = [];
-        }
-        else if (objectAgent=='MDM')
+            const hwMainInfoRows = Array.isArray(data.HWMainInfo) ? data.HWMainInfo : [];
+            const MDM_Asset_Idn = hwMainInfoRows[0]?.MDM_Asset_Idn;
+
+            if (MDM_Asset_Idn) {
+                data.MDM = await getTSMDMData(pool, MDM_Asset_Idn);
+            } else {
+                data.MDM = [];
+            }
+        } else if (normalizedObjectAgent === 'MDM') {
             data = await getTSMDMData(pool, assetId);
+        } else {
+            return res.status(400).json({
+                success: false,
+                message: "Unsupported object agent. Expected EM or MDM."
+            });
+        }
 
         return res.json({
             success: true,
@@ -2125,7 +2349,8 @@ app.get("/api/asset/:objectAgent/:assetId", authenticateToken, async (req, res) 
 
         return res.status(500).json({
             success: false,
-            message: "Failed to retrieve asset data"
+            message: "Failed to retrieve asset data",
+            error: err.message
         });
     }
 });
@@ -24626,6 +24851,14 @@ function buildItOpsAttentionQueue({ incidentSummary, hardware, patchSummary, sof
 
 app.get("/api/dashboard/it-operations", authenticateToken, async (req, res) => {
     try {
+        const cacheKey = "itops-dashboard:v4";
+        const cachedData = shouldBypassDashboardCache(req) ? null : readDashboardCache(cacheKey);
+        if (cachedData) {
+            res.set("X-EMA-Cache", "HIT");
+            return res.json({ success: true, cached: true, data: cachedData });
+        }
+
+        res.set("X-EMA-Cache", "MISS");
         const pool = await sql.connect(dbConfig);
 
         const [
@@ -24757,7 +24990,8 @@ app.get("/api/dashboard/it-operations", authenticateToken, async (req, res) => {
             departmentRows
         };
 
-        return res.json({ success: true, data });
+        writeDashboardCache("itops-dashboard:v4", data);
+        return res.json({ success: true, cached: false, data });
     } catch (err) {
         console.error("GET /api/dashboard/it-operations error:", err);
         return res.status(500).json({
@@ -29316,21 +29550,62 @@ async function mdFetchPricing(pool) {
 
 async function mdFetchIncidents(pool) {
     try {
-        if (!(await tableExists(pool, "HD_Incidents"))) return { rows: [], totalTickets: 0, openTickets: 0, slaBreached: 0, highPriority: 0 };
-        const result = await pool.request().query(`SELECT TOP 30000 * FROM HD_Incidents WITH (NOLOCK);`);
-        const rows = result.recordset || [];
-        const now = Date.now();
-        const closed = (status) => /resolved|closed|complete|cancel/i.test(mdText(status));
-        const openRows = rows.filter((row) => !closed(row.Status || row.status));
-        const slaBreached = openRows.filter((row) => {
-            const due = mdDate(row.SlaDue || row.SLADue || row.slaDue);
-            return due && due.getTime() < now;
-        }).length;
-        const highPriority = openRows.filter((row) => /high|critical|urgent|p1/i.test(mdText(row.Priority || row.priority))).length;
-        return { rows, totalTickets: rows.length, openTickets: openRows.length, slaBreached, highPriority };
+        if (!(await tableExists(pool, "HD_Incidents"))) {
+            return { rows: [], monthlyCounts: [], totalTickets: 0, openTickets: 0, slaBreached: 0, highPriority: 0 };
+        }
+
+        // Keep this endpoint fast: dashboard only needs totals + monthly movement,
+        // not 30k full ticket rows in Node.js memory.
+        const result = await pool.request().query(`
+            ;WITH IncidentBase AS (
+                SELECT
+                    Status,
+                    Priority,
+                    TRY_CONVERT(datetime, CreatedAt) AS CreatedAt,
+                    TRY_CONVERT(datetime, SlaDue) AS SlaDue
+                FROM HD_Incidents WITH (NOLOCK)
+            ), OpenBase AS (
+                SELECT *
+                FROM IncidentBase
+                WHERE ISNULL(Status, '') NOT LIKE '%Resolved%'
+                  AND ISNULL(Status, '') NOT LIKE '%Closed%'
+                  AND ISNULL(Status, '') NOT LIKE '%Complete%'
+                  AND ISNULL(Status, '') NOT LIKE '%Cancel%'
+            )
+            SELECT
+                (SELECT COUNT(1) FROM IncidentBase) AS TotalTickets,
+                (SELECT COUNT(1) FROM OpenBase) AS OpenTickets,
+                (SELECT COUNT(1) FROM OpenBase WHERE SlaDue IS NOT NULL AND SlaDue < GETDATE()) AS SlaBreached,
+                (SELECT COUNT(1) FROM OpenBase WHERE Priority LIKE '%High%' OR Priority LIKE '%Critical%' OR Priority LIKE '%Urgent%' OR Priority LIKE '%P1%') AS HighPriority;
+
+            ;WITH IncidentDates AS (
+                SELECT COALESCE(TRY_CONVERT(datetime, CreatedAt), TRY_CONVERT(datetime, SlaDue)) AS EventDate
+                FROM HD_Incidents WITH (NOLOCK)
+            )
+            SELECT
+                CONVERT(char(7), EventDate, 120) AS MonthKey,
+                COUNT(1) AS ServiceRisk
+            FROM IncidentDates
+            WHERE EventDate IS NOT NULL
+              AND EventDate >= DATEADD(month, -12, GETDATE())
+            GROUP BY CONVERT(char(7), EventDate, 120)
+            ORDER BY MonthKey ASC;
+        `);
+
+        const summary = result.recordsets?.[0]?.[0] || {};
+        const monthlyCounts = result.recordsets?.[1] || [];
+
+        return {
+            rows: [],
+            monthlyCounts,
+            totalTickets: mdNumber(summary.TotalTickets),
+            openTickets: mdNumber(summary.OpenTickets),
+            slaBreached: mdNumber(summary.SlaBreached),
+            highPriority: mdNumber(summary.HighPriority)
+        };
     } catch (err) {
         console.warn("Management dashboard incidents skipped:", err.message);
-        return { rows: [], totalTickets: 0, openTickets: 0, slaBreached: 0, highPriority: 0 };
+        return { rows: [], monthlyCounts: [], totalTickets: 0, openTickets: 0, slaBreached: 0, highPriority: 0 };
     }
 }
 
@@ -29906,10 +30181,17 @@ function mdBuildTrend(assets, incidents, metrics, rule) {
         bucket.riskExposure += row.riskScore >= 35 ? row.replacementCost : 0;
         bucket.signals += row.riskScore >= 35 ? 1 : 0;
     });
-    (incidents.rows || []).forEach((row) => {
-        const key = mdMonthKey(row.CreatedAt || row.createdAt || row.SlaDue || row.slaDue);
-        if (map.has(key)) map.get(key).serviceRisk += 1;
-    });
+    if (Array.isArray(incidents.monthlyCounts) && incidents.monthlyCounts.length) {
+        incidents.monthlyCounts.forEach((row) => {
+            const key = mdText(row.MonthKey || row.monthKey || row.month || row.label);
+            if (map.has(key)) map.get(key).serviceRisk += mdNumber(row.ServiceRisk || row.serviceRisk || row.count, 0);
+        });
+    } else {
+        (incidents.rows || []).forEach((row) => {
+            const key = mdMonthKey(row.CreatedAt || row.createdAt || row.SlaDue || row.slaDue);
+            if (map.has(key)) map.get(key).serviceRisk += 1;
+        });
+    }
     return Array.from(map.values()).map((row) => ({
         ...row,
         financialExposure: Math.round(row.financialExposure),
@@ -30209,9 +30491,19 @@ async function mdLoadDashboardContext(pool) {
 
 app.get("/api/management-dashboard/overview", authenticateToken, async (req, res) => {
     try {
+        const cacheKey = "management-dashboard-overview:v4";
+        const cachedData = shouldBypassDashboardCache(req) ? null : readDashboardCache(cacheKey);
+        if (cachedData) {
+            res.set("X-EMA-Cache", "HIT");
+            return res.json({ success: true, cached: true, data: cachedData });
+        }
+
+        res.set("X-EMA-Cache", "MISS");
         const pool = await sql.connect(dbConfig);
         const context = await mdLoadDashboardContext(pool);
-        return res.json({ success: true, data: mdBuildOverviewPayload(context.assets, context.incidents, context.rule, context) });
+        const data = mdBuildOverviewPayload(context.assets, context.incidents, context.rule, context);
+        writeDashboardCache(cacheKey, data);
+        return res.json({ success: true, cached: false, data });
     } catch (err) {
         console.error("GET /api/management-dashboard/overview error:", err);
         return res.status(500).json({ success: false, message: "Failed to load management dashboard overview.", error: err.message });
@@ -30223,6 +30515,14 @@ app.get("/api/management-dashboard/drilldown", authenticateToken, async (req, re
         const area = mdText(req.query.area || "risk");
         const key = mdText(req.query.key || "");
         const level = mdNumber(req.query.level, 2);
+        const cacheKey = `management-dashboard-drilldown:v4:${area}:${key}:${level}`;
+        const cachedData = shouldBypassDashboardCache(req) ? null : readDashboardCache(cacheKey);
+        if (cachedData) {
+            res.set("X-EMA-Cache", "HIT");
+            return res.json({ success: true, cached: true, data: cachedData });
+        }
+
+        res.set("X-EMA-Cache", "MISS");
         const pool = await sql.connect(dbConfig);
         const context = await mdLoadDashboardContext(pool);
         const ipMap = new Map();
@@ -30230,34 +30530,33 @@ app.get("/api/management-dashboard/drilldown", authenticateToken, async (req, re
         const duplicateIpRows = Array.from(ipMap.entries()).filter(([, rows]) => rows.length > 1).flatMap(([ip, rows]) => rows.map((row) => ({ ...row, category: "Duplicate IP", riskScore: Math.max(row.riskScore, 45), riskSeverity: row.riskScore >= 70 ? row.riskSeverity : "Medium", ipAddress: ip })));
         const filtered = mdFilterDrilldownRows(context.assets, context.incidents, area, key, { ...context, duplicateIpRows });
         if (level >= 3) {
-            return res.json({
-                success: true,
-                data: {
-                    area,
-                    key,
-                    level: 3,
-                    title: `${area} evidence`,
-                    total: filtered.length,
-                    rows: filtered.sort((a, b) => b.riskScore - a.riskScore || b.replacementCost - a.replacementCost).slice(0, 500).map((row) => ({
-                        assetKey: row.assetKey,
-                        objectAgent: row.objectAgent,
-                        assetId: row.assetId,
-                        deviceName: row.deviceName,
-                        department: row.department,
-                        category: row.category,
-                        brand: row.brand,
-                        model: row.model,
-                        platform: row.platform,
-                        status: row.status,
-                        lastSeen: row.lastSeenLabel,
-                        age: row.ageLabel,
-                        ipAddress: row.ipAddress,
-                        riskScore: row.riskScore,
-                        riskSeverity: row.riskSeverity,
-                        replacementCost: row.replacementCostFmt || row.replacementCost
-                    }))
-                }
-            });
+            const data = {
+                area,
+                key,
+                level: 3,
+                title: `${area} evidence`,
+                total: filtered.length,
+                rows: filtered.sort((a, b) => b.riskScore - a.riskScore || b.replacementCost - a.replacementCost).slice(0, 500).map((row) => ({
+                    assetKey: row.assetKey,
+                    objectAgent: row.objectAgent,
+                    assetId: row.assetId,
+                    deviceName: row.deviceName,
+                    department: row.department,
+                    category: row.category,
+                    brand: row.brand,
+                    model: row.model,
+                    platform: row.platform,
+                    status: row.status,
+                    lastSeen: row.lastSeenLabel,
+                    age: row.ageLabel,
+                    ipAddress: row.ipAddress,
+                    riskScore: row.riskScore,
+                    riskSeverity: row.riskSeverity,
+                    replacementCost: row.replacementCostFmt || row.replacementCost
+                }))
+            };
+            writeDashboardCache(cacheKey, data, 90000);
+            return res.json({ success: true, cached: false, data });
         }
         const groupFn = area === "resources" ? (row) => row.category : (row) => row.department;
         const rows = mdTopGroups(filtered, groupFn, (row) => row.replacementCost, 20).map((row) => ({
@@ -30266,7 +30565,9 @@ app.get("/api/management-dashboard/drilldown", authenticateToken, async (req, re
             level3Area: area,
             level3Key: row.key
         }));
-        return res.json({ success: true, data: { area, key, level: 2, title: `${area} breakdown`, total: filtered.length, rows } });
+        const data = { area, key, level: 2, title: `${area} breakdown`, total: filtered.length, rows };
+        writeDashboardCache(cacheKey, data, 90000);
+        return res.json({ success: true, cached: false, data });
     } catch (err) {
         console.error("GET /api/management-dashboard/drilldown error:", err);
         return res.status(500).json({ success: false, message: "Failed to load management dashboard drilldown.", error: err.message });

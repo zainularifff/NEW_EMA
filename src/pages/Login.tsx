@@ -15,29 +15,11 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import { API_BASE_URL } from "../config/api";
+import authService, { type LoginResponse } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 import "../styles/2fa.css";
 
 type AnyUser = Record<string, any>;
-
-type LoginApiResponse = {
-  success?: boolean;
-  message?: string;
-  error?: string;
-  accessToken?: string;
-  token?: string;
-  twoFactorRequired?: boolean;
-  twoFactorSetupRequired?: boolean;
-  user?: AnyUser;
-  data?: {
-    accessToken?: string;
-    token?: string;
-    user?: AnyUser;
-    twoFactorRequired?: boolean;
-    twoFactorSetupRequired?: boolean;
-  };
-};
 
 type MfaState = {
   user: AnyUser;
@@ -212,38 +194,20 @@ export default function Login() {
     if (!token) return;
 
     const loadUserAndLogin = async () => {
+      const fallbackUser = {
+        username: email || provider || "SSO User",
+        name: email || provider || "SSO User",
+        email: email || "",
+        role: "User",
+        authSource: provider || "SSO",
+      };
+
       try {
-        const meResponse = await fetch(`${API_BASE_URL}/api/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        const mePayload = await meResponse.json().catch(() => null);
-        const user =
-          mePayload?.data ||
-          mePayload?.user ||
-          {
-            username: email || provider || "SSO User",
-            name: email || provider || "SSO User",
-            email: email || "",
-            role: "User",
-            authSource: provider || "SSO",
-          };
-
+        const mePayload = await authService.getCurrentUser(token);
+        const user = mePayload?.data || mePayload?.user || mePayload || fallbackUser;
         finalizeLogin(token, user, email || provider || "SSO User");
       } catch {
-        finalizeLogin(
-          token,
-          {
-            username: email || provider || "SSO User",
-            name: email || provider || "SSO User",
-            email: email || "",
-            role: "User",
-            authSource: provider || "SSO",
-          },
-          email || provider || "SSO User"
-        );
+        finalizeLogin(token, fallbackUser, email || provider || "SSO User");
       } finally {
         window.history.replaceState({}, "", "/login");
       }
@@ -257,7 +221,7 @@ export default function Login() {
     const userId = user.emaUserID || user.id || user.UserID || user.userID;
 
     if (!userId) {
-      setError("2FA user ID was not returned by the API.");
+      setError("User profile is missing required verification details.");
       return;
     }
 
@@ -265,21 +229,13 @@ export default function Login() {
     setError("");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/2fa/setup`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId,
-          authSource: user.authSource || "EMA",
-        }),
+      const payload = await authService.setupTwoFactor({
+        userId,
+        authSource: user.authSource || "EMA",
       });
 
-      const payload = await response.json().catch(() => null);
-
-      if (!response.ok || payload?.success === false) {
-        setError(payload?.message || "Failed to start 2FA setup.");
+      if (payload?.success === false) {
+        setError(payload?.message || "Unable to prepare 2FA setup.");
         return;
       }
 
@@ -292,13 +248,13 @@ export default function Login() {
       setMfaCode("");
     } catch (err) {
       console.error("2FA setup error:", err);
-      setError("Cannot connect to 2FA setup API.");
+      setError("2FA setup is unavailable. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleMfaResponse = async (payload: LoginApiResponse) => {
+  const handleMfaResponse = async (payload: LoginResponse) => {
     const user = payload?.data?.user || payload?.user || {};
     const requiresMfa = Boolean(payload.twoFactorRequired || payload.data?.twoFactorRequired);
     const requiresSetup = Boolean(
@@ -339,23 +295,14 @@ export default function Login() {
     try {
       setLoading(true);
 
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          username: cleanUsername,
-          email: cleanUsername,
-          password: cleanPassword,
-          rememberMe,
-        }),
+      const payload = await authService.login({
+        username: cleanUsername,
+        email: cleanUsername,
+        password: cleanPassword,
+        rememberMe,
       });
 
-      const payload = (await response.json().catch(() => null)) as LoginApiResponse | null;
-
-      if (!response.ok || payload?.success === false) {
+      if (payload?.success === false) {
         setError(payload?.message || payload?.error || "Invalid username or password.");
         return;
       }
@@ -372,15 +319,15 @@ export default function Login() {
         "";
 
       if (!accessToken) {
-        setError("Login API did not return an access token.");
+        setError("Sign-in completed but your session could not be created.");
         return;
       }
 
       const apiUser = payload?.data?.user || payload?.user || {};
       finalizeLogin(accessToken, apiUser, cleanUsername);
     } catch (err) {
-      console.error("Login API error:", err);
-      setError("Cannot connect to login API. Please check backend server.");
+      console.error("Sign-in error:", err);
+      setError("Sign-in service is unavailable. Please try again or contact support.");
     } finally {
       setLoading(false);
     }
@@ -399,7 +346,7 @@ export default function Login() {
       mfaState.user.userID;
 
     if (!userId) {
-      setError("2FA user ID was not returned by the API.");
+      setError("User profile is missing required verification details.");
       return;
     }
 
@@ -411,24 +358,15 @@ export default function Login() {
     try {
       setLoading(true);
 
-      const response = await fetch(`${API_BASE_URL}/api/auth/2fa/verify`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          userId,
-          token: mfaCode.trim(),
-          isSetup: mfaState.setupRequired,
-          secret: mfaState.secret,
-          authSource: mfaState.user.authSource || "EMA",
-        }),
+      const payload = await authService.verifyTwoFactor({
+        userId,
+        token: mfaCode.trim(),
+        isSetup: mfaState.setupRequired,
+        secret: mfaState.secret,
+        authSource: mfaState.user.authSource || "EMA",
       });
 
-      const payload = (await response.json().catch(() => null)) as LoginApiResponse | null;
-
-      if (!response.ok || payload?.success === false) {
+      if (payload?.success === false) {
         setError(payload?.message || payload?.error || "Invalid authentication code.");
         return;
       }
@@ -441,7 +379,7 @@ export default function Login() {
         "";
 
       if (!accessToken) {
-        setError("2FA API did not return an access token.");
+        setError("Verification completed but your session could not be created.");
         return;
       }
 
@@ -449,7 +387,7 @@ export default function Login() {
       finalizeLogin(accessToken, apiUser, username || "User");
     } catch (err) {
       console.error("2FA verify error:", err);
-      setError("Cannot connect to 2FA verification API.");
+      setError("Verification service is unavailable. Please try again.");
     } finally {
       setLoading(false);
     }

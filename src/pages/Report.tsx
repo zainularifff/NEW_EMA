@@ -63,6 +63,12 @@ type ReportFilters = {
   includeSummary: boolean;
   includeTable: boolean;
   includeRecommendation: boolean;
+  clientName?: string;
+  serviceType?: string;
+  solutionVersion?: string;
+  contractStart?: string;
+  contractEnd?: string;
+  contractedNodes?: number;
 };
 
 type ReportOptionItem = {
@@ -132,7 +138,13 @@ const emptyFilters: ReportFilters = {
   includeChart: true,
   includeSummary: true,
   includeTable: true,
-  includeRecommendation: true
+  includeRecommendation: true,
+  clientName: "",
+  serviceType: "Subscribe / Purchase",
+  solutionVersion: "EMA System",
+  contractStart: "",
+  contractEnd: "",
+  contractedNodes: 0
 };
 
 const fallbackOptions: ReportOptions = {
@@ -166,117 +178,150 @@ const fallbackOptions: ReportOptions = {
 
 const FRONTEND_REPORT_CATALOG: ReportCategory[] = [
   {
-    name: "Executive & Management",
-    desc: "Management and executive reporting for endpoint operations, risk, SLA and action visibility.",
+    name: "Featured Reports",
+    desc: "Six focused report packs. Each card represents one report module only.",
     icon: "chart",
     items: [
-      { id: "executive-summary", title: "Executive Summary Report", description: "Overall management view for endpoint, risk, support and compliance.", type: "Summary", source: "Assets + Service Desk + Software + Jobs + Geolocation", outputs: ["PDF", "PowerPoint"] },
-      { id: "client-summary-rnr", title: "Client Summary & RNR Report", description: "Client-facing report pack for subscription, endpoint management, OS compliance, resource planning, application risk and browser vulnerability watch.", type: "Summary", source: "Endpoint Inventory + Subscription + Asset Pricing + Software Inventory", outputs: ["PDF", "PowerPoint", "Excel"] },
-      { id: "ema-operations-overview", title: "EMA Operations Overview", description: "High-level operational performance and endpoint health overview.", type: "Summary", source: "Device Registry + Task List", outputs: ["PDF"] },
-      { id: "risk-attention-summary", title: "Risk & Attention Summary", description: "Major risk items requiring management attention.", type: "Risk", source: "Device Status + Service Desk SLA + Data Quality", outputs: ["PDF"] },
-      { id: "monthly-management-dashboard", title: "Monthly Management Dashboard Report", description: "Monthly KPI snapshot based on dashboard and operational data.", type: "Summary", source: "Management Dashboard + Report Aggregation", outputs: ["PDF", "PowerPoint"] },
-      { id: "action-queue-summary", title: "Action Queue Summary", description: "Open operational items requiring follow-up.", type: "Summary", source: "Risk Queue + Service Desk + Stale Devices", outputs: ["PDF", "Excel"] }
-    ]
-  },
-  {
-    name: "Endpoint Operations",
-    desc: "Reports for endpoint health, stale sync, locked devices and registry detail.",
-    icon: "device",
-    items: [
-      { id: "endpoint-health-summary", title: "Endpoint Health Summary", description: "Active, inactive, stale sync, offline and locked endpoint status.", type: "Summary", source: "TS_OBJECT_ROOT + TSMDM_ASSET", outputs: ["PDF"] },
-      { id: "device-registry-detail", title: "Device Registry Detail Report", description: "Full list of registered devices with user, OS, IP and status.", type: "Detail", source: "Device Registry", outputs: ["Excel"] },
-      { id: "recently-connected-devices", title: "Recently Connected Devices Report", description: "Devices connected within selected period.", type: "Detail", source: "Connection Telemetry", outputs: ["Excel"] },
-      { id: "stale-sync-devices", title: "Stale Sync Devices Report", description: "Devices not syncing within threshold.", type: "Detail", source: "Last Sync / Last Connected", outputs: ["PDF", "Excel"] },
-      { id: "locked-device", title: "Locked Device Report", description: "Devices currently locked or requiring approval trail.", type: "Detail", source: "MDM Security State", outputs: ["PDF", "Excel"] },
-      { id: "offline-not-reporting-devices", title: "Offline / Not Reporting Devices Report", description: "Devices with no recent telemetry.", type: "Detail", source: "Telemetry Status", outputs: ["PDF", "Excel"] }
-    ]
-  },
-  {
-    name: "Asset & Lifecycle",
-    desc: "Reports for hardware inventory, aging assets and replacement planning.",
-    icon: "asset",
-    items: [
-      { id: "asset-lifecycle-summary", title: "Asset Lifecycle Summary", description: "New, standard, aging and critical asset overview.", type: "Summary", source: "Asset Lifecycle", outputs: ["PDF"] },
-      { id: "aging-device", title: "Aging Device Report", description: "Devices above age threshold or replacement candidate.", type: "Detail", source: "Hardware Inventory", outputs: ["Excel"] },
-      { id: "hardware-inventory", title: "Hardware Inventory Report", description: "CPU, RAM, storage, model and manufacturer breakdown.", type: "Detail", source: "Hardware Inventory", outputs: ["Excel"] },
-      { id: "missing-hardware-information", title: "Missing Hardware Information Report", description: "Devices with incomplete hardware data.", type: "Detail", source: "Data Quality", outputs: ["Excel"] },
-      { id: "asset-replacement-planning", title: "Asset Replacement Planning Report", description: "Devices that may require refresh planning.", type: "Summary", source: "Lifecycle + Risk", outputs: ["PDF", "Excel"] },
-      { id: "resource-planning-brand-summary", title: "Resource Planning Brand Summary", description: "Brand, model, endpoint type, aging candidate and estimated replacement cost planning.", type: "Summary", source: "Endpoint Inventory + AssetPricing", outputs: ["PDF", "Excel"] }
-    ]
-  },
-  {
-    name: "Security & Risk",
-    desc: "Security exposure, exception and compliance-risk reports.",
-    icon: "shield",
-    items: [
-      { id: "high-risk-endpoint", title: "High Risk Endpoint Report", description: "Endpoints with critical risk indicators.", type: "Risk", source: "Risk Indicators", outputs: ["PDF"] },
-      { id: "security-exception", title: "Security Exception Report", description: "Locked, offline, stale, unsupported or abnormal devices.", type: "Detail", source: "Security Exceptions", outputs: ["PDF", "Excel"] },
-      { id: "unsupported-os", title: "Unsupported OS Report", description: "Devices running outdated or unsupported OS where OS data is available.", type: "Compliance", source: "OS Inventory", outputs: ["Excel"] },
-      { id: "duplicate-ip", title: "Duplicate IP Report", description: "Devices with possible IP conflict.", type: "Detail", source: "Device + Network Inventory", outputs: ["Excel"] },
-      { id: "compliance-exposure", title: "Compliance Exposure Report", description: "Compliance-related endpoint findings.", type: "Compliance", source: "Risk + Compliance", outputs: ["PDF"] }
-    ]
-  },
-  {
-    name: "Software & Compliance",
-    desc: "Software inventory, unauthorized software and application metering reports.",
-    icon: "software",
-    items: [
-      { id: "software-inventory-summary", title: "Software Inventory Summary", description: "Total software, category distribution and software inventory coverage.", type: "Summary", source: "TSMDM_SW_LIST + TS_SW_CATEGORY", outputs: ["PDF"] },
-      { id: "unauthorized-software", title: "Unauthorized Software Report", description: "Software requiring removal or review based on category/visibility data.", type: "Compliance", source: "Software Inventory", outputs: ["Excel"] },
-      { id: "outdated-software", title: "Outdated Software Report", description: "Software needing update where version/search-date evidence exists.", type: "Detail", source: "Software Inventory", outputs: ["Excel"] },
-      { id: "software-distribution", title: "Software Distribution Report", description: "Package deployment and related task status.", type: "Detail", source: "Software Distribution + TS_JOB", outputs: ["Excel"] },
-      { id: "application-metering", title: "Application Metering Report", description: "Application metering task and collection visibility.", type: "Audit", source: "Application Metering + TS_JOB", outputs: ["PDF", "Excel"] }
-    ]
-  },
-  {
-    name: "Geolocation",
-    desc: "Location, abnormal movement and geolocation exception reports.",
-    icon: "geo",
-    items: [
-      { id: "device-location-summary", title: "Device Location Summary", description: "Device distribution by site or branch and latest location availability.", type: "Summary", source: "TSMDM_GEOLOCATION + Device Registry", outputs: ["PDF"] },
-      { id: "abnormal-location", title: "Abnormal Location Report", description: "Device detected outside expected location based on available location records.", type: "Detail", source: "Location Telemetry", outputs: ["Excel"] },
-      { id: "indoor-location-accuracy", title: "Indoor Location Accuracy Report", description: "Accuracy, signal and indoor tracking data where available.", type: "Detail", source: "Indoor Location", outputs: ["Excel"] },
-      { id: "location-history", title: "Location History Report", description: "Device movement and location timeline.", type: "Audit", source: "TSMDM_GEOLOCATION", outputs: ["Excel"] },
-      { id: "geolocation-exception", title: "Geolocation Exception Report", description: "Devices with missing, inaccurate or abnormal location data.", type: "Summary", source: "Geolocation Exceptions", outputs: ["PDF"] }
-    ]
-  },
-  {
-    name: "Remote Control Audit",
-    desc: "Audit reports for remote activity, failed access and after-hours sessions.",
-    icon: "remote",
-    items: [
-      { id: "remote-session-summary", title: "Remote Session Summary", description: "Total remote-related task, success, failed and after-hours indicators where stored.", type: "Summary", source: "MDM Remote Control + TS_JOB", outputs: ["PDF"] },
-      { id: "remote-control-audit-log", title: "Remote Control Audit Log", description: "Who initiated remote-related actions and when.", type: "Audit", source: "Task List / Remote Control", outputs: ["Excel"] },
-      { id: "failed-remote-session", title: "Failed Remote Session Report", description: "Failed remote attempts where job history is available.", type: "Detail", source: "Remote Control", outputs: ["Excel"] },
-      { id: "after-hours-remote-access", title: "After-Hours Remote Access Report", description: "Remote-related activity outside working hours.", type: "Audit", source: "Remote Audit Log", outputs: ["Excel"] },
-      { id: "remote-activity-by-user", title: "Remote Activity by User Report", description: "Support activity by technician or admin.", type: "Detail", source: "Remote Control + Console Users", outputs: ["Excel"] }
-    ]
-  },
-  {
-    name: "Service Desk",
-    desc: "Ticket, SLA, incident trend and support workload reports.",
-    icon: "ticket",
-    items: [
-      { id: "ticket-status-summary", title: "Ticket Status Summary", description: "New, in progress, pending vendor and resolved ticket status.", type: "Summary", source: "HD_Incidents", outputs: ["PDF"] },
-      { id: "sla-risk", title: "SLA Risk Report", description: "Tickets nearing or breaching SLA.", type: "Risk", source: "HD_Incidents.SlaDue", outputs: ["Excel"] },
-      { id: "incident-trend", title: "Incident Trend Report", description: "Ticket trend by day, week or month.", type: "Summary", source: "HD_Incidents.CreatedAt", outputs: ["PDF"] },
-      { id: "site-ticket", title: "Site Ticket Report", description: "Ticket count by branch or site.", type: "Detail", source: "HD_Incidents.CustomerName", outputs: ["Excel"] },
-      { id: "support-workload", title: "Support Workload Report", description: "Assigned workload by support user or team.", type: "Summary", source: "HD_Incidents.AssignedTo", outputs: ["PDF"] }
-    ]
-  },
-  {
-    name: "Data Quality",
-    desc: "Completeness, duplicate, invalid data and telemetry gap reports.",
-    icon: "data",
-    items: [
-      { id: "data-completeness", title: "Data Completeness Report", description: "Missing fields and incomplete records.", type: "Summary", source: "Device Registry + Software + Ticket Data", outputs: ["PDF"] },
-      { id: "duplicate-device", title: "Duplicate Device Report", description: "Duplicate hostname, IP or device identity.", type: "Detail", source: "Device Registry", outputs: ["Excel"] },
-      { id: "missing-user-mapping", title: "Missing User Mapping Report", description: "Devices not linked to department or owner fields available in registry.", type: "Detail", source: "User Mapping", outputs: ["Excel"] },
-      { id: "invalid-data", title: "Invalid Data Report", description: "Incorrect or abnormal field values.", type: "Detail", source: "Data Quality", outputs: ["Excel"] },
-      { id: "telemetry-gap", title: "Telemetry Gap Report", description: "Devices with incomplete or delayed data.", type: "Summary", source: "Telemetry", outputs: ["PDF"] }
+      {
+        id: "ai-executive-summary",
+        title: "AI Executive Summary Report",
+        description: "High-level management summary only: overall posture, key findings and priority recommendations.",
+        type: "Summary",
+        source: "Endpoint Inventory + Service Desk + Software Inventory + Jobs + Geolocation",
+        outputs: ["PDF", "PowerPoint", "Excel"]
+      },
+      {
+        id: "client-summary-rnr",
+        title: "Client Risk & Resource Planning Report",
+        description: "Client-facing Risk & Resources pack based on the agreed RNR reporting format.",
+        type: "Summary",
+        source: "Endpoint Inventory + Subscription + Asset Pricing + Software Inventory + Browser Risk",
+        outputs: ["PDF", "PowerPoint", "Excel"]
+      },
+      {
+        id: "hardware-asset-lifecycle",
+        title: "Hardware & Asset Lifecycle Report",
+        description: "Hardware lifecycle report only: asset estate, device age and replacement planning.",
+        type: "Summary",
+        source: "Hardware Inventory + Asset Lifecycle + Endpoint Inventory",
+        outputs: ["PDF", "Excel"]
+      },
+      {
+        id: "operations-health-sla",
+        title: "Operations Health & SLA Report",
+        description: "Operations report only: endpoint health, service activity and SLA follow-up.",
+        type: "Summary",
+        source: "Endpoint Inventory + Jobs + HD_Incidents + SLA Due",
+        outputs: ["PDF", "PowerPoint", "Excel"]
+      },
+      {
+        id: "security-compliance-exposure",
+        title: "Security & Compliance Exposure Report",
+        description: "Security exposure report only: endpoint risk, compliance gaps and exception action list.",
+        type: "Risk",
+        source: "Device Status + OS Inventory + Software Inventory + Data Quality + Service Desk SLA",
+        outputs: ["PDF", "Excel"]
+      },
+      {
+        id: "software-application-governance",
+        title: "Software & Application Governance Report",
+        description: "Software governance report only: application inventory, licence review and cleanup actions.",
+        type: "Compliance",
+        source: "TSMDM_SW_LIST + TS_SW_CATEGORY + Application Metering + Browser Inventory",
+        outputs: ["PDF", "Excel"]
+      }
     ]
   }
 ];
+
+type FeaturedReportBlueprint = {
+  eyebrow: string;
+  icon: keyof typeof icons;
+  intent: string;
+  bestFor: string;
+  accent: string;
+  sections: string[];
+  deliverables: string[];
+};
+
+const FEATURED_REPORT_BLUEPRINTS: Record<string, FeaturedReportBlueprint> = {
+  "ai-executive-summary": {
+    eyebrow: "Gemini Flash Narrative",
+    icon: "chart",
+    intent: "Management summary only: concise KPI overview, key findings and recommended action.",
+    bestFor: "CEO / manager review, monthly update, quick operational status.",
+    accent: "#2563eb",
+    sections: ["Executive summary", "KPI snapshot", "Key findings", "Recommended action"],
+    deliverables: ["AI narrative", "Management PDF", "PowerPoint summary"]
+  },
+  "client-summary-rnr": {
+    eyebrow: "Client RNR Pack",
+    icon: "shield",
+    intent: "Client-facing report pack for renewal, risk and resource planning discussion.",
+    bestFor: "Client QBR, subscription review, refresh planning, risk/resource meeting.",
+    accent: "#0f766e",
+    sections: [
+      "Client / solution / company logo cover",
+      "Subscription summary: service type, version, contract, total nodes",
+      "Endpoint management: PC, Windows OS, coverage, benefits, endpoint type",
+      "Endpoint analytics result and total endpoint type",
+      "Location / department grouping",
+      "Endpoint aging by location",
+      "OS supported and Windows compliance",
+      "Resource planning by PC brand",
+      "Application purchasing: Microsoft / Adobe",
+      "Sensitive application: remote tools",
+      "Games, antivirus, unwanted and unauthorized software",
+      "Browser vulnerability"
+    ],
+    deliverables: ["Client PDF", "Resource planning table", "Application risk appendix"]
+  },
+  "hardware-asset-lifecycle": {
+    eyebrow: "Hardware Lifecycle",
+    icon: "asset",
+    intent: "Hardware estate and lifecycle readiness view for replacement and inventory planning.",
+    bestFor: "Procurement planning, asset refresh, missing hardware data cleanup.",
+    accent: "#7c3aed",
+    sections: ["Hardware estate summary", "Brand/model distribution", "Endpoint type distribution", "PC age / BIOS age", "Aging candidates", "Missing hardware information", "Replacement planning"],
+    deliverables: ["Lifecycle PDF", "Hardware inventory export", "Replacement candidate list"]
+  },
+  "operations-health-sla": {
+    eyebrow: "Operations Health",
+    icon: "device",
+    intent: "Operations health report for endpoint status, service activity and SLA follow-up.",
+    bestFor: "Operations review, SLA monitoring, weekly service health check.",
+    accent: "#0ea5e9",
+    sections: ["Endpoint availability", "Online / offline / stale sync", "Locked or not reporting devices", "Job execution status", "Open tickets", "SLA breach candidates", "Support workload"],
+    deliverables: ["Operations PDF", "SLA evidence", "Follow-up action queue"]
+  },
+  "security-compliance-exposure": {
+    eyebrow: "Security Exposure",
+    icon: "shield",
+    intent: "Risk and compliance exposure report for endpoint exceptions and management attention.",
+    bestFor: "Security review, audit prep, compliance exception tracking.",
+    accent: "#ef4444",
+    sections: ["High-risk endpoint exposure", "Unsupported OS", "Duplicate IP / identity conflict", "Offline and stale exposure", "Locked device state", "Unauthorized software", "Compliance action list"],
+    deliverables: ["Risk PDF", "Exception register", "Compliance action table"]
+  },
+  "software-application-governance": {
+    eyebrow: "Application Governance",
+    icon: "software",
+    intent: "Software governance report for inventory, licence review and cleanup action.",
+    bestFor: "License review, app cleanup, application governance meeting.",
+    accent: "#f59e0b",
+    sections: ["Software estate summary", "Purchasing candidates", "Microsoft / Adobe usage", "Sensitive remote tools", "Games", "Antivirus", "Unwanted software", "Unauthorized software", "Browser vulnerability"],
+    deliverables: ["Software PDF", "Application list export", "Governance action list"]
+  }
+};
+
+function getFeaturedReportBlueprint(reportId?: string): FeaturedReportBlueprint {
+  return FEATURED_REPORT_BLUEPRINTS[reportId || ""] || FEATURED_REPORT_BLUEPRINTS["ai-executive-summary"];
+}
+
+function getFeaturedReportNumber(reports: ReportTemplate[], report?: ReportTemplate | null) {
+  const index = reports.findIndex((item) => item.id === report?.id);
+  return index >= 0 ? String(index + 1).padStart(2, "0") : "--";
+}
 
 function getApiBases() {
   const viteBase = (import.meta as any)?.env?.VITE_API_URL || (import.meta as any)?.env?.VITE_API_BASE_URL || "";
@@ -2348,12 +2393,91 @@ function pdfReportPackName(payload: ReportPayload) {
   return raw.replace(/[-_]/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+
+function formatReportContractDate(value?: string) {
+  const text = String(value || "").trim();
+  if (!text) return "To be configured";
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+  const parsed = new Date(text);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toLocaleDateString("en-MY", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+  return text;
+}
+
+function numberOrFallback(value: any, fallback: number) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
+}
+
+function buildClientRnrFilterValues(payload: ReportPayload, filters: ReportFilters) {
+  const merged = { ...(payload.filters || {}), ...(filters || {}) } as ReportFilters;
+  const endpointTotal = pdfNumber(payload, ["endpointTotal", "totalEndpoints", "assets"], 0);
+  return {
+    clientName: String(merged.clientName || "").trim(),
+    serviceType: String(merged.serviceType || "Subscribe / Purchase").trim(),
+    version: String(merged.solutionVersion || "EMA System").trim(),
+    contractStart: formatReportContractDate(merged.contractStart),
+    contractEnd: formatReportContractDate(merged.contractEnd),
+    totalNodes: numberOrFallback(merged.contractedNodes, endpointTotal),
+    integration: "Consider Integration"
+  };
+}
+
+function applyClientRnrLiveOverrides(payload: ReportPayload, filters: ReportFilters): ReportPayload {
+  if (payload.report.id !== "client-summary-rnr") {
+    return { ...payload, filters: { ...(payload.filters || {}), ...(filters || {}) } };
+  }
+
+  const values = buildClientRnrFilterValues(payload, filters);
+  const sections = (payload.sections || []).map((section) => {
+    if (section.title === "Subscription Summary") {
+      return {
+        ...section,
+        rows: [
+          { label: "Service Type", value: values.serviceType, note: "Subscription or purchase service profile." },
+          { label: "Version", value: values.version, note: "Solution / package version." },
+          { label: "Total Nodes", value: values.totalNodes, note: "Contracted node count or endpoint estate in selected scope." },
+          { label: "Integration", value: values.integration, note: "Connect subscription / contract data source for stronger report evidence." }
+        ]
+      };
+    }
+
+    if (section.title === "Subscription / Contract Summary") {
+      return {
+        ...section,
+        rows: [
+          { item: "Client", value: values.clientName || "Client logo / client name to be configured", note: "Shown together with solution and company branding in the PDF cover." },
+          { item: "Service Type", value: values.serviceType, note: "Subscription or purchased service package." },
+          { item: "Version", value: values.version, note: "Current solution package reference." },
+          { item: "Start Contract", value: values.contractStart, note: "Contract start date." },
+          { item: "End Contract", value: values.contractEnd, note: "Contract end date." },
+          { item: "Total Nodes", value: values.totalNodes, note: "Total endpoint records or contracted nodes in current scope." },
+          { item: "Integration Consideration", value: values.integration, note: "Integrate subscription/licensing source for final client report." }
+        ],
+        columns: ["item", "value", "note"]
+      };
+    }
+
+    return section;
+  });
+
+  return {
+    ...payload,
+    filters: { ...(payload.filters || {}), ...(filters || {}) },
+    sections
+  };
+}
+
 function buildPdfCoverOnlyPage(payload: ReportPayload, filters: ReportFilters, mode: "executive" | "generic") {
   const generated = formatDateTime(payload.generatedAt);
   const period = payload.narrative.period || filters.dateRange;
   const scope = payload.narrative.scope || "All Sites";
   const title = payload.report.title || "EMA Report";
-  const intro = payload.report.description || payload.narrative.executiveSummary || "Prepared from the current EMA operational dataset.";
+  const clientName = payload.report.id === "client-summary-rnr" ? String(filters.clientName || payload.filters?.clientName || "").trim() : "";
+  const introBase = payload.report.description || payload.narrative.executiveSummary || "Prepared from the current EMA operational dataset.";
+  const intro = clientName ? `Prepared for ${clientName}. ${introBase}` : introBase;
   const label = mode === "executive" ? "Management-ready report pack" : "Operational report pack";
 
   return `
@@ -2372,6 +2496,7 @@ function buildPdfCoverOnlyPage(payload: ReportPayload, filters: ReportFilters, m
       <div class="pdf-cover-title-block">
         <span>${pdfText(label, 60)}</span>
         <h1>${pdfText(title, 100)}</h1>
+        ${clientName ? `<div class="pdf-client-chip">Prepared for <strong>${pdfText(clientName, 90)}</strong></div>` : ""}
         <p>${pdfText(intro, 240)}</p>
       </div>
 
@@ -2436,7 +2561,7 @@ function buildExecutivePrintableHtml(payload: ReportPayload, filters: ReportFilt
     </section>
 
     ${filters.includeChart ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>${pdfText(barSection?.title || "Operational Distribution", 80)}</h2><p>Visual summary rendered as PDF-safe chart rows.</p></div><span>Chart</span></div><div class="pdf-bars">${barListHtml(barSection)}</div></section>` : ""}
-    ${filters.includeTable ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>Board Attention Focus</h2><p>Management-level attention items are shown in a structured table-friendly layout.</p></div><span>Decision Focus</span></div><div class="pdf-focus-grid">${riskCardsHtml(payload)}</div></section>` : ""}
+    ${filters.includeTable ? `<section class="pdf-section pdf-table-section"><div class="pdf-section-head"><div><h2>Board Attention Focus</h2><p>Priority management attention items rendered as a proper decision table.</p></div><span>Decision Focus</span></div>${riskTableHtml(((sectionByType(payload, "risk")?.rows || payload.recommendations || []) as Record<string, any>[]), 12)}</section>` : ""}
     ${filters.includeRecommendation ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>Recommended Actions</h2><p>Follow-up actions generated from current findings.</p></div><span>Action Plan</span></div>${tableRowsHtml({ type: "table", title: "Actions", rows: payload.recommendations || [] }, 10)}</section>` : ""}
   `;
 }
@@ -2471,7 +2596,7 @@ function buildGenericPrintableHtml(payload: ReportPayload, filters: ReportFilter
     </section>
 
     ${filters.includeChart ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>${pdfText(barSection?.title || "Operational Distribution", 80)}</h2><p>Summary chart generated as real HTML bars.</p></div><span>Chart</span></div><div class="pdf-bars">${barListHtml(barSection)}</div></section>` : ""}
-    ${riskSection && filters.includeTable ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>${pdfText(riskSection.title, 80)}</h2><p>Evidence and priority items.</p></div><span>Risk</span></div><div class="pdf-focus-grid">${riskCardsHtml(payload)}</div></section>` : ""}
+    ${riskSection && filters.includeTable ? `<section class="pdf-section pdf-table-section"><div class="pdf-section-head"><div><h2>${pdfText(riskSection.title, 80)}</h2><p>Evidence and priority items rendered as a structured table.</p></div><span>Risk</span></div>${riskTableHtml((riskSection.rows || []) as Record<string, any>[], 18)}</section>` : ""}
     ${tableSection && filters.includeTable ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>${pdfText(tableSection.title, 80)}</h2><p>Detail rows are rendered as real selectable table data.</p></div><span>Table</span></div>${tableRowsHtml(tableSection, 32)}</section>` : ""}
     ${filters.includeRecommendation ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>Recommended Actions</h2><p>Management actions generated from the live report dataset.</p></div><span>Action</span></div>${tableRowsHtml({ type: "table", title: "Actions", rows: payload.recommendations || [] }, 10)}</section>` : ""}
   `;
@@ -2512,35 +2637,50 @@ function buildFullPackPrintableHtml(payload: ReportPayload, filters: ReportFilte
   `;
 }
 
-function buildRegeneratedReportHtml(payload: ReportPayload, filters: ReportFilters) {
-  const isFullPack = ["client-summary-rnr", "resource-planning-brand-summary"].includes(payload.report.id);
-  const isExecutive = /executive/i.test(`${payload.report.id} ${payload.report.title} ${payload.report.category || ""}`);
-  const content = isFullPack ? buildFullPackPrintableHtml(payload, filters) : isExecutive ? buildExecutivePrintableHtml(payload, filters) : buildGenericPrintableHtml(payload, filters);
+function buildRegeneratedReportHtml(payload: ReportPayload, filters: ReportFilters, options: { autoPrint?: boolean; preview?: boolean } = {}) {
+  const liveFilters = { ...(payload.filters || {}), ...(filters || {}) } as ReportFilters;
+  const livePayload = applyClientRnrLiveOverrides(payload, liveFilters);
+  const isFullPack = ["client-summary-rnr", "resource-planning-brand-summary"].includes(livePayload.report.id);
+  const isExecutive = /executive/i.test(`${livePayload.report.id} ${livePayload.report.title} ${livePayload.report.category || ""}`);
+  const content = isFullPack ? buildFullPackPrintableHtml(livePayload, liveFilters) : isExecutive ? buildExecutivePrintableHtml(livePayload, liveFilters) : buildGenericPrintableHtml(livePayload, liveFilters);
+  const autoPrint = options.autoPrint !== false;
+  const bodyClass = options.preview ? "pdf-preview-mode" : "pdf-print-mode";
+  const printScript = autoPrint ? `
+  <script>
+    const triggerPrint = () => setTimeout(() => { window.focus(); window.print(); }, 250);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(triggerPrint).catch(triggerPrint);
+    else window.addEventListener('load', triggerPrint);
+  <\/script>` : "";
   return `
 <!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${pdfText(payload.report.title, 90)}</title>
+  <title>${pdfText(livePayload.report.title, 90)}</title>
   <style>
     @page { size: A4 portrait; margin: 10mm; }
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; background: #eef3f8; color: #17233c; font-family: "Segoe UI", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     body { width: 210mm; min-height: 297mm; }
-    .pdf-pack { width: 190mm; margin: 0 auto; display: flex; flex-direction: column; gap: 6mm; }
-    .pdf-page-break { page-break-after: always; break-after: page; height: 0; }
-    .pdf-cover-page { position: relative; width: 190mm; min-height: 277mm; overflow: hidden; border: 1px solid #d9e3f0; border-radius: 7mm; background: linear-gradient(180deg,#ffffff 0%,#fbfdff 100%); padding: 13mm; page-break-after: always; }
+    body.pdf-preview-mode { width: 100%; min-width: 210mm; background: #eef3f8; padding: 8mm 0 12mm; }
+    body.pdf-print-mode { background: #fff; }
+    .pdf-pack { width: 190mm; margin: 0 auto; display: block; }
+    .pdf-pack > * + * { margin-top: 6mm; }
+    .pdf-page-break { page-break-after: always; break-after: page; height: 0; margin: 0 !important; }
+    .pdf-cover-page { position: relative; width: 190mm; min-height: 255mm; overflow: hidden; border: 1px solid #d9e3f0; border-radius: 7mm; background: linear-gradient(180deg,#ffffff 0%,#fbfdff 100%); padding: 13mm; page-break-after: always; break-after: page; margin-bottom: 0; }
     .pdf-cover-executive { --pdf-cover-primary:#18324f; --pdf-cover-accent:#d3a84e; }
     .pdf-cover-generic { --pdf-cover-primary:#143b72; --pdf-cover-accent:#4f8df7; }
     .pdf-cover-brand-row { position: relative; z-index: 2; display: flex; align-items: center; gap: 4mm; color: #182c45; }
     .pdf-cover-brand-mark { width: 13mm; height: 13mm; border: 1px solid #d5deeb; border-radius: 4mm; display: grid; place-items: center; color: var(--pdf-cover-primary); background:#fff; font-weight: 900; }
     .pdf-cover-brand-row strong { display:block; font-size: 15pt; line-height: 1.1; }
     .pdf-cover-brand-row small { display:block; margin-top: 1mm; color:#718096; font-size: 7pt; text-transform: uppercase; letter-spacing: .14em; font-weight: 900; }
-    .pdf-cover-title-block { position: relative; z-index: 2; max-width: 112mm; min-height: 178mm; display: flex; flex-direction: column; justify-content: center; }
+    .pdf-cover-title-block { position: relative; z-index: 2; max-width: 112mm; min-height: 156mm; display: flex; flex-direction: column; justify-content: center; }
     .pdf-cover-title-block span { width: fit-content; padding: 2.2mm 4mm; border:1px solid #d9e3f0; border-radius:999px; background:#fff; color: var(--pdf-cover-primary); font-size: 7pt; font-weight: 900; letter-spacing:.11em; text-transform: uppercase; }
     .pdf-cover-title-block h1 { margin: 7mm 0 0; color:#1d2f45; font-size: 35pt; line-height:.98; letter-spacing:-.055em; }
     .pdf-cover-title-block p { margin: 6mm 0 0; max-width: 92mm; color:#58677b; font-size: 11pt; line-height:1.58; font-weight: 600; }
+    .pdf-client-chip { display: inline-flex; align-items: center; gap: 5px; max-width: 96mm; margin: 5mm 0 0; padding: 2.8mm 4.2mm; border: 1px solid #d8e3f0; border-radius: 999px; background: rgba(255,255,255,.86); color: #53657d; font-size: 8pt; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
+    .pdf-client-chip strong { color: #13294b; }
     .pdf-cover-meta-table { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 3mm; padding-top: 6mm; border-top: 1px solid #dfe7f2; }
     .pdf-cover-meta-table div { min-width:0; }
     .pdf-cover-meta-table small { display:block; color:#718096; text-transform: uppercase; letter-spacing:.1em; font-size: 7pt; font-weight: 900; }
@@ -2606,20 +2746,17 @@ function buildRegeneratedReportHtml(payload: ReportPayload, filters: ReportFilte
     .pdf-empty { padding: 5mm; border: 1px dashed #cbd8ea; border-radius: 4mm; color: #6b7c94; background: #fbfdff; }
     @media print {
       html, body { width: auto; background: #fff !important; }
+      body { padding: 0 !important; }
       .pdf-pack { width: 190mm; margin: 0 auto; }
-      .pdf-cover, .pdf-section { box-shadow: none !important; }
+      .pdf-cover, .pdf-section, .pdf-cover-page { box-shadow: none !important; }
       .pdf-section { break-inside: avoid; page-break-inside: avoid; }
       .pdf-table-section { break-inside: auto; page-break-inside: auto; }
     }
   </style>
 </head>
-<body>
+<body class="${bodyClass}">
   <main class="pdf-pack">${content}</main>
-  <script>
-    const triggerPrint = () => setTimeout(() => { window.focus(); window.print(); }, 250);
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(triggerPrint).catch(triggerPrint);
-    else window.addEventListener('load', triggerPrint);
-  <\/script>
+  ${printScript}
 </body>
 </html>`;
 }
@@ -2706,7 +2843,7 @@ export default function Report() {
   });
   const [savedSchedules, setSavedSchedules] = useState<HistoryItem[]>([]);
 
-  const activeReportGroup = useMemo(() => categories.find((item) => item.name === activeCategory), [categories, activeCategory]);
+  const activeReportGroup = useMemo(() => categories.find((item) => item.name === activeCategory) || categories[0] || FRONTEND_REPORT_CATALOG[0], [categories, activeCategory]);
   const previewRows = getPreviewRows(selectedReport || undefined, payload || undefined);
 
   const filteredReports = useMemo(() => {
@@ -2748,14 +2885,20 @@ export default function Report() {
     // Render immediately using the local catalog so the sidebar never flashes a loading box.
     // The API catalog is still fetched quietly and replaces the local copy only when it succeeds.
     try {
-      const catalogResponse = await apiRequest<{ success: boolean; data: ReportCategory[] }>("/api/reports/catalog");
-      const loadedCategories = Array.isArray(catalogResponse.data) && catalogResponse.data.length > 0
-        ? catalogResponse.data
-        : FRONTEND_REPORT_CATALOG;
+      const catalogResponse = await apiRequest<{ success: boolean; data: ReportCategory[]; featured?: boolean }>("/api/reports/catalog");
+      const incomingCategories = Array.isArray(catalogResponse.data) ? catalogResponse.data : [];
+      const incomingCount = incomingCategories.reduce((sum, category) => sum + (category.items?.length || 0), 0);
+      const isFeaturedCatalog = catalogResponse.featured === true || (
+        incomingCategories.length === 1 &&
+        incomingCategories[0]?.name === "Featured Reports" &&
+        incomingCount > 0 &&
+        incomingCount <= 10
+      );
+      const loadedCategories = isFeaturedCatalog ? incomingCategories : FRONTEND_REPORT_CATALOG;
 
       setCategories(loadedCategories);
 
-      const nextCategory = loadedCategories.find((item) => item.name === activeCategory) || loadedCategories[0];
+      const nextCategory = loadedCategories[0] || FRONTEND_REPORT_CATALOG[0];
       const nextReport = selectedReport
         ? nextCategory?.items?.find((item) => item.id === selectedReport.id) || nextCategory?.items?.[0] || null
         : nextCategory?.items?.[0] || null;
@@ -2766,9 +2909,9 @@ export default function Report() {
       setScheduleDraft((current) => ({ ...current, outputFormat: allowedOutputs(nextReport || undefined, fallbackOptions)[0] || "PDF" }));
       setPreviewStatus("Ready");
     } catch {
-      setCategories((current) => current.length ? current : FRONTEND_REPORT_CATALOG);
-      setSelectedReport((current) => current || FRONTEND_REPORT_CATALOG[0]?.items?.[0] || null);
-      setActiveCategory((current) => current || FRONTEND_REPORT_CATALOG[0]?.name || "");
+      setCategories(FRONTEND_REPORT_CATALOG);
+      setSelectedReport((current) => current && FRONTEND_REPORT_CATALOG[0].items.some((item) => item.id === current.id) ? current : FRONTEND_REPORT_CATALOG[0]?.items?.[0] || null);
+      setActiveCategory(FRONTEND_REPORT_CATALOG[0]?.name || "");
     }
 
     try {
@@ -2826,24 +2969,25 @@ export default function Report() {
         method: "POST",
         body: JSON.stringify({ reportId: selectedReport.id, ...filters })
       });
-      setPayload(response);
+      const responseWithLiveFilters = applyClientRnrLiveOverrides(response, filters);
+      setPayload(responseWithLiveFilters);
       setPreviewStatus(mode === "preview" ? "Previewed" : "Generated");
       setIsPreviewOpen(true);
 
       if (mode === "generate") {
         setHistory((current) => [
-          { title: response.report.title, format: filters.outputFormat, time: formatGeneratedTime(), payload: response },
+          { title: responseWithLiveFilters.report.title, format: filters.outputFormat, time: formatGeneratedTime(), payload: responseWithLiveFilters },
           ...current.slice(0, 7)
         ]);
 
         if (filters.outputFormat === "PDF") {
-          exportPdfPayload(response);
+          exportPdfPayload(responseWithLiveFilters);
         } else {
-          applyOutputAction(response, filters.outputFormat);
+          applyOutputAction(responseWithLiveFilters, filters.outputFormat);
         }
       }
 
-      return response;
+      return responseWithLiveFilters;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Report generation failed.");
       setPreviewStatus("Error");
@@ -2857,7 +3001,7 @@ export default function Report() {
     const printWindow = window.open("", "_blank", "width=1180,height=900");
     if (!printWindow) return false;
 
-    const html = buildRegeneratedReportHtml(reportPayload, filters);
+    const html = buildRegeneratedReportHtml(reportPayload, filters, { autoPrint: true });
     printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
@@ -2869,7 +3013,7 @@ export default function Report() {
     // Browser print dialog lets user save the generated output as PDF without adding a new frontend package.
     const opened = openRegeneratedPrintWindow(reportPayload);
     if (!opened) {
-      const blob = new Blob([buildRegeneratedReportHtml(reportPayload, filters)], { type: "text/html;charset=utf-8" });
+      const blob = new Blob([buildRegeneratedReportHtml(reportPayload, filters, { autoPrint: true })], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank");
       window.setTimeout(() => URL.revokeObjectURL(url), 30000);
@@ -2913,11 +3057,730 @@ export default function Report() {
   const selectedStatusOptions = options.statuses?.length ? options.statuses : fallbackOptions.statuses;
   const selectedGroupOptions = options.groups?.length ? options.groups : fallbackOptions.groups;
   const selectedDateRangeOptions = options.dateRanges?.length ? options.dateRanges : fallbackOptions.dateRanges;
-  const totalTemplateCount = categories.reduce((sum, category) => sum + category.items.length, 0);
+  const featuredReports = activeReportGroup?.items || FRONTEND_REPORT_CATALOG[0].items;
+  const totalTemplateCount = featuredReports.length;
+  const selectedBlueprint = getFeaturedReportBlueprint(selectedReport?.id);
+  const selectedPackNumber = getFeaturedReportNumber(featuredReports, selectedReport);
   const reportAnalysis = buildReportAnalysis(selectedReport, filters, payload);
 
   return (
     <>
+      <style>{`
+        .report-settings-layout {
+          grid-template-columns: 292px minmax(0, 1fr);
+        }
+        .featured-report-nav-panel {
+          position: sticky;
+          top: 18px;
+          align-self: start;
+          max-height: calc(100vh - 42px);
+          overflow: hidden;
+        }
+        .featured-report-nav-panel .panel-head {
+          padding: 18px 18px 14px;
+        }
+        .featured-report-nav-panel .panel-head span {
+          font-size: .72rem;
+          letter-spacing: .10em;
+        }
+        .featured-report-nav-panel .panel-head strong {
+          font-size: 1rem;
+          line-height: 1.2;
+        }
+        .featured-report-nav-panel .panel-head small {
+          font-size: .74rem;
+          line-height: 1.35;
+        }
+        .featured-report-nav-list {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 14px 14px 16px;
+          overflow: auto;
+          max-height: calc(100vh - 165px);
+        }
+        .featured-report-nav-item {
+          width: 100%;
+          border: 0;
+          background: transparent;
+          border-radius: 17px;
+          padding: 10px 11px;
+          min-height: 64px;
+          display: grid;
+          grid-template-columns: 42px minmax(0, 1fr);
+          gap: 10px;
+          align-items: center;
+          text-align: left;
+          color: #142f57;
+          box-shadow: none;
+          transition: background .18s ease, color .18s ease, transform .18s ease;
+        }
+        .featured-report-nav-item:hover {
+          transform: none;
+          background: #f4f8ff;
+        }
+        .featured-report-nav-item.active {
+          color: #fff;
+          background: linear-gradient(135deg, #3169ee 0%, #0787b8 100%);
+          box-shadow: 0 12px 24px rgba(37, 99, 235, .18);
+        }
+        .featured-report-nav-icon {
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
+          display: grid;
+          place-items: center;
+          color: var(--pack-accent, #2563eb);
+          background: #eef4ff;
+          flex-shrink: 0;
+        }
+        .featured-report-nav-item.active .featured-report-nav-icon {
+          color: #fff;
+          background: rgba(255,255,255,.18);
+        }
+        .featured-report-nav-icon svg { width: 19px; height: 19px; }
+        .featured-report-nav-copy { min-width: 0; }
+        .featured-report-nav-copy strong {
+          display: block;
+          font-size: .84rem;
+          line-height: 1.22;
+          color: currentColor;
+          margin-bottom: 3px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .featured-report-nav-copy small {
+          display: block;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          color: #5d708f;
+          line-height: 1.25;
+          font-size: .70rem;
+          font-weight: 700;
+        }
+        .featured-report-nav-item.active .featured-report-nav-copy small {
+          color: rgba(255,255,255,.86);
+        }
+        .featured-report-nav-badge {
+          display: none;
+        }
+        .featured-report-layout {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(330px, 380px);
+          gap: 22px;
+          align-items: start;
+        }
+        .featured-report-main-panel {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+        }
+        .report-pack-command-card {
+          position: relative;
+          overflow: hidden;
+          border-radius: 26px;
+          border: 1px solid #d5e3f6;
+          background: linear-gradient(135deg, #ffffff 0%, #f7fbff 54%, rgba(37, 99, 235, .08) 100%);
+          box-shadow: 0 20px 44px rgba(15, 35, 71, .08);
+          padding: 24px;
+        }
+        .report-pack-command-card::after {
+          content: "";
+          position: absolute;
+          right: -86px;
+          top: -86px;
+          width: 220px;
+          height: 220px;
+          border-radius: 999px;
+          border: 34px solid color-mix(in srgb, var(--pack-accent, #2563eb) 16%, transparent);
+          pointer-events: none;
+        }
+        .report-pack-command-top {
+          position: relative;
+          z-index: 1;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 18px;
+          align-items: start;
+        }
+        .pack-eyebrow {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 7px 11px;
+          border-radius: 999px;
+          background: rgba(37, 99, 235, .10);
+          color: #2756c8;
+          font-size: .72rem;
+          font-weight: 900;
+          letter-spacing: .1em;
+          text-transform: uppercase;
+        }
+        .report-pack-command-card h3 {
+          margin: 12px 0 8px;
+          color: #112b52;
+          font-size: clamp(1.45rem, 2.2vw, 2.25rem);
+          line-height: 1.03;
+          letter-spacing: -.05em;
+        }
+        .report-pack-command-card p {
+          margin: 0;
+          color: #5c708f;
+          line-height: 1.6;
+          max-width: 820px;
+          font-weight: 600;
+        }
+        .pack-number {
+          width: 78px;
+          height: 78px;
+          border-radius: 24px;
+          display: grid;
+          place-items: center;
+          background: #fff;
+          border: 1px solid #d5e3f6;
+          color: var(--pack-accent, #2563eb);
+          font-weight: 950;
+          font-size: 1.6rem;
+          box-shadow: 0 12px 26px rgba(15, 35, 71, .075);
+        }
+        .report-pack-kpi-row {
+          position: relative;
+          z-index: 1;
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 12px;
+          margin-top: 22px;
+        }
+        .report-pack-kpi-row div {
+          background: rgba(255,255,255,.86);
+          border: 1px solid #dbe6f5;
+          border-radius: 18px;
+          padding: 14px;
+        }
+        .report-pack-kpi-row span,
+        .report-pack-section-list span,
+        .client-rnr-fields legend {
+          display: block;
+          color: #7a8dac;
+          font-size: .72rem;
+          text-transform: uppercase;
+          letter-spacing: .08em;
+          font-weight: 900;
+          margin-bottom: 6px;
+        }
+        .report-pack-kpi-row strong {
+          display: block;
+          color: #17325d;
+          font-size: .98rem;
+          line-height: 1.3;
+        }
+        .report-pack-section-list {
+          border: 1px solid #d5e3f6;
+          border-radius: 24px;
+          background: #fff;
+          padding: 20px;
+          box-shadow: 0 12px 30px rgba(15, 35, 71, .055);
+        }
+        .report-pack-section-list h4,
+        .featured-report-card-grid h4 {
+          margin: 0 0 4px;
+          color: #17325d;
+          font-size: 1.08rem;
+          letter-spacing: -.02em;
+        }
+        .report-pack-section-list > p,
+        .featured-report-card-grid > p {
+          margin: 0 0 16px;
+          color: #637691;
+          line-height: 1.5;
+        }
+        .report-section-chip-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .report-section-chip-grid div {
+          display: flex;
+          gap: 10px;
+          align-items: flex-start;
+          border: 1px solid #dce7f6;
+          border-radius: 15px;
+          padding: 12px;
+          background: #f8fbff;
+          color: #415879;
+          line-height: 1.35;
+          font-weight: 700;
+        }
+        .report-section-chip-grid b {
+          flex: 0 0 auto;
+          color: var(--pack-accent, #2563eb);
+          font-size: .8rem;
+        }
+        .featured-report-card-grid {
+          border: 1px solid #d5e3f6;
+          border-radius: 24px;
+          background: #fff;
+          padding: 20px;
+          box-shadow: 0 12px 30px rgba(15, 35, 71, .055);
+        }
+        .featured-pack-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+        }
+        .featured-pack-card {
+          border: 1px solid #dbe6f5;
+          border-left: 4px solid var(--pack-accent, #2563eb);
+          border-radius: 18px;
+          background: #fff;
+          padding: 16px;
+          text-align: left;
+          min-height: 166px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          box-shadow: 0 10px 24px rgba(15, 35, 71, .045);
+          transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        }
+        .featured-pack-card:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 16px 30px rgba(15, 35, 71, .075);
+        }
+        .featured-pack-card.active {
+          background: linear-gradient(180deg, #fff 0%, #f5f9ff 100%);
+          border-color: var(--pack-accent, #2563eb);
+        }
+        .featured-pack-card h5 {
+          margin: 0;
+          color: #17325d;
+          font-size: 1rem;
+          line-height: 1.35;
+        }
+        .featured-pack-card p {
+          margin: 0;
+          color: #5f7190;
+          line-height: 1.45;
+          font-size: .88rem;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .featured-pack-card-footer {
+          margin-top: auto;
+          display: flex;
+          justify-content: space-between;
+          gap: 10px;
+          align-items: center;
+        }
+        .featured-pack-card-footer span {
+          padding: 6px 9px;
+          border-radius: 999px;
+          background: #eef4ff;
+          color: #2557cd;
+          font-size: .7rem;
+          font-weight: 900;
+        }
+        .featured-pack-card-footer b {
+          color: var(--pack-accent, #2563eb);
+          font-size: .82rem;
+        }
+        .selected-pack-toolbar {
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: center;
+          padding: 16px 18px;
+        }
+        .selected-pack-toolbar-copy {
+          display: grid;
+          gap: 4px;
+          min-width: 0;
+        }
+        .selected-pack-toolbar-copy span,
+        .selected-report-only-panel span,
+        .selected-report-detail-card span {
+          color: #7a8dac;
+          font-size: .72rem;
+          text-transform: uppercase;
+          letter-spacing: .09em;
+          font-weight: 900;
+        }
+        .selected-pack-toolbar-copy strong {
+          color: #122d55;
+          font-size: 1.05rem;
+          line-height: 1.2;
+        }
+        .selected-pack-toolbar-copy small {
+          color: #617591;
+          font-weight: 600;
+          line-height: 1.4;
+        }
+        .selected-report-only-panel {
+          border: 1px solid color-mix(in srgb, var(--pack-accent, #2563eb) 38%, #dce7f6);
+          border-left: 5px solid var(--pack-accent, #2563eb);
+          border-radius: 24px;
+          background:
+            radial-gradient(circle at top right, color-mix(in srgb, var(--pack-accent, #2563eb) 10%, transparent), transparent 38%),
+            #fff;
+          padding: 22px;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 18px;
+          align-items: center;
+          box-shadow: 0 14px 32px rgba(15, 35, 71, .06);
+        }
+        .selected-report-only-panel h4,
+        .selected-report-detail-card h4 {
+          margin: 7px 0 8px;
+          color: #17325d;
+          font-size: 1.08rem;
+          letter-spacing: -.02em;
+        }
+        .selected-report-only-panel p,
+        .selected-report-detail-card p {
+          margin: 0;
+          color: #607491;
+          line-height: 1.55;
+          font-weight: 600;
+        }
+        .selected-report-actions {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+        .selected-report-deliverable-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.1fr) minmax(260px, .9fr);
+          gap: 16px;
+        }
+        .selected-report-detail-card {
+          border: 1px solid #d5e3f6;
+          border-radius: 24px;
+          background: #fff;
+          padding: 20px;
+          box-shadow: 0 12px 30px rgba(15, 35, 71, .055);
+        }
+        .selected-report-detail-card.muted {
+          background: #f8fbff;
+        }
+        .selected-report-mini-list {
+          display: grid;
+          gap: 10px;
+          margin-top: 14px;
+        }
+        .selected-report-mini-list div {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+          padding: 11px 12px;
+          border: 1px solid #dce7f6;
+          border-radius: 14px;
+          background: #f8fbff;
+        }
+        .selected-report-mini-list b {
+          color: var(--pack-accent, #2563eb);
+          font-size: .76rem;
+        }
+        .selected-report-mini-list strong {
+          color: #405678;
+          font-size: .88rem;
+          line-height: 1.35;
+        }
+        .client-rnr-fields {
+          border: 1px dashed #bdd1f2;
+          border-radius: 18px;
+          padding: 14px;
+          background: #f8fbff;
+          display: grid;
+          gap: 12px;
+        }
+        .client-rnr-fields legend { margin-bottom: 0; }
+        .client-rnr-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+        .config-head h3 { line-height: 1.2; }
+        .score-box strong { line-height: 1.08; }
+        @media (max-width: 1320px) {
+          .report-settings-layout { grid-template-columns: 1fr; }
+          .featured-report-nav-panel { position: static; max-height: none; }
+          .featured-report-nav-list { max-height: none; display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); }
+          .featured-report-layout { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 780px) {
+          .featured-report-nav-list,
+          .featured-pack-grid,
+          .report-pack-kpi-row,
+          .report-section-chip-grid,
+          .client-rnr-grid,
+          .selected-pack-toolbar,
+          .selected-report-only-panel,
+          .selected-report-deliverable-grid { grid-template-columns: 1fr; }
+          .selected-report-actions { justify-content: flex-start; }
+          .report-pack-command-top { grid-template-columns: 1fr; }
+          .pack-number { width: 58px; height: 58px; border-radius: 18px; }
+        }
+        .report-focus-scope { min-width: 0; }
+        .report-builder-grid-refined {
+          display: grid;
+          grid-template-columns: minmax(0, 1.6fr) minmax(320px, 380px);
+          gap: 22px;
+          align-items: start;
+        }
+        .report-template-column-refined {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+        }
+        .report-spotlight-shell {
+          background: linear-gradient(180deg, #fbfdff 0%, #f3f8ff 100%);
+          border: 1px solid #d5e2f6;
+          border-radius: 22px;
+          padding: 20px;
+          box-shadow: 0 12px 30px rgba(15, 35, 71, 0.06);
+        }
+        .report-spotlight-head {
+          display: flex;
+          justify-content: space-between;
+          gap: 16px;
+          align-items: flex-start;
+          margin-bottom: 16px;
+        }
+        .report-spotlight-head h3 {
+          margin: 6px 0 6px;
+          font-size: 1.2rem;
+          line-height: 1.3;
+          color: #16325c;
+        }
+        .report-spotlight-head p, .report-spotlight-main p {
+          margin: 0;
+          color: #5c708f;
+          line-height: 1.55;
+        }
+        .report-spotlight-tag {
+          display: inline-flex;
+          align-items: center;
+          padding: 6px 10px;
+          border-radius: 999px;
+          background: rgba(37, 99, 235, 0.09);
+          color: #2756c8;
+          font-size: 0.72rem;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+        }
+        .report-spotlight-meta {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(88px, 1fr));
+          gap: 10px;
+          min-width: 290px;
+        }
+        .report-spotlight-meta > div {
+          background: #fff;
+          border: 1px solid #d7e1f2;
+          border-radius: 16px;
+          padding: 12px 14px;
+        }
+        .report-spotlight-meta span,
+        .report-template-row-meta span,
+        .report-spotlight-kicker span {
+          display: block;
+          font-size: 0.72rem;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: #7a8dab;
+          margin-bottom: 6px;
+        }
+        .report-spotlight-meta strong,
+        .report-template-row-meta strong,
+        .report-spotlight-kicker b {
+          display: block;
+          color: #183153;
+          line-height: 1.35;
+          font-size: 0.98rem;
+        }
+        .report-spotlight-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+          gap: 16px;
+          align-items: stretch;
+        }
+        .report-spotlight-main {
+          background: rgba(255,255,255,0.82);
+          border: 1px solid #d5e2f6;
+          border-radius: 18px;
+          padding: 18px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .report-spotlight-main h4 {
+          margin: 0;
+          font-size: 1.05rem;
+          color: #16325c;
+        }
+        .report-source-chips-refined {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        .report-source-chips-refined span {
+          padding: 8px 12px;
+          border-radius: 999px;
+          background: #eef4ff;
+          border: 1px solid #cddcf6;
+          color: #2457cd;
+          font-size: 0.8rem;
+          font-weight: 700;
+        }
+        .report-spotlight-points {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+        .report-spotlight-point {
+          background: #fff;
+          border: 1px solid #d7e1f2;
+          border-radius: 18px;
+          padding: 16px;
+          min-height: 120px;
+        }
+        .report-spotlight-point span {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 34px;
+          height: 34px;
+          border-radius: 12px;
+          background: #edf3ff;
+          color: #2756c8;
+          font-size: 0.86rem;
+          font-weight: 800;
+          margin-bottom: 10px;
+        }
+        .report-spotlight-point p {
+          margin: 0;
+          color: #4f6485;
+          line-height: 1.55;
+          font-weight: 600;
+        }
+        .report-template-stack {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          max-height: 650px;
+          overflow: auto;
+          padding-right: 4px;
+        }
+        .report-template-row {
+          width: 100%;
+          display: grid;
+          grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr) 132px;
+          gap: 16px;
+          align-items: center;
+          text-align: left;
+          background: #fff;
+          border: 1px solid #d8e3f3;
+          border-left: 4px solid var(--accent, #2563eb);
+          border-radius: 18px;
+          padding: 18px 18px 18px 16px;
+          box-shadow: 0 10px 22px rgba(15, 35, 71, 0.045);
+          transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+        .report-template-row:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 14px 26px rgba(15, 35, 71, 0.07);
+          border-color: #bfd2f4;
+        }
+        .report-template-row.active {
+          background: linear-gradient(180deg, #ffffff 0%, #f5f9ff 100%);
+          border-color: #9cbcf4;
+          box-shadow: 0 18px 34px rgba(37, 99, 235, 0.12);
+        }
+        .report-template-row-main, .report-template-row-meta { min-width: 0; }
+        .report-template-row-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 8px;
+        }
+        .report-template-row-head h4 {
+          margin: 0;
+          color: #17325d;
+          font-size: 1.05rem;
+          line-height: 1.35;
+        }
+        .report-template-row-main p {
+          margin: 0;
+          color: #5d7190;
+          line-height: 1.55;
+        }
+        .report-type-pill {
+          flex-shrink: 0;
+          padding: 7px 11px;
+          border-radius: 999px;
+          background: rgba(37, 99, 235, 0.09);
+          color: #2557cd;
+          font-size: 0.76rem;
+          font-weight: 800;
+        }
+        .report-template-row-meta {
+          display: grid;
+          gap: 12px;
+        }
+        .report-template-row-action {
+          justify-self: stretch;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          min-height: 88px;
+          border-radius: 16px;
+          border: 1px solid #d7e1f2;
+          background: #f6f9ff;
+          color: #2457cd;
+        }
+        .report-template-row-action small {
+          font-size: 0.72rem;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          color: #7d8fad;
+        }
+        .report-template-row-action b {
+          font-size: 0.95rem;
+        }
+        .report-template-row.active .report-template-row-action {
+          background: #edf4ff;
+          border-color: #b7cef7;
+        }
+        .report-config-panel { position: sticky; top: 16px; }
+        @media (max-width: 1400px) {
+          .report-template-row { grid-template-columns: minmax(0, 1fr); }
+          .report-template-row-action { min-height: 72px; }
+        }
+        @media (max-width: 1280px) {
+          .report-builder-grid-refined { grid-template-columns: 1fr; }
+          .report-config-panel { position: static; top: auto; }
+        }
+        @media (max-width: 900px) {
+          .report-spotlight-head,
+          .report-spotlight-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+          }
+          .report-spotlight-meta { grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; }
+          .report-spotlight-points { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+          .report-spotlight-meta { grid-template-columns: 1fr; }
+        }
+      `}</style>
       <main className="settings-module-root ema-settings-pro ema-report-pro ema-report-module-root report-module-root" data-section="report">
         <input aria-hidden="true" id="globalSearch" type="hidden" />
         <button hidden id="themeBtn" type="button">
@@ -2925,30 +3788,34 @@ export default function Report() {
         </button>
 
         <div className="settings-layout report-settings-layout">
-          <aside className="settings-menu report-category-panel ema-panel-surface">
+          <aside className="settings-menu report-category-panel ema-panel-surface featured-report-nav-panel">
             <div className="panel-head">
               <span>REPORT CENTER</span>
-              <strong>Report Category</strong>
-              <small>Management-ready reporting</small>
+              <strong>Featured Report Packs</strong>
+              <small>Only the six management-ready reports are shown here.</small>
             </div>
 
-            <div className="settings-menu-list category-list" id="categoryList" role="tablist" aria-label="Report category navigation">
-              {categories.length === 0 && <div className="report-mini-state error">No catalog loaded.</div>}
-              {categories.map((category) => (
-                <button
-                  key={category.name}
-                  className={`setting-btn report-category-btn ${category.name === activeCategory ? "active" : ""}`}
-                  type="button"
-                  onClick={() => selectCategory(category.name)}
-                >
-                  <span className="setting-icon" dangerouslySetInnerHTML={{ __html: icons[category.icon] || icons.chart }} />
-                  <span>
-                    <strong>{category.name}</strong>
-                    <small>{category.desc}</small>
-                  </span>
-                  <b>{category.items.length}</b>
-                </button>
-              ))}
+            <div className="featured-report-nav-list" role="tablist" aria-label="Featured report pack navigation">
+              {featuredReports.map((report) => {
+                const blueprint = getFeaturedReportBlueprint(report.id);
+                const isActive = report.id === selectedReport?.id;
+                return (
+                  <button
+                    key={report.id}
+                    type="button"
+                    className={`featured-report-nav-item ${isActive ? "active" : ""}`}
+                    style={{ "--pack-accent": blueprint.accent } as CSSProperties}
+                    onClick={() => selectTemplate(report)}
+                  >
+                    <span className="featured-report-nav-icon" dangerouslySetInnerHTML={{ __html: icons[blueprint.icon] || icons.chart }} />
+                    <span className="featured-report-nav-copy">
+                      <strong>{report.title}</strong>
+                      <small>{blueprint.bestFor}</small>
+                      <em className="featured-report-nav-badge">{blueprint.eyebrow}</em>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </aside>
 
@@ -2956,19 +3823,19 @@ export default function Report() {
             <div className="settings-hero ema-panel-surface users-hero">
               <div>
                 <span className="eyebrow">REPORT GENERATOR WORKSPACE</span>
-                <h2 id="categoryTitle">{activeCategory || "Report Center"}</h2>
-                <p id="categoryDesc">{activeReportGroup?.desc || "Select a category to build management-ready report output."}</p>
+                <h2 id="categoryTitle">Featured Report Center</h2>
+                <p id="categoryDesc">Six curated packs only: AI summary, client RNR, hardware lifecycle, operations SLA, security exposure and software governance.</p>
               </div>
               <div className="settings-score users-hero-score">
                 <div className="score-box">
-                  <span>Total Templates</span>
+                  <span>Featured Reports</span>
                   <strong>{totalTemplateCount}</strong>
-                  <small>Available reports</small>
+                  <small>Curated packs</small>
                 </div>
                 <div className="score-box">
-                  <span>Selected Type</span>
-                  <strong>{selectedReport?.type || "-"}</strong>
-                  <small>{selectedReport ? "Ready to configure" : "No template"}</small>
+                  <span>Selected Pack</span>
+                  <strong>{selectedPackNumber}</strong>
+                  <small>{selectedReport?.title || "No pack selected"}</small>
                 </div>
                 <div className="score-box">
                   <span>Status</span>
@@ -2984,28 +3851,16 @@ export default function Report() {
             </div>
 
             <div className="content-shell ema-panel-surface report-workspace-shell">
-              <div className="content-toolbar report-toolbar">
-                <label className="section-search report-search">
-                  <SearchIcon />
-                  <input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search report by name, source or type..."
-                  />
-                </label>
-
-                <div className="report-toolbar-filters">
-                  <select className="form-select setting-select report-type-select" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} aria-label="Report type filter">
-                    <option value="all">All Types</option>
-                    {Array.from(new Set((activeReportGroup?.items || []).map((item) => item.type))).map((type) => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
+              <div className="content-toolbar report-toolbar selected-pack-toolbar">
+                <div className="selected-pack-toolbar-copy">
+                  <span>SELECTED REPORT MODULE</span>
+                  <strong>{selectedReport?.title || "Choose a report pack"}</strong>
+                  <small>{selectedBlueprint.intent}</small>
                 </div>
 
                 <div className="content-actions toolbar-actions report-toolbar-actions d-flex align-items-center justify-content-end gap-2">
                   <button className="btn soft-btn" id="refreshBtn" type="button" onClick={handleRefresh} disabled={loading}>
-                    Refresh
+                    Refresh Data
                   </button>
                   <button className="btn primary-btn" id="scheduleBtn" type="button" onClick={() => setIsScheduleOpen(true)} disabled={!selectedReport}>
                     New Schedule
@@ -3015,63 +3870,83 @@ export default function Report() {
 
               {error && <div className="settings-inline-alert error report-error-banner">{error}</div>}
 
-              <div className="content-body report-workspace-body" id="contentBody">
-                <div className="report-builder-grid">
-                  <section className="report-template-column">
-                    <div className="settings-helper-card compact report-ai-panel">
-                      <div>
-                        <span className="section-tag">AI ANALYSIS</span>
-                        <h3>{reportAnalysis.title}</h3>
-                        <p>{reportAnalysis.summary}</p>
+              <div className="content-body report-workspace-body report-focus-scope" id="contentBody">
+                <div className="featured-report-layout" style={{ "--pack-accent": selectedBlueprint.accent } as CSSProperties}>
+                  <section className="featured-report-main-panel">
+                    <div className="report-pack-command-card">
+                      <div className="report-pack-command-top">
+                        <div>
+                          <span className="pack-eyebrow">{selectedBlueprint.eyebrow}</span>
+                          <h3>{selectedReport?.title || "Select featured report"}</h3>
+                          <p>{selectedReport?.description || "Choose one of the six report packs from the left panel."}</p>
+                        </div>
+                        <div className="pack-number">{selectedPackNumber}</div>
                       </div>
-                      <div className="report-analysis-grid">
-                        {reportAnalysis.bullets.map((item, index) => (
-                          <div key={`${item}-${index}`}>
-                            <span>{String(index + 1).padStart(2, "0")}</span>
-                            <p>{item}</p>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="report-source-chips">
-                        {reportAnalysis.sources.map((source) => <span key={source}>{source}</span>)}
+
+                      <div className="report-pack-kpi-row">
+                        <div><span>Report Pack</span><strong>{selectedBlueprint.eyebrow}</strong></div>
+                        <div><span>Best For</span><strong>{selectedBlueprint.bestFor}</strong></div>
+                        <div><span>Output</span><strong>{selectedOutputs.map(outputLabel).join(" / ")}</strong></div>
+                        <div><span>Scope</span><strong>{filters.relationID === 0 ? "All Sites" : options.sites.find((site) => site.id === filters.relationID)?.name || "Selected Site"}</strong></div>
                       </div>
                     </div>
 
-                    <div className="template-list" id="templateList">
-                      {filteredReports.map((report) => (
-                        <article
-                          key={report.id}
-                          className={`template-card ${report.id === selectedReport?.id ? "active" : ""}`}
-                          style={{ "--accent": colors[report.type] || "#2563eb" } as CSSProperties}
-                          onClick={() => selectTemplate(report)}
-                        >
-                          <div className="card-top">
-                            <h4>{report.title}</h4>
-                            <span className="type">{report.type}</span>
-                          </div>
-                          <p>{report.description}</p>
-                          <div className="card-meta">
-                            <div><span>Design</span><b>{getReportProfile(report).eyebrow}</b></div>
-                            <div><span>Output</span><b>{report.outputs.join(" / ")}</b></div>
-                          </div>
-                          <div className="card-actions">
-                            <div className="card-select-hint">
-                              <span>{report.id === selectedReport?.id ? "Selected" : "Click to configure"}</span>
-                              <b>{report.id === selectedReport?.id ? "Active" : "Configure"}</b>
-                            </div>
-                          </div>
-                        </article>
-                      ))}
-                      {filteredReports.length === 0 && <div className="settings-empty-state report-empty-block">No report template matches the current search/filter.</div>}
+                    <div className="report-pack-section-list">
+                      <span>Report Content</span>
+                      <h4>What this report will include</h4>
+                      <p>{selectedBlueprint.intent}</p>
+                      <div className="report-section-chip-grid">
+                        {selectedBlueprint.sections.map((section, index) => (
+                          <div key={`${section}-${index}`}><b>{String(index + 1).padStart(2, "0")}</b><strong>{section}</strong></div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="selected-report-only-panel">
+                      <div>
+                        <span>ONLY THIS REPORT WILL BE GENERATED</span>
+                        <h4>{selectedReport?.title || "Selected report"}</h4>
+                        <p>
+                          The center area now shows the selected module only. Other report packs stay in the left sidebar as navigation and will not be mixed into this report preview or output.
+                        </p>
+                      </div>
+                      <div className="selected-report-actions">
+                        <button className="btn soft-btn" type="button" onClick={() => requestReport("preview")} disabled={!selectedReport || loading}>
+                          Preview This Report
+                        </button>
+                        <button className="btn primary-btn" type="button" onClick={() => requestReport("generate")} disabled={!selectedReport || loading}>
+                          Generate This Report
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="selected-report-deliverable-grid">
+                      <div className="selected-report-detail-card">
+                        <span>Deliverables</span>
+                        <h4>Output for this module</h4>
+                        <div className="selected-report-mini-list">
+                          {selectedBlueprint.deliverables.map((item, index) => (
+                            <div key={`${item}-${index}`}><b>{String(index + 1).padStart(2, "0")}</b><strong>{item}</strong></div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="selected-report-detail-card muted">
+                        <span>Not Combined</span>
+                        <h4>No mixed report cards here</h4>
+                        <p>
+                          Summary reports will contain summary sections only. Client RNR will contain RNR sections only. Hardware, Operations, Security and Software reports stay separated by module.
+                        </p>
+                      </div>
                     </div>
                   </section>
 
                   <aside className="config-panel report-config-panel">
                     <div className="config-card">
                       <div className="config-head">
-                        <span>SELECTED REPORT</span>
+                        <span>BUILD REPORT</span>
                         <h3 id="selectedTitle">{selectedReport?.title || "No report selected"}</h3>
-                        <p id="selectedDesc">{selectedReport?.description || "Select a report template from the list."}</p>
+                        <p id="selectedDesc">{selectedBlueprint.intent}</p>
                       </div>
 
                       <div className="selected-meta selected-action-meta">
@@ -3127,6 +4002,38 @@ export default function Report() {
                           </select>
                         </label>
 
+                        {selectedReport?.id === "client-summary-rnr" && (
+                          <fieldset className="client-rnr-fields">
+                            <legend>Client RNR Details</legend>
+                            <label>
+                              Client Name
+                              <input className="form-control setting-input" value={filters.clientName || ""} onChange={(event) => updateFilter("clientName", event.target.value)} placeholder="Client name for report cover" />
+                            </label>
+                            <div className="client-rnr-grid">
+                              <label>
+                                Service Type
+                                <input className="form-control setting-input" value={filters.serviceType || ""} onChange={(event) => updateFilter("serviceType", event.target.value)} placeholder="Subscribe / Purchase" />
+                              </label>
+                              <label>
+                                Version
+                                <input className="form-control setting-input" value={filters.solutionVersion || ""} onChange={(event) => updateFilter("solutionVersion", event.target.value)} placeholder="EMA System / version" />
+                              </label>
+                              <label>
+                                Start Contract
+                                <input className="form-control setting-input" type="date" value={filters.contractStart || ""} onChange={(event) => updateFilter("contractStart", event.target.value)} />
+                              </label>
+                              <label>
+                                End Contract
+                                <input className="form-control setting-input" type="date" value={filters.contractEnd || ""} onChange={(event) => updateFilter("contractEnd", event.target.value)} />
+                              </label>
+                              <label>
+                                Total Nodes
+                                <input className="form-control setting-input" type="number" min="0" value={filters.contractedNodes || 0} onChange={(event) => updateFilter("contractedNodes", Number(event.target.value || 0))} />
+                              </label>
+                            </div>
+                          </fieldset>
+                        )}
+
                         <div className="check-grid">
                           <label className="inline-check"><input checked={filters.includeChart} type="checkbox" onChange={(event) => updateFilter("includeChart", event.target.checked)} /> Include Chart</label>
                           <label className="inline-check"><input checked={filters.includeSummary} type="checkbox" onChange={(event) => updateFilter("includeSummary", event.target.checked)} /> Include Summary</label>
@@ -3153,7 +4060,7 @@ export default function Report() {
 
                       <div className="report-preview-map">
                         <strong>PDF content preview</strong>
-                        {previewRows.map((row, index) => <span key={`${row}-${index}`}>{row}</span>)}
+                        {selectedBlueprint.sections.slice(0, 7).map((row, index) => <span key={`${row}-${index}`}>{row}</span>)}
                       </div>
 
                       {history.length > 0 && (
@@ -3200,8 +4107,16 @@ export default function Report() {
               <button className="btn primary-btn" type="button" onClick={() => requestReport("generate")} disabled={!selectedReport || loading}>Generate Report</button>
             </div>
           </div>
-          <div className="executive-preview-body">
-            {payload ? <ReportDocument payload={payload} filters={filters} /> : <div className="report-empty-block">No preview data yet.</div>}
+          <div className="executive-preview-body report-print-preview-body" style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", overflow: "auto", background: "#eef3f8", padding: "18px 20px" }}>
+            {payload ? (
+              <iframe
+                key={`${payload.report.id}-${payload.generatedAt}-${filters.outputFormat}`}
+                title={`${payload.report.title} print preview`}
+                className="report-print-preview-frame"
+                srcDoc={buildRegeneratedReportHtml(payload, filters, { autoPrint: false, preview: true })}
+                style={{ width: "min(100%, 860px)", maxWidth: "860px", minHeight: "calc(100vh - 150px)", border: 0, borderRadius: 18, background: "#eef3f8", display: "block", flex: "0 0 auto", boxShadow: "0 18px 45px rgba(15,35,71,.14)" }}
+              />
+            ) : <div className="report-empty-block">No preview data yet.</div>}
           </div>
         </div>
       </div>

@@ -1,3 +1,22 @@
 export * from "./apiClient";
+export * from "./api";
+export * from "./commonService";
 export * from "./moduleApiRegistry";
 export * from "./moduleDataService";
+
+export { default as authService } from "./authService";
+export { default as dashboardService } from "./dashboardService";
+export { default as managementDashboardService } from "./managementDashboardService";
+export { default as itOperationService } from "./itOperationService";
+export { default as hardwareService } from "./hardwareService";
+export { default as softwareService } from "./softwareService";
+export { default as softwareDistributionService } from "./softwareDistributionService";
+export { default as networkService } from "./networkService";
+export { default as appMeteringService } from "./appMeteringService";
+export { default as internetMeteringService } from "./internetMeteringService";
+export { default as restrictionService } from "./restrictionService";
+export { default as patchService } from "./patchService";
+export { default as reportService } from "./reportService";
+export { default as serviceDeskService } from "./ServiceDeskService";
+export { default as settingsService } from "./settingsService";
+export { default as taskListService } from "./taskListService";
