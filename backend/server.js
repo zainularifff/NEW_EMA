@@ -4504,7 +4504,8 @@ app.post("/api/settings/users", authenticateToken, async (req, res) => {
             .input("PhoneNo", sql.NVarChar, req.body.phoneNo || "")
             .input("Status", sql.NVarChar, status)
             .input("IsActive", sql.Bit, status === "Inactive" ? 0 : 1)
-            .input("RequireMFA", sql.Bit, parseEmaBit(req.body.requireMFA ?? req.body.mfa, false) ? 1 : 0)
+            .input("RequireMFA", sql.Bit, requestedRequireMFA ? 1 : 0)
+            .input("ResetMfaEnrollment", sql.Bit, resetMfaEnrollment ? 1 : 0)
             .input("AccountLocked", sql.Bit, accountLocked ? 1 : 0)
             .input("LockReason", sql.NVarChar, accountLocked ? (req.body.lockReason || "Locked by administrator") : "")
             .input("AccessStartDate", sql.DateTime, normalizeEmaDate(req.body.accessStartDate))
@@ -4599,6 +4600,7 @@ app.put("/api/settings/users/:id", authenticateToken, async (req, res) => {
         }
 
         const passwordHash = passwordText ? await bcrypt.hash(passwordText, 10) : null;
+        const requestedRequireMFA = parseEmaBit(req.body.requireMFA ?? req.body.mfa, false);
 
         const pool = await sql.connect(dbConfig);
         await assertEmaUsersTable(pool);
@@ -4620,6 +4622,21 @@ app.put("/api/settings/users/:id", authenticateToken, async (req, res) => {
         if (duplicate.recordset.length > 0) {
             return res.status(409).json({ success: false, message: "Username or email already exists." });
         }
+
+        const currentUserResult = await pool.request()
+            .input("UserID", sql.Int, userID)
+            .query(`
+                SELECT TOP 1 RequireMFA, TwoFactorEnabled, TwoFactorSecret
+                FROM EMA_Users WITH (NOLOCK)
+                WHERE UserID = @UserID;
+            `);
+
+        if (currentUserResult.recordset.length === 0) {
+            return res.status(404).json({ success: false, message: "User not found." });
+        }
+
+        const currentRequireMFA = currentUserResult.recordset[0].RequireMFA === true || currentUserResult.recordset[0].RequireMFA === 1;
+        const resetMfaEnrollment = !requestedRequireMFA || (requestedRequireMFA && !currentRequireMFA);
 
         const passwordUpdateClause = passwordHash
             ? `,
@@ -4666,10 +4683,10 @@ app.put("/api/settings/users/:id", authenticateToken, async (req, res) => {
                     Status = @Status,
                     IsActive = @IsActive,
                     RequireMFA = @RequireMFA,
-                    TwoFactorEnabled = CASE WHEN @RequireMFA = 1 THEN TwoFactorEnabled ELSE 0 END,
-                    TwoFactorSecret = CASE WHEN @RequireMFA = 1 THEN TwoFactorSecret ELSE NULL END,
-                    TwoFactorVerifiedAt = CASE WHEN @RequireMFA = 1 THEN TwoFactorVerifiedAt ELSE NULL END,
-                    TwoFactorResetAt = CASE WHEN @RequireMFA = 1 THEN TwoFactorResetAt ELSE GETDATE() END,
+                    TwoFactorEnabled = CASE WHEN @ResetMfaEnrollment = 1 THEN 0 ELSE TwoFactorEnabled END,
+                    TwoFactorSecret = CASE WHEN @ResetMfaEnrollment = 1 THEN NULL ELSE TwoFactorSecret END,
+                    TwoFactorVerifiedAt = CASE WHEN @ResetMfaEnrollment = 1 THEN NULL ELSE TwoFactorVerifiedAt END,
+                    TwoFactorResetAt = CASE WHEN @ResetMfaEnrollment = 1 THEN GETDATE() ELSE TwoFactorResetAt END,
                     AccountLocked = @AccountLocked,
                     LockReason = @LockReason,
                     AccessStartDate = @AccessStartDate,
@@ -4820,17 +4837,33 @@ app.put("/api/settings/users/:id/mfa", authenticateToken, async (req, res) => {
         const pool = await sql.connect(dbConfig);
         await assertEmaUsersTable(pool);
 
+        const currentUserResult = await pool.request()
+            .input("UserID", sql.Int, userID)
+            .query(`
+                SELECT TOP 1 RequireMFA, TwoFactorEnabled, TwoFactorSecret
+                FROM EMA_Users WITH (NOLOCK)
+                WHERE UserID = @UserID;
+            `);
+
+        if (currentUserResult.recordset.length === 0) {
+            return res.status(404).json({ success: false, message: "User not found." });
+        }
+
+        const currentRequireMFA = currentUserResult.recordset[0].RequireMFA === true || currentUserResult.recordset[0].RequireMFA === 1;
+        const resetMfaEnrollment = !requireMFA || (requireMFA && !currentRequireMFA);
+
         const result = await pool.request()
             .input("UserID", sql.Int, userID)
             .input("RequireMFA", sql.Bit, requireMFA ? 1 : 0)
+            .input("ResetMfaEnrollment", sql.Bit, resetMfaEnrollment ? 1 : 0)
             .input("UpdatedBy", sql.NVarChar, req.user?.userID || "system")
             .query(`
                 UPDATE EMA_Users
                 SET RequireMFA = @RequireMFA,
-                    TwoFactorEnabled = CASE WHEN @RequireMFA = 1 THEN TwoFactorEnabled ELSE 0 END,
-                    TwoFactorSecret = CASE WHEN @RequireMFA = 1 THEN TwoFactorSecret ELSE NULL END,
-                    TwoFactorVerifiedAt = CASE WHEN @RequireMFA = 1 THEN TwoFactorVerifiedAt ELSE NULL END,
-                    TwoFactorResetAt = CASE WHEN @RequireMFA = 1 THEN TwoFactorResetAt ELSE GETDATE() END,
+                    TwoFactorEnabled = CASE WHEN @ResetMfaEnrollment = 1 THEN 0 ELSE TwoFactorEnabled END,
+                    TwoFactorSecret = CASE WHEN @ResetMfaEnrollment = 1 THEN NULL ELSE TwoFactorSecret END,
+                    TwoFactorVerifiedAt = CASE WHEN @ResetMfaEnrollment = 1 THEN NULL ELSE TwoFactorVerifiedAt END,
+                    TwoFactorResetAt = CASE WHEN @ResetMfaEnrollment = 1 THEN GETDATE() ELSE TwoFactorResetAt END,
                     UpdatedAt = GETDATE(),
                     UpdatedBy = @UpdatedBy
                 OUTPUT

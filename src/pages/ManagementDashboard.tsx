@@ -163,9 +163,6 @@ type EvidenceRow = {
   brand?: string;
   model?: string;
   platform?: string;
-  os?: string;
-  biosDate?: string;
-  lastConnection?: string;
   status?: string;
   lastSeen?: string;
   age?: string;
@@ -3306,6 +3303,82 @@ body.md-dashboard-page-active .content-area {
 .md-action-card-wide {
   min-width: 0;
 }
+.md-management-action-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.34fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+.md-core-module-panel {
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px !important;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(circle at 96% 0%, rgba(139, 92, 246, 0.075), transparent 13rem),
+    linear-gradient(180deg, rgba(255,255,255,0.995), rgba(248,251,255,0.972)) !important;
+  border: 1.5px solid rgba(139, 92, 246, 0.18) !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.055) !important;
+}
+.md-core-module-panel .md-card-head {
+  margin-bottom: 2px !important;
+  padding: 0 !important;
+}
+.md-core-module-panel .md-pillar-stack {
+  flex: 1 1 auto;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  grid-auto-rows: minmax(112px, 1fr);
+  gap: 12px !important;
+}
+.md-core-module-panel .md-pillar-tile {
+  min-height: 116px !important;
+  grid-template-columns: 54px minmax(0, 1fr) !important;
+  align-items: center !important;
+  padding: 14px !important;
+}
+.md-core-module-panel .md-tile-icon {
+  width: 50px !important;
+  height: 50px !important;
+}
+.md-core-module-panel .md-pillar-tile h3 {
+  font-size: 12.5px !important;
+}
+.md-core-module-panel .md-tile-value strong {
+  font-size: clamp(24px, 1.9vw, 31px) !important;
+}
+.md-decision-table-card {
+  min-width: 0;
+  min-height: 560px !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.md-decision-table-card .md-action-header {
+  flex: 0 0 auto !important;
+}
+.md-decision-table-card .md-table-wrap {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+.md-decision-table-card .md-table td {
+  padding-top: 11px !important;
+  padding-bottom: 11px !important;
+}
+@media (max-width: 1180px) {
+  .md-management-action-grid { grid-template-columns: 1fr !important; }
+  .md-core-module-panel .md-pillar-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-auto-rows: auto !important;
+  }
+  .md-decision-table-card { min-height: auto !important; }
+}
+@media (max-width: 680px) {
+  .md-core-module-panel .md-pillar-stack { grid-template-columns: 1fr !important; }
+}
 .md-chart-summary .md-chart-context {
   color: #64748b;
   font-size: 10.5px;
@@ -3340,11 +3413,11 @@ body.md-dashboard-page-active .content-area {
   align-items: start !important;
 }
 .md-chart-panel {
-  min-height: 322px !important;
+  min-height: 250px !important;
   align-self: start !important;
 }
 .md-chart-svg {
-  height: 310px !important;
+  height: 238px !important;
 }
 .md-chart-summary > div {
   min-height: 80px !important;
@@ -4016,12 +4089,10 @@ function getEvidenceColumns(kind: string) {
   return [
     { label: "Device", render: (row: EvidenceRow) => evidenceCellValue(row, ["deviceName", "assetId"]) },
     { label: "Owner / department", render: (row: EvidenceRow) => evidenceCellValue(row, "department", "Unassigned") },
-    { label: "OS / platform", render: (row: EvidenceRow) => evidenceCellValue(row, ["os", "platform"], "Unknown OS") },
-    { label: "BIOS date", render: (row: EvidenceRow) => evidenceCellValue(row, ["biosDate", "biosDateLabel"], "Not recorded") },
+    { label: "Asset type", render: (row: EvidenceRow) => evidenceCellValue(row, "category") },
     { label: "Brand / model", render: (row: EvidenceRow) => `${evidenceCellValue(row, "brand", "")} ${evidenceCellValue(row, "model", "")}`.trim() || "-" },
     { label: "Status", render: (row: EvidenceRow) => evidenceCellValue(row, "status") },
-    { label: "Last connection", render: (row: EvidenceRow) => evidenceCellValue(row, ["lastConnection", "lastSeen"], "-") },
-    { label: "Age / lifecycle", render: (row: EvidenceRow) => evidenceCellValue(row, ["age", "lifecycle"], "-") },
+    { label: "Last seen / age", render: (row: EvidenceRow) => evidenceCellValue(row, ["age", "lastSeen"], "-") },
     { label: "Risk", render: evidenceRiskText },
     { label: "Cost source", render: evidenceCostText }
   ];
@@ -4686,8 +4757,41 @@ export default function ManagementDashboard() {
           </article>
         </section>
 
-        <section className="md-bottom-grid md-action-only-grid">
-          <article className="md-card md-action-card md-action-card-wide">
+        <section className="md-management-action-grid" aria-label="Decision table and core management modules">
+          <aside className="md-card md-core-module-panel" aria-label="Core management modules">
+            <div className="md-card-head">
+              <div>
+                <span className="md-eyebrow">Core Modules</span>
+                <h2>Main Management Lens</h2>
+                <p>Risk, resource, audit and saving lenses are stacked beside the decision queue for faster management review.</p>
+              </div>
+            </div>
+            <div className="md-pillar-grid md-pillar-stack">
+              {pillars.map((pillar, index) => {
+                const tileClass = ["tile-purple", "tile-blue", "tile-teal", "tile-orange"][index % 4];
+                return (
+                  <button
+                    type="button"
+                    className={`md-pillar-tile ${tileClass}`}
+                    key={pillar.id || `${pillar.title}-${index}`}
+                    onClick={() => openLevel2(pillar.area, pillar.title)}
+                  >
+                    <span className="md-tile-icon"><Icon name={normalizeIcon(pillar.icon)} /></span>
+                    <span>
+                      <h3>{pillar.title}</h3>
+                      <span className="md-tile-value">
+                        <strong>{pillar.scoreValue || pillar.secondValue || "-"}</strong>
+                        {pillar.scoreUnit && <span>{pillar.scoreUnit}</span>}
+                      </span>
+                      <small>{[pillar.scoreTitle, pillar.scoreStatus || pillar.secondNote].filter(Boolean).join(" • ") || "Open management lens"}</small>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
+
+          <article className="md-card md-action-card md-decision-table-card">
             <div className="md-action-header">
               <div>
                 <span className="md-eyebrow">Decision Table</span>
@@ -4703,12 +4807,12 @@ export default function ManagementDashboard() {
               <table className="md-table">
                 <thead>
                   <tr>
-                    <th style={{ width: "96px" }}>Priority</th>
-                    <th style={{ width: "120px" }}>Area</th>
+                    <th style={{ width: "90px" }}>Priority</th>
+                    <th style={{ width: "112px" }}>Area</th>
                     <th>Signal</th>
-                    <th style={{ width: "140px" }}>Impact</th>
+                    <th style={{ width: "132px" }}>Impact</th>
                     <th>Decision</th>
-                    <th style={{ width: "96px" }}>Status</th>
+                    <th style={{ width: "86px" }}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
