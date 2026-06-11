@@ -189,7 +189,7 @@ const FRONTEND_REPORT_CATALOG: ReportCategory[] = [
     items: [
       {
         id: "ai-executive-summary",
-        title: "AI Executive Summary Report",
+        title: "Executive Summary Report",
         description: "High-level management summary only: overall posture, key findings and priority recommendations.",
         type: "Summary",
         source: "Endpoint Inventory + Service Desk + Software Inventory + Jobs + Geolocation",
@@ -2531,48 +2531,111 @@ function buildPdfMetricTable(payload: ReportPayload) {
   const software = pdfNumber(payload, ["softwareRows", "softwareRecords", "totalSoftwareRecords"], 0);
   const score = pdfNumber(payload, ["operationalScore", "score"], 0);
   const onlineRate = endpointTotal ? Math.round((online / Math.max(endpointTotal, 1)) * 100) : pdfNumber(payload, ["onlineRate"], 0);
+  const posture = score < 50 || onlineRate < 70 || sla > 0 ? "Critical" : score < 75 || stale > 0 ? "Watch" : "Stable";
+  const telemetryLabel = stale > 0 ? "Weak" : "Healthy";
+  const serviceLabel = sla > 0 ? "Breach Watch" : openTickets > 0 ? "Active Queue" : "Controlled";
   const rows = [
-    ["Board Score", `${score}%`, "Composite management posture"],
-    ["Endpoint Estate", endpointTotal, `${online} online / ${offline} offline`],
-    ["Online Rate", `${onlineRate}%`, `${stale} stale or missing telemetry`],
-    ["Service Desk", openTickets, `${sla} SLA breach candidate(s)`],
-    ["Software", software, "Inventory records in scope"]
+    ["Management Posture", posture, `${score}% board score based on availability, SLA exposure and reporting quality.`],
+    ["Endpoint Reachability", `${onlineRate}%`, `${online} online / ${offline} offline or not online from ${endpointTotal} endpoint(s).`],
+    ["Telemetry Confidence", telemetryLabel, `${stale} endpoint(s) with stale or missing last-seen telemetry.`],
+    ["Service Desk Exposure", serviceLabel, `${openTickets} open ticket(s), including ${sla} SLA breach candidate(s).`],
+    ["Software Visibility", software, "Software inventory records available for governance and cleanup review."]
   ];
 
   return `
     <table class="pdf-real-table pdf-metric-table">
-      <thead><tr><th>Metric</th><th>Value</th><th>Notes</th></tr></thead>
-      <tbody>${rows.map((row) => `<tr><td>${pdfText(row[0], 60)}</td><td>${pdfText(row[1], 40)}</td><td>${pdfText(row[2], 100)}</td></tr>`).join("")}</tbody>
+      <thead><tr><th>Signal</th><th>Status</th><th>Management Reading</th></tr></thead>
+      <tbody>${rows.map((row) => `<tr><td>${pdfText(row[0], 60)}</td><td>${pdfText(row[1], 42)}</td><td>${pdfText(row[2], 135)}</td></tr>`).join("")}</tbody>
     </table>
   `;
 }
 
+function buildExecutiveBrief(payload: ReportPayload) {
+  const endpointTotal = pdfNumber(payload, ["endpointTotal", "totalEndpoints", "assets"], 0);
+  const online = pdfNumber(payload, ["onlineEndpoints", "online"], 0);
+  const offline = pdfNumber(payload, ["offlineEndpoints", "offline"], 0);
+  const stale = pdfNumber(payload, ["staleEndpoints", "stale"], 0);
+  const openTickets = pdfNumber(payload, ["openTickets", "tickets"], 0);
+  const sla = pdfNumber(payload, ["slaBreachCandidates", "slaBreaches", "slaBreached"], 0);
+  const software = pdfNumber(payload, ["softwareRows", "softwareRecords", "totalSoftwareRecords"], 0);
+  const score = pdfNumber(payload, ["operationalScore", "score"], 0);
+  const onlineRate = endpointTotal ? Math.round((online / Math.max(endpointTotal, 1)) * 100) : pdfNumber(payload, ["onlineRate"], 0);
+  const critical = score < 50 || onlineRate < 70 || sla > 0;
+  const headline = critical
+    ? "Immediate management attention is required"
+    : score < 75 || stale > 0
+      ? "Operational posture requires close management follow-up"
+      : "Operational posture is controlled and ready for routine review";
+
+  const paragraphs = [
+    `The current report scope covers ${endpointTotal} endpoint(s). ${online} endpoint(s) are online while ${offline} are offline or not online, producing a ${onlineRate}% reachability position. This is the strongest signal in the report because endpoint availability directly affects support visibility, compliance evidence and the ability to execute corrective action.`,
+    `${stale} endpoint(s) have stale or missing last-seen telemetry. Management should treat this as a reporting-confidence issue, not only a technical agent issue, because delayed telemetry can hide ownership gaps, unmanaged devices and outdated inventory evidence.`,
+    `${openTickets} service desk ticket(s) remain open and ${sla} item(s) appear to have passed SLA due date. The recommended response is to prioritise breached records, validate assignment ownership and rebalance the support queue before the next reporting cycle.`,
+    `${software} software inventory record(s) are available in scope. This provides enough evidence to extend the next review into software governance, licence cleanup, sensitive tools and browser/application exposure once endpoint availability has been stabilised.`
+  ];
+
+  const signals = [
+    { label: "Continuity Risk", value: offline > 0 ? "High" : "Low", note: `${offline} offline / not online endpoint(s)` },
+    { label: "Telemetry Confidence", value: stale > 0 ? "Weak" : "Good", note: `${stale} stale or missing signal(s)` },
+    { label: "SLA Exposure", value: sla > 0 ? "Action" : "Monitor", note: `${sla} breach candidate(s)` },
+    { label: "Governance Evidence", value: software > 0 ? "Available" : "Limited", note: `${software} software record(s)` }
+  ];
+
+  return { headline, paragraphs, signals };
+}
+
+function executiveFindingsTableHtml(payload: ReportPayload, limit = 8) {
+  const endpointTotal = pdfNumber(payload, ["endpointTotal", "totalEndpoints", "assets"], 0);
+  const online = pdfNumber(payload, ["onlineEndpoints", "online"], 0);
+  const offline = pdfNumber(payload, ["offlineEndpoints", "offline"], 0);
+  const stale = pdfNumber(payload, ["staleEndpoints", "stale"], 0);
+  const openTickets = pdfNumber(payload, ["openTickets", "tickets"], 0);
+  const sla = pdfNumber(payload, ["slaBreachCandidates", "slaBreaches", "slaBreached"], 0);
+  const software = pdfNumber(payload, ["softwareRows", "softwareRecords", "totalSoftwareRecords"], 0);
+  const score = pdfNumber(payload, ["operationalScore", "score"], 0);
+  const onlineRate = endpointTotal ? Math.round((online / Math.max(endpointTotal, 1)) * 100) : pdfNumber(payload, ["onlineRate"], 0);
+  const seeded = [
+    { finding: `Endpoint availability is below management comfort level: ${online} of ${endpointTotal} endpoint(s) are online and ${offline} are offline or not online.`, priority: onlineRate < 70 ? "High" : "Monitor" },
+    { finding: `Telemetry freshness requires clean-up: ${stale} endpoint(s) have stale or missing last-seen records, reducing reporting confidence.`, priority: stale > 0 ? "High" : "Low" },
+    { finding: `Service desk exposure remains visible: ${openTickets} open ticket(s) with ${sla} SLA breach candidate(s) need owner validation and escalation tracking.`, priority: sla > 0 ? "High" : openTickets > 0 ? "Medium" : "Low" },
+    { finding: `The current management score is ${score}%, indicating that availability, SLA pressure and data quality must be improved before the estate can be considered healthy.`, priority: score < 50 ? "High" : score < 75 ? "Medium" : "Low" },
+    { finding: `Software evidence is available through ${software} inventory record(s), enabling follow-up review on licence usage, sensitive tools and application governance.`, priority: software > 0 ? "Medium" : "Monitor" }
+  ];
+  const narrative = (payload.narrative.keyFindings || []).map((finding, index) => ({ finding, priority: index < 2 ? "High" : "Monitor" }));
+  const unique = [...seeded, ...narrative].filter((item, index, list) => list.findIndex((candidate) => candidate.finding === item.finding) === index).slice(0, limit);
+  return `<table class="pdf-real-table pdf-finding-table"><thead><tr><th>No</th><th>Management Finding</th><th>Priority</th></tr></thead><tbody>${unique.map((item, index) => `<tr><td>${String(index + 1).padStart(2, "0")}</td><td>${pdfText(item.finding, 240)}</td><td><span class="pdf-risk-pill">${pdfText(item.priority, 24)}</span></td></tr>`).join("")}</tbody></table>`;
+}
+
 function buildExecutivePrintableHtml(payload: ReportPayload, filters: ReportFilters) {
   const barSection = payload.sections.find((section) => ["bar", "donut"].includes(section.type));
+  const brief = buildExecutiveBrief(payload);
 
   return `
     ${buildPdfCoverOnlyPage(payload, filters, "executive")}
 
-    <section class="pdf-section pdf-summary-section">
-      <div class="pdf-section-head"><div><h2>Management Snapshot</h2><p>High-level operating posture for the selected reporting scope.</p></div><span>Page 2</span></div>
-      <div class="pdf-summary-layout">
-        <div>
-          <span class="pdf-eyebrow">Executive Summary</span>
-          <h2>${pdfText(payload.narrative.title || payload.report.title, 90)}</h2>
-          <p>${pdfText(payload.narrative.executiveSummary || payload.narrative.managementConclusion, 300)}</p>
+    <section class="pdf-section pdf-summary-section pdf-executive-brief-section">
+      <div class="pdf-section-head"><div><h2>Management Snapshot</h2><p>Management-level operating risk, service continuity and data confidence summary.</p></div><span>Page 2</span></div>
+      <div class="pdf-summary-layout pdf-exec-summary-layout">
+        <div class="pdf-summary-copy">
+          <span class="pdf-eyebrow">Executive Management Brief</span>
+          <h2>${pdfText(brief.headline, 110)}</h2>
+          ${brief.paragraphs.map((paragraph) => `<p class="pdf-justified">${pdfText(paragraph, 520)}</p>`).join("")}
         </div>
         ${buildPdfMetricTable(payload)}
+      </div>
+      <div class="pdf-exec-signal-grid">
+        ${brief.signals.map((signal) => `<article><span>${pdfText(signal.label, 36)}</span><strong>${pdfText(signal.value, 28)}</strong><p>${pdfText(signal.note, 76)}</p></article>`).join("")}
       </div>
     </section>
 
     <section class="pdf-section">
-      <div class="pdf-section-head"><div><h2>Key Findings</h2><p>Priority observations converted into management-ready findings.</p></div><span>Focus</span></div>
-      <table class="pdf-real-table"><thead><tr><th>No</th><th>Finding</th></tr></thead><tbody>${payload.narrative.keyFindings.slice(0, 6).map((item, index) => `<tr><td>${String(index + 1).padStart(2, "0")}</td><td>${pdfText(item, 220)}</td></tr>`).join("")}</tbody></table>
+      <div class="pdf-section-head"><div><h2>Key Findings</h2><p>Critical findings are prioritised for management action and review ownership.</p></div><span>Focus</span></div>
+      ${executiveFindingsTableHtml(payload, 8)}
     </section>
 
     ${filters.includeChart ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>${pdfText(barSection?.title || "Operational Distribution", 80)}</h2><p>Visual summary rendered as PDF-safe chart rows.</p></div><span>Chart</span></div><div class="pdf-bars">${barListHtml(barSection)}</div></section>` : ""}
     ${filters.includeTable ? `<section class="pdf-section pdf-table-section"><div class="pdf-section-head"><div><h2>Board Attention Focus</h2><p>Priority management attention items rendered as a proper decision table.</p></div><span>Decision Focus</span></div>${riskTableHtml(((sectionByType(payload, "risk")?.rows || payload.recommendations || []) as Record<string, any>[]), 12)}</section>` : ""}
-    ${filters.includeRecommendation ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>Recommended Actions</h2><p>Follow-up actions generated from current findings.</p></div><span>Action Plan</span></div>${tableRowsHtml({ type: "table", title: "Actions", rows: payload.recommendations || [] }, 10)}</section>` : ""}
+    ${filters.includeRecommendation ? `<section class="pdf-section"><div class="pdf-section-head"><div><h2>Recommended Actions</h2><p>Follow-up actions generated from current findings.</p></div><span>Action Plan</span></div>${recommendationsTableHtml(payload.recommendations || [], 10)}</section>` : ""}
   `;
 }
 
@@ -2613,7 +2676,375 @@ function buildGenericPrintableHtml(payload: ReportPayload, filters: ReportFilter
 }
 
 
+
+function rnrSectionTitle(section?: ReportSection) {
+  return String(section?.title || "").toLowerCase();
+}
+
+function rnrFindSection(payload: ReportPayload, words: string[], type?: string) {
+  const wanted = words.map((word) => String(word).toLowerCase());
+  return payload.sections.find((section) => {
+    const title = rnrSectionTitle(section);
+    return (!type || section.type === type) && wanted.every((word) => title.includes(word));
+  });
+}
+
+function rnrFindAnySection(payload: ReportPayload, candidates: string[][], type?: string) {
+  for (const words of candidates) {
+    const section = rnrFindSection(payload, words, type);
+    if (section) return section;
+  }
+  return undefined;
+}
+
+function rnrFormatNumber(value: any) {
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) return numeric.toLocaleString("en-MY");
+  return valueText(value);
+}
+
+function rnrParseNumberFromText(value: any) {
+  const match = String(value ?? "").replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  return match ? Number(match[0]) : 0;
+}
+
+function rnrRowLabel(row: Record<string, any>) {
+  return String(row.label ?? row.application ?? row.softwareName ?? row.brand ?? row.os ?? row.location ?? row.category ?? row.area ?? row.item ?? row.vendor ?? row.status ?? "Unspecified");
+}
+
+function rnrRowValue(row: Record<string, any>) {
+  const raw = row.value ?? row.installCount ?? row.count ?? row.totalEndpoint ?? row.total ?? row.endpoints ?? row.agingCandidate ?? row.totalPc ?? row.totalPC;
+  const numeric = Number(String(raw ?? "").replace(/,/g, ""));
+  if (Number.isFinite(numeric) && raw !== undefined && raw !== null && raw !== "") return numeric;
+  return rnrParseNumberFromText(row.finding || row.note || row.description || row.action);
+}
+
+function rnrChartRows(section?: ReportSection, limit = 12, predicate?: (row: Record<string, any>) => boolean) {
+  const rows = ((section?.rows || []) as Record<string, any>[])
+    .filter((row) => !predicate || predicate(row))
+    .map((row) => ({ label: rnrRowLabel(row), value: rnrRowValue(row), raw: row }))
+    .filter((row) => row.label && row.label !== "-" && Number.isFinite(row.value))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, limit);
+  return rows;
+}
+
+function rnrRows(section?: ReportSection, limit = 24, predicate?: (row: Record<string, any>) => boolean) {
+  return ((section?.rows || []) as Record<string, any>[]).filter((row) => !predicate || predicate(row)).slice(0, limit);
+}
+
+function rnrColumns(section: ReportSection | undefined, rows: Record<string, any>[], preferred: string[], max = 5) {
+  const source = section?.columns?.length ? section.columns : Object.keys(rows[0] || {});
+  const selected: string[] = [];
+  preferred.forEach((name) => {
+    const found = source.find((col) => col.toLowerCase() === name.toLowerCase());
+    if (found && !selected.includes(found)) selected.push(found);
+  });
+  source.forEach((name) => {
+    if (!selected.includes(name)) selected.push(name);
+  });
+  return selected.slice(0, max);
+}
+
+function rnrMiniTableHtml(rows: Record<string, any>[], columns: string[], emptyText = "No matching records for this slide.") {
+  if (!rows.length) return `<div class="rnr-empty">${pdfEscape(emptyText)}</div>`;
+  return `
+    <div class="rnr-table-box">
+      <table class="rnr-table">
+        <thead><tr>${columns.map((column) => `<th>${pdfEscape(formatLabel(column))}</th>`).join("")}</tr></thead>
+        <tbody>${rows.map((row) => `<tr>${columns.map((column) => `<td>${pdfText(row[column], 95)}</td>`).join("")}</tr>`).join("")}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function rnrTwoTableHtml(section: ReportSection | undefined, preferred: string[], limit = 40) {
+  const rows = rnrRows(section, limit);
+  if (!rows.length) return `<div class="rnr-empty">No location or department records were returned for this scope.</div>`;
+  const columns = rnrColumns(section, rows, preferred, 3);
+  const left = rows.slice(0, Math.ceil(rows.length / 2));
+  const right = rows.slice(Math.ceil(rows.length / 2));
+  return `<div class="rnr-two-tables">${rnrMiniTableHtml(left, columns)}${rnrMiniTableHtml(right, columns)}</div>`;
+}
+
+function rnrBarsHtml(rows: { label: string; value: number }[], options: { limit?: number; color?: string; tall?: boolean } = {}) {
+  const visible = rows.slice(0, options.limit || 12);
+  if (!visible.length) return `<div class="rnr-empty">No chart data returned for this section.</div>`;
+  const max = Math.max(1, ...visible.map((row) => Number(row.value || 0)));
+  return `
+    <div class="rnr-bars ${options.tall ? "rnr-bars-tall" : ""}">
+      ${visible.map((row) => {
+        const width = Math.max(3, Math.round((Number(row.value || 0) / max) * 100));
+        return `<div class="rnr-bar-row"><span>${pdfText(row.label, 58)}</span><b>${rnrFormatNumber(row.value)}</b><i><em style="width:${width}%;${options.color ? `background:${options.color};` : ""}"></em></i></div>`;
+      }).join("")}
+    </div>
+  `;
+}
+
+function rnrVerticalBarsHtml(rows: { label: string; value: number }[], options: { limit?: number; color?: string } = {}) {
+  const visible = rows.slice(0, options.limit || 12);
+  if (!visible.length) return `<div class="rnr-empty">No chart data returned for this section.</div>`;
+  const max = Math.max(1, ...visible.map((row) => Number(row.value || 0)));
+  return `
+    <div class="rnr-vbars">
+      ${visible.map((row) => {
+        const height = Math.max(8, Math.round((Number(row.value || 0) / max) * 100));
+        return `<div class="rnr-vbar"><div><span>${rnrFormatNumber(row.value)}</span><i style="height:${height}%;${options.color ? `background:${options.color};` : ""}"></i></div><p>${pdfText(row.label, 42)}</p></div>`;
+      }).join("")}
+    </div>
+  `;
+}
+
+function rnrSlideHeader(title: string, subtitle = "") {
+  return `
+    <header class="rnr-slide-head">
+      <div class="rnr-head-logos"><img src="${pdfEscape(PDF_SOLUTION_LOGO_SRC)}" alt="nPoints" /><span>Risk & Resources Management</span></div>
+      <div class="rnr-head-title"><h2>${pdfText(title, 110)}</h2>${subtitle ? `<p>${pdfText(subtitle, 150)}</p>` : ""}</div>
+      <img class="rnr-head-company" src="${pdfEscape(PDF_COMPANY_LOGO_SRC)}" alt="Worldtech" />
+    </header>
+  `;
+}
+
+function rnrSlide(title: string, subtitle: string, body: string, className = "") {
+  return `<section class="rnr-slide ${className}">${rnrSlideHeader(title, subtitle)}<main class="rnr-slide-body">${body}</main></section>`;
+}
+
+function rnrSimpleCardGrid(items: { title: string; body: string; accent?: string }[]) {
+  return `<div class="rnr-card-grid">${items.map((item) => `<article style="--rnr-card-accent:${item.accent || "#0b5f86"}"><h3>${pdfText(item.title, 55)}</h3><p>${pdfText(item.body, 145)}</p></article>`).join("")}</div>`;
+}
+
+function buildClientRnrCoverSlide(payload: ReportPayload, filters: ReportFilters) {
+  const values = buildClientRnrFilterValues(payload, filters);
+  const client = values.clientName || "Client Name";
+  const period = payload.narrative.period || filters.dateRange || "Current Period";
+  return `
+    <section class="rnr-slide rnr-cover-slide">
+      <div class="rnr-cover-bg"></div>
+      <div class="rnr-cover-left">
+        <img class="rnr-cover-solution" src="${pdfEscape(PDF_SOLUTION_LOGO_SRC)}" alt="nPoints" />
+        <h1>Risk and Resources<br/>Management Report</h1>
+        <p>Data analytic result from latest endpoint, software, lifecycle and compliance evidence.</p>
+        <strong>${pdfText(period, 60)}</strong>
+      </div>
+      <div class="rnr-cover-divider"></div>
+      <div class="rnr-cover-client">
+        <span>Prepared for</span>
+        <h2>${pdfText(client, 90)}</h2>
+      </div>
+      <footer class="rnr-cover-footer">
+        <img src="${pdfEscape(PDF_COMPANY_LOGO_SRC)}" alt="Worldtech" />
+        <div><img src="${pdfEscape(PDF_SOLUTION_LOGO_SRC)}" alt="nPoints" /><span>Risk and Resources Management Solution</span></div>
+      </footer>
+    </section>
+  `;
+}
+
+function buildClientRnrAgendaSlide() {
+  return rnrSlide("Agenda", "Report flow for client management review.", `
+    <div class="rnr-agenda-list">
+      <div><b>01</b><span>License Utilization Summary</span></div>
+      <div><b>02</b><span>Endpoint Management Overview</span></div>
+      <div><b>03</b><span>Endpoint Data Analytic Result</span></div>
+      <div><b>04</b><span>Risk & Resources Management Review</span></div>
+      <div><b>05</b><span>Application, Software and Browser Compliance</span></div>
+    </div>
+  `, "rnr-agenda-slide");
+}
+
+function buildClientRnrMaintenanceSlide(payload: ReportPayload, filters: ReportFilters) {
+  const values = buildClientRnrFilterValues(payload, filters);
+  const rows = [
+    { solutions: "EM", serviceType: values.serviceType, version: values.version, maintenanceStart: values.contractStart, maintenanceEnd: values.contractEnd, totalNode: rnrFormatNumber(values.totalNodes), status: "Active / Review" }
+  ];
+  const moduleRows = [
+    { module: "Asset Management", status: "✓" },
+    { module: "Remote Management", status: "✓" },
+    { module: "Patch Management", status: "✓" },
+    { module: "Report Designer", status: "✓" },
+    { module: "Software Distribution / Policy Control", status: "✓" },
+    { module: "App and Web Filtering", status: "×" }
+  ];
+  return rnrSlide("nPoints™ Maintenance Summary", "Subscription, coverage and enabled EM module summary.", `
+    <div class="rnr-block-title amber">nPoints™ Maintenance Period</div>
+    ${rnrMiniTableHtml(rows, ["solutions", "serviceType", "version", "maintenanceStart", "maintenanceEnd", "totalNode", "status"])}
+    <div class="rnr-block-title teal">nPoints™ EM Modules</div>
+    <div class="rnr-module-grid">${moduleRows.map((row) => `<article><strong>${pdfText(row.module, 42)}</strong><b class="${row.status === "✓" ? "ok" : "no"}">${row.status}</b></article>`).join("")}</div>
+  `, "rnr-maintenance-slide");
+}
+
+function buildClientRnrEndpointManagementSlide(payload: ReportPayload) {
+  const total = pdfNumber(payload, ["endpointTotal", "totalEndpoints", "assets"], 0);
+  const onlineRate = pdfNumber(payload, ["onlineRate"], 0);
+  return rnrSlide("nPoints™ Endpoint Management (EM)", "Manage and control PC, laptop and server anytime and anywhere.", `
+    <div class="rnr-em-hero">Manage and Control <b>PC, Laptop & Server</b> anytime and anywhere</div>
+    ${rnrSimpleCardGrid([
+      { title: "Windows OS", body: "Windows Server, Windows 10/11 and legacy Windows estate visibility.", accent: "#0b5f86" },
+      { title: "Endpoints", body: `${rnrFormatNumber(total)} endpoint record(s) in current reporting scope.`, accent: "#0ea5e9" },
+      { title: "Coverage", body: `${onlineRate}% online coverage for current operational evidence.`, accent: "#4e9a44" },
+      { title: "Benefits", body: "Asset visibility, remote support, patch readiness, policy deployment and reporting evidence.", accent: "#f59e0b" }
+    ])}
+    <div class="rnr-benefit-strip"><div>IT Asset Management</div><div>Basic Remote Control</div><div>Windows Patch Management</div><div>Software & Policy Deployment</div></div>
+  `, "rnr-em-slide");
+}
+
+function buildClientRnrLicenseSlide(payload: ReportPayload, filters: ReportFilters) {
+  const values = buildClientRnrFilterValues(payload, filters);
+  const endpointType = rnrFindAnySection(payload, [["endpoint", "type"], ["total", "type", "endpoint"]]);
+  const total = pdfNumber(payload, ["endpointTotal", "totalEndpoints", "assets"], 0);
+  const purchased = Number(values.totalNodes || total || 0);
+  const utilized = total || purchased;
+  const utilization = purchased ? Math.round((utilized / Math.max(purchased, 1)) * 10000) / 100 : 0;
+  const delta = purchased - utilized;
+  const typeRows = rnrChartRows(endpointType, 8);
+  const baseBars = [
+    { label: "Total Purchased", value: purchased },
+    { label: "Total License Utilized", value: utilized },
+    ...typeRows
+  ];
+  return rnrSlide("nPoints™ License Utilization Summary", "Total endpoints with agent installed and current utilization ratio.", `
+    <div class="rnr-license-layout">
+      <div>
+        <h3>Total endpoints with agent installed</h3>
+        ${rnrBarsHtml(baseBars, { limit: 8, tall: true })}
+      </div>
+      <aside class="rnr-license-panel">
+        <span>Total</span>
+        <strong>${rnrFormatNumber(utilized)}</strong>
+        <div class="rnr-util-card"><b>${utilization}%</b><small>${delta >= 0 ? `Underutilized ${rnrFormatNumber(delta)} PC` : `Over baseline ${rnrFormatNumber(Math.abs(delta))} PC`}</small></div>
+      </aside>
+    </div>
+  `, "rnr-license-slide");
+}
+
+function buildClientRnrLocationSlide(payload: ReportPayload) {
+  const location = rnrFindAnySection(payload, [["location", "department"], ["site"], ["department"]], "table");
+  return rnrSlide("nPoints™ - License Utilization Statistics", "Location / department grouping for the endpoint estate.", `
+    <div class="rnr-wide-table-title">Endpoint location and department distribution</div>
+    ${rnrTwoTableHtml(location, ["location", "total", "online", "offline"], 46)}
+  `, "rnr-location-slide");
+}
+
+function buildClientRnrAgingSlide(payload: ReportPayload) {
+  const aging = rnrFindAnySection(payload, [["aging", "location"], ["endpoint", "aging"]], "table");
+  const rows = rnrRows(aging, 16);
+  const agingTotal = rows.reduce((sum, row) => sum + Number(row.agingCandidate || row.total || row.count || 0), 0);
+  return rnrSlide("Resources Management – Endpoint Aging", "Performance and endpoint lifecycle review for resource planning.", `
+    <div class="rnr-analysis-layout">
+      <div>
+        <h3>Endpoint lifespan and aging candidates</h3>
+        ${rnrMiniTableHtml(rows, rnrColumns(aging, rows, ["location", "agingCandidate", "topBrand", "action"], 4))}
+      </div>
+      <aside class="rnr-side-stat"><span>Endpoint lifespan watch</span><strong>${rnrFormatNumber(agingTotal)}</strong><p>Endpoint(s) requiring refresh, age validation or lifecycle follow-up.</p></aside>
+    </div>
+  `, "rnr-aging-slide");
+}
+
+function buildClientRnrOsSlide(payload: ReportPayload) {
+  const os = rnrFindAnySection(payload, [["os", "compliance"], ["supported", "windows"], ["operating", "system"]], "table");
+  const rows = rnrRows(os, 18);
+  const chartRows = rnrChartRows(os, 12);
+  const unsupported = rows.reduce((sum, row) => /unsupported|eol|eos|review/i.test(String(row.complianceStatus || row.status || "")) ? sum + Number(row.endpoints || row.value || row.count || 0) : sum, 0);
+  return rnrSlide("Risk Management – OS Compliance", "Vulnerability and security issue review for Windows estate.", `
+    <div class="rnr-analysis-layout two-wide">
+      <div>
+        <div class="rnr-os-band"><span>Supported OS</span><b>EOL/EOS OS</b></div>
+        ${rnrVerticalBarsHtml(chartRows, { limit: 10, color: "#0b5f86" })}
+      </div>
+      <aside class="rnr-side-stat danger"><span>Total Not Supported / Review</span><strong>${rnrFormatNumber(unsupported)}</strong><p>Endpoint(s) with unsupported, EOL/EOS or review-required OS evidence.</p>${rnrMiniTableHtml(rows.slice(0, 8), rnrColumns(os, rows, ["os", "endpoints", "complianceStatus"], 3))}</aside>
+    </div>
+  `, "rnr-os-slide");
+}
+
+function buildClientRnrBrandSlide(payload: ReportPayload) {
+  const brand = rnrFindAnySection(payload, [["focus", "brand"], ["manufacturer", "brand"], ["resources", "planning"]]);
+  const detail = rnrFindAnySection(payload, [["resource", "brand", "detail"], ["brand", "detail"]], "table");
+  const rows = rnrChartRows(brand, 10);
+  const total = pdfNumber(payload, ["endpointTotal", "totalEndpoints", "assets"], 0);
+  return rnrSlide("Resources Planning", "Endpoint manufacturer brand distribution for procurement and lifecycle planning.", `
+    <div class="rnr-analysis-layout">
+      <div><h3>Endpoint Manufacturer Brand</h3>${rnrVerticalBarsHtml(rows, { limit: 10, color: "#0b5f86" })}</div>
+      <aside class="rnr-side-stat"><span>Total PC</span><strong>${rnrFormatNumber(total)}</strong><p>Brand concentration helps procurement standardisation and refresh planning.</p>${rnrMiniTableHtml(rnrRows(detail, 8), rnrColumns(detail, rnrRows(detail, 8), ["brand", "totalEndpoint", "laptop", "desktop", "agingCandidate"], 5))}</aside>
+    </div>
+  `, "rnr-brand-slide");
+}
+
+function buildClientRnrApplicationSlide(payload: ReportPayload, vendor: "Microsoft" | "Adobe") {
+  const section = rnrFindAnySection(payload, [["application", "purchasing"], ["microsoft", "adobe"]], "table");
+  const rows = rnrChartRows(section, 15, (row) => String(row.vendor || row.application || row.softwareName || "").toLowerCase().includes(vendor.toLowerCase()));
+  return rnrSlide(`Risk Management and BSA Compliance`, `${vendor} Product Installed`, `
+    <div class="rnr-app-layout">
+      <div class="rnr-app-brand ${vendor.toLowerCase()}">${vendor}</div>
+      <div class="rnr-product-badge"><b>${rows.length}</b><span>Product type</span></div>
+      ${rnrVerticalBarsHtml(rows, { limit: 15, color: vendor === "Microsoft" ? "#0b5f86" : "#c21807" })}
+    </div>
+  `, "rnr-application-slide");
+}
+
+function buildClientRnrRiskApplicationSlide(payload: ReportPayload, title: string, category: string, color: string) {
+  const softwareRisk = rnrFindAnySection(payload, [["games", "antivirus"], ["software", "risk"]], "table");
+  const remoteRisk = rnrFindAnySection(payload, [["remote", "tools"], ["sensitive", "application"]], "risk");
+  const browser = rnrFindAnySection(payload, [["browser", "vulnerability"]], "table");
+  let rows: { label: string; value: number }[] = [];
+  if (category === "Remote Tools") rows = rnrChartRows(remoteRisk, 10);
+  else if (category === "Browser") rows = rnrChartRows(browser, 10);
+  else rows = rnrChartRows(softwareRisk, 10, (row) => String(row.category || "").toLowerCase().includes(category.toLowerCase()));
+  return rnrSlide(`Risk Management : ${title}`, `${rows.length} product type(s) detected in this category.`, `
+    <div class="rnr-product-badge"><b>${rows.length}</b><span>Product type</span></div>
+    ${rnrVerticalBarsHtml(rows, { limit: 10, color })}
+  `, "rnr-risk-app-slide");
+}
+
+function buildClientRnrBrowserSlide(payload: ReportPayload) {
+  const browser = rnrFindAnySection(payload, [["browser", "vulnerability"]], "table");
+  const rows = rnrRows(browser, 16);
+  const chartRows = rnrChartRows(browser, 10);
+  return rnrSlide("Risk Management & Compliance : Browser Vulnerability", "Browser support and update exposure requiring immediate review.", `
+    <div class="rnr-analysis-layout two-wide">
+      <div>${rnrVerticalBarsHtml(chartRows, { limit: 8, color: "#0b5f86" })}</div>
+      <aside class="rnr-side-stat danger"><span>Immediate Action Required</span><strong>${rnrFormatNumber(rows.length)}</strong><p>Browser records returned for vulnerability/update review.</p>${rnrMiniTableHtml(rows.slice(0, 10), rnrColumns(browser, rows, ["softwareName", "deviceName", "lastUpdated", "platform"], 4))}</aside>
+    </div>
+  `, "rnr-browser-slide");
+}
+
+function buildClientRnrThankYouSlide() {
+  return `
+    <section class="rnr-slide rnr-thankyou-slide">
+      <div class="rnr-thankyou-card">
+        <img src="${pdfEscape(PDF_COMPANY_LOGO_SRC)}" alt="Worldtech" />
+        <h1>THANK YOU</h1>
+        <p>Website: www.worldtech.com.my<br/>Contact: helpdesk@worldtech.com.my</p>
+      </div>
+    </section>
+  `;
+}
+
+function buildClientRnrPrintableHtml(payload: ReportPayload, filters: ReportFilters) {
+  return `
+    ${buildClientRnrCoverSlide(payload, filters)}
+    ${buildClientRnrAgendaSlide()}
+    ${buildClientRnrMaintenanceSlide(payload, filters)}
+    ${buildClientRnrEndpointManagementSlide(payload)}
+    ${rnrSlide("Endpoint Data Analytic Result", "Endpoint Management", `<div class="rnr-divider-content"><img src="${pdfEscape(PDF_SOLUTION_LOGO_SRC)}" alt="nPoints" /><h1>Endpoint Data Analytic Result</h1></div>`, "rnr-divider-slide")}
+    ${buildClientRnrLicenseSlide(payload, filters)}
+    ${buildClientRnrLocationSlide(payload)}
+    ${buildClientRnrAgingSlide(payload)}
+    ${buildClientRnrOsSlide(payload)}
+    ${buildClientRnrBrandSlide(payload)}
+    ${buildClientRnrApplicationSlide(payload, "Microsoft")}
+    ${buildClientRnrApplicationSlide(payload, "Adobe")}
+    ${buildClientRnrRiskApplicationSlide(payload, "Remote Tools Application", "Remote Tools", "#84cc16")}
+    ${buildClientRnrRiskApplicationSlide(payload, "Games Application", "Games", "#7c3aed")}
+    ${buildClientRnrRiskApplicationSlide(payload, "Antivirus Application", "Antivirus", "#0f766e")}
+    ${buildClientRnrRiskApplicationSlide(payload, "Potentially Unwanted Application", "Unwanted", "#f59e0b")}
+    ${buildClientRnrRiskApplicationSlide(payload, "Unauthorized Application", "Unauthorized", "#f97316")}
+    ${buildClientRnrBrowserSlide(payload)}
+    ${buildClientRnrThankYouSlide()}
+  `;
+}
+
 function buildFullPackPrintableHtml(payload: ReportPayload, filters: ReportFilters) {
+  if (payload.report.id === "client-summary-rnr") return buildClientRnrPrintableHtml(payload, filters);
+
   const kpiSections = payload.sections.filter((section) => section.type === "kpi");
   const chartSections = payload.sections.filter((section) => ["bar", "donut"].includes(section.type));
   const riskSections = payload.sections.filter((section) => section.type === "risk");
@@ -2651,10 +3082,11 @@ function buildRegeneratedReportHtml(payload: ReportPayload, filters: ReportFilte
   const liveFilters = { ...(payload.filters || {}), ...(filters || {}) } as ReportFilters;
   const livePayload = applyClientRnrLiveOverrides(payload, liveFilters);
   const isFullPack = ["client-summary-rnr", "resource-planning-brand-summary"].includes(livePayload.report.id);
+  const isRnrPack = livePayload.report.id === "client-summary-rnr";
   const isExecutive = /executive/i.test(`${livePayload.report.id} ${livePayload.report.title} ${livePayload.report.category || ""}`);
   const content = isFullPack ? buildFullPackPrintableHtml(livePayload, liveFilters) : isExecutive ? buildExecutivePrintableHtml(livePayload, liveFilters) : buildGenericPrintableHtml(livePayload, liveFilters);
   const autoPrint = options.autoPrint !== false;
-  const bodyClass = options.preview ? "pdf-preview-mode" : "pdf-print-mode";
+  const bodyClass = `${options.preview ? "pdf-preview-mode" : "pdf-print-mode"}${isRnrPack ? " pdf-rnr-document" : ""}`;
   const printScript = autoPrint ? `
   <script>
     const triggerPrint = () => setTimeout(() => { window.focus(); window.print(); }, 250);
@@ -2669,7 +3101,7 @@ function buildRegeneratedReportHtml(payload: ReportPayload, filters: ReportFilte
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${pdfText(livePayload.report.title, 90)}</title>
   <style>
-    @page { size: A4 portrait; margin: 10mm; }
+    ${isRnrPack ? "@page { size: A4 landscape; margin: 0; }" : "@page { size: A4 portrait; margin: 10mm; }"}
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; background: #eef3f8; color: #17233c; font-family: "Segoe UI", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     body { width: 210mm; min-height: 297mm; }
@@ -2710,7 +3142,21 @@ function buildRegeneratedReportHtml(payload: ReportPayload, filters: ReportFilte
     .pdf-cover-dots.dots-right { right:62mm; top:72mm; }
     .pdf-summary-layout { display:grid; grid-template-columns: 62mm minmax(0,1fr); gap: 7mm; align-items:start; }
     .pdf-summary-layout h2 { margin: 2mm 0 3mm; }
+    .pdf-executive-brief-section { border-top-color: #144b7a; background: radial-gradient(circle at 95% 10%, rgba(78,154,68,.10), transparent 30%), linear-gradient(180deg,#ffffff 0%,#f6fbff 100%); }
+    .pdf-exec-summary-layout { grid-template-columns: 77mm minmax(0,1fr); gap: 7mm; }
+    .pdf-summary-copy h2 { font-size: 19pt; line-height: 1.18; margin: 2mm 0 4mm; color: #102b4c; }
+    .pdf-summary-copy p { color: #24384f; font-size: 8.8pt; line-height: 1.55; font-weight: 720; margin: 0 0 3mm; }
+    .pdf-justified { text-align: justify; text-justify: inter-word; hyphens: auto; }
+    .pdf-exec-signal-grid { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3mm; margin-top: 5mm; }
+    .pdf-exec-signal-grid article { border: 1px solid #dbe5f1; border-radius: 3.5mm; padding: 3.2mm; background: linear-gradient(180deg,#fbfdff,#f0f8ff); min-height: 25mm; box-shadow: inset 0 1.5mm 0 rgba(20,75,122,.05); }
+    .pdf-exec-signal-grid span { display:block; color:#667996; text-transform:uppercase; letter-spacing:.09em; font-size: 6.5pt; font-weight: 900; }
+    .pdf-exec-signal-grid strong { display:block; margin: 1.3mm 0 1mm; color:#0f2347; font-size: 12.5pt; line-height:1.05; }
+    .pdf-exec-signal-grid p { margin:0; color:#4f617a; font-size: 7.3pt; line-height:1.38; font-weight:750; }
+    .pdf-metric-table th:nth-child(1), .pdf-metric-table td:nth-child(1) { width: 33%; }
+    .pdf-metric-table th:nth-child(2), .pdf-metric-table td:nth-child(2) { width: 22%; }
+    .pdf-metric-table th:nth-child(3), .pdf-metric-table td:nth-child(3) { width: 45%; }
     .pdf-metric-table td:nth-child(2) { font-weight: 900; white-space: nowrap; width: 24mm; }
+    .pdf-metric-table th:nth-child(2), .pdf-metric-table td:nth-child(2) { width: 22%; }
     .pdf-cover, .pdf-section { width: 100%; background: radial-gradient(circle at 100% 0%, rgba(78,154,68,.06) 0, transparent 34%), linear-gradient(180deg,#ffffff 0%,#f7fbff 100%); border: 1px solid #d4e1f0; border-top: 1.5mm solid #144b7a; border-radius: 5mm; overflow: hidden; box-shadow: 0 2mm 8mm rgba(15,35,71,.06); }
     .pdf-cover { min-height: 68mm; display: grid; grid-template-columns: 25mm 1fr 42mm; gap: 6mm; align-items: stretch; padding: 7mm; background: linear-gradient(180deg,#ffffff 0%,#f8fbff 100%); border-top: 5mm solid #143b72; }
     .pdf-generic-cover { grid-template-columns: 25mm 1fr; }
@@ -2738,7 +3184,7 @@ function buildRegeneratedReportHtml(payload: ReportPayload, filters: ReportFilte
     .pdf-bars { display: flex; flex-direction: column; gap: 2.5mm; }
     .pdf-bar-row { display: grid; grid-template-columns: 44mm 16mm 1fr; gap: 3mm; align-items: center; font-size: 8pt; font-weight: 800; color: #314765; }
     .pdf-bar-row i { display: block; height: 4.5mm; border-radius: 999px; overflow: hidden; background: #edf3fb; }
-    .pdf-bar-row em { display: block; height: 100%; border-radius: inherit; background: #2563eb; }
+    .pdf-bar-row em { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#144b7a,#2f80ed,#4e9a44); }
     .pdf-table-box { border: 1px solid #d6e2f2; border-radius: 3mm; overflow: hidden; background: #fff; }
     .pdf-compact-table-box { margin-top: 3mm; }
     .pdf-real-table { width: 100%; border-collapse: collapse; border-spacing: 0; table-layout: fixed; font-size: 7.6pt; line-height: 1.35; }
@@ -2760,11 +3206,122 @@ function buildRegeneratedReportHtml(payload: ReportPayload, filters: ReportFilte
     .pdf-risk-pill { display: inline-flex; max-width: 100%; border-radius: 999px; padding: 1.1mm 2mm; background: #eef4ff; color: #1d4ed8; font-size: 6.8pt; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }
     .pdf-table-note { margin-top: 3mm !important; color: #6b7c94 !important; font-size: 7.5pt !important; font-weight: 800; }
     .pdf-empty { padding: 5mm; border: 1px dashed #cbd8ea; border-radius: 4mm; color: #6b7c94; background: #fbfdff; }
+
+    body.pdf-rnr-document { width: 297mm; min-height: 210mm; background: #dfeaf4; }
+    body.pdf-rnr-document.pdf-preview-mode { width: 100%; min-width: 297mm; padding: 0; background: #dfeaf4; }
+    body.pdf-rnr-document.pdf-print-mode { background: #fff; }
+    .pdf-pack.rnr-pack { width: 297mm; margin: 0 auto; }
+    .pdf-pack.rnr-pack > * + * { margin-top: 0; }
+    .rnr-slide { width: 297mm; height: 210mm; position: relative; overflow: hidden; padding: 18mm 15mm 12mm; background: linear-gradient(180deg,#ffffff 0%,#f4fbff 54%,#e1f5ff 100%); color: #0a2652; break-after: page; page-break-after: always; box-shadow: none; }
+    .rnr-slide:last-child { break-after: auto; page-break-after: auto; }
+    .rnr-slide::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 85% 18%, rgba(78,154,68,.15), transparent 26%), radial-gradient(circle at 20% 88%, rgba(0,147,204,.18), transparent 30%); }
+    .rnr-slide-head { position: absolute; top: 0; left: 0; right: 0; height: 25mm; display: grid; grid-template-columns: 72mm 1fr 52mm; align-items: center; padding: 0 11mm; background: linear-gradient(90deg,#042b69 0%,#085f86 100%); color: #fff; z-index: 2; }
+    .rnr-head-logos { display: flex; align-items: center; gap: 4mm; min-width: 0; }
+    .rnr-head-logos img { width: 38mm; max-height: 14mm; object-fit: contain; filter: brightness(0) invert(1); }
+    .rnr-head-logos span { font-size: 6.4pt; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; opacity: .88; }
+    .rnr-head-title { text-align: center; min-width: 0; }
+    .rnr-head-title h2 { margin: 0; font-size: 24pt; line-height: 1; color: #fff; letter-spacing: -.03em; }
+    .rnr-head-title p { margin: 1.5mm 0 0; color: #e5ff2f; font-size: 10pt; font-weight: 900; letter-spacing: .02em; }
+    .rnr-head-company { justify-self: end; width: 38mm; max-height: 10mm; object-fit: contain; filter: brightness(0) invert(1); opacity: .95; }
+    .rnr-slide-body { position: relative; z-index: 1; height: 100%; padding-top: 14mm; }
+    .rnr-cover-slide { padding: 0; background: linear-gradient(135deg,#f7fbff 0%,#ffffff 55%,#edf8ff 100%); display: grid; grid-template-columns: 1.05fr 1px .95fr; align-items: center; }
+    .rnr-cover-bg { position: absolute; inset: 0; background: radial-gradient(circle at 5% 10%, rgba(10,95,134,.12), transparent 36%), linear-gradient(135deg,rgba(0,0,0,0),rgba(20,75,122,.08)); }
+    .rnr-cover-left { position: relative; z-index: 1; padding-left: 18mm; }
+    .rnr-cover-solution { width: 78mm; max-height: 32mm; object-fit: contain; object-position: left center; }
+    .rnr-cover-left h1 { margin: 12mm 0 8mm; color: #05276b; font-size: 33pt; line-height: 1.16; letter-spacing: -.04em; }
+    .rnr-cover-left p { width: 124mm; color: #e46d14; font-size: 13pt; font-weight: 900; line-height: 1.35; }
+    .rnr-cover-left strong { display: inline-block; margin-top: 4mm; color: #05276b; font-size: 9pt; text-transform: uppercase; letter-spacing: .12em; }
+    .rnr-cover-divider { position: relative; z-index: 1; width: 1px; height: 150mm; background: #1478b4; }
+    .rnr-cover-client { position: relative; z-index: 1; padding: 18mm; display: grid; place-items: center; text-align: center; }
+    .rnr-cover-client span { text-transform: uppercase; color: #63718a; font-size: 9pt; font-weight: 900; letter-spacing: .14em; }
+    .rnr-cover-client h2 { margin: 6mm 0 0; padding: 12mm 20mm; min-width: 98mm; border-radius: 3mm; background: #08a6bd; color: #fff; font-size: 31pt; line-height: 1.1; box-shadow: 0 8mm 18mm rgba(8,166,189,.18); }
+    .rnr-cover-footer { position: absolute; left: 15mm; right: 15mm; bottom: 10mm; display: flex; justify-content: space-between; align-items: end; z-index: 2; }
+    .rnr-cover-footer > img { width: 52mm; }
+    .rnr-cover-footer div { display: flex; flex-direction: column; align-items: flex-end; gap: 2mm; font-size: 7pt; color: #0b3559; font-weight: 900; }
+    .rnr-cover-footer div img { width: 55mm; }
+    .rnr-agenda-slide .rnr-slide-body { display: grid; place-items: center; }
+    .rnr-agenda-list { display: grid; gap: 7mm; width: 200mm; }
+    .rnr-agenda-list div { display: grid; grid-template-columns: 26mm 1fr; align-items: center; gap: 8mm; }
+    .rnr-agenda-list b { color: #05276b; font-size: 31pt; }
+    .rnr-agenda-list span { color: #05276b; font-size: 28pt; font-weight: 900; line-height: 1.08; }
+    .rnr-block-title { margin: 0 0 0; padding: 4mm 6mm; border-radius: 3mm 3mm 0 0; color: #fff; text-align: center; font-size: 18pt; font-weight: 900; }
+    .rnr-block-title.amber { background: #f59e0b; }
+    .rnr-block-title.teal { margin-top: 8mm; background: #09ad9f; }
+    .rnr-module-grid { display: grid; grid-template-columns: repeat(6,1fr); border: 1px solid #cfdfeb; border-top: 0; }
+    .rnr-module-grid article { min-height: 34mm; display: grid; grid-template-rows: 1fr 16mm; text-align: center; background: #eaf7f3; border-right: 1px solid #cfdfeb; }
+    .rnr-module-grid article:last-child { border-right: 0; }
+    .rnr-module-grid strong { display: grid; place-items: center; padding: 3mm; font-size: 10pt; color: #0b2748; line-height: 1.2; }
+    .rnr-module-grid b { display: grid; place-items: center; font-size: 22pt; font-weight: 900; }
+    .rnr-module-grid b.ok { color: #0f766e; }
+    .rnr-module-grid b.no { color: #dc2626; }
+    .rnr-em-hero { margin: 4mm 0 8mm; text-align: center; font-size: 21pt; font-weight: 900; color: #05276b; }
+    .rnr-em-hero b { color: #e11d48; }
+    .rnr-card-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 6mm; }
+    .rnr-card-grid article { min-height: 52mm; border: 1px solid #d1dbe8; border-radius: 5mm; background: rgba(255,255,255,.9); padding: 6mm; border-top: 3mm solid var(--rnr-card-accent); box-shadow: 0 3mm 10mm rgba(15,35,71,.06); }
+    .rnr-card-grid h3 { margin: 0 0 3mm; color: #092a58; font-size: 17pt; line-height: 1.12; }
+    .rnr-card-grid p { margin: 0; color: #354a65; font-size: 10.5pt; line-height: 1.45; font-weight: 700; }
+    .rnr-benefit-strip { margin-top: 9mm; display: grid; grid-template-columns: repeat(4,1fr); gap: 4mm; }
+    .rnr-benefit-strip div { background: #fff; border: 1px solid #d1dbe8; border-radius: 4mm; padding: 5mm; color: #0b2748; font-size: 13pt; font-weight: 900; text-align: center; }
+    .rnr-divider-slide { background: linear-gradient(180deg,#073267 0 31%,#fff 31% 48%,#0b6c92 48% 63%,#35aee4 63% 100%); }
+    .rnr-divider-slide .rnr-slide-head { display: none; }
+    .rnr-divider-content { height: 100%; display: grid; place-items: center; text-align: center; }
+    .rnr-divider-content img { width: 64mm; margin-bottom: 12mm; }
+    .rnr-divider-content h1 { color: #fff; background: rgba(4,43,105,.88); padding: 8mm 22mm; font-size: 31pt; border-radius: 2mm; }
+    .rnr-license-layout, .rnr-analysis-layout { display: grid; grid-template-columns: minmax(0,1fr) 62mm; gap: 10mm; height: 144mm; align-items: stretch; }
+    .rnr-analysis-layout.two-wide { grid-template-columns: minmax(0,1fr) 82mm; }
+    .rnr-license-layout h3, .rnr-analysis-layout h3 { margin: 0 0 5mm; color: #24384f; font-size: 20pt; text-align: center; }
+    .rnr-license-panel, .rnr-side-stat { border-left: 1px dashed #49b599; padding-left: 8mm; display: flex; flex-direction: column; justify-content: center; }
+    .rnr-license-panel span, .rnr-side-stat span { color: #26384f; font-size: 8pt; font-weight: 900; text-transform: uppercase; letter-spacing: .1em; }
+    .rnr-license-panel strong, .rnr-side-stat strong { display: block; color: #24384f; font-size: 25pt; margin: 2mm 0 6mm; line-height: 1; }
+    .rnr-side-stat p { color: #4b5f7b; font-size: 10pt; font-weight: 700; line-height: 1.38; }
+    .rnr-side-stat.danger strong { color: #dc2626; }
+    .rnr-util-card { background: #082a67; color: #fff; border-radius: 0 7mm 7mm 0; padding: 6mm; text-align: center; }
+    .rnr-util-card b { display: block; font-size: 26pt; }
+    .rnr-util-card small { display: block; margin-top: 3mm; color: #e6eefb; font-size: 14pt; }
+    .rnr-bars { display: flex; flex-direction: column; gap: 2.8mm; }
+    .rnr-bars-tall { gap: 4.2mm; }
+    .rnr-bar-row { display: grid; grid-template-columns: 48mm 20mm 1fr; gap: 4mm; align-items: center; font-weight: 900; color: #1f344f; font-size: 9.4pt; }
+    .rnr-bar-row i { height: 6mm; background: #e7eef6; border-radius: 999px; overflow: hidden; }
+    .rnr-bar-row em { display: block; height: 100%; background: linear-gradient(90deg,#0b5f86,#0ea5e9,#4e9a44); }
+    .rnr-vbars { height: 122mm; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(14mm,1fr); gap: 3mm; align-items: end; padding: 2mm 0; }
+    .rnr-vbar { display: grid; grid-template-rows: 1fr 31mm; gap: 2mm; min-width: 0; }
+    .rnr-vbar div { position: relative; display: flex; align-items: end; justify-content: center; }
+    .rnr-vbar i { display: block; width: 10mm; min-height: 5mm; background: #0b5f86; box-shadow: inset -2mm 0 0 rgba(0,0,0,.18); }
+    .rnr-vbar span { position: absolute; bottom: calc(100% + 1mm); transform: translateY(0); background: #e5e7eb; color: #111827; padding: .8mm 1.4mm; font-size: 8pt; font-weight: 900; }
+    .rnr-vbar p { margin: 0; writing-mode: vertical-rl; transform: rotate(180deg); justify-self: center; font-size: 8pt; color: #111827; line-height: 1.15; max-height: 31mm; overflow: hidden; }
+    .rnr-wide-table-title { margin-bottom: 4mm; color: #05276b; font-size: 17pt; font-weight: 900; }
+    .rnr-two-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+    .rnr-table-box { border: 1px solid #1d314d; background: #fff; overflow: hidden; }
+    .rnr-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 7.1pt; line-height: 1.16; }
+    .rnr-table th, .rnr-table td { border: 1px solid #1d314d; padding: 1.2mm 1.5mm; vertical-align: top; overflow-wrap: anywhere; word-break: break-word; }
+    .rnr-table th { background: #ffc20a; color: #0b0f17; text-transform: uppercase; font-size: 6.6pt; font-weight: 900; }
+    .rnr-table td { background: rgba(255,255,255,.94); color: #0b182c; font-weight: 650; }
+    .rnr-os-band { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 5mm; }
+    .rnr-os-band span, .rnr-os-band b { text-align: center; color: #fff; padding: 4mm; font-size: 12pt; }
+    .rnr-os-band span { background: #00b050; border-radius: 4mm 0 0 0; }
+    .rnr-os-band b { background: #e11d48; border-radius: 0 4mm 0 0; }
+    .rnr-product-badge { position: absolute; right: 17mm; top: 35mm; width: 54mm; height: 16mm; border-radius: 7mm 0 0 7mm; background: #05276b; color: #fff; display: flex; align-items: center; justify-content: center; gap: 3mm; z-index: 2; }
+    .rnr-product-badge b { font-size: 25pt; }
+    .rnr-product-badge span { font-size: 13pt; }
+    .rnr-app-brand { text-align: center; font-size: 25pt; font-weight: 900; color: #111827; margin: 3mm 0 4mm; }
+    .rnr-app-brand.microsoft::before { content: "■ ■\A■ ■"; white-space: pre; display: inline-block; color: #22c55e; font-size: 14pt; line-height: .8; margin-right: 4mm; vertical-align: middle; }
+    .rnr-app-brand.adobe { color: #dc2626; }
+    .rnr-risk-app-slide .rnr-vbars, .rnr-application-slide .rnr-vbars { height: 132mm; padding-right: 46mm; }
+    .rnr-empty { border: 1px dashed #9db2c7; border-radius: 4mm; padding: 8mm; background: rgba(255,255,255,.78); color: #52647e; font-size: 12pt; font-weight: 800; text-align: center; }
+    .rnr-thankyou-slide { display: grid; place-items: center; background: linear-gradient(135deg,#073267,#0b5f86); }
+    .rnr-thankyou-card { width: 160mm; min-height: 86mm; border-radius: 8mm; background: #fff; display: grid; place-items: center; text-align: center; padding: 12mm; box-shadow: 0 10mm 30mm rgba(0,0,0,.18); }
+    .rnr-thankyou-card img { width: 78mm; }
+    .rnr-thankyou-card h1 { margin: 8mm 0 4mm; color: #05276b; font-size: 35pt; }
+    .rnr-thankyou-card p { margin: 0; color: #334155; font-size: 13pt; line-height: 1.6; font-weight: 800; }
+
     @media print {
       html, body { width: auto; background: #fff !important; }
       body { padding: 0 !important; }
       .pdf-pack { width: 190mm; margin: 0 auto; }
-      .pdf-cover, .pdf-section, .pdf-cover-page { box-shadow: none !important; }
+      .pdf-cover, .pdf-section, .pdf-cover-page, .rnr-slide { box-shadow: none !important; }
+      body.pdf-rnr-document { width: auto !important; min-height: auto !important; padding: 0 !important; }
+      .pdf-rnr-document .pdf-pack.rnr-pack { width: 297mm; margin: 0; }
+      .rnr-slide { width: 297mm; height: 210mm; margin: 0 !important; border-radius: 0 !important; }
       .pdf-page-break { display: none !important; page-break-after: auto !important; break-after: auto !important; }
       .pdf-section { break-inside: avoid; page-break-inside: avoid; }
       .pdf-table-section { break-inside: auto; page-break-inside: auto; }
@@ -2772,7 +3329,7 @@ function buildRegeneratedReportHtml(payload: ReportPayload, filters: ReportFilte
   </style>
 </head>
 <body class="${bodyClass}">
-  <main class="pdf-pack">${content}</main>
+  <main class="pdf-pack${isRnrPack ? " rnr-pack" : ""}">${content}</main>
   ${printScript}
 </body>
 </html>`;
