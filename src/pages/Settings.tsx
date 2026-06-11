@@ -608,7 +608,8 @@ const sections: Record<SectionKey, SectionItem> = {
   },
 };
 
-const sectionOrder: SectionKey[] = ["roles", "users", "modules", "access", "audit", "pricing", "aging", "policy", "risk", "resources"];
+// Risk Identifier & Level is hidden for now because the module is not functional yet.
+const sectionOrder: SectionKey[] = ["roles", "users", "modules", "access", "audit", "pricing", "aging", "policy", "resources"];
 
 const defaultAccessRoles: AccessRole[] = [
   { roleKey: "system_administrator", name: "System Administrator", description: "Full configuration access including roles, settings, pricing and risk rules.", type: "Administrator", defaultAccess: "Full Access", approvalRequired: true, status: "Active", assignedUsers: 0 },
