@@ -994,6 +994,18 @@ function AppPagination({
   );
 }
 
+
+function areFloatingMenuStylesEqual(current: CSSProperties, next: CSSProperties) {
+  return (
+    current.position === next.position &&
+    current.left === next.left &&
+    current.top === next.top &&
+    current.width === next.width &&
+    current.maxHeight === next.maxHeight &&
+    current.zIndex === next.zIndex
+  );
+}
+
 type ServiceDeskSelectOption = {
   value: string;
   label: string;
@@ -1027,6 +1039,7 @@ function ServiceDeskSelect({
 }: ServiceDeskSelectProps) {
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuScrollFrameRef = useRef<number | null>(null);
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
 
@@ -1052,14 +1065,16 @@ function ServiceDeskSelect({
       ? Math.max(viewportPadding, rect.top - maxHeight - gap)
       : Math.min(rect.bottom + gap, window.innerHeight - maxHeight - viewportPadding);
 
-    setMenuStyle({
+    const nextStyle: CSSProperties = {
       position: 'fixed',
       left,
       top,
       width: menuWidth,
       maxHeight,
       zIndex: 2147483600,
-    });
+    };
+
+    setMenuStyle((current) => (areFloatingMenuStylesEqual(current, nextStyle) ? current : nextStyle));
   };
 
   useEffect(() => {
@@ -1078,8 +1093,15 @@ function ServiceDeskSelect({
     };
 
     const handleResize = () => updateMenuPosition();
-    const handleScroll = () => {
-      window.requestAnimationFrame(updateMenuPosition);
+    const handleScroll = (event: Event) => {
+      const target = event.target as Node | null;
+
+      // Keep the option list open when the user scrolls inside the dropdown itself.
+      // Close it for page/modal scrolling instead of recalculating position every frame;
+      // that keeps the create-ticket modal smooth.
+      if (target && menuRef.current?.contains(target)) return;
+
+      setOpen(false);
     };
 
     document.addEventListener('mousedown', handlePointerDown);
@@ -1092,6 +1114,11 @@ function ServiceDeskSelect({
       document.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('scroll', handleScroll, true);
+
+      if (menuScrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(menuScrollFrameRef.current);
+        menuScrollFrameRef.current = null;
+      }
     };
   }, [open, value, options.length]);
 
@@ -1624,6 +1651,7 @@ export default function ServiceDesk() {
   const [now, setNow] = useState(new Date());
   const serviceDeskIsScrollingRef = useRef(false);
   const serviceDeskScrollTimerRef = useRef<number | null>(null);
+  const serviceDeskScrollFrameRef = useRef<number | null>(null);
 
   const [formData, setFormData] = useState<any>(emptyForm());
   const [clientAssets, setClientAssets] = useState<any[]>([]);
@@ -1633,6 +1661,7 @@ export default function ServiceDesk() {
   const [assetDropdownStyle, setAssetDropdownStyle] = useState<CSSProperties>({});
   const assetComboRef = useRef<HTMLDivElement>(null);
   const assetDropdownPortalRef = useRef<HTMLDivElement>(null);
+  const assetDropdownFrameRef = useRef<number | null>(null);
   const detailPanelRef = useRef<HTMLElement>(null);
   const rejectReasonRef = useRef<HTMLTextAreaElement>(null);
 
@@ -1757,25 +1786,50 @@ export default function ServiceDesk() {
   }, []);
 
   useEffect(() => {
-    const markScrolling = () => {
-      serviceDeskIsScrollingRef.current = true;
-      document.documentElement.classList.add('service-desk-is-scrolling');
+    const markScrolling = (event: Event) => {
+      const target = event.target as HTMLElement | null;
 
-      if (serviceDeskScrollTimerRef.current) {
-        window.clearTimeout(serviceDeskScrollTimerRef.current);
+      // Internal modal/dropdown scrolling should not toggle a global HTML class on every frame.
+      // That class is only needed for the ticket registry/table area.
+      if (
+        target?.closest?.('.service-desk-ticket-form-body') ||
+        target?.closest?.('.setting-select-menu') ||
+        target?.closest?.('.service-desk-asset-dropdown')
+      ) {
+        return;
       }
 
-      serviceDeskScrollTimerRef.current = window.setTimeout(() => {
-        serviceDeskIsScrollingRef.current = false;
-        document.documentElement.classList.remove('service-desk-is-scrolling');
-        serviceDeskScrollTimerRef.current = null;
-      }, 180);
+      if (serviceDeskScrollFrameRef.current !== null) return;
+
+      serviceDeskScrollFrameRef.current = window.requestAnimationFrame(() => {
+        serviceDeskScrollFrameRef.current = null;
+
+        if (!serviceDeskIsScrollingRef.current) {
+          serviceDeskIsScrollingRef.current = true;
+          document.documentElement.classList.add('service-desk-is-scrolling');
+        }
+
+        if (serviceDeskScrollTimerRef.current) {
+          window.clearTimeout(serviceDeskScrollTimerRef.current);
+        }
+
+        serviceDeskScrollTimerRef.current = window.setTimeout(() => {
+          serviceDeskIsScrollingRef.current = false;
+          document.documentElement.classList.remove('service-desk-is-scrolling');
+          serviceDeskScrollTimerRef.current = null;
+        }, 260);
+      });
     };
 
     window.addEventListener('scroll', markScrolling, { passive: true, capture: true });
 
     return () => {
       window.removeEventListener('scroll', markScrolling, true);
+
+      if (serviceDeskScrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(serviceDeskScrollFrameRef.current);
+        serviceDeskScrollFrameRef.current = null;
+      }
 
       if (serviceDeskScrollTimerRef.current) {
         window.clearTimeout(serviceDeskScrollTimerRef.current);
@@ -1874,8 +1928,14 @@ export default function ServiceDesk() {
     updateAssetDropdownPosition();
 
     const handleResize = () => updateAssetDropdownPosition();
-    const handleScroll = () => {
-      window.requestAnimationFrame(updateAssetDropdownPosition);
+    const handleScroll = (event: Event) => {
+      const target = event.target as Node | null;
+
+      // Keep the asset list open when scrolling inside the list, but close it when
+      // the page/modal scrolls. This avoids heavy position recalculation during form scroll.
+      if (target && assetDropdownPortalRef.current?.contains(target)) return;
+
+      setShowAssetDropdown(false);
     };
 
     window.addEventListener('resize', handleResize);
@@ -1884,6 +1944,11 @@ export default function ServiceDesk() {
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('scroll', handleScroll, true);
+
+      if (assetDropdownFrameRef.current !== null) {
+        window.cancelAnimationFrame(assetDropdownFrameRef.current);
+        assetDropdownFrameRef.current = null;
+      }
     };
   }, [showAssetDropdown]);
 
@@ -2288,14 +2353,16 @@ export default function ServiceDesk() {
       ? rect.bottom + 8
       : Math.max(viewportPadding, rect.top - maxHeight - 8);
 
-    setAssetDropdownStyle({
+    const nextStyle: CSSProperties = {
       position: 'fixed',
       left,
       top,
       width: dropdownWidth,
       maxHeight,
       zIndex: 2147483647,
-    });
+    };
+
+    setAssetDropdownStyle((current) => (areFloatingMenuStylesEqual(current, nextStyle) ? current : nextStyle));
   }
 
   function openAssetDropdown() {
@@ -2303,8 +2370,11 @@ export default function ServiceDesk() {
 
     setShowAssetDropdown(true);
 
-    if (typeof window !== 'undefined') {
-      window.requestAnimationFrame(updateAssetDropdownPosition);
+    if (typeof window !== 'undefined' && assetDropdownFrameRef.current === null) {
+      assetDropdownFrameRef.current = window.requestAnimationFrame(() => {
+        assetDropdownFrameRef.current = null;
+        updateAssetDropdownPosition();
+      });
     }
   }
 
@@ -3178,7 +3248,6 @@ export default function ServiceDesk() {
           <td>${safe(normalizeDateTime(incident.createdAt))}</td>
           <td>
             <strong>${safe(incident.customerName || 'N/A')}</strong>
-            <small>${safe(incident.sector || 'No sector')}</small>
           </td>
           <td>${safe(incident.assetId || '—')}</td>
           <td>
@@ -3820,12 +3889,56 @@ export default function ServiceDesk() {
           contain: layout paint !important;
         }
 
+        main[data-section="service-desk"].service-desk-modal-portal-root .settings-confirm-backdrop.open {
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+          background: rgba(15, 23, 42, 0.38) !important;
+          contain: layout paint style !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-ticket-modal {
+          contain: layout paint style !important;
+          transform: translate3d(0, 0, 0) !important;
+          backface-visibility: hidden !important;
+          will-change: transform !important;
+          box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18) !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-ticket-form-body {
+          overflow-y: auto !important;
+          overscroll-behavior: contain !important;
+          scrollbar-gutter: stable !important;
+          -webkit-overflow-scrolling: touch !important;
+          contain: content !important;
+          transform: translate3d(0, 0, 0) !important;
+          will-change: scroll-position !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-ticket-form-body .settings-helper-card {
+          contain: layout paint !important;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035) !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-ticket-form-body input,
+        main[data-section="service-desk"] .service-desk-ticket-form-body textarea,
+        main[data-section="service-desk"] .service-desk-ticket-form-body button,
+        main[data-section="service-desk"] .service-desk-ticket-form-body .setting-select-trigger {
+          transition-duration: 80ms !important;
+        }
+
+        html.service-desk-is-scrolling main[data-section="service-desk"] .service-desk-ticket-modal *,
+        main[data-section="service-desk"] .service-desk-ticket-form-body.is-scrolling *,
+        main[data-section="service-desk"] .service-desk-ticket-form-body:hover * {
+          filter: none !important;
+        }
+
         html.service-desk-is-scrolling main[data-section="service-desk"] .service-desk-table-wrap *,
         html.service-desk-is-scrolling main[data-section="service-desk"] .service-desk-commandbar *,
         html.service-desk-is-scrolling main[data-section="service-desk"] .uam-pagination * {
           transition: none !important;
           animation: none !important;
           box-shadow: none !important;
+          filter: none !important;
         }
 
         html.service-desk-is-scrolling main[data-section="service-desk"] .user-row,
@@ -4978,7 +5091,6 @@ export default function ServiceDesk() {
                             <span className="user-mini-avatar">{initialText(incident.customerName || incident.reporterId)}</span>
                             <span>
                               <strong>{incident.customerName || 'N/A'}</strong>
-                              <small>{incident.sector || 'No sector'}</small>
                             </span>
                           </div>
                         </div>
