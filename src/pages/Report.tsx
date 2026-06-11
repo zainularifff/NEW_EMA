@@ -5613,6 +5613,158 @@ export default function Report() {
           }
         }
 
+        /* FINAL FIX: make the main selection card short, then use the freed horizontal space for the Build Report form */
+        .ema-report-module-root .featured-report-layout {
+          grid-template-columns: 520px minmax(560px, 650px) !important;
+          justify-content: start !important;
+          align-items: start !important;
+          gap: 12px !important;
+          width: 100% !important;
+        }
+        .ema-report-module-root .featured-report-main-panel,
+        .ema-report-module-root .report-pack-command-card,
+        .ema-report-module-root .hardware-report-selector-card,
+        .ema-report-module-root .selected-report-only-panel.compact-action-panel {
+          width: 520px !important;
+          max-width: 520px !important;
+        }
+        .ema-report-module-root .report-pack-command-card {
+          padding: 10px 12px !important;
+        }
+        .ema-report-module-root .report-pack-command-card h3 {
+          max-width: 390px !important;
+          font-size: .98rem !important;
+          line-height: 1.03 !important;
+        }
+        .ema-report-module-root .report-pack-command-card p {
+          max-width: 380px !important;
+          font-size: .62rem !important;
+        }
+        .ema-report-module-root .report-pack-kpi-row {
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        }
+        .ema-report-module-root .report-pack-kpi-row div {
+          min-height: 34px !important;
+          padding: 5px 7px !important;
+        }
+        .ema-report-module-root .selected-report-only-panel.compact-action-panel {
+          min-height: 38px !important;
+          grid-template-columns: minmax(0, 1fr) auto !important;
+          padding: 6px 8px !important;
+        }
+        .ema-report-module-root .compact-action-panel h4 {
+          font-size: .68rem !important;
+        }
+        .ema-report-module-root .selected-report-actions .btn {
+          min-height: 24px !important;
+          padding: 4px 8px !important;
+          font-size: .58rem !important;
+        }
+        .ema-report-module-root .hardware-report-card-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+
+        .ema-report-module-root .report-config-panel,
+        .ema-report-module-root .report-config-panel .config-card {
+          width: 100% !important;
+          max-width: none !important;
+        }
+        .ema-report-module-root .report-config-panel .config-card {
+          padding: 10px 11px !important;
+          overflow: visible !important;
+          max-height: none !important;
+        }
+        .ema-report-module-root .report-config-panel .config-head {
+          display: grid !important;
+          grid-template-columns: 88px minmax(0, 1fr) !important;
+          align-items: center !important;
+          gap: 10px !important;
+          padding-bottom: 7px !important;
+          margin-bottom: 7px !important;
+        }
+        .ema-report-module-root .report-config-panel .config-head span {
+          margin: 0 !important;
+        }
+        .ema-report-module-root .report-config-panel .config-head h3 {
+          margin: 0 !important;
+          font-size: .78rem !important;
+          line-height: 1.12 !important;
+        }
+        .ema-report-module-root .selected-action-meta {
+          margin: 6px 0 8px !important;
+          gap: 4px !important;
+        }
+        .ema-report-module-root .meta-pill {
+          min-height: 21px !important;
+          padding: 3px 7px !important;
+          font-size: .52rem !important;
+        }
+        .ema-report-module-root .config-form {
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          gap: 6px !important;
+          align-items: end !important;
+        }
+        .ema-report-module-root .config-form > label {
+          font-size: .50rem !important;
+          gap: 2px !important;
+        }
+        .ema-report-module-root .config-form .form-select,
+        .ema-report-module-root .config-form .form-control,
+        .ema-report-module-root .setting-select,
+        .ema-report-module-root .setting-input {
+          height: 25px !important;
+          min-height: 25px !important;
+          padding: 3px 7px !important;
+          font-size: .58rem !important;
+          border-radius: 8px !important;
+        }
+        .ema-report-module-root .client-rnr-fields {
+          grid-column: 1 / -1 !important;
+          display: grid !important;
+          grid-template-columns: 1fr !important;
+          gap: 5px !important;
+          padding: 7px !important;
+          border-radius: 10px !important;
+        }
+        .ema-report-module-root .client-rnr-fields legend {
+          font-size: .50rem !important;
+          margin: 0 !important;
+        }
+        .ema-report-module-root .client-rnr-fields > label {
+          font-size: .49rem !important;
+        }
+        .ema-report-module-root .client-rnr-grid {
+          display: grid !important;
+          grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+          gap: 5px !important;
+        }
+        .ema-report-module-root .client-rnr-grid label {
+          min-width: 0 !important;
+          font-size: .48rem !important;
+          gap: 2px !important;
+        }
+        .ema-report-module-root .client-rnr-grid .form-control,
+        .ema-report-module-root .client-rnr-grid .setting-input {
+          font-size: .54rem !important;
+          padding-inline: 5px !important;
+        }
+        .ema-report-module-root .check-grid {
+          grid-column: 1 / -1 !important;
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          gap: 5px !important;
+          margin: 0 !important;
+        }
+        .ema-report-module-root .inline-check {
+          min-height: 22px !important;
+          padding: 3px 5px !important;
+          font-size: .50rem !important;
+          border-radius: 7px !important;
+        }
+        .ema-report-module-root .config-actions {
+          display: none !important;
+        }
+
+
 
         @media (max-width: 1400px) {
           .report-template-row { grid-template-columns: minmax(0, 1fr); }
