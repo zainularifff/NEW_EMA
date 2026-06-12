@@ -8,6 +8,26 @@ type ReportSection = {
 type ReportPayload = any;
 type ReportFilters = any;
 
+
+const REPORT_PDF_TITLES: Record<string, string> = {
+  "ai-executive-summary": "Executive Summary Report",
+  "executive-summary": "Executive Summary Report",
+  "client-summary-rnr": "Client RNR Report",
+  "hardware-asset-lifecycle": "Hardware Lifecycle Report",
+  "resource-planning-brand-summary": "Hardware Lifecycle Report",
+  "operations-health-sla": "Operations SLA Report",
+  "security-compliance-exposure": "Security Exposure Report",
+  "compliance-exposure": "Security Exposure Report",
+  "software-application-governance": "Software Governance Report",
+  "software-inventory-summary": "Software Governance Report"
+};
+
+function pdfReportTitle(payload: ReportPayload, fallback = "EMA Report") {
+  const id = String(payload?.report?.id || "");
+  return REPORT_PDF_TITLES[id] || String(payload?.report?.title || fallback);
+}
+
+
 function formatDateTime(value?: string) {
   if (!value) return "-";
   try {
@@ -293,7 +313,7 @@ function buildPdfCoverOnlyPage(payload: ReportPayload, filters: ReportFilters, m
   const generated = formatDateTime(payload.generatedAt);
   const period = payload.narrative.period || filters.dateRange;
   const scope = payload.narrative.scope || "All Sites";
-  const title = payload.report.title || "EMA Report";
+  const title = pdfReportTitle(payload, "EMA Report");
   const intro = payload.report.description || payload.narrative.executiveSummary || "Prepared from the current EMA operational dataset.";
   const label = mode === "executive" ? "Management-ready report pack" : "Operational report pack";
 
@@ -358,7 +378,7 @@ function buildExecutivePrintableHtml(payload: ReportPayload, filters: ReportFilt
       <div class="pdf-summary-layout">
         <div>
           <span class="pdf-eyebrow">Executive Summary</span>
-          <h2>${pdfText(payload.narrative.title || payload.report.title, 90)}</h2>
+          <h2>${pdfText(payload.narrative.title || pdfReportTitle(payload), 90)}</h2>
           <p>${pdfText(payload.narrative.executiveSummary || payload.narrative.managementConclusion, 300)}</p>
         </div>
         ${buildPdfMetricTable(payload)}
@@ -390,7 +410,7 @@ function buildGenericPrintableHtml(payload: ReportPayload, filters: ReportFilter
       <div class="pdf-summary-layout">
         <div>
           <span class="pdf-eyebrow">Report Narrative</span>
-          <h2>${pdfText(payload.narrative.title || payload.report.title, 90)}</h2>
+          <h2>${pdfText(payload.narrative.title || pdfReportTitle(payload), 90)}</h2>
           <p>${pdfText(payload.narrative.managementConclusion || payload.narrative.executiveSummary, 300)}</p>
         </div>
         <table class="pdf-real-table pdf-metric-table">
@@ -421,11 +441,12 @@ export function buildRegeneratedReportHtml(payload: ReportPayload, filters: Repo
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${pdfText(payload.report.title, 90)}</title>
+  <title>${pdfText(pdfReportTitle(payload), 90)}</title>
   <style>
     @page { size: A4 portrait; margin: 10mm; }
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; background: #eef3f8; color: #17233c; font-family: "Segoe UI", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    html, body { margin: 0; padding: 0; background: #eef3f8; color: #17233c; font-family: "Aptos", "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-feature-settings: "kern" 1, "liga" 1; text-rendering: geometricPrecision; }
+    h1, h2, h3, th, .pdf-eyebrow, .pdf-cover-title-block span, .pdf-cover-meta-table small { font-family: "Aptos Display", "Aptos", "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
     body { width: 210mm; min-height: 297mm; }
     .pdf-pack { width: 190mm; margin: 0 auto; display: flex; flex-direction: column; gap: 6mm; }
     .pdf-page-break { page-break-after: always; break-after: page; height: 0; }
@@ -484,7 +505,7 @@ export function buildRegeneratedReportHtml(payload: ReportPayload, filters: Repo
     .pdf-bar-row em { display: block; height: 100%; border-radius: inherit; background: #2563eb; }
     .pdf-table-box { border: 1px solid #d6e2f2; border-radius: 3mm; overflow: hidden; background: #fff; }
     .pdf-compact-table-box { margin-top: 3mm; }
-    .pdf-real-table { width: 100%; border-collapse: collapse; border-spacing: 0; table-layout: fixed; font-size: 7.6pt; line-height: 1.35; }
+    .pdf-real-table { width: 100%; border-collapse: collapse; border-spacing: 0; table-layout: fixed; font-size: 7.8pt; line-height: 1.35; }
     .pdf-real-table thead { display: table-header-group; }
     .pdf-real-table tr { break-inside: avoid; page-break-inside: avoid; }
     .pdf-real-table th, .pdf-real-table td { text-align: left; padding: 2.15mm 2.4mm; border-bottom: 1px solid #e5edf7; vertical-align: top; overflow-wrap: anywhere; word-break: break-word; }
@@ -508,7 +529,7 @@ export function buildRegeneratedReportHtml(payload: ReportPayload, filters: Repo
     .pdf-cover-page { min-height: auto !important; height: auto !important; padding: 14mm !important; border-radius: 5mm !important; page-break-after: always; background: linear-gradient(135deg,#ffffff 0%,#f8fbff 62%,#eef6ff 100%) !important; }
     .pdf-cover-brand-row { margin-bottom: 20mm !important; }
     .pdf-cover-title-block { min-height: auto !important; max-width: none !important; display: block !important; padding: 0 0 20mm !important; }
-    .pdf-cover-title-block h1 { max-width: 142mm !important; margin-top: 6mm !important; color: #0f2347 !important; font-size: 30pt !important; line-height: 1.06 !important; letter-spacing: -.04em !important; }
+    .pdf-cover-title-block h1 { max-width: 142mm !important; margin-top: 6mm !important; color: #0f2347 !important; font-size: 28pt !important; line-height: 1.06 !important; letter-spacing: -.04em !important; }
     .pdf-cover-title-block p { max-width: 130mm !important; color:#52647e !important; font-size: 10.5pt !important; line-height:1.55 !important; }
     .pdf-cover-meta-table { grid-template-columns: repeat(4,minmax(0,1fr)) !important; padding-top: 6mm !important; }
     @media print {

@@ -112,6 +112,12 @@ type HardwareRiskDeviceRow = {
   osName: string;
   riskScore: number;
   reasons: string;
+  osLifecycleStatus?: string;
+  osLifecycleSeverity?: Severity | string;
+  osLifecycleCycle?: string;
+  osLifecycleEolDate?: string;
+  osLifecycleSource?: string;
+  osLifecycleBasis?: string;
 };
 
 type RiskSummary = {
@@ -201,12 +207,31 @@ type NetworkSummary = {
   workgroups: BreakdownItem[];
 };
 
+type GeoDeviceRow = {
+  deviceName: string;
+  deviceId?: string;
+  platform?: string;
+  department?: string;
+  locationName?: string;
+  lastSeen?: string;
+  status?: string;
+  reason?: string;
+  signal?: string;
+  latitude?: string | number;
+  longitude?: string | number;
+};
+
 type GeoSummary = {
   trackedDevices: number;
   staleLocations: number;
   unknownLocations: number;
   latestLocationTime: string;
   topLocations: BreakdownItem[];
+  locationRows: GeoDeviceRow[];
+  trackedRows: GeoDeviceRow[];
+  staleRows: GeoDeviceRow[];
+  unknownRows: GeoDeviceRow[];
+  missingGeoRows: GeoDeviceRow[];
 };
 
 type TaskSummary = {
@@ -330,6 +355,11 @@ const EMPTY_GEO_SUMMARY: GeoSummary = {
   unknownLocations: 0,
   latestLocationTime: '-',
   topLocations: [],
+  locationRows: [],
+  trackedRows: [],
+  staleRows: [],
+  unknownRows: [],
+  missingGeoRows: [],
 };
 
 const EMPTY_TASK_SUMMARY: TaskSummary = {
@@ -406,6 +436,7 @@ const VIEW_TITLES: Record<string, { title: string; subtitle: string }> = {
   patch: { title: 'Patch Compliance', subtitle: 'Department patch score and remediation priority.' },
   alerts: { title: 'Active Alerts', subtitle: 'Critical and high-priority items requiring operational triage.' },
   attention: { title: 'Exception Evidence', subtitle: 'Detailed evidence for generated follow-up signals.' },
+  dataConfidence: { title: 'Data Confidence', subtitle: 'Source freshness and mapping reliability across operational domains.' },
 };
 
 function resolveApiBaseUrl() {
@@ -526,6 +557,67 @@ function formatDateLabel(value: unknown) {
   return date.toLocaleString('en-MY', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+
+function firstTextValue(record: Record<string, unknown>, keys: string[], fallback = '') {
+  for (const key of keys) {
+    const value = record[key];
+    if (value !== undefined && value !== null && String(value).trim() !== '') return String(value).trim();
+  }
+  return fallback;
+}
+
+function firstRawValue(record: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (value !== undefined && value !== null && String(value).trim() !== '') return value;
+  }
+  return undefined;
+}
+
+function readArrayFromRecord(record: Record<string, unknown> | undefined, keys: string[]) {
+  if (!record) return [] as unknown[];
+  for (const key of keys) {
+    const value = record[key];
+    if (Array.isArray(value)) return value;
+  }
+  return [] as unknown[];
+}
+
+function normalizeGeoDeviceRows(rows: unknown, defaultSignal = ''): GeoDeviceRow[] {
+  if (!Array.isArray(rows)) return [];
+
+  return rows.map((row) => {
+    const record = (row || {}) as Record<string, unknown>;
+    const locationName = firstTextValue(record, ['locationName', 'LocationName', 'location', 'Location', 'address', 'Address', 'geoLocation', 'GeoLocation'], 'Unknown Location');
+    const signal = firstTextValue(record, ['signal', 'Signal', 'riskType', 'RiskType', 'category', 'Category', 'status', 'Status'], defaultSignal);
+    const lastSeenRaw = firstRawValue(record, ['lastSeen', 'LastSeen', 'locationTime', 'LocationTime', 'time', 'Time', 'updatedAt', 'UpdatedAt', 'DeviceTimeStamp']);
+
+    return {
+      deviceName: firstTextValue(record, ['deviceName', 'DeviceName', 'computerName', 'ComputerName', 'hostname', 'HostName', 'name', 'Name'], firstTextValue(record, ['deviceId', 'DeviceID', 'Object_DeviceID', 'serialNumber', 'SerialNumber'], '-')),
+      deviceId: firstTextValue(record, ['deviceId', 'DeviceID', 'Object_DeviceID', 'assetId', 'AssetID', 'id', 'ID']),
+      platform: firstTextValue(record, ['platform', 'Platform', 'platformType', 'PlatformType', 'osName', 'OSName']),
+      department: firstTextValue(record, ['department', 'Department', 'objectFullName', 'Object_Full_Name', 'Object_Rel_Name', 'group', 'Group']),
+      locationName,
+      lastSeen: lastSeenRaw ? formatDateLabel(lastSeenRaw) : firstTextValue(record, ['lastSeenLabel', 'LastSeenLabel', 'timeLabel', 'TimeLabel']),
+      status: firstTextValue(record, ['status', 'Status', 'connectionStatus', 'ConnectionStatus'], signal || defaultSignal),
+      reason: firstTextValue(record, ['reason', 'Reason', 'reasons', 'Reasons', 'remark', 'Remark'], signal || defaultSignal || 'Location evidence returned by API'),
+      signal,
+      latitude: firstRawValue(record, ['latitude', 'Latitude', 'lat', 'Lat']),
+      longitude: firstRawValue(record, ['longitude', 'Longitude', 'lng', 'Lng', 'long', 'Long']),
+    };
+  }).filter((row) => row.deviceName && row.deviceName !== '-');
+}
+
+function uniqueGeoRows(rows: GeoDeviceRow[]) {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    const key = [row.deviceId, row.deviceName, row.locationName, row.lastSeen, row.signal].filter(Boolean).join('|').toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function averagePercent(rows: { percent: number }[]) {
   if (!rows.length) return 0;
   return rows.reduce((total, row) => total + clampPercent(row.percent), 0) / rows.length;
@@ -586,11 +678,25 @@ function normalizeDashboardData(raw: Partial<ItOpsDashboardData> | null | undefi
       ...(data.network || {}),
       workgroups: Array.isArray(data.network?.workgroups) ? data.network.workgroups : [],
     },
-    geolocation: {
-      ...EMPTY_GEO_SUMMARY,
-      ...(data.geolocation || {}),
-      topLocations: Array.isArray(data.geolocation?.topLocations) ? data.geolocation.topLocations : [],
-    },
+    geolocation: (() => {
+      const geoRecord = (data.geolocation || {}) as Partial<GeoSummary> & Record<string, unknown>;
+      const locationRows = normalizeGeoDeviceRows(readArrayFromRecord(geoRecord, ['locationRows', 'deviceRows', 'devices', 'records', 'rows', 'geoRows']), 'Tracked Devices');
+      const trackedRows = normalizeGeoDeviceRows(readArrayFromRecord(geoRecord, ['trackedRows', 'trackedDeviceRows', 'trackedDevicesRows', 'usableRows']), 'Tracked Devices');
+      const staleRows = normalizeGeoDeviceRows(readArrayFromRecord(geoRecord, ['staleRows', 'staleLocationRows', 'staleLocationRecords', 'staleDevices']), 'Stale Location Records');
+      const unknownRows = normalizeGeoDeviceRows(readArrayFromRecord(geoRecord, ['unknownRows', 'unknownLocationRows', 'unknownLocationRecords', 'unknownDevices']), 'Unknown Locations');
+      const missingGeoRows = normalizeGeoDeviceRows(readArrayFromRecord(geoRecord, ['missingGeoRows', 'missingGeoDevices', 'missingGeoIdentityRows', 'missingIdentityRows']), 'Missing Geo Identity');
+
+      return {
+        ...EMPTY_GEO_SUMMARY,
+        ...geoRecord,
+        topLocations: Array.isArray(geoRecord.topLocations) ? geoRecord.topLocations : [],
+        locationRows,
+        trackedRows,
+        staleRows,
+        unknownRows,
+        missingGeoRows,
+      };
+    })(),
     tasks: {
       ...EMPTY_TASK_SUMMARY,
       ...(data.tasks || {}),
@@ -858,6 +964,7 @@ function IncidentTrendChart({ data, summary, showSummaryCards = true }: { data: 
 
 function resolveDomainView(name: string) {
   const text = String(name || '').toLowerCase();
+  if (text.includes('confidence') || text.includes('freshness') || text.includes('source of truth') || text.includes('data quality')) return 'dataConfidence';
   if (text.includes('endpoint') || text.includes('hardware') || text.includes('device')) return 'hardware';
   if (text.includes('software') || text.includes('application') || text.includes('app')) return 'software';
   if (text.includes('network') || text.includes('ip') || text.includes('subnet')) return 'network';
@@ -873,6 +980,7 @@ function resolveDomainIcon(name: string): LucideIcon {
   if (view === 'network') return Network;
   if (view === 'geolocation') return MapPin;
   if (view === 'tasks') return Wrench;
+  if (view === 'dataConfidence') return Gauge;
   return BarChart3;
 }
 
@@ -884,6 +992,7 @@ function domainActionLabel(name: string, status: 'Healthy' | 'Watch' | 'Action')
   if (view === 'network') return 'Investigate unmanaged IP exposure';
   if (view === 'geolocation') return 'Refresh missing or stale location data';
   if (view === 'tasks') return 'Review failed or delayed execution jobs';
+  if (view === 'dataConfidence') return 'Validate source freshness before using dashboard as source of truth';
   return 'Review evidence and assign owner';
 }
 
@@ -919,6 +1028,82 @@ function HealthRadar({ items, onOpen }: { items: DomainHealthItem[]; onOpen?: (v
       })}
     </div>
   );
+}
+
+
+function DataConfidenceCard({ score, rows, onOpen }: { score: number; rows: BreakdownItem[]; onOpen: () => void }) {
+  const status = healthStatus(score);
+  return (
+    <button type="button" className={`itops-data-confidence itops-data-confidence-${status.toLowerCase()}`} onClick={onOpen}>
+      <div className="itops-data-confidence-head">
+        <span className="itops-data-confidence-icon"><Gauge size={18} /></span>
+        <div>
+          <span>Data Confidence</span>
+          <strong>{formatPercent(score, 0)}</strong>
+          <small>Source of truth readiness</small>
+        </div>
+        <StatusBadge status={status} />
+      </div>
+      <div className="itops-data-confidence-meter" aria-hidden="true"><i style={{ width: `${clampPercent(score)}%` }} /></div>
+      <div className="itops-data-confidence-grid">
+        {rows.slice(0, 6).map((row) => (
+          <div key={row.name}>
+            <span>{row.name}</span>
+            <strong>{formatPercent(row.percent ?? row.value, 0)}</strong>
+          </div>
+        ))}
+      </div>
+    </button>
+  );
+}
+
+function DrilldownTrace({ domain, stage, selected }: { domain: string; stage: 'breakdown' | 'evidence'; selected?: string }) {
+  return (
+    <div className="itops-drill-trace" aria-label="Drilldown data flow">
+      <span className="done">KPI</span>
+      <ChevronRight size={13} />
+      <span className={stage === 'breakdown' ? 'active' : 'done'}>Breakdown</span>
+      <ChevronRight size={13} />
+      <span className={stage === 'evidence' ? 'active' : ''}>Evidence</span>
+      <small>{domain}{selected ? ` • ${selected}` : ''}</small>
+    </div>
+  );
+}
+
+function LocationDistribution({ items, onOpen }: { items: BreakdownItem[]; onOpen: (name: string) => void }) {
+  const visible = items.slice(0, 8);
+  if (!visible.length) return <EmptyState label="No recorded location distribution returned by the API yet." />;
+
+  return (
+    <div className="itops-location-list">
+      {visible.map((item) => {
+        const percent = item.percent === undefined ? 0 : clampPercent(item.percent);
+        return (
+          <button type="button" key={item.name} onClick={() => onOpen(item.name)}>
+            <div>
+              <strong>{item.name}</strong>
+              <span>{item.percent === undefined ? `${formatNumber(item.value)} record(s)` : `${formatPercent(percent)} of returned location mix`}</span>
+            </div>
+            <em>{item.percent === undefined ? formatNumber(item.value) : formatPercent(percent)}</em>
+            <ChevronRight size={15} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function LifecycleBadge({ value }: { value?: string }) {
+  const text = String(value || 'Lifecycle Not Provided');
+  const normalized = text.toLowerCase();
+  const tone: StatusTone = normalized.includes('eol') || normalized.includes('eos')
+    ? 'danger'
+    : normalized.includes('near')
+      ? 'warning'
+      : normalized.includes('not')
+        ? 'neutral'
+        : 'info';
+  return <ToneBadge tone={tone}>{text}</ToneBadge>;
 }
 
 function ActionQueue({ items, onOpen }: { items: AttentionItem[]; onOpen: (view: string) => void }) {
@@ -1149,14 +1334,73 @@ export default function ITOperationsDashboard() {
 
   const patchComplianceAverage = useMemo(() => averagePercent(patchDepartments), [patchDepartments]);
   const endpointOnlinePercent = hardware.totalDevices > 0 ? (hardware.onlineDevices / hardware.totalDevices) * 100 : 0;
+  const endpointFreshnessPercent = hardware.totalDevices > 0 ? ((hardware.totalDevices - hardware.staleSync) / hardware.totalDevices) * 100 : 0;
   const taskCompletionPercent = tasks.totalTasks > 0 ? (tasks.completedTasks / tasks.totalTasks) * 100 : 0;
   const networkRegistrationPercent = network.knownIps > 0 ? (network.registeredDevices / network.knownIps) * 100 : 0;
-  const locationFreshPercent = geolocation.trackedDevices > 0 ? ((geolocation.trackedDevices - geolocation.staleLocations) / geolocation.trackedDevices) * 100 : 0;
+  const softwareMappingPercent = software.uniqueSoftware > 0 ? ((Math.max(0, software.uniqueSoftware - software.unclassifiedSoftware)) / software.uniqueSoftware) * 100 : 0;
+  const locationSignalTotal = geolocation.trackedDevices + geolocation.staleLocations + geolocation.unknownLocations + risk.missingGeoDevices;
+  const locationFreshPercent = locationSignalTotal > 0 ? (geolocation.trackedDevices / locationSignalTotal) * 100 : 0;
+  const dataConfidenceRows = useMemo<BreakdownItem[]>(() => [
+    { name: 'Endpoint freshness', value: endpointFreshnessPercent, percent: endpointFreshnessPercent },
+    { name: 'Software mapping', value: softwareMappingPercent, percent: softwareMappingPercent },
+    { name: 'Network mapping', value: networkRegistrationPercent, percent: networkRegistrationPercent },
+    { name: 'Location reliability', value: locationFreshPercent, percent: locationFreshPercent },
+    { name: 'Task execution', value: taskCompletionPercent, percent: taskCompletionPercent },
+    { name: 'Service SLA', value: serviceDesk.slaAchievement, percent: serviceDesk.slaAchievement },
+  ], [endpointFreshnessPercent, locationFreshPercent, networkRegistrationPercent, serviceDesk.slaAchievement, softwareMappingPercent, taskCompletionPercent]);
+  const dataConfidenceScore = useMemo(() => averagePercent(dataConfidenceRows), [dataConfidenceRows]);
+  const geoEvidenceRows = useMemo(() => {
+    const hardwareGeoFallback = risk.topHardwareRisk
+      .filter((device) => /geo|location/i.test(`${device.reasons || ''} ${device.department || ''}`))
+      .map((device) => ({
+        deviceName: device.deviceName,
+        platform: device.platform,
+        department: device.department,
+        locationName: device.department || 'Missing / unmatched location identity',
+        lastSeen: device.lastSeen,
+        status: 'Missing Geo Identity',
+        signal: 'Missing Geo Identity',
+        reason: device.reasons || 'Endpoint has geo/location risk signal',
+      } satisfies GeoDeviceRow));
+
+    return uniqueGeoRows([
+      ...geolocation.locationRows,
+      ...geolocation.trackedRows,
+      ...geolocation.staleRows,
+      ...geolocation.unknownRows,
+      ...geolocation.missingGeoRows,
+      ...hardwareGeoFallback,
+    ]);
+  }, [geolocation.locationRows, geolocation.missingGeoRows, geolocation.staleRows, geolocation.trackedRows, geolocation.unknownRows, risk.topHardwareRisk]);
+
+  const resolveGeoEvidenceRows = useCallback((item = '') => {
+    const key = String(item || '').toLowerCase();
+    let rows = geoEvidenceRows;
+
+    if (key.includes('tracked')) {
+      rows = geolocation.trackedRows.length ? geolocation.trackedRows : geoEvidenceRows.filter((row) => /tracked|usable|fresh/i.test(`${row.signal} ${row.status} ${row.reason}`));
+    } else if (key.includes('stale')) {
+      rows = geolocation.staleRows.length ? geolocation.staleRows : geoEvidenceRows.filter((row) => /stale|old|expired/i.test(`${row.signal} ${row.status} ${row.reason}`));
+    } else if (key.includes('unknown')) {
+      rows = geolocation.unknownRows.length ? geolocation.unknownRows : geoEvidenceRows.filter((row) => /unknown|empty|unable/i.test(`${row.locationName} ${row.signal} ${row.status} ${row.reason}`));
+    } else if (key.includes('missing geo') || key.includes('missing identity')) {
+      rows = geolocation.missingGeoRows.length ? geolocation.missingGeoRows : geoEvidenceRows.filter((row) => /missing|identity|mapping/i.test(`${row.signal} ${row.status} ${row.reason}`));
+    } else if (item) {
+      rows = geoEvidenceRows.filter((row) => row.locationName === item || row.department === item || row.deviceName === item || row.deviceId === item);
+    }
+
+    return uniqueGeoRows(rows);
+  }, [geoEvidenceRows, geolocation.missingGeoRows, geolocation.staleRows, geolocation.trackedRows, geolocation.unknownRows]);
+
+  const domainHealthForMatrix = useMemo<DomainHealthItem[]>(() => {
+    const existing = domainHealth.filter((item) => resolveDomainView(item.name) !== 'dataConfidence').slice(0, 5);
+    return [...existing, { name: 'Data Confidence', percent: dataConfidenceScore, color: '#2563eb' }];
+  }, [dataConfidenceScore, domainHealth]);
   const overallHealth = useMemo(() => {
-    const values = [endpointOnlinePercent, patchComplianceAverage, serviceDesk.slaAchievement, taskCompletionPercent, networkRegistrationPercent, locationFreshPercent].filter((item) => Number.isFinite(item));
+    const values = [endpointOnlinePercent, patchComplianceAverage, serviceDesk.slaAchievement, taskCompletionPercent, networkRegistrationPercent, locationFreshPercent, dataConfidenceScore].filter((item) => Number.isFinite(item));
     if (!values.length) return 0;
     return values.reduce((total, item) => total + clampPercent(item), 0) / values.length;
-  }, [endpointOnlinePercent, patchComplianceAverage, serviceDesk.slaAchievement, taskCompletionPercent, networkRegistrationPercent, locationFreshPercent]);
+  }, [dataConfidenceScore, endpointOnlinePercent, patchComplianceAverage, serviceDesk.slaAchievement, taskCompletionPercent, networkRegistrationPercent, locationFreshPercent]);
 
   const departments = useMemo(() => ['All Departments', ...patchDepartments.map((item) => item.name)], [patchDepartments]);
 
@@ -1182,15 +1426,15 @@ export default function ITOperationsDashboard() {
 
   const focusCards: FocusCard[] = useMemo(() => [
     {
-      id: 'overall',
-      label: 'Ops Health Score',
-      value: formatPercent(overallHealth, 0),
-      note: `${rangeLabel} • ${formatDateLabel(generatedAt)}`,
-      icon: Gauge,
-      tone: 'cyan',
-      progress: overallHealth,
-      status: healthStatus(overallHealth),
-      view: 'overview',
+      id: 'location',
+      label: 'Location Coverage',
+      value: formatNumber(geolocation.trackedDevices),
+      note: `${formatNumber(geolocation.staleLocations)} stale record(s) • ${formatNumber(risk.missingGeoDevices)} missing geo`,
+      icon: MapPin,
+      tone: 'green',
+      progress: locationFreshPercent,
+      status: healthStatus(locationFreshPercent),
+      view: 'geolocation',
     },
     {
       id: 'devices',
@@ -1247,7 +1491,7 @@ export default function ITOperationsDashboard() {
       status: riskStatus(risk.totalCritical + risk.totalHigh, 1, 6),
       view: 'risk',
     },
-  ], [endpointOnlinePercent, generatedAt, hardware.onlineDevices, hardware.staleSync, hardware.totalDevices, overallHealth, patchComplianceAverage, rangeLabel, risk.score, risk.totalCritical, risk.totalHigh, risk.totalRiskItems, security.criticalVulnerabilities, serviceDesk.overdueTickets, serviceDesk.pendingTickets, serviceDesk.slaAchievement, taskCompletionPercent, tasks.failedTasks, tasks.latestTaskTime, tasks.runningTasks]);
+  ], [endpointOnlinePercent, geolocation.staleLocations, geolocation.trackedDevices, geolocation.unknownLocations, risk.missingGeoDevices, hardware.onlineDevices, hardware.staleSync, hardware.totalDevices, locationFreshPercent, patchComplianceAverage, risk.score, risk.totalCritical, risk.totalHigh, risk.totalRiskItems, security.criticalVulnerabilities, serviceDesk.overdueTickets, serviceDesk.pendingTickets, serviceDesk.slaAchievement, taskCompletionPercent, tasks.failedTasks, tasks.latestTaskTime, tasks.runningTasks]);
 
   const renderServiceDeskTable = () => (
     <div className="itops-pro-table-wrap">
@@ -1343,6 +1587,7 @@ export default function ITOperationsDashboard() {
             <th>Department</th>
             <th>Last Seen</th>
             <th>Risk</th>
+            <th>Lifecycle</th>
             <th>Reason</th>
           </tr>
         </thead>
@@ -1354,6 +1599,7 @@ export default function ITOperationsDashboard() {
               <td>{item.department || '-'}</td>
               <td>{item.lastSeen || '-'}</td>
               <td><ToneBadge tone={item.riskScore >= 70 ? 'danger' : item.riskScore >= 40 ? 'warning' : 'info'}>{item.riskScore}</ToneBadge></td>
+              <td><LifecycleBadge value={item.osLifecycleStatus} /></td>
               <td>{item.reasons || '-'}</td>
             </tr>
           ))}
@@ -1425,16 +1671,16 @@ export default function ITOperationsDashboard() {
       </section>
 
       <section className="itops-pro-command-grid">
-        <Panel title="Live Operations Pulse" subtitle="Incidents, resolution flow and backlog movement." icon={Activity} className="span-2" action={<div className="itops-pro-legend"><span className="new" /> New <span className="resolved" /> Resolved <span className="open" /> Open</div>}>
+        <Panel title="Live Operations Pulse" subtitle="New, resolved and open backlog movement from Service Desk API." icon={Activity} className="span-2" action={<div className="itops-pro-legend"><span className="new" /> New <span className="resolved" /> Resolved <span className="open" /> Open</div>}>
           <IncidentTrendChart data={incidentTrend} summary={trendSummary} />
         </Panel>
 
-        <Panel title="Risk Command" subtitle="Engineering security and endpoint exposure." icon={ShieldAlert}>
+        <Panel title="Risk Command" subtitle="Severity, category and endpoint lifecycle exposure." icon={ShieldAlert}>
           <button type="button" className="itops-risk-command-summary" onClick={() => openLevel2('risk')}>
             <div className="itops-risk-command-copy">
               <span>Exposure Index</span>
               <strong>{formatNumber(risk.score)}<em>/100</em></strong>
-              <small>Weighted from endpoint, patch, network, geo and task exposure. This is not a raw percentage.</small>
+              <small>Weighted from endpoint, patch, network, geo and task exposure. Use the drilldown to see category and lifecycle evidence.</small>
             </div>
             <StatusBadge status={riskStatus(risk.score, 35, 70)} />
             <div className="itops-risk-command-meter" aria-hidden="true"><i style={{ width: `${clampPercent(risk.score)}%` }} /></div>
@@ -1444,7 +1690,7 @@ export default function ITOperationsDashboard() {
             <button type="button" className="itops-risk-severity itops-risk-severity-critical" onClick={() => openLevel3('risk', 'Critical')}>
               <span>Critical</span>
               <strong>{formatNumber(risk.totalCritical)}</strong>
-              <small>Immediate engineering review</small>
+              <small>Immediate review</small>
             </button>
             <button type="button" className="itops-risk-severity itops-risk-severity-high" onClick={() => openLevel3('risk', 'High')}>
               <span>High</span>
@@ -1458,11 +1704,18 @@ export default function ITOperationsDashboard() {
             </button>
           </div>
 
+          <div className="itops-risk-driver-mini">
+            <BarList items={risk.categoryBreakdown} limit={4} emptyLabel="No risk driver breakdown returned yet." />
+          </div>
           <button type="button" className="itops-pro-link-btn itops-pro-link-btn-risk" onClick={() => openLevel2('risk')}>Review risk evidence <ChevronRight size={15} /></button>
         </Panel>
 
-        <Panel title="Operational Domain Matrix" subtitle="Health signals by endpoint, software, network, location and automation domain." icon={BarChart3} className="span-2">
-          <HealthRadar items={domainHealth} onOpen={(view) => openLevel2(view)} />
+        <Panel title="Coverage & Data Quality Matrix" subtitle="Source-of-truth confidence by endpoint, software, network, location and automation domain." icon={BarChart3} className="span-2">
+          <HealthRadar items={domainHealthForMatrix} onOpen={(view) => openLevel2(view)} />
+        </Panel>
+
+        <Panel title="Source of Truth Confidence" subtitle="Shows whether dashboard data is reliable before managers act on it." icon={Gauge}>
+          <DataConfidenceCard score={dataConfidenceScore} rows={dataConfidenceRows} onOpen={() => openLevel2('dataConfidence')} />
         </Panel>
       </section>
     </>
@@ -1663,6 +1916,7 @@ export default function ITOperationsDashboard() {
               <th>Department</th>
               <th>Last Seen</th>
               <th>Risk</th>
+              <th>Lifecycle</th>
               <th>Reason</th>
               <th>Next</th>
             </tr>
@@ -1679,6 +1933,7 @@ export default function ITOperationsDashboard() {
                 <td>{device.department || '-'}</td>
                 <td>{device.lastSeen || '-'}</td>
                 <td><ToneBadge tone={device.riskScore >= 70 ? 'danger' : device.riskScore >= 40 ? 'warning' : 'info'}>{device.riskScore}</ToneBadge></td>
+                <td><LifecycleBadge value={device.osLifecycleStatus} /></td>
                 <td>{device.reasons || '-'}</td>
                 <td>{level === 'level2' ? <ChevronRight size={15} /> : <ToneBadge tone="info">Device Detail</ToneBadge>}</td>
               </tr>
@@ -1686,6 +1941,47 @@ export default function ITOperationsDashboard() {
           </tbody>
         </table>
         {!rows.length && <EmptyState label="No endpoint risk devices returned." />}
+      </div>
+    );
+  };
+
+  const renderGeoDeviceEvidenceTable = (item = '') => {
+    const rows = resolveGeoEvidenceRows(item);
+    const isSummaryOnly = rows.length === 0;
+
+    return (
+      <div className="itops-pro-table-wrap">
+        <table className="itops-pro-table">
+          <thead>
+            <tr>
+              <th>PC / Device</th>
+              <th>Device ID</th>
+              <th>Platform</th>
+              <th>Department</th>
+              <th>Location</th>
+              <th>Last Seen / Time</th>
+              <th>Signal</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.slice(0, 50).map((row, index) => (
+              <tr key={`${row.deviceId || row.deviceName}-${row.locationName}-${index}`}>
+                <td><strong>{row.deviceName || '-'}</strong></td>
+                <td>{row.deviceId || '-'}</td>
+                <td>{row.platform || '-'}</td>
+                <td>{row.department || '-'}</td>
+                <td>{row.locationName || '-'}</td>
+                <td>{row.lastSeen || '-'}</td>
+                <td><ToneBadge tone={/stale|missing|unknown/i.test(`${row.signal} ${row.status}`) ? 'warning' : 'info'}>{row.signal || row.status || 'Location Record'}</ToneBadge></td>
+                <td>{row.reason || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {isSummaryOnly && (
+          <EmptyState label="No PC-level geolocation rows were returned by the current dashboard API payload for this selection. Level 2 counts are available, but Level 3 needs device/location row evidence from the API." />
+        )}
       </div>
     );
   };
@@ -1721,6 +2017,7 @@ export default function ITOperationsDashboard() {
     if (view === 'hardware') {
       return (
         <div className="itops-pro-drawer-stack">
+          <DrilldownTrace domain="Endpoint Fleet" stage="breakdown" />
           <div className="itops-pro-story-panel">
             <strong>Endpoint Fleet Breakdown</strong>
             <p>Review device coverage first: online status, stale sync, source mix and groups that require engineering follow-up.</p>
@@ -1740,6 +2037,7 @@ export default function ITOperationsDashboard() {
     if (view === 'serviceDesk' || view === 'alerts') {
       return (
         <div className="itops-pro-drawer-stack">
+          <DrilldownTrace domain="Open Incidents" stage="breakdown" />
           <div className="itops-pro-story-panel">
             <strong>Service Desk Queue Breakdown</strong>
             <p>Review triage ownership, SLA watch and follow-up queues. Click a metric or alert row to open the supporting evidence.</p>
@@ -1801,6 +2099,7 @@ export default function ITOperationsDashboard() {
     if (view === 'risk') {
       return (
         <div className="itops-pro-drawer-stack">
+          <DrilldownTrace domain="Critical Risk" stage="breakdown" />
           <div className="itops-pro-story-panel">
             <strong>Risk Triage Breakdown</strong>
             <p>Review the risk queue and decide what requires engineering action. Click any severity, finding or endpoint to open engineering detail.</p>
@@ -1849,13 +2148,31 @@ export default function ITOperationsDashboard() {
     if (view === 'geolocation') {
       return (
         <div className="itops-pro-drawer-stack">
-          <div className="itops-pro-story-panel"><strong>Geolocation Coverage Breakdown</strong><p>Review whether locations are fresh, stale or unknown before endpoint follow-up.</p></div>
+          <DrilldownTrace domain="Location Coverage" stage="breakdown" />
+          <div className="itops-pro-story-panel"><strong>Location Coverage Breakdown</strong><p>Level 2 is the manager view: it explains why the Location Coverage KPI needs attention. Click any category to open Level 3 PC/device evidence.</p></div>
           <div className="itops-pro-drill-grid">
-            <DrillCard icon={MapPin} label="Tracked Devices" value={formatNumber(geolocation.trackedDevices)} note="Location records available" tone="green" onClick={() => openLevel3('geolocation', 'Tracked Devices')} />
-            <DrillCard icon={AlertTriangle} label="Stale Locations" value={formatNumber(geolocation.staleLocations)} note="Location may be outdated" tone="amber" onClick={() => openLevel3('geolocation', 'Stale Locations')} />
-            <DrillCard icon={ShieldAlert} label="Unknown Locations" value={formatNumber(geolocation.unknownLocations)} note="Missing/unknown location" tone="red" onClick={() => openLevel3('geolocation', 'Unknown Locations')} />
+            <DrillCard icon={MapPin} label="Tracked Devices" value={formatNumber(geolocation.trackedDevices)} note="Click to view PCs with usable location" tone="green" onClick={() => openLevel3('geolocation', 'Tracked Devices')} />
+            <DrillCard icon={AlertTriangle} label="Stale Location Records" value={formatNumber(geolocation.staleLocations)} note="Click to view stale device/location records" tone="amber" onClick={() => openLevel3('geolocation', 'Stale Location Records')} />
+            <DrillCard icon={ShieldAlert} label="Unknown Locations" value={formatNumber(geolocation.unknownLocations)} note="Click to view devices with unknown location" tone="red" onClick={() => openLevel3('geolocation', 'Unknown Locations')} />
+            <DrillCard icon={Database} label="Missing Geo Identity" value={formatNumber(risk.missingGeoDevices)} note="Click to view endpoints missing geo mapping" tone="purple" onClick={() => openLevel3('geolocation', 'Missing Geo Identity')} />
           </div>
-          <Panel title="Top Locations" subtitle="Click a location for technical detail." icon={MapPin}>{renderBreakdownDrillCards(geolocation.topLocations, 'geolocation', 'No location data yet.')}</Panel>
+          <Panel title="Location Distribution" subtitle="Summary only. Click a location to view the PCs/device records behind that location in Level 3." icon={MapPin}><LocationDistribution items={geolocation.topLocations} onOpen={(name) => openLevel3('geolocation', name)} /></Panel>
+          <div className="itops-evidence-note"><strong>Flow:</strong><span>Location KPI → category breakdown → affected PC/device records. Level 2 should not repeat Level 3 tables.</span></div>
+        </div>
+      );
+    }
+
+    if (view === 'dataConfidence') {
+      return (
+        <div className="itops-pro-drawer-stack">
+          <DrilldownTrace domain="Data Confidence" stage="breakdown" />
+          <div className="itops-pro-story-panel"><strong>Source of Truth Breakdown</strong><p>Use this view to validate whether managers can trust the dashboard before acting on the KPI cards. Each score translates API coverage, mapping and freshness into an operational confidence signal.</p></div>
+          <div className="itops-pro-drill-grid">
+            {dataConfidenceRows.map((row) => (
+              <DrillCard key={row.name} icon={Gauge} label={row.name} value={formatPercent(row.percent ?? row.value, 0)} note="Open source evidence" tone={healthStatus(row.percent ?? row.value) === 'Healthy' ? 'green' : healthStatus(row.percent ?? row.value) === 'Watch' ? 'amber' : 'red'} onClick={() => openLevel3('dataConfidence', row.name)} />
+            ))}
+          </div>
+          <Panel title="Confidence Drivers" subtitle="Signals used to judge whether the dashboard is ready to be treated as source of truth." icon={BarChart3}><BarList items={dataConfidenceRows} limit={6} /></Panel>
         </div>
       );
     }
@@ -2014,16 +2331,38 @@ export default function ITOperationsDashboard() {
     }
 
     if (view === 'geolocation') {
+      const affectedRows = resolveGeoEvidenceRows(item);
       return (
         <div className="itops-pro-drawer-stack">
-          <div className="itops-pro-story-panel level3"><strong>Geolocation Evidence</strong><p>Selected: {selectedLabel}. Inspect stale, unknown and missing location risk before endpoint follow-up.</p></div>
+          <DrilldownTrace domain="Location Coverage" stage="evidence" selected={selectedLabel} />
+          <div className="itops-pro-story-panel level3"><strong>Affected PC / Device Evidence</strong><p>Selected: {selectedLabel}. Level 3 now focuses on the PCs or device records behind the selected location signal, not the same summary cards from Level 2.</p></div>
           <div className="itops-pro-summary-row four">
-            <MiniMetric label="Tracked" value={formatNumber(geolocation.trackedDevices)} tone="green" />
-            <MiniMetric label="Stale" value={formatNumber(geolocation.staleLocations)} tone="amber" />
-            <MiniMetric label="Unknown" value={formatNumber(geolocation.unknownLocations)} tone="red" />
-            <MiniMetric label="Missing Geo" value={formatNumber(risk.missingGeoDevices)} tone="purple" />
+            <MiniMetric label="Selected Records" value={formatNumber(affectedRows.length)} tone="blue" note="PC/device rows" />
+            <MiniMetric label="Tracked Devices" value={formatNumber(geolocation.trackedDevices)} tone="green" note="summary count" />
+            <MiniMetric label="Stale Records" value={formatNumber(geolocation.staleLocations)} tone="amber" note="summary count" />
+            <MiniMetric label="Missing Geo Identity" value={formatNumber(risk.missingGeoDevices)} tone="purple" note="summary count" />
           </div>
-          <Panel title="Location Evidence" icon={MapPin}><BarList items={geolocation.topLocations} /></Panel>
+          <Panel title="Affected PCs / Device Records" subtitle="Device-level evidence returned by the API for the selected Location Coverage signal." icon={MapPin}>{renderGeoDeviceEvidenceTable(item)}</Panel>
+          <div className="itops-evidence-note"><strong>Next action:</strong><span>For stale records, validate MDM location sync. For missing geo identity, check device-to-location mapping. For unknown locations, inspect raw address fields before escalation.</span></div>
+        </div>
+      );
+    }
+
+    if (view === 'dataConfidence') {
+      const selectedRow = dataConfidenceRows.find((row) => row.name === item);
+      return (
+        <div className="itops-pro-drawer-stack">
+          <DrilldownTrace domain="Data Confidence" stage="evidence" selected={selectedLabel} />
+          <div className="itops-pro-story-panel level3"><strong>Source Confidence Evidence</strong><p>Selected: {selectedLabel}. This view explains how the dashboard confidence index is translated from API counts into manager-ready source-of-truth signals.</p></div>
+          <div className="itops-pro-summary-row four">
+            <MiniMetric label="Overall Confidence" value={formatPercent(dataConfidenceScore, 0)} tone="blue" />
+            <MiniMetric label="Endpoint Freshness" value={formatPercent(endpointFreshnessPercent, 0)} tone="blue" />
+            <MiniMetric label="Location Reliability" value={formatPercent(locationFreshPercent, 0)} tone="green" />
+            <MiniMetric label="Network Mapping" value={formatPercent(networkRegistrationPercent, 0)} tone="cyan" />
+          </div>
+          {selectedRow && <Panel title="Selected Confidence Driver" subtitle="Selected metric calculation result." icon={Gauge}><BarList items={[selectedRow]} limit={1} /></Panel>}
+          <Panel title="All Confidence Drivers" subtitle="This is the source-quality layer behind the KPI cards." icon={BarChart3}><BarList items={dataConfidenceRows} limit={6} /></Panel>
+          <div className="itops-evidence-note"><strong>How to read this:</strong><span>Low confidence does not always mean operational failure. It means the source data needs refresh, mapping or classification review before the dashboard can be used as final evidence.</span></div>
         </div>
       );
     }
@@ -2219,6 +2558,7 @@ body.itops-dashboard-page-active .router-content {
 }
 
 .itops-pro-page * { box-sizing: border-box; }
+
 
 .itops-pro-error,
 .itops-pro-loading {
@@ -3143,6 +3483,7 @@ body.itops-dashboard-page-active .router-content {
 .itops-pro-insight-cyan .itops-pro-insight-icon { background: linear-gradient(135deg, #0891b2, #22d3ee); }
 .itops-pro-insight-green .itops-pro-insight-icon { background: linear-gradient(135deg, #059669, #34d399); }
 
+
 .itops-pro-error,
 .itops-pro-loading {
   display: flex;
@@ -3540,6 +3881,8 @@ body.itops-dashboard-page-active .router-content {
 }
 
 
+
+
 @media (max-width: 760px) {
   .itops-risk-severity-grid { grid-template-columns: 1fr; }
   .itops-risk-command-copy strong { font-size: 34px; }
@@ -3924,6 +4267,54 @@ body.itops-dashboard-page-active .router-content {
 
 @media (max-width: 640px) {
   .itops-pulse-card-grid { grid-template-columns: 1fr; }
+}
+
+
+.itops-data-confidence {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  min-height: 100%;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 24px;
+  padding: 16px;
+  background: linear-gradient(135deg, #ffffff, #f8fbff);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.06);
+}
+.itops-data-confidence-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.itops-data-confidence-icon { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 16px; color: #fff; background: linear-gradient(135deg, #2563eb, #06b6d4); }
+.itops-data-confidence-head span { display: block; color: #64748b; font-size: 11px; font-weight: 950; letter-spacing: .07em; text-transform: uppercase; }
+.itops-data-confidence-head strong { display: block; margin-top: 2px; color: #0f172a; font-size: 28px; line-height: 1; font-weight: 950; letter-spacing: -0.05em; }
+.itops-data-confidence-head small { display: block; margin-top: 5px; color: #64748b; font-size: 11px; font-weight: 750; }
+.itops-data-confidence-meter { height: 8px; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
+.itops-data-confidence-meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2563eb, #14b8a6, #22c55e); }
+.itops-data-confidence-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.itops-data-confidence-grid div { min-width: 0; border: 1px solid rgba(226, 232, 240, .9); border-radius: 14px; padding: 9px 10px; background: rgba(248, 250, 252, .85); }
+.itops-data-confidence-grid span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #64748b; font-size: 10px; font-weight: 900; }
+.itops-data-confidence-grid strong { display: block; margin-top: 3px; color: #0f172a; font-size: 15px; font-weight: 950; }
+.itops-risk-driver-mini { margin-top: 12px; padding: 12px; border: 1px solid rgba(226, 232, 240, .9); border-radius: 18px; background: rgba(248, 250, 252, .78); }
+.itops-drill-trace { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 9px 12px; border: 1px solid rgba(147, 197, 253, .65); border-radius: 999px; background: rgba(239, 246, 255, .88); color: #475569; font-size: 11px; font-weight: 900; }
+.itops-drill-trace span { padding: 4px 9px; border-radius: 999px; background: #e2e8f0; color: #64748b; text-transform: uppercase; letter-spacing: .06em; }
+.itops-drill-trace span.done { background: #dcfce7; color: #166534; }
+.itops-drill-trace span.active { background: #2563eb; color: #fff; }
+.itops-drill-trace small { color: #334155; font-weight: 850; }
+.itops-location-list { display: grid; gap: 10px; }
+.itops-location-list button { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; width: 100%; border: 1px solid rgba(226, 232, 240, .96); border-radius: 16px; padding: 12px 14px; background: #fff; text-align: left; cursor: pointer; }
+.itops-location-list button:hover { border-color: rgba(37, 99, 235, .34); box-shadow: 0 10px 24px rgba(15, 23, 42, .07); }
+.itops-location-list strong { display: block; color: #0f172a; font-size: 13px; line-height: 1.35; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.itops-location-list span { display: block; margin-top: 4px; color: #64748b; font-size: 11px; font-weight: 750; }
+.itops-location-list em { font-style: normal; color: #0f172a; font-size: 13px; font-weight: 950; }
+.itops-evidence-note { display: flex; gap: 8px; align-items: flex-start; padding: 13px 14px; border: 1px solid rgba(147, 197, 253, .65); border-radius: 18px; background: #eff6ff; color: #334155; }
+.itops-evidence-note strong { color: #1d4ed8; font-size: 12px; font-weight: 950; white-space: nowrap; }
+.itops-evidence-note span { color: #475569; font-size: 12px; font-weight: 760; line-height: 1.45; }
+
+@media (max-width: 900px) {
+  .itops-data-confidence-grid { grid-template-columns: 1fr; }
+  .itops-location-list button { grid-template-columns: minmax(0, 1fr) auto; }
+  .itops-location-list button svg { display: none; }
 }
 
 `;

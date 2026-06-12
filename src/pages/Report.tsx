@@ -592,45 +592,18 @@ function hardwareAgeBand(age: number | null) {
 }
 
 function hardwareOsComplianceLabel(row: Record<string, any>) {
-  const lifecycleStatus = cleanHardwareText(row.osLifecycleStatus || row.lifecycleStatus || row.eolStatus, "");
-  if (lifecycleStatus) {
-    if (lifecycleStatus === "Supported OS") return "Windows Supported";
-    if (lifecycleStatus === "Near EOS") return "Windows EOS Watch";
-    if (lifecycleStatus === "EOL / EOS") return "Windows EOL / EOS";
-    return lifecycleStatus;
-  }
-
   const os = hardwareOsLabel(row).toLowerCase();
   if (!os || os === "unknown os") return "Unknown OS";
-  if (os.includes("windows") || os.includes("win")) return "Windows Lifecycle Not Checked";
+  if (os.includes("windows") || os.includes("win")) return "Windows Supported";
   return "Non-Windows / Review";
 }
 
 function hardwareOsLifecycleStatus(row: Record<string, any>) {
-  const lifecycleStatus = cleanHardwareText(row.osLifecycleStatus || row.lifecycleStatus || row.eolStatus, "");
-  if (lifecycleStatus) return lifecycleStatus;
-
   const os = hardwareOsLabel(row).toLowerCase();
-  if (!os || os === "unknown os") return "OS Evidence Missing";
-  if (os.includes("windows")) return "Lifecycle Not Checked";
-  return "Non-Windows / Review";
-}
-
-function hardwareOsLifecycleSeverity(row: Record<string, any>, status: string) {
-  const configuredSeverity = cleanHardwareText(row.osLifecycleSeverity || row.lifecycleSeverity || row.severity, "");
-  if (configuredSeverity) return configuredSeverity;
-  const normalized = status.toLowerCase();
-  if (normalized.includes("eol") || normalized.includes("eos") || normalized.includes("expired")) return "High";
-  if (normalized.includes("near") || normalized.includes("review") || normalized.includes("not mapped") || normalized.includes("not checked")) return "Medium";
-  return "Low";
-}
-
-function hardwareOsLifecycleAction(status: string) {
-  const normalized = status.toLowerCase();
-  if (normalized.includes("eol") || normalized.includes("eos") || normalized.includes("expired")) return "Plan OS upgrade or document approved exception.";
-  if (normalized.includes("near")) return "Prepare upgrade plan before EOS date.";
-  if (normalized.includes("not mapped") || normalized.includes("not found") || normalized.includes("not checked") || normalized.includes("missing")) return "Validate OS/build inventory and lifecycle mapping.";
-  return "Monitor lifecycle status in next review.";
+  if (os.includes("windows 7") || os.includes("windows 8") || os.includes("xp") || os.includes("vista")) return "EOL / EOS";
+  if (os.includes("windows 10")) return "EOS Watch";
+  if (os.includes("windows 11") || os.includes("windows server")) return "Supported OS";
+  return os.includes("windows") ? "Supported OS" : "Review Required";
 }
 
 function buildHardwareSelectedSections(payload: ReportPayload, selectedIds: string[]) {
@@ -693,13 +666,11 @@ function buildHardwareSelectedSections(payload: ReportPayload, selectedIds: stri
     sections.push({
       type: "table",
       title: "Windows OS Compliance Detail",
-      columns: ["computerName", "os", "compliance", "releaseCycle", "eolDate", "location", "connectionStatus"],
+      columns: ["computerName", "os", "compliance", "location", "connectionStatus"],
       rows: rows.slice(0, 40).map((row) => ({
         computerName: cleanHardwareText(row.ComputerName || row.computerName || row.DeviceName || row.Object_DeviceID, "-"),
         os: hardwareOsLabel(row),
         compliance: hardwareOsComplianceLabel(row),
-        releaseCycle: cleanHardwareText(row.osLifecycleCycle || row.releaseCycle, "-"),
-        eolDate: cleanHardwareText(row.osLifecycleEolDate || row.eolDate, "-"),
         location: hardwareLocationLabel(row),
         connectionStatus: hardwareConnectionLabel(row)
       }))
@@ -717,9 +688,9 @@ function buildHardwareSelectedSections(payload: ReportPayload, selectedIds: stri
         const location = hardwareLocationLabel(row);
         return {
           area: `${location} / ${hardwareOsLabel(row)}`,
-          severity: hardwareOsLifecycleSeverity(row, status),
-          finding: `${cleanHardwareText(row.ComputerName || row.computerName || row.DeviceName || row.Object_DeviceID, "Endpoint")} is classified as ${status}${row.osLifecycleBasis ? ` (${row.osLifecycleBasis})` : ""}.`,
-          action: hardwareOsLifecycleAction(status)
+          severity: status === "EOL / EOS" ? "High" : status === "EOS Watch" || status === "Review Required" ? "Medium" : "Low",
+          finding: `${cleanHardwareText(row.ComputerName || row.computerName || row.DeviceName || row.Object_DeviceID, "Endpoint")} is classified as ${status}.`,
+          action: status === "Supported OS" ? "Monitor lifecycle status in next review." : "Validate OS lifecycle and plan upgrade or exception approval."
         };
       })
     });
@@ -792,6 +763,20 @@ function applyHardwareReportSelection(payload: ReportPayload, selectedIds?: stri
 
 function getFeaturedReportBlueprint(reportId?: string): FeaturedReportBlueprint {
   return FEATURED_REPORT_BLUEPRINTS[reportId || ""] || FEATURED_REPORT_BLUEPRINTS["ai-executive-summary"];
+}
+
+const SHORT_FEATURED_REPORT_TITLES: Record<string, string> = {
+  "ai-executive-summary": "AI Executive Summary",
+  "client-summary-rnr": "Client RNR Report",
+  "hardware-asset-lifecycle": "Hardware Lifecycle",
+  "operations-health-sla": "Ops Health & SLA",
+  "security-compliance-exposure": "Security Exposure",
+  "software-application-governance": "Software Governance"
+};
+
+function getReportDisplayTitle(report?: Pick<ReportTemplate, "id" | "title"> | null) {
+  if (!report) return "Select featured report";
+  return SHORT_FEATURED_REPORT_TITLES[report.id] || String(report.title || "Report").replace(/\s+Report$/i, "").trim() || "Report";
 }
 
 function getFeaturedReportNumber(reports: ReportTemplate[], report?: ReportTemplate | null) {
@@ -1015,7 +1000,7 @@ function downloadPowerPoint(payload: ReportPayload) {
   const body = `
     <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:p="urn:schemas-microsoft-com:office:powerpoint" xmlns="http://www.w3.org/TR/REC-html40">
       <head><meta charset="utf-8"><title>${payload.report.title}</title></head>
-      <body style="font-family:Arial,sans-serif;color:#0f2347">
+      <body style="font-family:Arial, Helvetica, sans-serif;color:#0f2347">
         <div class="slide"><h1>${payload.report.title}</h1><p>${payload.narrative.executiveSummary}</p><p><small>${formatDateTime(payload.generatedAt)}</small></p></div>
         <div class="slide"><h2>Key Findings</h2><ul>${payload.narrative.keyFindings.map((item) => `<li>${item}</li>`).join("")}</ul></div>
         ${sections}
@@ -1097,7 +1082,7 @@ function downloadCsv(payload: ReportPayload) {
 function downloadHtmlSummary(payload: ReportPayload) {
   const body = `
     <html><head><meta charset="utf-8"><title>${payload.report.title}</title></head>
-    <body style="font-family:Arial,sans-serif;padding:32px;color:#102450">
+    <body style="font-family:Arial, Helvetica, sans-serif;padding:32px;color:#102450">
       <h1>${payload.report.title}</h1>
       <h2>Executive Narrative</h2>
       <p>${payload.narrative.executiveSummary}</p>
@@ -3528,7 +3513,7 @@ function buildRegeneratedReportHtml(payload: ReportPayload, filters: ReportFilte
   <style>
     ${"@page { size: A4 portrait; margin: 10mm; }"}
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; background: #eef3f8; color: #17233c; font-family: Aptos, "Segoe UI", "Helvetica Neue", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    html, body { margin: 0; padding: 0; background: #eef3f8; color: #17233c; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     body { width: 210mm; min-height: 297mm; }
     body.pdf-preview-mode { width: 100%; min-width: 210mm; background: #eef3f8; padding: 8mm 0 12mm; }
     body.pdf-preview-mode.pdf-rnr-document { min-width: 210mm; }
@@ -4149,6 +4134,27 @@ export default function Report() {
       ? "1 report selected"
       : "No pack selected";
   const reportAnalysis = buildReportAnalysis(selectedReport, filters, payload);
+  const selectedSiteLabel = filters.relationID === 0
+    ? "All Sites"
+    : options.sites.find((site) => site.id === filters.relationID)?.name || "Selected Site";
+  const selectedGroupLabel = selectedGroupOptions.find((group) => group.value === filters.deviceGroup)?.label || filters.deviceGroup || "All Groups";
+  const selectedStatusLabel = selectedStatusOptions.find((status) => status.value === filters.status)?.label || filters.status || "All Status";
+  const selectedDateRangeLabel = filters.dateRange === "custom"
+    ? `${filters.startDate || "Start date"} → ${filters.endDate || "End date"}`
+    : selectedDateRangeOptions.find((item) => item.value === filters.dateRange)?.label || filters.dateRange || "Current Month";
+  const selectedIncludedLabels = [
+    filters.includeSummary ? "Summary" : "",
+    filters.includeChart ? "Chart" : "",
+    filters.includeTable ? "Detail Table" : "",
+    filters.includeRecommendation ? "Recommendation" : ""
+  ].filter(Boolean).join(" / ") || "No section selected";
+  const clientRnrSummaryRows = [
+    { label: "Client Name", value: reportValueOrDash(filters.clientName) },
+    { label: "Service Type", value: reportValueOrDash(filters.serviceType) },
+    { label: "Version", value: reportValueOrDash(filters.solutionVersion) },
+    { label: "Contract", value: `${reportValueOrDash(filters.contractStart)} → ${reportValueOrDash(filters.contractEnd)}` },
+    { label: "Total Nodes", value: String(filters.contractedNodes || 0) }
+  ];
 
   return (
     <>
@@ -6445,6 +6451,1196 @@ export default function Report() {
             grid-template-columns: minmax(620px, .96fr) minmax(650px, 1.04fr) !important;
           }
         }
+
+        /* RNR UI repair: allow normal-page scrolling and stop squeezing Client RNR fields */
+        .ema-report-module-root,
+        .ema-report-module-root .settings-layout.report-settings-layout,
+        .ema-report-module-root .settings-content.report-main-content,
+        .ema-report-module-root .report-workspace-shell,
+        .ema-report-module-root .report-workspace-body,
+        .ema-report-module-root .featured-report-layout {
+          height: auto !important;
+          max-height: none !important;
+          overflow: visible !important;
+        }
+        .ema-report-module-root .settings-layout.report-settings-layout {
+          min-height: calc(100vh - 72px) !important;
+          align-items: start !important;
+        }
+        .ema-report-module-root .report-workspace-body {
+          padding: 18px 20px 24px !important;
+        }
+        .ema-report-module-root .selected-pack-toolbar {
+          min-height: 66px !important;
+          padding: 14px 18px !important;
+          display: flex !important;
+          justify-content: flex-end !important;
+          align-items: center !important;
+        }
+        .ema-report-module-root .selected-pack-toolbar-copy {
+          display: none !important;
+        }
+        .ema-report-module-root .featured-report-layout {
+          display: grid !important;
+          grid-template-columns: minmax(420px, .92fr) minmax(520px, 1.08fr) !important;
+          gap: 20px !important;
+          align-items: start !important;
+          width: 100% !important;
+        }
+        .ema-report-module-root .featured-report-main-panel,
+        .ema-report-module-root .report-pack-command-card,
+        .ema-report-module-root .hardware-report-selector-card {
+          width: 100% !important;
+          max-width: none !important;
+        }
+        .ema-report-module-root .report-pack-command-card {
+          min-height: 0 !important;
+          padding: 22px 24px !important;
+          border-radius: 22px !important;
+        }
+        .ema-report-module-root .report-pack-command-card h3 {
+          max-width: 580px !important;
+          font-size: clamp(1.55rem, 1.8vw, 2rem) !important;
+          line-height: 1.05 !important;
+          margin: 10px 0 6px !important;
+        }
+        .ema-report-module-root .report-pack-command-card p {
+          max-width: 620px !important;
+          font-size: .88rem !important;
+          line-height: 1.45 !important;
+        }
+        .ema-report-module-root .report-pack-kpi-row {
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          gap: 10px !important;
+          margin-top: 18px !important;
+        }
+        .ema-report-module-root .report-pack-kpi-row div {
+          min-height: 58px !important;
+          padding: 12px 13px !important;
+          border-radius: 15px !important;
+        }
+        .ema-report-module-root .selected-report-only-panel.compact-action-panel {
+          display: none !important;
+        }
+        .ema-report-module-root .report-config-panel {
+          width: 100% !important;
+          max-width: none !important;
+          position: static !important;
+          align-self: start !important;
+          overflow: visible !important;
+        }
+        .ema-report-module-root .report-config-panel .config-card {
+          width: 100% !important;
+          max-width: none !important;
+          padding: 22px 24px !important;
+          border-radius: 22px !important;
+          overflow: visible !important;
+        }
+        .ema-report-module-root .report-config-panel .config-head {
+          display: grid !important;
+          grid-template-columns: 116px minmax(0, 1fr) !important;
+          gap: 16px !important;
+          align-items: center !important;
+          padding-bottom: 14px !important;
+          margin-bottom: 18px !important;
+        }
+        .ema-report-module-root .report-config-panel .config-head h3 {
+          font-size: 1rem !important;
+          line-height: 1.2 !important;
+          margin: 0 !important;
+          color: #17325d !important;
+        }
+        .ema-report-module-root .selected-action-meta {
+          margin: 0 0 20px !important;
+          gap: 8px !important;
+        }
+        .ema-report-module-root .meta-pill {
+          min-height: 30px !important;
+          padding: 7px 12px !important;
+          font-size: .66rem !important;
+          border-radius: 999px !important;
+        }
+        .ema-report-module-root .config-form {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 14px 16px !important;
+          align-items: start !important;
+        }
+        .ema-report-module-root .config-form > label,
+        .ema-report-module-root .client-rnr-fields label {
+          min-width: 0 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 6px !important;
+          font-size: .68rem !important;
+          line-height: 1.15 !important;
+          letter-spacing: .055em !important;
+        }
+        .ema-report-module-root .config-form .form-select,
+        .ema-report-module-root .config-form .form-control,
+        .ema-report-module-root .setting-select,
+        .ema-report-module-root .setting-input {
+          width: 100% !important;
+          min-width: 0 !important;
+          height: 40px !important;
+          min-height: 40px !important;
+          padding: 8px 12px !important;
+          border-radius: 13px !important;
+          font-size: .82rem !important;
+          line-height: 1.2 !important;
+          box-sizing: border-box !important;
+        }
+        .ema-report-module-root .date-range-grid {
+          grid-column: 1 / -1 !important;
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 14px 16px !important;
+        }
+        .ema-report-module-root .client-rnr-fields {
+          grid-column: 1 / -1 !important;
+          display: block !important;
+          padding: 16px !important;
+          border-radius: 18px !important;
+          margin-top: 2px !important;
+          background: #f8fbff !important;
+          border: 1px dashed #b9cff1 !important;
+        }
+        .ema-report-module-root .client-rnr-fields legend {
+          display: block !important;
+          float: none !important;
+          width: 100% !important;
+          margin: 0 0 12px !important;
+          font-size: .66rem !important;
+          line-height: 1.2 !important;
+          color: #6f83a1 !important;
+        }
+        .ema-report-module-root .client-rnr-fields > label {
+          margin-bottom: 14px !important;
+        }
+        .ema-report-module-root .client-rnr-grid {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 14px 16px !important;
+          width: 100% !important;
+        }
+        .ema-report-module-root .check-grid {
+          grid-column: 1 / -1 !important;
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 12px !important;
+          margin: 0 !important;
+        }
+        .ema-report-module-root .inline-check {
+          min-height: 40px !important;
+          padding: 9px 12px !important;
+          border-radius: 13px !important;
+          font-size: .72rem !important;
+          line-height: 1.15 !important;
+        }
+        .ema-report-module-root .inline-check input {
+          width: 15px !important;
+          height: 15px !important;
+          margin-right: 8px !important;
+        }
+        .ema-report-module-root .config-actions {
+          grid-column: 1 / -1 !important;
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 12px !important;
+          margin-top: 16px !important;
+          padding-top: 14px !important;
+          border-top: 1px solid #e2eaf6 !important;
+        }
+        .ema-report-module-root .config-actions .btn {
+          width: 100% !important;
+          min-height: 42px !important;
+          font-size: .78rem !important;
+        }
+        @media (max-width: 1380px) {
+          .ema-report-module-root .featured-report-layout {
+            grid-template-columns: 1fr !important;
+          }
+          .ema-report-module-root .report-config-panel .config-card {
+            max-width: none !important;
+          }
+        }
+        @media (max-width: 760px) {
+          .ema-report-module-root .config-form,
+          .ema-report-module-root .client-rnr-grid,
+          .ema-report-module-root .date-range-grid,
+          .ema-report-module-root .check-grid,
+          .ema-report-module-root .config-actions,
+          .ema-report-module-root .report-pack-kpi-row {
+            grid-template-columns: 1fr !important;
+          }
+          .ema-report-module-root .report-workspace-body {
+            padding: 14px !important;
+          }
+        }
+
+
+        /* CLEAN UI RESET: Report Center should show actual values without huge empty areas */
+        .ema-report-module-root,
+        .ema-report-module-root .settings-content,
+        .ema-report-module-root .content-shell,
+        .ema-report-module-root .content-body {
+          min-height: 0 !important;
+          height: auto !important;
+          overflow: visible !important;
+        }
+        .ema-report-module-root .report-settings-layout {
+          grid-template-columns: 292px minmax(0, 1fr) !important;
+          gap: 18px !important;
+          align-items: start !important;
+        }
+        .ema-report-module-root .report-main-content {
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 14px !important;
+          min-width: 0 !important;
+        }
+        .ema-report-module-root .settings-hero.users-hero {
+          padding: 18px 20px !important;
+          min-height: auto !important;
+          align-items: center !important;
+          border-radius: 22px !important;
+        }
+        .ema-report-module-root .settings-hero h2 {
+          margin: 3px 0 !important;
+          font-size: 1.42rem !important;
+          line-height: 1.05 !important;
+        }
+        .ema-report-module-root .settings-hero p {
+          margin: 0 !important;
+          font-size: .78rem !important;
+        }
+        .ema-report-module-root .users-hero-score {
+          gap: 10px !important;
+          align-items: stretch !important;
+        }
+        .ema-report-module-root .score-box {
+          min-width: 128px !important;
+          min-height: 74px !important;
+          padding: 12px !important;
+          border-radius: 17px !important;
+        }
+        .ema-report-module-root .score-box strong {
+          font-size: 1.25rem !important;
+          white-space: nowrap !important;
+        }
+        .ema-report-module-root .score-box small {
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          max-width: 120px !important;
+        }
+        .ema-report-module-root .report-workspace-shell {
+          padding: 0 !important;
+          border-radius: 22px !important;
+          overflow: visible !important;
+          background: #fff !important;
+        }
+        .ema-report-module-root .selected-pack-toolbar {
+          padding: 14px 18px !important;
+          border-bottom: 1px solid #e5edf7 !important;
+          background: linear-gradient(180deg, #fff, #f9fbff) !important;
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) auto !important;
+          gap: 12px !important;
+        }
+        .ema-report-module-root .selected-pack-toolbar-copy strong,
+        .ema-report-module-root .selected-pack-toolbar-copy small {
+          display: none !important;
+        }
+        .ema-report-module-root .selected-pack-toolbar-copy span {
+          font-size: .66rem !important;
+        }
+        .ema-report-module-root .report-workspace-body {
+          padding: 18px !important;
+        }
+        .ema-report-module-root .featured-report-layout {
+          display: grid !important;
+          grid-template-columns: minmax(420px, .88fr) minmax(440px, .72fr) !important;
+          gap: 18px !important;
+          align-items: start !important;
+          width: 100% !important;
+          max-width: 1320px !important;
+        }
+        .ema-report-module-root .featured-report-main-panel,
+        .ema-report-module-root .report-pack-command-card,
+        .ema-report-module-root .hardware-report-selector-card,
+        .ema-report-module-root .software-feedback-card,
+        .ema-report-module-root .report-live-summary-panel,
+        .ema-report-module-root .client-rnr-summary-panel,
+        .ema-report-module-root .report-analysis-panel {
+          width: 100% !important;
+          max-width: none !important;
+          box-sizing: border-box !important;
+        }
+        .ema-report-module-root .featured-report-main-panel {
+          display: grid !important;
+          gap: 12px !important;
+        }
+        .ema-report-module-root .report-pack-command-card {
+          min-height: 0 !important;
+          padding: 18px 20px !important;
+          border-radius: 20px !important;
+          box-shadow: 0 12px 30px rgba(15,35,71,.055) !important;
+        }
+        .ema-report-module-root .report-pack-command-card h3 {
+          font-size: 1.36rem !important;
+          line-height: 1.08 !important;
+          letter-spacing: -.035em !important;
+          margin: 8px 0 6px !important;
+          max-width: none !important;
+        }
+        .ema-report-module-root .report-pack-command-card p {
+          font-size: .82rem !important;
+          line-height: 1.45 !important;
+          max-width: 560px !important;
+        }
+        .ema-report-module-root .pack-eyebrow {
+          font-size: .58rem !important;
+          padding: 5px 9px !important;
+        }
+        .ema-report-module-root .pack-number {
+          width: 52px !important;
+          height: 52px !important;
+          border-radius: 16px !important;
+          font-size: 1.1rem !important;
+        }
+        .ema-report-module-root .report-pack-kpi-row {
+          margin-top: 14px !important;
+          display: grid !important;
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          gap: 10px !important;
+        }
+        .ema-report-module-root .report-pack-kpi-row div {
+          min-height: 64px !important;
+          padding: 10px 12px !important;
+          border-radius: 15px !important;
+        }
+        .ema-report-module-root .report-pack-kpi-row span,
+        .ema-report-module-root .report-live-summary-head span,
+        .ema-report-module-root .report-value-grid span,
+        .ema-report-module-root .client-cover-value-grid span {
+          color: #7083a1 !important;
+          font-size: .61rem !important;
+          letter-spacing: .08em !important;
+          text-transform: uppercase !important;
+          font-weight: 900 !important;
+        }
+        .ema-report-module-root .report-pack-kpi-row strong {
+          font-size: .82rem !important;
+          line-height: 1.16 !important;
+        }
+        .ema-report-module-root .selected-report-only-panel.compact-action-panel {
+          display: none !important;
+        }
+        .ema-report-module-root .report-live-summary-panel,
+        .ema-report-module-root .client-rnr-summary-panel,
+        .ema-report-module-root .report-analysis-panel {
+          border: 1px solid #d7e3f3 !important;
+          border-radius: 18px !important;
+          background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+          padding: 16px !important;
+          box-shadow: 0 10px 24px rgba(15,35,71,.045) !important;
+        }
+        .ema-report-module-root .report-live-summary-head {
+          display: flex !important;
+          align-items: flex-start !important;
+          justify-content: space-between !important;
+          gap: 12px !important;
+          margin-bottom: 12px !important;
+        }
+        .ema-report-module-root .report-live-summary-head strong {
+          display: block !important;
+          margin-top: 3px !important;
+          color: #17325d !important;
+          font-size: .96rem !important;
+          line-height: 1.2 !important;
+        }
+        .ema-report-module-root .report-live-summary-head em {
+          font-style: normal !important;
+          border-radius: 999px !important;
+          background: color-mix(in srgb, var(--pack-accent, #2563eb) 10%, #f7fbff) !important;
+          color: var(--pack-accent, #2563eb) !important;
+          padding: 6px 10px !important;
+          font-weight: 900 !important;
+          font-size: .68rem !important;
+          white-space: nowrap !important;
+        }
+        .ema-report-module-root .report-value-grid,
+        .ema-report-module-root .client-cover-value-grid {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 9px !important;
+        }
+        .ema-report-module-root .report-value-grid article,
+        .ema-report-module-root .client-cover-value-grid article {
+          min-width: 0 !important;
+          border: 1px solid #e0e9f6 !important;
+          border-radius: 14px !important;
+          background: #fff !important;
+          padding: 10px 11px !important;
+        }
+        .ema-report-module-root .report-value-grid article.wide {
+          grid-column: 1 / -1 !important;
+        }
+        .ema-report-module-root .report-value-grid strong,
+        .ema-report-module-root .client-cover-value-grid strong {
+          display: block !important;
+          margin-top: 4px !important;
+          color: #17325d !important;
+          font-size: .82rem !important;
+          line-height: 1.25 !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+        .ema-report-module-root .report-analysis-panel p {
+          margin: 0 0 10px !important;
+          color: #5f7190 !important;
+          font-size: .82rem !important;
+          line-height: 1.5 !important;
+        }
+        .ema-report-module-root .report-analysis-panel ul {
+          margin: 0 !important;
+          padding-left: 18px !important;
+          display: grid !important;
+          gap: 7px !important;
+        }
+        .ema-report-module-root .report-analysis-panel li {
+          color: #314a70 !important;
+          font-size: .78rem !important;
+          line-height: 1.42 !important;
+          font-weight: 700 !important;
+        }
+        .ema-report-module-root .report-config-panel {
+          position: sticky !important;
+          top: 12px !important;
+          width: 100% !important;
+          max-width: none !important;
+          overflow: visible !important;
+        }
+        .ema-report-module-root .report-config-panel .config-card {
+          width: 100% !important;
+          padding: 18px !important;
+          border-radius: 20px !important;
+          max-height: none !important;
+          overflow: visible !important;
+          box-shadow: 0 12px 30px rgba(15,35,71,.06) !important;
+        }
+        .ema-report-module-root .report-config-panel .config-head {
+          display: grid !important;
+          grid-template-columns: 104px minmax(0, 1fr) !important;
+          gap: 14px !important;
+          align-items: center !important;
+          margin-bottom: 14px !important;
+          padding-bottom: 12px !important;
+        }
+        .ema-report-module-root .report-config-panel .config-head h3 {
+          font-size: .98rem !important;
+          line-height: 1.2 !important;
+        }
+        .ema-report-module-root .selected-action-meta {
+          margin: 0 0 16px !important;
+          gap: 7px !important;
+        }
+        .ema-report-module-root .meta-pill {
+          min-height: 30px !important;
+          padding: 7px 10px !important;
+          font-size: .64rem !important;
+        }
+        .ema-report-module-root .config-form {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 12px !important;
+          align-items: start !important;
+        }
+        .ema-report-module-root .config-form > label,
+        .ema-report-module-root .client-rnr-fields label {
+          font-size: .65rem !important;
+          line-height: 1.15 !important;
+          letter-spacing: .055em !important;
+          gap: 5px !important;
+        }
+        .ema-report-module-root .config-form .form-select,
+        .ema-report-module-root .config-form .form-control,
+        .ema-report-module-root .setting-select,
+        .ema-report-module-root .setting-input {
+          height: 38px !important;
+          min-height: 38px !important;
+          border-radius: 12px !important;
+          padding: 8px 11px !important;
+          font-size: .78rem !important;
+          color: #17325d !important;
+          background: #fff !important;
+        }
+        .ema-report-module-root .date-range-grid,
+        .ema-report-module-root .client-rnr-fields,
+        .ema-report-module-root .check-grid,
+        .ema-report-module-root .config-actions {
+          grid-column: 1 / -1 !important;
+        }
+        .ema-report-module-root .client-rnr-fields {
+          display: grid !important;
+          grid-template-columns: 1fr !important;
+          gap: 10px !important;
+          padding: 13px !important;
+          border-radius: 16px !important;
+          margin-top: 0 !important;
+          background: #f9fbff !important;
+          border: 1px dashed #c5d6ef !important;
+        }
+        .ema-report-module-root .client-rnr-fields legend {
+          margin: 0 !important;
+          padding: 0 !important;
+          width: auto !important;
+          float: none !important;
+          font-size: .62rem !important;
+        }
+        .ema-report-module-root .client-rnr-fields > label {
+          margin-bottom: 0 !important;
+        }
+        .ema-report-module-root .client-rnr-grid {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 10px !important;
+        }
+        .ema-report-module-root .check-grid {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 9px !important;
+          margin: 0 !important;
+        }
+        .ema-report-module-root .inline-check {
+          min-height: 38px !important;
+          padding: 8px 10px !important;
+          border-radius: 12px !important;
+          font-size: .68rem !important;
+        }
+        .ema-report-module-root .config-actions {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 10px !important;
+          margin-top: 8px !important;
+          padding-top: 12px !important;
+          border-top: 1px solid #e2eaf6 !important;
+          background: #fff !important;
+        }
+        .ema-report-module-root .config-actions .btn {
+          width: 100% !important;
+          min-height: 40px !important;
+        }
+        @media (max-width: 1380px) {
+          .ema-report-module-root .featured-report-layout {
+            grid-template-columns: 1fr !important;
+          }
+          .ema-report-module-root .report-config-panel {
+            position: static !important;
+          }
+        }
+        @media (max-width: 900px) {
+          .ema-report-module-root .report-settings-layout,
+          .ema-report-module-root .config-form,
+          .ema-report-module-root .client-rnr-grid,
+          .ema-report-module-root .check-grid,
+          .ema-report-module-root .report-pack-kpi-row,
+          .ema-report-module-root .report-value-grid,
+          .ema-report-module-root .client-cover-value-grid,
+          .ema-report-module-root .settings-hero.users-hero,
+          .ema-report-module-root .selected-pack-toolbar {
+            grid-template-columns: 1fr !important;
+          }
+          .ema-report-module-root .featured-report-nav-panel {
+            position: static !important;
+            max-height: none !important;
+          }
+        }
+
+        /* FINAL SCROLL UNLOCK: do not lock the report form/right content to viewport height */
+        html.ema-report-page-active,
+        body.ema-report-page-active {
+          height: auto !important;
+          min-height: 100% !important;
+          max-height: none !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+        }
+        body.ema-report-page-active #root,
+        body.ema-report-page-active .app,
+        body.ema-report-page-active .app-shell,
+        body.ema-report-page-active .main-shell,
+        body.ema-report-page-active .layout-shell,
+        body.ema-report-page-active .page-shell,
+        body.ema-report-page-active .content-area,
+        body.ema-report-page-active .page-content,
+        body.ema-report-page-active .main-content,
+        body.ema-report-page-active .content-shell,
+        body.ema-report-page-active .content-body,
+        body.ema-report-page-active .settings-module-root,
+        body.ema-report-page-active .ema-report-module-root {
+          height: auto !important;
+          min-height: 0 !important;
+          max-height: none !important;
+          overflow: visible !important;
+        }
+        body.ema-report-page-active .ema-report-module-root {
+          min-height: calc(100vh - 72px) !important;
+          padding-bottom: 36px !important;
+        }
+        .ema-report-module-root .settings-layout.report-settings-layout,
+        .ema-report-module-root .settings-content.report-main-content,
+        .ema-report-module-root .report-workspace-shell,
+        .ema-report-module-root .report-workspace-body,
+        .ema-report-module-root .featured-report-layout,
+        .ema-report-module-root .featured-report-main-panel,
+        .ema-report-module-root .report-config-panel,
+        .ema-report-module-root .report-config-panel .config-card {
+          height: auto !important;
+          min-height: 0 !important;
+          max-height: none !important;
+          overflow: visible !important;
+        }
+        .ema-report-module-root .settings-layout.report-settings-layout,
+        .ema-report-module-root .featured-report-layout {
+          align-items: start !important;
+        }
+        .ema-report-module-root .report-workspace-shell {
+          display: block !important;
+        }
+        .ema-report-module-root .report-workspace-body {
+          padding-bottom: 56px !important;
+        }
+        .ema-report-module-root .report-config-panel {
+          position: relative !important;
+          top: auto !important;
+          align-self: start !important;
+        }
+        .ema-report-module-root .report-config-panel .config-card {
+          position: relative !important;
+          padding-bottom: 24px !important;
+        }
+        .ema-report-module-root .config-actions {
+          position: static !important;
+          bottom: auto !important;
+        }
+
+
+        /* ============================================================
+           FINAL 100% NORMAL-VIEW FIX
+           The application shell uses fixed/hidden overflow in some pages.
+           Report Center now owns its own vertical scroll so users do not
+           need to zoom out to 75% just to see the lower content.
+        ============================================================ */
+        html.ema-report-page-active,
+        body.ema-report-page-active {
+          height: 100% !important;
+          min-height: 100% !important;
+          overflow: hidden !important;
+        }
+        body.ema-report-page-active #root,
+        body.ema-report-page-active .app,
+        body.ema-report-page-active .app-shell,
+        body.ema-report-page-active .main-shell,
+        body.ema-report-page-active .layout-shell,
+        body.ema-report-page-active .page-shell,
+        body.ema-report-page-active .content-area,
+        body.ema-report-page-active .page-content,
+        body.ema-report-page-active .main-content,
+        body.ema-report-page-active .content-shell,
+        body.ema-report-page-active .content-body {
+          min-height: 0 !important;
+        }
+        body.ema-report-page-active .ema-report-module-root {
+          height: calc(100dvh - 72px) !important;
+          min-height: 0 !important;
+          max-height: calc(100dvh - 72px) !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          padding: 14px 14px 30px !important;
+          box-sizing: border-box !important;
+          scrollbar-gutter: stable !important;
+          -webkit-overflow-scrolling: touch !important;
+        }
+        body.ema-report-page-active .ema-report-module-root::-webkit-scrollbar {
+          width: 10px !important;
+        }
+        body.ema-report-page-active .ema-report-module-root::-webkit-scrollbar-thumb {
+          background: #c9d7ea !important;
+          border-radius: 999px !important;
+          border: 2px solid #eef4fb !important;
+        }
+        body.ema-report-page-active .ema-report-module-root::-webkit-scrollbar-track {
+          background: #eef4fb !important;
+        }
+        .ema-report-module-root .settings-layout.report-settings-layout {
+          display: grid !important;
+          grid-template-columns: 250px minmax(0, 1fr) !important;
+          gap: 14px !important;
+          align-items: stretch !important;
+          height: auto !important;
+          min-height: 0 !important;
+          max-height: none !important;
+          overflow: visible !important;
+        }
+        .ema-report-module-root .featured-report-nav-panel {
+          position: sticky !important;
+          top: 0 !important;
+          align-self: start !important;
+          max-height: calc(100dvh - 104px) !important;
+          overflow: auto !important;
+        }
+        .ema-report-module-root .settings-content.report-main-content,
+        .ema-report-module-root .report-workspace-shell,
+        .ema-report-module-root .report-workspace-body,
+        .ema-report-module-root .featured-report-layout,
+        .ema-report-module-root .featured-report-main-panel,
+        .ema-report-module-root .report-config-panel,
+        .ema-report-module-root .report-config-panel .config-card {
+          min-height: 0 !important;
+          max-height: none !important;
+          overflow: visible !important;
+        }
+        .ema-report-module-root .settings-content.report-main-content {
+          min-width: 0 !important;
+        }
+        .ema-report-module-root .settings-hero.users-hero {
+          min-height: 96px !important;
+          padding: 16px 18px !important;
+          margin-bottom: 12px !important;
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) auto !important;
+          align-items: center !important;
+          gap: 14px !important;
+        }
+        .ema-report-module-root .settings-hero.users-hero h2 {
+          font-size: 1.55rem !important;
+          line-height: 1 !important;
+          margin: 3px 0 !important;
+        }
+        .ema-report-module-root .settings-hero.users-hero p {
+          margin: 0 !important;
+          line-height: 1.25 !important;
+        }
+        .ema-report-module-root .settings-score.users-hero-score {
+          display: grid !important;
+          grid-template-columns: repeat(4, minmax(92px, 1fr)) !important;
+          gap: 10px !important;
+        }
+        .ema-report-module-root .score-box {
+          min-width: 92px !important;
+          min-height: 64px !important;
+          padding: 10px 12px !important;
+          border-radius: 16px !important;
+        }
+        .ema-report-module-root .score-box strong {
+          font-size: 1.32rem !important;
+          line-height: 1 !important;
+        }
+        .ema-report-module-root .report-workspace-shell {
+          padding: 16px !important;
+          border-radius: 22px !important;
+          display: block !important;
+        }
+        .ema-report-module-root .report-workspace-body {
+          padding: 0 0 20px !important;
+        }
+        .ema-report-module-root .selected-pack-toolbar {
+          display: none !important;
+        }
+        .ema-report-module-root .featured-report-layout {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1.02fr) minmax(430px, .86fr) !important;
+          gap: 18px !important;
+          align-items: start !important;
+        }
+        .ema-report-module-root .featured-report-main-panel {
+          display: grid !important;
+          gap: 10px !important;
+          min-width: 0 !important;
+        }
+        .ema-report-module-root .report-config-panel {
+          position: relative !important;
+          top: auto !important;
+          align-self: start !important;
+          min-width: 0 !important;
+        }
+        .ema-report-module-root .report-config-panel .config-card {
+          padding: 22px 24px !important;
+          border-radius: 20px !important;
+        }
+        .ema-report-module-root .report-pack-command-card {
+          min-height: 0 !important;
+          padding: 20px 22px !important;
+          border-radius: 20px !important;
+        }
+        .ema-report-module-root .report-pack-command-top {
+          align-items: flex-start !important;
+          gap: 14px !important;
+        }
+        .ema-report-module-root .report-pack-command-top h3 {
+          font-size: 1.55rem !important;
+          line-height: 1.05 !important;
+          margin: 7px 0 6px !important;
+        }
+        .ema-report-module-root .report-pack-command-top p {
+          font-size: .82rem !important;
+          line-height: 1.38 !important;
+          margin: 0 !important;
+          max-width: 620px !important;
+        }
+        .ema-report-module-root .pack-number {
+          width: 50px !important;
+          height: 50px !important;
+          min-width: 50px !important;
+          border-radius: 16px !important;
+          font-size: 1.18rem !important;
+        }
+        .ema-report-module-root .report-pack-kpi-row.compact-kpi-row {
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          gap: 8px !important;
+          margin-top: 14px !important;
+        }
+        .ema-report-module-root .report-pack-kpi-row.compact-kpi-row > div {
+          min-height: 50px !important;
+          padding: 10px 12px !important;
+          border-radius: 14px !important;
+        }
+        .ema-report-module-root .report-pack-kpi-row.compact-kpi-row span,
+        .ema-report-module-root .report-value-grid article span,
+        .ema-report-module-root .client-cover-value-grid article span,
+        .ema-report-module-root .config-form label,
+        .ema-report-module-root .inline-check {
+          font-size: .66rem !important;
+          letter-spacing: .04em !important;
+        }
+        .ema-report-module-root .report-pack-kpi-row.compact-kpi-row strong {
+          font-size: .78rem !important;
+          line-height: 1.12 !important;
+        }
+        .ema-report-module-root .report-live-summary-panel,
+        .ema-report-module-root .client-rnr-summary-panel,
+        .ema-report-module-root .report-analysis-panel,
+        .ema-report-module-root .hardware-report-selector-card,
+        .ema-report-module-root .software-feedback-card {
+          padding: 14px 16px !important;
+          border-radius: 18px !important;
+        }
+        .ema-report-module-root .report-live-summary-head {
+          margin-bottom: 10px !important;
+        }
+        .ema-report-module-root .report-live-summary-head strong {
+          font-size: .92rem !important;
+          line-height: 1.2 !important;
+        }
+        .ema-report-module-root .report-value-grid {
+          display: grid !important;
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          gap: 8px !important;
+        }
+        .ema-report-module-root .report-value-grid article,
+        .ema-report-module-root .client-cover-value-grid article {
+          min-height: 48px !important;
+          padding: 9px 11px !important;
+          border-radius: 13px !important;
+        }
+        .ema-report-module-root .report-value-grid article.wide {
+          grid-column: span 3 !important;
+        }
+        .ema-report-module-root .report-value-grid article strong,
+        .ema-report-module-root .client-cover-value-grid article strong {
+          font-size: .78rem !important;
+          line-height: 1.25 !important;
+        }
+        .ema-report-module-root .client-cover-value-grid {
+          display: grid !important;
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          gap: 8px !important;
+        }
+        .ema-report-module-root .report-analysis-panel p {
+          font-size: .78rem !important;
+          line-height: 1.4 !important;
+          margin: 0 0 8px !important;
+        }
+        .ema-report-module-root .report-analysis-panel ul {
+          margin: 0 !important;
+          padding-left: 18px !important;
+        }
+        .ema-report-module-root .report-analysis-panel li {
+          font-size: .76rem !important;
+          line-height: 1.45 !important;
+        }
+        .ema-report-module-root .selected-report-only-panel.compact-action-panel {
+          display: none !important;
+        }
+        .ema-report-module-root .config-head {
+          padding-bottom: 12px !important;
+          margin-bottom: 18px !important;
+        }
+        .ema-report-module-root .config-head h3 {
+          font-size: 1rem !important;
+          line-height: 1.1 !important;
+        }
+        .ema-report-module-root .selected-meta.selected-action-meta {
+          gap: 8px !important;
+          margin-bottom: 18px !important;
+        }
+        .ema-report-module-root .meta-pill {
+          min-height: 25px !important;
+          padding: 6px 10px !important;
+          font-size: .66rem !important;
+        }
+        .ema-report-module-root .config-form {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 12px 14px !important;
+        }
+        .ema-report-module-root .config-form > label,
+        .ema-report-module-root .date-range-grid,
+        .ema-report-module-root .client-rnr-fields,
+        .ema-report-module-root .check-grid {
+          min-width: 0 !important;
+        }
+        .ema-report-module-root .form-control,
+        .ema-report-module-root .form-select,
+        .ema-report-module-root .setting-input,
+        .ema-report-module-root .setting-select {
+          min-height: 36px !important;
+          height: 36px !important;
+          padding: 8px 12px !important;
+          border-radius: 12px !important;
+          font-size: .76rem !important;
+        }
+        .ema-report-module-root .client-rnr-fields {
+          grid-column: 1 / -1 !important;
+          padding: 12px 14px !important;
+          border-radius: 16px !important;
+        }
+        .ema-report-module-root .client-rnr-fields > label {
+          display: block !important;
+          margin-bottom: 10px !important;
+        }
+        .ema-report-module-root .client-rnr-grid {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 10px 12px !important;
+        }
+        .ema-report-module-root .check-grid {
+          grid-column: 1 / -1 !important;
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 8px !important;
+        }
+        .ema-report-module-root .inline-check {
+          min-height: 34px !important;
+          padding: 7px 10px !important;
+          border-radius: 12px !important;
+        }
+        .ema-report-module-root .config-actions {
+          position: static !important;
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 10px !important;
+          margin-top: 18px !important;
+          padding-top: 12px !important;
+          border-top: 1px solid #e4ecf7 !important;
+          background: transparent !important;
+        }
+        .ema-report-module-root .config-actions .btn {
+          width: 100% !important;
+          min-height: 38px !important;
+          height: 38px !important;
+          border-radius: 12px !important;
+        }
+        @media (max-width: 1500px) {
+          body.ema-report-page-active .ema-report-module-root {
+            padding: 12px 12px 26px !important;
+          }
+          .ema-report-module-root .settings-layout.report-settings-layout {
+            grid-template-columns: 230px minmax(0, 1fr) !important;
+          }
+          .ema-report-module-root .featured-report-layout {
+            grid-template-columns: minmax(0, 1fr) minmax(390px, .82fr) !important;
+            gap: 14px !important;
+          }
+          .ema-report-module-root .settings-score.users-hero-score {
+            grid-template-columns: repeat(4, minmax(78px, 1fr)) !important;
+          }
+          .ema-report-module-root .score-box {
+            min-width: 78px !important;
+            padding: 9px 10px !important;
+          }
+          .ema-report-module-root .report-pack-command-top h3 {
+            font-size: 1.38rem !important;
+          }
+          .ema-report-module-root .report-value-grid,
+          .ema-report-module-root .client-cover-value-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+          .ema-report-module-root .report-value-grid article.wide {
+            grid-column: span 2 !important;
+          }
+        }
+        @media (max-width: 1260px) {
+          .ema-report-module-root .settings-layout.report-settings-layout {
+            grid-template-columns: 1fr !important;
+          }
+          .ema-report-module-root .featured-report-nav-panel {
+            position: relative !important;
+            top: auto !important;
+            max-height: none !important;
+          }
+          .ema-report-module-root .featured-report-layout {
+            grid-template-columns: 1fr !important;
+          }
+          .ema-report-module-root .settings-hero.users-hero {
+            grid-template-columns: 1fr !important;
+          }
+          .ema-report-module-root .settings-score.users-hero-score {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+        }
+        @media (max-width: 760px) {
+          .ema-report-module-root .config-form,
+          .ema-report-module-root .client-rnr-grid,
+          .ema-report-module-root .check-grid,
+          .ema-report-module-root .report-pack-kpi-row.compact-kpi-row,
+          .ema-report-module-root .report-value-grid,
+          .ema-report-module-root .client-cover-value-grid,
+          .ema-report-module-root .config-actions {
+            grid-template-columns: 1fr !important;
+          }
+          .ema-report-module-root .report-value-grid article.wide {
+            grid-column: auto !important;
+          }
+        }
+
+        /* ============================================================
+           FINAL CONTENT-ONLY SCROLL FIX
+           Keep global sidebar + report tree static. Only the right
+           report content area scrolls vertically at 100% browser zoom.
+        ============================================================ */
+        html.ema-report-page-active,
+        body.ema-report-page-active {
+          height: 100% !important;
+          min-height: 100% !important;
+          max-height: 100% !important;
+          overflow: hidden !important;
+        }
+        body.ema-report-page-active #root,
+        body.ema-report-page-active .app,
+        body.ema-report-page-active .app-shell,
+        body.ema-report-page-active .main-shell,
+        body.ema-report-page-active .layout-shell,
+        body.ema-report-page-active .page-shell,
+        body.ema-report-page-active .content-area,
+        body.ema-report-page-active .page-content,
+        body.ema-report-page-active .main-content,
+        body.ema-report-page-active .content-shell,
+        body.ema-report-page-active .content-body {
+          height: 100% !important;
+          min-height: 0 !important;
+          max-height: 100% !important;
+          overflow: hidden !important;
+        }
+        body.ema-report-page-active .settings-module-root.ema-report-module-root,
+        body.ema-report-page-active .ema-report-module-root {
+          height: calc(100dvh - 72px) !important;
+          min-height: 0 !important;
+          max-height: calc(100dvh - 72px) !important;
+          overflow: hidden !important;
+          padding: 12px 12px 12px !important;
+          box-sizing: border-box !important;
+        }
+        .ema-report-module-root .settings-layout.report-settings-layout {
+          display: grid !important;
+          grid-template-columns: 250px minmax(0, 1fr) !important;
+          gap: 14px !important;
+          align-items: stretch !important;
+          height: 100% !important;
+          min-height: 0 !important;
+          max-height: 100% !important;
+          overflow: hidden !important;
+        }
+        .ema-report-module-root .featured-report-nav-panel {
+          position: relative !important;
+          top: auto !important;
+          align-self: stretch !important;
+          height: 100% !important;
+          min-height: 0 !important;
+          max-height: 100% !important;
+          overflow: hidden !important;
+        }
+        .ema-report-module-root .featured-report-nav-panel .panel-head {
+          flex: 0 0 auto !important;
+        }
+        .ema-report-module-root .featured-report-nav-list {
+          height: auto !important;
+          max-height: calc(100% - 96px) !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          padding-right: 4px !important;
+          scrollbar-gutter: stable !important;
+        }
+        .ema-report-module-root .featured-report-nav-list::-webkit-scrollbar,
+        .ema-report-module-root .settings-content.report-main-content::-webkit-scrollbar {
+          width: 10px !important;
+        }
+        .ema-report-module-root .featured-report-nav-list::-webkit-scrollbar-thumb,
+        .ema-report-module-root .settings-content.report-main-content::-webkit-scrollbar-thumb {
+          background: #c8d8eb !important;
+          border-radius: 999px !important;
+          border: 2px solid #eef4fb !important;
+        }
+        .ema-report-module-root .featured-report-nav-list::-webkit-scrollbar-track,
+        .ema-report-module-root .settings-content.report-main-content::-webkit-scrollbar-track {
+          background: transparent !important;
+        }
+        .ema-report-module-root .settings-content.report-main-content {
+          height: 100% !important;
+          min-height: 0 !important;
+          max-height: 100% !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          padding-right: 2px !important;
+          scrollbar-gutter: stable !important;
+          -webkit-overflow-scrolling: touch !important;
+        }
+        .ema-report-module-root .settings-hero.users-hero,
+        .ema-report-module-root .report-workspace-shell,
+        .ema-report-module-root .report-workspace-body,
+        .ema-report-module-root .featured-report-layout,
+        .ema-report-module-root .featured-report-main-panel,
+        .ema-report-module-root .report-config-panel,
+        .ema-report-module-root .report-config-panel .config-card {
+          height: auto !important;
+          min-height: 0 !important;
+          max-height: none !important;
+          overflow: visible !important;
+        }
+        .ema-report-module-root .report-config-panel {
+          position: relative !important;
+          top: auto !important;
+          align-self: start !important;
+        }
+        .ema-report-module-root .content-shell.report-workspace-shell {
+          margin-bottom: 18px !important;
+        }
+        @media (max-width: 1260px) {
+          .ema-report-module-root .settings-layout.report-settings-layout {
+            grid-template-columns: 1fr !important;
+            overflow: hidden !important;
+          }
+          .ema-report-module-root .featured-report-nav-panel {
+            height: auto !important;
+            max-height: 220px !important;
+          }
+          .ema-report-module-root .featured-report-nav-list {
+            max-height: 150px !important;
+          }
+        }
+
       `}</style>
       <main className="settings-module-root ema-settings-pro ema-report-pro ema-report-module-root report-module-root" data-section="report">
         <input aria-hidden="true" id="globalSearch" type="hidden" />
@@ -6474,7 +7670,7 @@ export default function Report() {
                   >
                     <span className="featured-report-nav-icon" dangerouslySetInnerHTML={{ __html: icons[blueprint.icon] || icons.chart }} />
                     <span className="featured-report-nav-copy">
-                      <strong>{report.title}</strong>
+                      <strong>{getReportDisplayTitle(report)}</strong>
                       <small>{blueprint.bestFor}</small>
                       <em className="featured-report-nav-badge">{blueprint.eyebrow}</em>
                     </span>
@@ -6519,18 +7715,10 @@ export default function Report() {
               <div className="content-toolbar report-toolbar selected-pack-toolbar">
                 <div className="selected-pack-toolbar-copy">
                   <span>SELECTED REPORT MODULE</span>
-                  <strong>{selectedReport?.title || "Choose a report pack"}</strong>
+                  <strong>{selectedReport ? getReportDisplayTitle(selectedReport) : "Choose a report pack"}</strong>
                   <small>{selectedBlueprint.intent}</small>
                 </div>
 
-                <div className="content-actions toolbar-actions report-toolbar-actions d-flex align-items-center justify-content-end gap-2">
-                  <button className="btn soft-btn" id="refreshBtn" type="button" onClick={handleRefresh} disabled={loading}>
-                    Refresh Data
-                  </button>
-                  <button className="btn primary-btn" id="scheduleBtn" type="button" onClick={() => setIsScheduleOpen(true)} disabled={!selectedReport}>
-                    New Schedule
-                  </button>
-                </div>
               </div>
 
               {error && <div className="settings-inline-alert error report-error-banner">{error}</div>}
@@ -6542,8 +7730,8 @@ export default function Report() {
                       <div className="report-pack-command-top">
                         <div>
                           <span className="pack-eyebrow">{selectedBlueprint.eyebrow}</span>
-                          <h3>{selectedReport?.title || "Select featured report"}</h3>
-                          <p>{selectedReport ? selectedBlueprint.eyebrow : "Choose one report pack from the left panel."}</p>
+                          <h3>{selectedReport ? getReportDisplayTitle(selectedReport) : "Select featured report"}</h3>
+                          <p>{selectedReport?.description || selectedBlueprint.intent || "Choose one report pack from the left panel."}</p>
                         </div>
                         <div className="pack-number">{selectedPackNumber}</div>
                       </div>
@@ -6553,6 +7741,58 @@ export default function Report() {
                         <div><span>Output</span><strong>{selectedOutputs.map(outputLabel).join(" / ")}</strong></div>
                         <div><span>Scope</span><strong>{filters.relationID === 0 ? "All Sites" : options.sites.find((site) => site.id === filters.relationID)?.name || "Selected Site"}</strong></div>
                       </div>
+                    </div>
+
+                    <div className="report-live-summary-panel">
+                      <div className="report-live-summary-head">
+                        <div>
+                          <span>Current Selection</span>
+                          <strong>Report values at a glance</strong>
+                        </div>
+                        <em>{previewStatus}</em>
+                      </div>
+                      <div className="report-value-grid">
+                        <article><span>Report Pack</span><strong>{selectedReport ? getReportDisplayTitle(selectedReport) : "-"}</strong></article>
+                        <article><span>Period</span><strong>{selectedDateRangeLabel}</strong></article>
+                        <article><span>Site / Branch</span><strong>{selectedSiteLabel}</strong></article>
+                        <article><span>Device Group</span><strong>{selectedGroupLabel}</strong></article>
+                        <article><span>Endpoint Status</span><strong>{selectedStatusLabel}</strong></article>
+                        <article><span>Output</span><strong>{outputLabel(filters.outputFormat)}</strong></article>
+                        <article className="wide"><span>Included Sections</span><strong>{selectedIncludedLabels}</strong></article>
+                        <article className="wide"><span>Data Preview</span><strong>{payload ? `${payload.sections.length} section(s) · ${payload.dataSources.reduce((sum, item) => sum + Number(item.rows || 0), 0)} source row(s)` : "Click Preview to load report data"}</strong></article>
+                      </div>
+                    </div>
+
+                    {selectedReport?.id === "client-summary-rnr" && (
+                      <div className="client-rnr-summary-panel">
+                        <div className="report-live-summary-head">
+                          <div>
+                            <span>Client RNR Cover Values</span>
+                            <strong>Optional client details for the PDF cover</strong>
+                          </div>
+                        </div>
+                        <div className="client-cover-value-grid">
+                          {clientRnrSummaryRows.map((item) => (
+                            <article key={item.label}>
+                              <span>{item.label}</span>
+                              <strong>{item.value}</strong>
+                            </article>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="report-analysis-panel">
+                      <div className="report-live-summary-head">
+                        <div>
+                          <span>Report Content</span>
+                          <strong>{reportAnalysis.title}</strong>
+                        </div>
+                      </div>
+                      <p>{reportAnalysis.summary}</p>
+                      <ul>
+                        {reportAnalysis.bullets.slice(0, 3).map((item) => <li key={item}>{item}</li>)}
+                      </ul>
                     </div>
 
                     {selectedReport?.id === "hardware-asset-lifecycle" && (
@@ -6618,7 +7858,7 @@ export default function Report() {
                     <div className="selected-report-only-panel compact-action-panel">
                       <div>
                         <span>Selected module</span>
-                        <h4>{selectedReport?.title || "Selected report"}</h4>
+                        <h4>{selectedReport ? getReportDisplayTitle(selectedReport) : "Selected report"}</h4>
                       </div>
                       <div className="selected-report-actions">
                         <button className="btn soft-btn" type="button" onClick={() => requestReport("preview")} disabled={!selectedReport || loading}>
@@ -6636,7 +7876,7 @@ export default function Report() {
                     <div className="config-card">
                       <div className="config-head">
                         <span>BUILD REPORT</span>
-                        <h3 id="selectedTitle">{selectedReport?.title || "No report selected"}</h3>
+                        <h3 id="selectedTitle">Filters & Output</h3>
                       </div>
 
                       <div className="selected-meta selected-action-meta">
