@@ -32,7 +32,6 @@ import {
 type Severity = 'Critical' | 'High' | 'Medium' | 'Low';
 type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 type CardTone = 'blue' | 'green' | 'amber' | 'red' | 'purple' | 'cyan' | 'slate';
-type DashboardMode = 'command' | 'level2' | 'level3';
 
 type ApiKpiCard = {
   title: string;
@@ -149,6 +148,7 @@ type PriorityBreakdownItem = {
 };
 
 type ServiceDeskSummary = {
+  source?: string;
   pendingTickets: number;
   overdueTickets: number;
   mttr: string;
@@ -272,6 +272,7 @@ type FocusCard = {
 const EMPTY_TREND_SUMMARY: TrendSummary = { newIncidents: 0, resolved: 0, openBacklog: 0 };
 
 const EMPTY_SERVICE_DESK: ServiceDeskSummary = {
+  source: '-',
   pendingTickets: 0,
   overdueTickets: 0,
   mttr: '-',
@@ -404,7 +405,7 @@ const VIEW_TITLES: Record<string, { title: string; subtitle: string }> = {
   serviceDesk: { title: 'operations Service Operations', subtitle: 'Ticket queue, overdue SLA, response performance and priority mix.' },
   patch: { title: 'Patch Compliance', subtitle: 'Department patch score and remediation priority.' },
   alerts: { title: 'Active Alerts', subtitle: 'Critical and high-priority items requiring operational triage.' },
-  attention: { title: 'Attention Queue', subtitle: 'Cross-module follow-up queue for operational ownership.' },
+  attention: { title: 'Exception Evidence', subtitle: 'Detailed evidence for generated follow-up signals.' },
 };
 
 function resolveApiBaseUrl() {
@@ -422,6 +423,20 @@ function resolveApiBaseUrl() {
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
+const ITOPS_DASHBOARD_API_PATH = '/api/dashboard/it-operations';
+
+function buildApiUrl(path: string, query?: Record<string, string | number | boolean | undefined>) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const url = `${API_BASE_URL}${normalizedPath}`;
+  const params = new URLSearchParams();
+
+  Object.entries(query || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') params.set(key, String(value));
+  });
+
+  const queryText = params.toString();
+  return queryText ? `${url}?${queryText}` : url;
+}
 
 const ITOPS_DASHBOARD_CLIENT_CACHE_MS = 45000;
 let itopsDashboardClientCache: { at: number; data: ItOpsDashboardData } | null = null;
@@ -606,19 +621,27 @@ async function fetchItOpsDashboardData(forceRefresh = false) {
   const headers = new Headers({ Accept: 'application/json' });
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
-  const refreshQuery = forceRefresh ? '?refresh=1' : '';
-  const response = await fetch(`${API_BASE_URL}/api/dashboard/it-operations${refreshQuery}`, {
+  const response = await fetch(buildApiUrl(ITOPS_DASHBOARD_API_PATH, { refresh: forceRefresh ? 1 : undefined }), {
     headers,
     credentials: 'include',
   });
 
-  const payload = await response.json().catch(() => null);
+  const payload = (await response.json().catch(() => null)) as {
+    success?: boolean;
+    message?: string;
+    error?: string;
+    data?: Partial<ItOpsDashboardData>;
+  } | null;
 
   if (!response.ok || payload?.success === false) {
     throw new Error(payload?.error || payload?.message || `Dashboard API failed: ${response.status}`);
   }
 
-  const data = normalizeDashboardData(payload?.data ?? payload);
+  if (!payload?.data) {
+    throw new Error('Dashboard API returned an invalid response. Expected { success, data } from /api/dashboard/it-operations.');
+  }
+
+  const data = normalizeDashboardData(payload.data);
   itopsDashboardClientCache = { at: Date.now(), data };
   return data;
 }
@@ -742,10 +765,29 @@ function BarList({ items, limit = 7, emptyLabel = 'No breakdown data yet.' }: { 
   );
 }
 
-function IncidentTrendChart({ data, summary }: { data: IncidentTrendPoint[]; summary?: TrendSummary }) {
+function IncidentTrendChart({ data, summary, showSummaryCards = true }: { data: IncidentTrendPoint[]; summary?: TrendSummary; showSummaryCards?: boolean }) {
   const rows = data.slice(-5);
+  const summaryValues = summary || {
+    newIncidents: rows.reduce((total, row) => total + numberOrFallback(row.newIncidents), 0),
+    resolved: rows.reduce((total, row) => total + numberOrFallback(row.resolved), 0),
+    openBacklog: rows.length ? numberOrFallback(rows[rows.length - 1]?.open) : 0
+  };
+  const summaryCards = showSummaryCards ? (
+    <div className="itops-pulse-card-grid">
+      <MiniMetric label="New" value={formatNumber(summaryValues.newIncidents)} tone="blue" note="Created" />
+      <MiniMetric label="Resolved" value={formatNumber(summaryValues.resolved)} tone="green" note="Closed" />
+      <MiniMetric label="Open Backlog" value={formatNumber(summaryValues.openBacklog)} tone="amber" note="Current queue" />
+    </div>
+  ) : null;
 
-  if (!rows.length) return <EmptyState label="No incident trend data." />;
+  if (!rows.length) {
+    return (
+      <div className="itops-pulse-flow">
+        {summaryCards}
+        <EmptyState label="No incident movement found for the selected period." />
+      </div>
+    );
+  }
 
   const maxDailyVolume = Math.max(
     1,
@@ -762,21 +804,17 @@ function IncidentTrendChart({ data, summary }: { data: IncidentTrendPoint[]; sum
     return rowTotal > bestTotal ? row : best;
   }, rows[0]);
   const peakTotal = numberOrFallback(peakDay.newIncidents) + numberOrFallback(peakDay.resolved) + numberOrFallback(peakDay.open);
-  const summaryValues = summary || {
-    newIncidents: numberOrFallback(latest?.newIncidents),
-    resolved: numberOrFallback(latest?.resolved),
-    openBacklog: latestBacklog
-  };
+  const extraCards = showSummaryCards ? (
+    <div className="itops-pulse-card-grid itops-pulse-card-grid-extended">
+      <MiniMetric label="Latest Backlog" value={formatNumber(latestBacklog)} tone="cyan" note={previous ? `${backlogDelta >= 0 ? '+' : ''}${formatNumber(backlogDelta)} vs previous day` : 'Current open workload'} />
+      <MiniMetric label="Peak Movement" value={formatNumber(peakTotal)} tone="purple" note={peakDay.day} />
+    </div>
+  ) : null;
 
   return (
     <div className="itops-pulse-flow">
-      <div className="itops-pulse-card-grid">
-        <MiniMetric label="New" value={formatNumber(summaryValues.newIncidents)} tone="blue" note="Created" />
-        <MiniMetric label="Resolved" value={formatNumber(summaryValues.resolved)} tone="green" note="Closed" />
-        <MiniMetric label="Open Backlog" value={formatNumber(summaryValues.openBacklog)} tone="amber" note="Current queue" />
-        <MiniMetric label="Latest Backlog" value={formatNumber(latestBacklog)} tone="cyan" note={previous ? `${backlogDelta >= 0 ? '+' : ''}${formatNumber(backlogDelta)} vs previous day` : 'Current open workload'} />
-        <MiniMetric label="Peak Movement" value={formatNumber(peakTotal)} tone="purple" note={peakDay.day} />
-      </div>
+      {summaryCards}
+      {extraCards}
 
       <div className="itops-pulse-table" role="table" aria-label="Incident movement by day">
         <div className="itops-pulse-row itops-pulse-head" role="row">
@@ -884,7 +922,7 @@ function HealthRadar({ items, onOpen }: { items: DomainHealthItem[]; onOpen?: (v
 }
 
 function ActionQueue({ items, onOpen }: { items: AttentionItem[]; onOpen: (view: string) => void }) {
-  if (!items.length) return <EmptyState label="No cross-module action queue at the moment." />;
+  if (!items.length) return <EmptyState label="No action item generated from current operational signals." />;
 
   return (
     <div className="itops-pro-queue">
@@ -973,29 +1011,6 @@ function parseDrilldownKey(value: string | null) {
     };
   }
   return { level: 'level2', view: value, item: '' };
-}
-
-function ModeTabs({ active, onChange }: { active: DashboardMode; onChange: (mode: DashboardMode) => void }) {
-  const items: { id: DashboardMode; label: string; description: string; icon: LucideIcon }[] = [
-    { id: 'command', label: 'Command Center', description: 'Executive health view', icon: Activity },
-    { id: 'level2', label: 'Operational Triage', description: 'SLA, queue & department ownership', icon: Layers3 },
-    { id: 'level3', label: 'Engineering Evidence', description: 'Risk, endpoint & job detail', icon: Cpu },
-  ];
-
-  return (
-    <div className="itops-pro-tabs" role="tablist" aria-label="Dashboard view mode">
-      {items.map((item) => {
-        const Icon = item.icon;
-        return (
-          <button key={item.id} type="button" className={active === item.id ? 'active' : ''} onClick={() => onChange(item.id)}>
-            <Icon size={17} />
-            <span>{item.label}</span>
-            <small>{item.description}</small>
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 function RiskScoreGauge({ value }: { value: number }) {
@@ -1417,9 +1432,9 @@ export default function ITOperationsDashboard() {
         <Panel title="Risk Command" subtitle="Engineering security and endpoint exposure." icon={ShieldAlert}>
           <button type="button" className="itops-risk-command-summary" onClick={() => openLevel2('risk')}>
             <div className="itops-risk-command-copy">
-              <span>Risk posture</span>
+              <span>Exposure Index</span>
               <strong>{formatNumber(risk.score)}<em>/100</em></strong>
-              <small>Calculated from critical, high and medium risk signals.</small>
+              <small>Weighted from endpoint, patch, network, geo and task exposure. This is not a raw percentage.</small>
             </div>
             <StatusBadge status={riskStatus(risk.score, 35, 70)} />
             <div className="itops-risk-command-meter" aria-hidden="true"><i style={{ width: `${clampPercent(risk.score)}%` }} /></div>
@@ -1449,95 +1464,8 @@ export default function ITOperationsDashboard() {
         <Panel title="Operational Domain Matrix" subtitle="Health signals by endpoint, software, network, location and automation domain." icon={BarChart3} className="span-2">
           <HealthRadar items={domainHealth} onOpen={(view) => openLevel2(view)} />
         </Panel>
-
-        <Panel title="Operations Queue" subtitle="Items that need owner follow-up." icon={Zap}>
-          <ActionQueue items={attentionQueue} onOpen={openLevel2} />
-        </Panel>
       </section>
     </>
-  );
-
-  const renderLevel2Mode = () => (
-    <section className="itops-pro-level-grid">
-      <Panel title="Service Triage" subtitle="Queue health, SLA risk and incident workload." icon={Ticket} className="span-2" action={<button type="button" className="itops-pro-soft-btn" onClick={() => openLevel2('serviceDesk')}>View detail</button>}>
-        <div className="itops-pro-summary-row four">
-          <MiniMetric label="Pending Tickets" value={formatNumber(serviceDesk.pendingTickets)} tone="amber" />
-          <MiniMetric label="Overdue SLA" value={formatNumber(serviceDesk.overdueTickets)} tone="red" />
-          <MiniMetric label="MTTR" value={serviceDesk.mttr || '-'} tone="blue" />
-          <MiniMetric label="First Response" value={serviceDesk.firstResponse || '-'} tone="green" />
-        </div>
-        <div className="itops-pro-two-col">
-          <BarList items={serviceDesk.priorityBreakdown.map((item) => ({ name: item.label, value: item.value }))} emptyLabel="No priority breakdown yet." />
-          {renderServiceDeskTable()}
-        </div>
-      </Panel>
-
-      <Panel title="Patch Follow-up" subtitle="Department patch compliance for operational escalation." icon={ShieldCheck}>
-        <div className="itops-pro-summary-row two">
-          <MiniMetric label="Average Patch" value={formatPercent(patchComplianceAverage)} tone="green" />
-          <MiniMetric label="Critical Missing" value={formatNumber(security.criticalVulnerabilities)} tone="red" />
-        </div>
-        <BarList items={filteredPatchDepartments.map((item) => ({ name: item.name, value: item.percent, percent: item.percent }))} emptyLabel="No patch department data yet." />
-      </Panel>
-
-      <Panel title="Department Ownership Board" subtitle="Use this for operations department coordination and follow-up." icon={Users} className="span-2" action={
-        <div className="itops-pro-filter-row compact">
-          <label><Search size={14} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search department" /></label>
-          <select value={selectedDepartment} onChange={(event) => setSelectedDepartment(event.target.value)}>
-            {departments.map((department) => <option key={department}>{department}</option>)}
-          </select>
-        </div>
-      }>
-        {renderDepartmentTable()}
-      </Panel>
-
-      <Panel title="Active operations Alerts" subtitle="Alerts that should be owned or escalated by operations first." icon={AlertTriangle}>
-        <ActionQueue items={attentionQueue} onOpen={openLevel2} />
-      </Panel>
-    </section>
-  );
-
-  const renderLevel3Mode = () => (
-    <section className="itops-pro-level-grid">
-      <Panel title="Engineering Risk Register" subtitle="Actual risk signals generated by the live API." icon={ShieldAlert} className="span-2" action={<button type="button" className="itops-pro-soft-btn" onClick={() => exportCsvFile('itops-risk-register.csv', risk.topFindings as unknown as Record<string, unknown>[])}>Export CSV</button>}>
-        <div className="itops-pro-summary-row five">
-          <MiniMetric label="Risk Score" value={`${formatNumber(risk.score)}/100`} tone="purple" />
-          <MiniMetric label="Hardware Risk" value={formatNumber(risk.hardwareRiskItems)} tone="red" />
-          <MiniMetric label="Patch Critical" value={formatNumber(risk.patchCriticalItems)} tone="amber" />
-          <MiniMetric label="Network Risk" value={formatNumber(risk.networkRiskItems)} tone="blue" />
-          <MiniMetric label="Failed Jobs" value={formatNumber(risk.failedTaskItems)} tone="red" />
-        </div>
-        {renderRiskTable()}
-      </Panel>
-
-      <Panel title="Endpoint Risk Detail" subtitle="Devices that engineering should inspect first." icon={Laptop} className="span-2">
-        {renderEndpointRiskTable()}
-      </Panel>
-
-      <Panel title="Automation Job Health" subtitle="Failed job follow-up and job type distribution." icon={Wrench}>
-        <div className="itops-pro-summary-row two">
-          <MiniMetric label="Completed" value={formatNumber(tasks.completedTasks)} tone="green" />
-          <MiniMetric label="Failed" value={formatNumber(tasks.failedTasks)} tone="red" />
-        </div>
-        <BarList items={tasks.jobTypeBreakdown} emptyLabel="No job type breakdown yet." />
-      </Panel>
-
-      <Panel title="Recent Job Execution" subtitle="Latest job records from automation/task API." icon={CalendarDays} className="span-2">
-        {renderTaskTable()}
-      </Panel>
-
-      <Panel title="Problematic Systems" subtitle="Repeated-impact devices ranked for engineering engineering follow-up." icon={AlertTriangle}>
-        {renderProblematicSystems()}
-      </Panel>
-
-      <Panel title="Network & Geolocation Exposure" subtitle="Registration and location freshness gaps." icon={Network}>
-        <div className="itops-pro-summary-row two">
-          <MiniMetric label="Unregistered IP" value={formatNumber(network.unregisteredIps)} tone="amber" />
-          <MiniMetric label="Stale Location" value={formatNumber(geolocation.staleLocations)} tone="red" />
-        </div>
-        <BarList items={geolocation.topLocations} emptyLabel="No geolocation location data yet." />
-      </Panel>
-    </section>
   );
 
   const renderBreakdownDrillCards = (items: BreakdownItem[], view: string, emptyLabel = 'No breakdown data yet.') => {
@@ -1784,7 +1712,7 @@ export default function ITOperationsDashboard() {
               <MiniMetric label="Resolved" value={formatNumber(trendSummary.resolved)} tone="green" />
               <MiniMetric label="Open Backlog" value={formatNumber(trendSummary.openBacklog)} tone="amber" />
             </div>
-            <IncidentTrendChart data={incidentTrend} summary={trendSummary} />
+            <IncidentTrendChart data={incidentTrend} summary={trendSummary} showSummaryCards={false} />
           </Panel>
         </div>
       );
@@ -2141,7 +2069,7 @@ export default function ITOperationsDashboard() {
         <div>
           <span className="itops-pro-overline"><Sparkles size={15} /> IT Operations Dashboard</span>
           <h1>Operations Command Center</h1>
-          <p>Professional operations dashboard powered by the existing live IT Ops API. No backend change required.</p>
+          <p>Professional operations dashboard mapped to the unified IT Operations API.</p>
           <div className="itops-pro-hero-meta">
             <span><CalendarDays size={14} /> Range: {rangeLabel || '-'}</span>
             <span><Activity size={14} /> Generated: {formatDateLabel(generatedAt)}</span>
@@ -2170,13 +2098,6 @@ export default function ITOperationsDashboard() {
       )}
 
       {renderCommandMode()}
-
-      <section className="itops-pro-quick-grid">
-        <InsightCard icon={Laptop} title="Hardware" value={formatNumber(hardware.totalDevices)} subtitle="Endpoints in inventory" tone="blue" onClick={() => openLevel2('hardware')} />
-        <InsightCard icon={Database} title="Software" value={formatNumber(software.uniqueSoftware)} subtitle="Unique software titles" tone="purple" onClick={() => openLevel2('software')} />
-        <InsightCard icon={Network} title="Network" value={formatNumber(network.knownIps)} subtitle="Known IP records" tone="cyan" onClick={() => openLevel2('network')} />
-        <InsightCard icon={MapPin} title="Geolocation" value={formatNumber(geolocation.trackedDevices)} subtitle="Tracked devices" tone="green" onClick={() => openLevel2('geolocation')} />
-      </section>
 
 
       {activeView && activeMeta && (
@@ -2954,6 +2875,10 @@ body.itops-dashboard-page-active .router-content {
   display: flex;
   flex-direction: column;
   justify-content: center;
+}
+
+.itops-pulse-card-grid-extended {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .itops-pulse-insights {

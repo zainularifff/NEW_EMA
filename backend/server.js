@@ -20068,6 +20068,298 @@ async function erColumnExists(pool, tableName, columnName) {
   return result.recordset.length > 0;
 }
 
+
+async function erFirstAvailableColumnExpr(pool, tableName, alias, candidates = [], fallbackExpr = "CAST('' AS NVARCHAR(255))") {
+  for (const columnName of candidates) {
+    if (await erColumnExists(pool, tableName, columnName)) {
+      return `CAST(${alias}.[${columnName}] AS NVARCHAR(255))`;
+    }
+  }
+  return fallbackExpr;
+}
+
+// ============================================================
+// WINDOWS OS LIFECYCLE / EOL-EOS ENRICHMENT
+// Source of truth: endoflife.date API. This is not a risk policy table.
+// The API is used only to determine lifecycle status; risk output is based on
+// the returned EOL date/status instead of hardcoded Windows version keywords.
+// ============================================================
+const ER_BUILD_TO_WINDOWS_RELEASE = {
+  '10.0.28000': { win11: '11-26h1' },
+  '10.0.26200': { win11: '11-25h2' },
+  '10.0.26100': { win11: '11-24h2' },
+  '10.0.22631': { win11: '11-23h2' },
+  '10.0.22621': { win11: '11-22h2' },
+  '10.0.22000': { win11: '11-21h2' },
+  '10.0.19045': { win10: '10-22h2' },
+  '10.0.19044': { win10: '10-21h2' },
+  '10.0.19043': { win10: '10-21h1' },
+  '10.0.19042': { win10: '10-20h2' },
+  '10.0.19041': { win10: '10-2004' },
+  '10.0.18363': { win10: '10-1909' },
+  '10.0.18362': { win10: '10-1903' },
+  '10.0.17763': { win10: '10-1809' },
+  '10.0.17134': { win10: '10-1803' },
+  '10.0.16299': { win10: '10-1709' },
+  '10.0.15063': { win10: '10-1703' },
+  '10.0.14393': { win10: '10-1607' },
+  '10.0.10586': { win10: '10-1511' },
+  '10.0.10240': { win10: '10-1507' }
+};
+
+let erWindowsLifecycleCache = null;
+let erWindowsLifecycleCacheTime = 0;
+const ER_EOL_CACHE_TTL_MS = Number(process.env.EMA_WINDOWS_EOL_CACHE_TTL_MS || 6 * 60 * 60 * 1000);
+const ER_EOL_WARNING_DAYS = Number(process.env.EMA_WINDOWS_EOL_WARNING_DAYS || 180);
+
+function erWindowsEditionSuffix(osString) {
+  const lower = erLowerText(osString);
+  if (lower.includes('home') || lower.includes('pro') || lower.includes('professional') || lower.includes('starter') || lower.includes('basic')) return '-w';
+  return '-e';
+}
+
+function erNormalizeWindowsBuild(osBuild, osString) {
+  let build = erText(osBuild).trim();
+  if (!build) return '';
+  const lower = erLowerText(osString);
+  if (!build.includes('.') && (lower.includes('windows 10') || lower.includes('windows 11'))) {
+    build = `10.0.${build}`;
+  }
+  return build;
+}
+
+function erParseWindowsEolCycle(osString, osBuild) {
+  const osText = erText(osString);
+  const lower = osText.toLowerCase();
+  if (!lower.includes('windows')) return null;
+
+  const editionSuffix = erWindowsEditionSuffix(osText);
+  const build = erNormalizeWindowsBuild(osBuild, osText);
+
+  if (build) {
+    const exact = ER_BUILD_TO_WINDOWS_RELEASE[build];
+    if (exact) {
+      if (lower.includes('windows 11') && exact.win11) return `${exact.win11}${editionSuffix}`;
+      if (lower.includes('windows 10') && exact.win10) {
+        return ['10-22h2', '10-2004', '10-1903', '10-1511', '10-1507'].includes(exact.win10) ? exact.win10 : `${exact.win10}${editionSuffix}`;
+      }
+      const cycle = exact.win11 || exact.win10;
+      if (cycle) return cycle.startsWith('10-') && ['10-22h2', '10-2004', '10-1903', '10-1511', '10-1507'].includes(cycle) ? cycle : `${cycle}${editionSuffix}`;
+    }
+
+    for (const [buildKey, info] of Object.entries(ER_BUILD_TO_WINDOWS_RELEASE)) {
+      const lastPart = buildKey.split('.').pop();
+      if (build.endsWith(lastPart) || build === lastPart) {
+        if (lower.includes('windows 11') && info.win11) return `${info.win11}${editionSuffix}`;
+        if (lower.includes('windows 10') && info.win10) {
+          return ['10-22h2', '10-2004', '10-1903', '10-1511', '10-1507'].includes(info.win10) ? info.win10 : `${info.win10}${editionSuffix}`;
+        }
+        const cycle = info.win11 || info.win10;
+        if (cycle) return cycle.startsWith('10-') && ['10-22h2', '10-2004', '10-1903', '10-1511', '10-1507'].includes(cycle) ? cycle : `${cycle}${editionSuffix}`;
+      }
+    }
+  }
+
+  if (lower.includes('server')) {
+    if (lower.includes('2025')) return 'server-2025';
+    if (lower.includes('2022')) return 'server-2022';
+    if (lower.includes('2019')) return 'server-2019';
+    if (lower.includes('2016')) return 'server-2016';
+    if (lower.includes('2012 r2')) return 'server-2012-r2';
+    if (lower.includes('2012')) return 'server-2012';
+    if (lower.includes('2008 r2')) return 'server-2008-r2-sp1';
+    if (lower.includes('2008')) return 'server-2008-sp2';
+    if (lower.includes('2003')) return 'server-2003-sp2';
+  }
+
+  if (lower.includes('windows 11')) {
+    const versionMatch = lower.match(/(\d{2}h\d)/i);
+    const version = versionMatch ? versionMatch[1].toLowerCase() : '24h2';
+    return `11-${version}${editionSuffix}`;
+  }
+
+  if (lower.includes('windows 10')) {
+    const versionMatch = lower.match(/(\d{2}h\d|2004|1903|1511|1507)/i);
+    if (versionMatch) {
+      const version = versionMatch[1].toLowerCase();
+      if (['22h2', '2004', '1903', '1511', '1507'].includes(version)) return `10-${version}`;
+      return `10-${version}${editionSuffix}`;
+    }
+    return '10-22h2';
+  }
+
+  if (lower.includes('windows 8.1')) return '8.1';
+  if (lower.includes('windows 8') && !lower.includes('8.1')) return '8';
+  if (lower.includes('windows 7')) return '7-sp1';
+  if (lower.includes('vista')) return '6-sp2';
+  if (lower.includes('xp')) return '5-sp3';
+
+  return null;
+}
+
+async function erFetchWindowsLifecycleMap() {
+  const now = Date.now();
+  if (erWindowsLifecycleCache && (now - erWindowsLifecycleCacheTime) < ER_EOL_CACHE_TTL_MS) {
+    return erWindowsLifecycleCache;
+  }
+
+  try {
+    const [windowsRes, serverRes] = await Promise.all([
+      axios.get('https://endoflife.date/api/windows.json', { timeout: 15000 }),
+      axios.get('https://endoflife.date/api/windowsserver.json', { timeout: 15000 })
+    ]);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const lifecycleMap = {};
+
+    for (const release of Array.isArray(windowsRes.data) ? windowsRes.data : []) {
+      const eolDate = release.eol ? new Date(release.eol) : null;
+      lifecycleMap[release.cycle] = {
+        cycle: release.cycle,
+        label: release.releaseLabel || release.cycle,
+        eolDate: release.eol || '',
+        isEol: Boolean(eolDate && eolDate < today),
+        isMaintained: !eolDate || eolDate >= today,
+        source: 'endoflife.date/windows'
+      };
+    }
+
+    for (const release of Array.isArray(serverRes.data) ? serverRes.data : []) {
+      const eolDate = release.eol ? new Date(release.eol) : null;
+      lifecycleMap[`server-${release.cycle}`] = {
+        cycle: `server-${release.cycle}`,
+        label: release.releaseLabel || `Windows Server ${release.cycle}`,
+        eolDate: release.eol || '',
+        isEol: Boolean(eolDate && eolDate < today),
+        isMaintained: !eolDate || eolDate >= today,
+        source: 'endoflife.date/windowsserver'
+      };
+    }
+
+    erWindowsLifecycleCache = lifecycleMap;
+    erWindowsLifecycleCacheTime = now;
+    return lifecycleMap;
+  } catch (err) {
+    console.warn('Windows lifecycle lookup skipped:', err.message || err);
+    return erWindowsLifecycleCache || {};
+  }
+}
+
+function erClassifyWindowsLifecycle(asset = {}, lifecycleMap = {}) {
+  const osName = erText(asset.osName || asset.platform || asset.os || asset.operatingSystem);
+  const osBuild = erText(asset.osBuild || asset.OSBuild || asset.buildNumber || asset.build);
+  const lower = osName.toLowerCase();
+
+  if (!osName) {
+    return {
+      osLifecycleStatus: 'OS Evidence Missing',
+      osLifecycleSeverity: 'Review',
+      osLifecycleBasis: 'No OS name was returned by inventory source.',
+      osLifecycleSource: 'Inventory'
+    };
+  }
+
+  if (!lower.includes('windows')) {
+    return {
+      osLifecycleStatus: 'Non-Windows / Review',
+      osLifecycleSeverity: 'Low',
+      osLifecycleBasis: 'Not a Windows lifecycle record.',
+      osLifecycleSource: 'Inventory'
+    };
+  }
+
+  const cycle = erParseWindowsEolCycle(osName, osBuild);
+  if (!cycle) {
+    return {
+      osLifecycleStatus: 'Lifecycle Not Mapped',
+      osLifecycleSeverity: 'Review',
+      osLifecycleCycle: '',
+      osLifecycleBasis: 'Windows OS was detected, but release cycle could not be mapped to endoflife.date.',
+      osLifecycleSource: 'endoflife.date'
+    };
+  }
+
+  const release = lifecycleMap[cycle];
+  if (!release) {
+    return {
+      osLifecycleStatus: 'Lifecycle Not Found',
+      osLifecycleSeverity: 'Review',
+      osLifecycleCycle: cycle,
+      osLifecycleBasis: `Release cycle ${cycle} was not found in endoflife.date response.`,
+      osLifecycleSource: 'endoflife.date'
+    };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const eolDate = release.eolDate ? new Date(release.eolDate) : null;
+  const daysToEol = eolDate ? Math.ceil((eolDate - today) / (1000 * 60 * 60 * 24)) : null;
+
+  if (release.isEol || (eolDate && eolDate < today)) {
+    return {
+      osLifecycleStatus: 'EOL / EOS',
+      osLifecycleSeverity: 'High',
+      osLifecycleCycle: cycle,
+      osLifecycleLabel: release.label,
+      osLifecycleEolDate: release.eolDate,
+      osLifecycleDaysToEol: daysToEol,
+      osLifecycleBasis: `Matched ${cycle} from endoflife.date. End of life date: ${release.eolDate || 'not provided'}.`,
+      osLifecycleSource: release.source || 'endoflife.date'
+    };
+  }
+
+  if (daysToEol !== null && daysToEol <= ER_EOL_WARNING_DAYS) {
+    return {
+      osLifecycleStatus: 'Near EOS',
+      osLifecycleSeverity: 'Medium',
+      osLifecycleCycle: cycle,
+      osLifecycleLabel: release.label,
+      osLifecycleEolDate: release.eolDate,
+      osLifecycleDaysToEol: daysToEol,
+      osLifecycleBasis: `Matched ${cycle} from endoflife.date. EOS is within ${ER_EOL_WARNING_DAYS} day(s).`,
+      osLifecycleSource: release.source || 'endoflife.date'
+    };
+  }
+
+  return {
+    osLifecycleStatus: 'Supported OS',
+    osLifecycleSeverity: 'Low',
+    osLifecycleCycle: cycle,
+    osLifecycleLabel: release.label,
+    osLifecycleEolDate: release.eolDate,
+    osLifecycleDaysToEol: daysToEol,
+    osLifecycleBasis: `Matched ${cycle} from endoflife.date and is not EOL/EOS.`,
+    osLifecycleSource: release.source || 'endoflife.date'
+  };
+}
+
+async function erApplyWindowsLifecycle(assets = []) {
+  const lifecycleMap = await erFetchWindowsLifecycleMap();
+  return (assets || []).map((asset) => ({
+    ...asset,
+    ...erClassifyWindowsLifecycle(asset, lifecycleMap)
+  }));
+}
+
+function erIsWindowsAsset(asset = {}) {
+  return erLowerText(asset.osName || asset.platform || asset.os || asset.operatingSystem).includes('windows');
+}
+
+function erIsUnsupportedWindowsAsset(asset = {}) {
+  const status = erLowerText(asset.osLifecycleStatus || asset.lifecycleStatus || asset.eolStatus);
+  return status.includes('eol') || status.includes('eos') || status.includes('expired');
+}
+
+function erIsNearEosWindowsAsset(asset = {}) {
+  return erLowerText(asset.osLifecycleStatus || asset.lifecycleStatus || asset.eolStatus).includes('near');
+}
+
+function erIsLifecycleUnknownAsset(asset = {}) {
+  const status = erLowerText(asset.osLifecycleStatus || asset.lifecycleStatus || asset.eolStatus);
+  return status.includes('not mapped') || status.includes('not found') || status.includes('missing') || status.includes('unknown');
+}
+
 async function erSafeReportRows(label, loader) {
   try {
     return await loader();
@@ -20178,6 +20470,19 @@ async function erGetAssetRows(pool, filters = {}) {
   const hasMdmRel = await erTableExists(pool, "TSMDM_OBJECT_RELATION");
   const hasMapping = await erTableExists(pool, "TSMDM_TS_OBJECT_MAPPING");
 
+  const emOsNameExpr = hasEM
+    ? await erFirstAvailableColumnExpr(pool, "TS_OBJECT_ROOT", "r", ["OS", "OSName", "OperatingSystem", "Operating_System", "PlatformType", "Object_OS"], "CAST('Windows' AS NVARCHAR(255))")
+    : "CAST('' AS NVARCHAR(255))";
+  const emOsBuildExpr = hasEM
+    ? await erFirstAvailableColumnExpr(pool, "TS_OBJECT_ROOT", "r", ["OSBuild", "OS_Build", "Build", "BuildNumber", "OSVersion", "Version"], "CAST('' AS NVARCHAR(255))")
+    : "CAST('' AS NVARCHAR(255))";
+  const mdmOsNameExpr = hasMDM
+    ? await erFirstAvailableColumnExpr(pool, "TSMDM_ASSET", "a", ["OS", "OSName", "OperatingSystem", "DeviceOS", "DeviceOperatingSystem", "PlatformType"], "CAST('MDM' AS NVARCHAR(255))")
+    : "CAST('' AS NVARCHAR(255))";
+  const mdmOsBuildExpr = hasMDM
+    ? await erFirstAvailableColumnExpr(pool, "TSMDM_ASSET", "a", ["OSBuild", "OS_Build", "Build", "BuildNumber", "DeviceOSBuild", "OSVersion", "Version"], "CAST('' AS NVARCHAR(255))")
+    : "CAST('' AS NVARCHAR(255))";
+
   const parts = [];
   if (hasEM) {
     parts.push(`
@@ -20188,7 +20493,9 @@ async function erGetAssetRows(pool, filters = {}) {
         ISNULL(NULLIF(r.ComputerName, ''), r.Object_DeviceID) AS deviceName,
         ${hasRelation ? "ISNULL(rel.Object_Full_Name, '')" : "''"} AS site,
         CAST(r.Object_Rel_Idn AS INT) AS relationId,
-        'Windows' AS platform,
+        ISNULL(NULLIF(${emOsNameExpr}, ''), 'Windows') AS platform,
+        ISNULL(NULLIF(${emOsNameExpr}, ''), 'Windows') AS osName,
+        ISNULL(NULLIF(${emOsBuildExpr}, ''), '') AS osBuild,
         ISNULL(NULLIF(r.Model, ''), '') AS model,
         TRY_CONVERT(datetime, r.ConnectionTime) AS lastSeen,
         CASE WHEN r.ConnectionStatus = 1 THEN 'Online' ELSE 'Offline' END AS status,
@@ -20208,7 +20515,9 @@ async function erGetAssetRows(pool, filters = {}) {
         ISNULL(NULLIF(a.DeviceName, ''), a.DeviceID) AS deviceName,
         ${hasRelation && hasMdmRel ? "ISNULL(rel.Object_Full_Name, '')" : "''"} AS site,
         ${hasMdmRel ? "CAST(mor.Object_Rel_Idn AS INT)" : "0"} AS relationId,
-        ISNULL(NULLIF(a.PlatformType, ''), 'MDM') AS platform,
+        ISNULL(NULLIF(${mdmOsNameExpr}, ''), 'MDM') AS platform,
+        ISNULL(NULLIF(${mdmOsNameExpr}, ''), 'MDM') AS osName,
+        ISNULL(NULLIF(${mdmOsBuildExpr}, ''), '') AS osBuild,
         ISNULL(NULLIF(a.DeviceModelName, ''), '') AS model,
         TRY_CONVERT(datetime, a.DeviceTimeStamp) AS lastSeen,
         ISNULL(NULLIF(CAST(a.ConnectionStatus AS VARCHAR(100)), ''), 'Unknown') AS status,
@@ -20597,10 +20906,7 @@ function erBuildDerivedRows(data) {
     return !dt || dt < oldSoftwareCutoff || erContainsAny(s, ["old", "outdated", "legacy", "obsolete", "update required"]);
   }), "lastUpdated");
 
-  const unsupportedOsRows = assets.filter((a) => {
-    const text = erLowerText(a.platform);
-    return ["windows xp", "windows 7", "windows 8", "2008", "2012", "legacy", "unsupported", "old"].some((word) => text.includes(word));
-  });
+  const unsupportedOsRows = assets.filter((a) => erIsUnsupportedWindowsAsset(a));
 
   const poorGeoRows = geo.filter((g) => {
     const acc = Number(g.locationAccuracy || 0);
@@ -20730,8 +21036,8 @@ function erBuildRnrDerivedRows(data, derivedRows = null) {
 
   const byBrand = erBucketCount(assetsWithPlanning, (a) => a.brand, 12);
   const byEndpointType = erBucketCount(assetsWithPlanning, (a) => a.endpointType, 8);
-  const windowsRows = assetsWithPlanning.filter((a) => erLowerText(a.platform).includes("windows"));
-  const unsupportedWindowsRows = windowsRows.filter((a) => ["windows xp", "windows 7", "windows 8", "2008", "2012", "legacy", "unsupported"].some((word) => erLowerText(a.platform).includes(word)));
+  const windowsRows = assetsWithPlanning.filter((a) => erIsWindowsAsset(a));
+  const unsupportedWindowsRows = windowsRows.filter((a) => erIsUnsupportedWindowsAsset(a));
 
   const locationRows = erRowsByBucket(assetsWithPlanning, (a) => a.location, (location, rows) => ({
     location,
@@ -20750,18 +21056,37 @@ function erBuildRnrDerivedRows(data, derivedRows = null) {
     action: "Validate refresh/replacement requirement."
   }), 25);
 
-  const osComplianceRows = erBucketCount(assetsWithPlanning, (a) => a.platform || "Unknown OS", 20).map((row) => {
-    const text = erLowerText(row.label);
-    const isWindows = text.includes("windows");
-    const unsupported = ["xp", "windows 7", "windows 8", "2008", "2012", "legacy", "unsupported"].some((word) => text.includes(word));
+  const osComplianceRows = erRowsByBucket(assetsWithPlanning, (a) => a.platform || "Unknown OS", (os, rows) => {
+    const windows = rows.filter((row) => erIsWindowsAsset(row));
+    const eolCount = windows.filter((row) => erIsUnsupportedWindowsAsset(row)).length;
+    const nearCount = windows.filter((row) => erIsNearEosWindowsAsset(row)).length;
+    const unknownCount = windows.filter((row) => erIsLifecycleUnknownAsset(row)).length;
+    const sample = windows[0] || rows[0] || {};
+    const status = eolCount > 0
+      ? "EOL / EOS"
+      : nearCount > 0
+        ? "Near EOS"
+        : unknownCount > 0
+          ? "Lifecycle Review"
+          : windows.length > 0
+            ? "Supported OS"
+            : "Validate";
     return {
-      os: row.label,
-      endpoints: row.value,
-      scope: isWindows ? "Windows" : "Other / unknown",
-      complianceStatus: unsupported ? "Unsupported / Review" : isWindows ? "Supported / Monitor" : "Validate",
-      action: unsupported ? "Plan OS upgrade or exception approval." : "Maintain OS evidence."
+      os,
+      endpoints: rows.length,
+      scope: windows.length > 0 ? "Windows" : "Other / unknown",
+      complianceStatus: status,
+      eolDate: sample.osLifecycleEolDate || "-",
+      releaseCycle: sample.osLifecycleCycle || "-",
+      action: eolCount > 0
+        ? "Plan OS upgrade or document approved exception."
+        : nearCount > 0
+          ? "Prepare upgrade plan before EOS date."
+          : unknownCount > 0
+            ? "Validate OS/build inventory or lifecycle mapping."
+            : "Maintain OS lifecycle evidence."
     };
-  });
+  }, 20);
 
   const resourcePlanningBrandRows = erRowsByBucket(assetsWithPlanning, (a) => a.brand, (brand, rows) => ({
     brand,
@@ -20999,11 +21324,6 @@ function erReadHardwareSelection(req) {
     ?? req.query?.selectedHardwareReportIds;
 }
 
-function erIsUnsupportedWindowsAsset(asset = {}) {
-  const text = erLowerText(asset.platform || asset.os || asset.operatingSystem);
-  return ["windows xp", "windows 7", "windows 8", "2008", "2012", "legacy", "unsupported", "eol", "eos"].some((word) => text.includes(word));
-}
-
 function erHardwareScopeByLocation(location = "") {
   const text = erLowerText(location);
   if (!text || text === "unmapped") return "Unmapped";
@@ -21014,20 +21334,30 @@ function erHardwareScopeByLocation(location = "") {
 function erBuildHardwareSecurityRows(rnr) {
   const rows = rnr.windowsRows || [];
   const grouped = erRowsByBucket(rows, (row) => erHardwareScopeByLocation(row.location), (scope, scopeRows) => {
-    const unsupported = scopeRows.filter((row) => erIsUnsupportedWindowsAsset(row)).length;
-    const supported = Math.max(scopeRows.length - unsupported, 0);
+    const eol = scopeRows.filter((row) => erIsUnsupportedWindowsAsset(row)).length;
+    const nearEos = scopeRows.filter((row) => erIsNearEosWindowsAsset(row)).length;
+    const unknownLifecycle = scopeRows.filter((row) => erIsLifecycleUnknownAsset(row)).length;
+    const supported = Math.max(scopeRows.length - eol - nearEos - unknownLifecycle, 0);
     return {
       scope,
       supportedOS: supported,
-      eolEosOS: unsupported,
+      nearEosOS: nearEos,
+      eolEosOS: eol,
+      unknownLifecycle,
       totalWindowsEndpoint: scopeRows.length,
-      exposure: unsupported > 0 ? "Action Required" : "Monitor",
-      action: unsupported > 0 ? "Plan OS upgrade or document approved exception." : "Maintain support evidence and monitor upcoming EOL/EOS."
+      exposure: eol > 0 ? "Action Required" : nearEos > 0 ? "Upgrade Watch" : unknownLifecycle > 0 ? "Validate" : "Monitor",
+      action: eol > 0
+        ? "Plan OS upgrade or document approved exception."
+        : nearEos > 0
+          ? "Prepare upgrade plan before EOS date."
+          : unknownLifecycle > 0
+            ? "Validate OS/build inventory and lifecycle mapping."
+            : "Maintain support evidence and monitor upcoming EOL/EOS."
     };
   }, 10);
 
   return grouped.length ? grouped : [
-    { scope: "No Windows evidence", supportedOS: 0, eolEosOS: 0, totalWindowsEndpoint: 0, exposure: "Validate", action: "Confirm Windows OS inventory collection source." }
+    { scope: "No Windows evidence", supportedOS: 0, nearEosOS: 0, eolEosOS: 0, unknownLifecycle: 0, totalWindowsEndpoint: 0, exposure: "Validate", action: "Confirm Windows OS inventory collection source." }
   ];
 }
 
@@ -21075,7 +21405,7 @@ function erBuildHardwareReportSections(data, filters = {}) {
   }
 
   if (selected.includes("vulnerability-security")) {
-    sections.push(erTableSection("Vulnerability & Security - Supported OS / EOL / EOS by HQ / Branch", erBuildHardwareSecurityRows(rnr), ["scope", "supportedOS", "eolEosOS", "totalWindowsEndpoint", "exposure", "action"]));
+    sections.push(erTableSection("Vulnerability & Security - Supported OS / EOL / EOS by HQ / Branch", erBuildHardwareSecurityRows(rnr), ["scope", "supportedOS", "nearEosOS", "eolEosOS", "unknownLifecycle", "totalWindowsEndpoint", "exposure", "action"]));
   }
 
   if (selected.includes("location")) {
@@ -22120,8 +22450,15 @@ async function erBuildReportPayload(pool, reportId, filters = {}, mode = "previe
     erSafeReportRows("Geolocation", () => erGetGeoRows(pool, filters))
   ]);
 
-  const metrics = erBuildMetrics({ assets, incidents, software, jobs, geo });
-  const data = { assets, incidents, software, jobs, geo, metrics };
+  let lifecycleAssets = assets;
+  try {
+    lifecycleAssets = await erApplyWindowsLifecycle(assets);
+  } catch (err) {
+    console.warn("Windows lifecycle enrichment skipped:", err.message || err);
+  }
+
+  const metrics = erBuildMetrics({ assets: lifecycleAssets, incidents, software, jobs, geo });
+  const data = { assets: lifecycleAssets, incidents, software, jobs, geo, metrics };
   const useAiAnalysis = erUseAiAnalysis(report, filters);
   const effectiveFilters = {
     ...filters,
@@ -22236,18 +22573,6 @@ app.post("/api/reports/generate", authenticateToken, async (req, res) => {
   }
 });
 
-app.get("/api/reports/:reportId", authenticateToken, async (req, res) => {
-  try {
-    const reportId = erText(req.params.reportId, "executive-summary");
-    const filters = erReadFilters(req);
-    const pool = await sql.connect(dbConfig);
-    const payload = await erBuildReportPayload(pool, reportId, filters, "preview");
-    return res.json(payload);
-  } catch (err) {
-    console.error("GET /api/reports/:reportId error:", err);
-    return res.status(500).json({ success: false, message: "Failed to retrieve report", error: err.message });
-  }
-});
 
 /*
 |--------------------------------------------------------------------------
@@ -25152,6 +25477,11 @@ function itopsRiskPercent(value, total) {
     return itopsPercent(value, total, 0);
 }
 
+function itopsExposureRatio(value, denominator) {
+    const base = Math.max(itopsToNumber(denominator), 1);
+    return Math.max(0, Math.min(100, itopsRound((itopsToNumber(value) / base) * 100, 1)));
+}
+
 function itopsRiskSeverityCount(count, criticalThreshold, highThreshold) {
     const value = itopsToNumber(count);
     if (value >= criticalThreshold) return "Critical";
@@ -25164,6 +25494,7 @@ async function getItOpsHardwareSummary(pool) {
     const hasEmAssets = await itopsTableExists(pool, "TS_OBJECT_ROOT");
     const hasMdmAssets = await itopsTableExists(pool, "TSMDM_ASSET");
     const hasMdmMapping = await itopsTableExists(pool, "TSMDM_TS_OBJECT_MAPPING");
+    const hasRelations = await itopsTableExists(pool, "TS_OBJECT_RELATION");
 
     if (!hasEmAssets && !hasMdmAssets) {
         return {
@@ -25175,24 +25506,35 @@ async function getItOpsHardwareSummary(pool) {
             mdmDevices: 0,
             emDevices: 0,
             topModels: [],
-            platformBreakdown: []
+            platformBreakdown: [],
+            endpointRows: []
         };
     }
+
+    const emRelationJoin = hasEmAssets && hasRelations
+        ? "LEFT JOIN TS_OBJECT_RELATION rel WITH (NOLOCK) ON r.Object_Rel_Idn = rel.Object_Rel_Idn"
+        : "";
+    const emDepartmentExpr = hasRelations
+        ? "ISNULL(NULLIF(rel.Object_Full_Name, ''), ISNULL(NULLIF(rel.Object_Rel_Name, ''), 'Unmapped'))"
+        : "'Unmapped'";
 
     const emSql = hasEmAssets
         ? `
             SELECT
                 'EM' AS SourceType,
-                ISNULL(NULLIF(ComputerName, ''), Object_DeviceID) AS DeviceName,
-                ISNULL(Model, '-') AS Model,
+                ISNULL(NULLIF(r.ComputerName, ''), r.Object_DeviceID) AS DeviceName,
+                ISNULL(NULLIF(r.Model, ''), '-') AS Model,
                 'Windows' AS Platform,
-                CASE WHEN ConnectionStatus = 1 THEN 1 ELSE 0 END AS IsOnline,
-                TRY_CONVERT(datetime, ConnectionTime) AS LastSeen
-            FROM TS_OBJECT_ROOT WITH (NOLOCK)
-            WHERE ISNULL(Object_Root_Idn, 0) > 0
+                ${emDepartmentExpr} AS Department,
+                CASE WHEN TRY_CONVERT(int, r.ConnectionStatus) = 1 THEN 1 ELSE 0 END AS IsOnline,
+                CASE WHEN TRY_CONVERT(int, r.ConnectionStatus) = 1 THEN 'Online' ELSE 'Offline' END AS StatusLabel,
+                TRY_CONVERT(datetime, r.ConnectionTime) AS LastSeen
+            FROM TS_OBJECT_ROOT r WITH (NOLOCK)
+            ${emRelationJoin}
+            WHERE ISNULL(r.Object_Root_Idn, 0) > 0
         `
         : `
-            SELECT 'EM' AS SourceType, NULL AS DeviceName, NULL AS Model, NULL AS Platform, 0 AS IsOnline, NULL AS LastSeen
+            SELECT 'EM' AS SourceType, NULL AS DeviceName, NULL AS Model, NULL AS Platform, NULL AS Department, 0 AS IsOnline, 'Offline' AS StatusLabel, NULL AS LastSeen
             WHERE 1 = 0
         `;
 
@@ -25207,18 +25549,25 @@ async function getItOpsHardwareSummary(pool) {
                 ISNULL(NULLIF(a.DeviceName, ''), a.DeviceID) AS DeviceName,
                 ISNULL(a.DeviceModelName, '-') AS Model,
                 ISNULL(NULLIF(a.PlatformType, ''), 'MDM') AS Platform,
+                'MDM Unmapped' AS Department,
                 CASE
                     WHEN TRY_CONVERT(int, a.ConnectionStatus) = 1 THEN 1
                     WHEN LOWER(CONVERT(nvarchar(50), a.ConnectionStatus)) = 'online' THEN 1
                     ELSE 0
                 END AS IsOnline,
+                CASE
+                    WHEN TRY_CONVERT(int, a.ConnectionStatus) = 1 THEN 'Online'
+                    WHEN LOWER(CONVERT(nvarchar(50), a.ConnectionStatus)) = 'online' THEN 'Online'
+                    WHEN NULLIF(CONVERT(nvarchar(50), a.ConnectionStatus), '') IS NOT NULL THEN CONVERT(nvarchar(50), a.ConnectionStatus)
+                    ELSE 'Offline'
+                END AS StatusLabel,
                 TRY_CONVERT(datetime, COALESCE(a.DeviceTimeStamp, a.LastTimeStamp)) AS LastSeen
             FROM TSMDM_ASSET a WITH (NOLOCK)
             WHERE ISNULL(a.MDM_Asset_Idn, 0) > 0
             ${mdmExcludeMappedSql}
         `
         : `
-            SELECT 'MDM' AS SourceType, NULL AS DeviceName, NULL AS Model, NULL AS Platform, 0 AS IsOnline, NULL AS LastSeen
+            SELECT 'MDM' AS SourceType, NULL AS DeviceName, NULL AS Model, NULL AS Platform, NULL AS Department, 0 AS IsOnline, 'Offline' AS StatusLabel, NULL AS LastSeen
             WHERE 1 = 0
         `;
 
@@ -25266,6 +25615,50 @@ async function getItOpsHardwareSummary(pool) {
         ORDER BY COUNT(1) DESC;
     `);
 
+    const endpointResult = await pool.request().query(`
+        ;WITH Assets AS (
+            ${emSql}
+            UNION ALL
+            ${mdmSql}
+        ), EndpointEvidence AS (
+            SELECT
+                ISNULL(NULLIF(DeviceName, ''), '-') AS DeviceName,
+                ISNULL(NULLIF(Model, ''), '-') AS Model,
+                ISNULL(NULLIF(Platform, ''), 'Unknown') AS Platform,
+                ISNULL(NULLIF(Department, ''), 'Unmapped') AS Department,
+                ISNULL(NULLIF(StatusLabel, ''), CASE WHEN IsOnline = 1 THEN 'Online' ELSE 'Offline' END) AS StatusLabel,
+                IsOnline,
+                LastSeen,
+                CASE WHEN LastSeen IS NULL OR LastSeen < DATEADD(day, -7, GETDATE()) THEN 1 ELSE 0 END AS IsStale,
+                CASE WHEN NULLIF(DeviceName, '') IS NULL OR NULLIF(Model, '-') IS NULL THEN 1 ELSE 0 END AS HasMissingIdentity
+            FROM Assets
+        )
+        SELECT TOP 500
+            DeviceName,
+            Model,
+            Platform,
+            Department,
+            StatusLabel,
+            IsOnline,
+            LastSeen,
+            IsStale,
+            (
+                CASE WHEN IsOnline = 0 THEN 20 ELSE 0 END
+                + CASE WHEN IsStale = 1 THEN 25 ELSE 0 END
+                + CASE WHEN HasMissingIdentity = 1 THEN 10 ELSE 0 END
+            ) AS RiskScore,
+            CONCAT(
+                CASE WHEN IsOnline = 0 THEN 'Offline endpoint; ' ELSE '' END,
+                CASE WHEN IsStale = 1 THEN 'Stale connection; ' ELSE '' END,
+                CASE WHEN HasMissingIdentity = 1 THEN 'Missing identity; ' ELSE '' END
+            ) AS Reasons
+        FROM EndpointEvidence
+        ORDER BY
+            (CASE WHEN IsOnline = 0 THEN 20 ELSE 0 END + CASE WHEN IsStale = 1 THEN 25 ELSE 0 END + CASE WHEN HasMissingIdentity = 1 THEN 10 ELSE 0 END) DESC,
+            LastSeen DESC,
+            DeviceName ASC;
+    `);
+
     const summary = summaryResult.recordset?.[0] || {};
     const totalDevices = itopsToNumber(summary.TotalDevices);
 
@@ -25286,6 +25679,18 @@ async function getItOpsHardwareSummary(pool) {
             name: row.Name || "Unknown Model",
             value: itopsToNumber(row.Value),
             percent: itopsPercent(row.Value, totalDevices)
+        })),
+        endpointRows: (endpointResult.recordset || []).map(row => ({
+            deviceName: row.DeviceName || "-",
+            platform: row.Platform || "Unknown",
+            model: row.Model || "-",
+            department: row.Department || "Unmapped",
+            lastSeen: itopsDateLabel(row.LastSeen),
+            status: row.StatusLabel || (itopsToNumber(row.IsOnline) === 1 ? "Online" : "Offline"),
+            isOnline: itopsToNumber(row.IsOnline) === 1,
+            isStale: itopsToNumber(row.IsStale) === 1,
+            riskScore: itopsToNumber(row.RiskScore),
+            reasons: String(row.Reasons || "").replace(/;\s*$/, "") || (itopsToNumber(row.IsOnline) === 1 ? "Inventory evidence" : "Offline endpoint")
         }))
     };
 }
@@ -25579,10 +25984,13 @@ async function getItOpsTaskSummary(pool) {
 }
 
 async function getItOpsIncidentSummary(pool) {
-    const hasIncidents = await itopsTableExists(pool, "HD_Incidents");
+    const hasEmaIncidents = await itopsTableExists(pool, "EMA_Incidents");
+    const hasHdIncidents = await itopsTableExists(pool, "HD_Incidents");
+    const incidentTable = hasEmaIncidents ? "EMA_Incidents" : hasHdIncidents ? "HD_Incidents" : "";
 
-    if (!hasIncidents) {
+    if (!incidentTable) {
         return {
+            source: "none",
             openIncidents: 0,
             overdueTickets: 0,
             mttrMinutes: 0,
@@ -25601,12 +26009,19 @@ async function getItOpsIncidentSummary(pool) {
         };
     }
 
+    const closedStatusSql = "('resolved', 'closed', 'solved')";
+
     const summaryResult = await pool.request().query(`
         ;WITH Normalized AS (
             SELECT
                 IncidentID,
                 Title,
-                ISNULL(Priority, 'Medium') AS Priority,
+                CASE
+                    WHEN LOWER(ISNULL(Priority, '')) IN ('critical', 'p1', 'urgent') THEN 'Critical'
+                    WHEN LOWER(ISNULL(Priority, '')) IN ('high', 'p2') THEN 'High'
+                    WHEN LOWER(ISNULL(Priority, '')) IN ('low', 'p4') THEN 'Low'
+                    ELSE 'Medium'
+                END AS Priority,
                 ISNULL(Status, '') AS Status,
                 ISNULL(AssetID, '') AS AssetID,
                 ISNULL(AssignedTo, '') AS AssignedTo,
@@ -25615,11 +26030,11 @@ async function getItOpsIncidentSummary(pool) {
                 TRY_CONVERT(datetime, FirstResponseAt) AS FirstResponseAtDate,
                 TRY_CONVERT(datetime, ResolvedAt) AS ResolvedAtDate,
                 TRY_CONVERT(datetime, SlaDue) AS SlaDueDate
-            FROM HD_Incidents WITH (NOLOCK)
+            FROM ${incidentTable} WITH (NOLOCK)
         )
         SELECT
-            COUNT(CASE WHEN LOWER(Status) NOT IN ('resolved', 'closed') THEN 1 END) AS OpenIncidents,
-            COUNT(CASE WHEN LOWER(Status) NOT IN ('resolved', 'closed') AND SlaDueDate IS NOT NULL AND SlaDueDate < GETDATE() THEN 1 END) AS OverdueTickets,
+            COUNT(CASE WHEN LOWER(Status) NOT IN ${closedStatusSql} THEN 1 END) AS OpenIncidents,
+            COUNT(CASE WHEN LOWER(Status) NOT IN ${closedStatusSql} AND SlaDueDate IS NOT NULL AND SlaDueDate < GETDATE() THEN 1 END) AS OverdueTickets,
             AVG(CASE WHEN ResolvedAtDate IS NOT NULL AND CreatedAtDate IS NOT NULL THEN DATEDIFF(minute, CreatedAtDate, ResolvedAtDate) END) AS MttrMinutes,
             AVG(CASE WHEN FirstResponseAtDate IS NOT NULL AND CreatedAtDate IS NOT NULL THEN DATEDIFF(minute, CreatedAtDate, FirstResponseAtDate) END) AS FirstResponseMinutes,
             COUNT(CASE WHEN ResolvedAtDate IS NOT NULL AND SlaDueDate IS NOT NULL AND ResolvedAtDate <= SlaDueDate THEN 1 END) AS ResolvedWithinSla,
@@ -25629,11 +26044,21 @@ async function getItOpsIncidentSummary(pool) {
 
     const priorityResult = await pool.request().query(`
         SELECT
-            ISNULL(NULLIF(Priority, ''), 'Medium') AS Priority,
+            CASE
+                WHEN LOWER(ISNULL(Priority, '')) IN ('critical', 'p1', 'urgent') THEN 'Critical'
+                WHEN LOWER(ISNULL(Priority, '')) IN ('high', 'p2') THEN 'High'
+                WHEN LOWER(ISNULL(Priority, '')) IN ('low', 'p4') THEN 'Low'
+                ELSE 'Medium'
+            END AS Priority,
             COUNT(1) AS Total
-        FROM HD_Incidents WITH (NOLOCK)
-        WHERE LOWER(ISNULL(Status, '')) NOT IN ('resolved', 'closed')
-        GROUP BY ISNULL(NULLIF(Priority, ''), 'Medium');
+        FROM ${incidentTable} WITH (NOLOCK)
+        WHERE LOWER(ISNULL(Status, '')) NOT IN ${closedStatusSql}
+        GROUP BY CASE
+            WHEN LOWER(ISNULL(Priority, '')) IN ('critical', 'p1', 'urgent') THEN 'Critical'
+            WHEN LOWER(ISNULL(Priority, '')) IN ('high', 'p2') THEN 'High'
+            WHEN LOWER(ISNULL(Priority, '')) IN ('low', 'p4') THEN 'Low'
+            ELSE 'Medium'
+        END;
     `);
 
     const trendResult = await pool.request().query(`
@@ -25648,7 +26073,7 @@ async function getItOpsIncidentSummary(pool) {
                 TRY_CONVERT(datetime, CreatedAt) AS CreatedAtDate,
                 TRY_CONVERT(datetime, ResolvedAt) AS ResolvedAtDate,
                 ISNULL(Status, '') AS Status
-            FROM HD_Incidents WITH (NOLOCK)
+            FROM ${incidentTable} WITH (NOLOCK)
         )
         SELECT
             CONVERT(varchar(11), d.DayDate, 106) AS DayLabel,
@@ -25658,7 +26083,7 @@ async function getItOpsIncidentSummary(pool) {
                 WHEN n.CreatedAtDate IS NOT NULL
                  AND CAST(n.CreatedAtDate AS date) <= d.DayDate
                  AND (
-                    LOWER(n.Status) NOT IN ('resolved', 'closed')
+                    LOWER(n.Status) NOT IN ${closedStatusSql}
                     OR n.ResolvedAtDate IS NULL
                     OR CAST(n.ResolvedAtDate AS date) > d.DayDate
                  )
@@ -25676,31 +26101,41 @@ async function getItOpsIncidentSummary(pool) {
     `);
 
     const alertsResult = await pool.request().query(`
-        SELECT TOP 5
-            ISNULL(Priority, 'Medium') AS Priority,
+        SELECT TOP 50
+            CASE
+                WHEN LOWER(ISNULL(Priority, '')) IN ('critical', 'p1', 'urgent') THEN 'Critical'
+                WHEN LOWER(ISNULL(Priority, '')) IN ('high', 'p2') THEN 'High'
+                WHEN LOWER(ISNULL(Priority, '')) IN ('low', 'p4') THEN 'Low'
+                ELSE 'Medium'
+            END AS Priority,
             ISNULL(Title, IncidentID) AS Title,
             ISNULL(AssetID, '-') AS AssetID,
             ISNULL(NULLIF(AssignedTo, ''), NULLIF(AssignedLevel, '')) AS Owner,
-            ISNULL(Status, 'Open') AS Status
-        FROM HD_Incidents WITH (NOLOCK)
-        WHERE LOWER(ISNULL(Status, '')) NOT IN ('resolved', 'closed')
+            CASE WHEN Status = 'Solved' THEN 'Resolved' ELSE ISNULL(Status, 'Open') END AS Status
+        FROM ${incidentTable} WITH (NOLOCK)
+        WHERE LOWER(ISNULL(Status, '')) NOT IN ${closedStatusSql}
         ORDER BY
-            CASE ISNULL(Priority, '')
-                WHEN 'Critical' THEN 1
-                WHEN 'High' THEN 2
-                WHEN 'Medium' THEN 3
+            CASE
+                WHEN LOWER(ISNULL(Priority, '')) IN ('critical', 'p1', 'urgent') THEN 1
+                WHEN LOWER(ISNULL(Priority, '')) IN ('high', 'p2') THEN 2
+                WHEN LOWER(ISNULL(Priority, '')) IN ('medium', 'p3') THEN 3
                 ELSE 4
             END,
             TRY_CONVERT(datetime, CreatedAt) DESC;
     `);
 
     const problematicResult = await pool.request().query(`
-        SELECT TOP 5
+        SELECT TOP 20
             ISNULL(NULLIF(AssetID, ''), 'Unassigned Asset') AS Device,
             COUNT(1) AS IncidentCount,
-            SUM(CASE WHEN Priority = 'Critical' THEN 8 WHEN Priority = 'High' THEN 5 WHEN Priority = 'Medium' THEN 3 ELSE 1 END) AS RiskWeight,
-            SUM(CASE WHEN LOWER(ISNULL(Status, '')) NOT IN ('resolved', 'closed') THEN 1 ELSE 0 END) AS OpenCount
-        FROM HD_Incidents WITH (NOLOCK)
+            SUM(CASE
+                WHEN LOWER(ISNULL(Priority, '')) IN ('critical', 'p1', 'urgent') THEN 8
+                WHEN LOWER(ISNULL(Priority, '')) IN ('high', 'p2') THEN 5
+                WHEN LOWER(ISNULL(Priority, '')) IN ('medium', 'p3') THEN 3
+                ELSE 1
+            END) AS RiskWeight,
+            SUM(CASE WHEN LOWER(ISNULL(Status, '')) NOT IN ${closedStatusSql} THEN 1 ELSE 0 END) AS OpenCount
+        FROM ${incidentTable} WITH (NOLOCK)
         WHERE AssetID IS NOT NULL AND AssetID <> ''
         GROUP BY ISNULL(NULLIF(AssetID, ''), 'Unassigned Asset')
         ORDER BY RiskWeight DESC, IncidentCount DESC;
@@ -25727,6 +26162,7 @@ async function getItOpsIncidentSummary(pool) {
         : 0;
 
     return {
+        source: incidentTable,
         openIncidents: itopsToNumber(summary.OpenIncidents),
         overdueTickets: itopsToNumber(summary.OverdueTickets),
         mttrMinutes: itopsToNumber(summary.MttrMinutes),
@@ -25836,7 +26272,11 @@ async function getItOpsPatchSummary(pool) {
 async function getItOpsDepartmentRows(pool) {
     const hasRelations = await itopsTableExists(pool, "TS_OBJECT_RELATION");
     const hasEmAssets = await itopsTableExists(pool, "TS_OBJECT_ROOT");
-    const hasIncidents = await itopsTableExists(pool, "HD_Incidents");
+    const hasEmaIncidents = await itopsTableExists(pool, "EMA_Incidents");
+    const hasHdIncidents = await itopsTableExists(pool, "HD_Incidents");
+    const incidentTable = hasEmaIncidents ? "EMA_Incidents" : hasHdIncidents ? "HD_Incidents" : "";
+    const hasIncidents = Boolean(incidentTable);
+    const incidentOwnerExpr = hasEmaIncidents ? "RequesterName" : "CustomerName";
     const hasPatchStatus = await itopsTableExists(pool, "TS_UPDATE_ONLINE_STATUS");
 
     if (!hasRelations || !hasEmAssets) return [];
@@ -25848,10 +26288,10 @@ async function getItOpsDepartmentRows(pool) {
         ? `
             LEFT JOIN (
                 SELECT
-                    CustomerName,
-                    COUNT(CASE WHEN LOWER(ISNULL(Status, '')) NOT IN ('resolved', 'closed') THEN 1 END) AS OpenIncidents
-                FROM HD_Incidents WITH (NOLOCK)
-                GROUP BY CustomerName
+                    ${incidentOwnerExpr} AS CustomerName,
+                    COUNT(CASE WHEN LOWER(ISNULL(Status, '')) NOT IN ('resolved', 'closed', 'solved') THEN 1 END) AS OpenIncidents
+                FROM ${incidentTable} WITH (NOLOCK)
+                GROUP BY ${incidentOwnerExpr}
             ) inc
                 ON inc.CustomerName = rel.Object_Full_Name
                 OR inc.CustomerName = rel.Object_Rel_Name
@@ -26225,7 +26665,74 @@ async function getItOpsRiskSummary(pool, { hardware, patchSummary, network, geol
             { name: "BIOS age OK / not flagged", value: Math.max(totalRootRows - oldBiosDevices - missingHardwareIdentity, 0), percent: itopsRiskPercent(Math.max(totalRootRows - oldBiosDevices - missingHardwareIdentity, 0), totalRootRows), tone: "good" }
         ];
 
-        topHardwareRisk = [];
+        const rootTopResult = await pool.request()
+            .input("PCAgeLimit", sql.Int, effectiveAgeLimit)
+            .query(`
+                ;WITH RootRisk AS (
+                    SELECT
+                        ISNULL(NULLIF(r.ComputerName, ''), r.Object_DeviceID) AS DeviceName,
+                        ISNULL(rel.Object_Full_Name, 'Unmapped') AS Department,
+                        ISNULL(NULLIF(r.Model, ''), '-') AS Model,
+                        ISNULL(NULLIF(CONCAT(${osExpr}, ' ', ISNULL(${osVersionExpr}, '')), ''), 'Windows') AS OSName,
+                        ISNULL(NULLIF(${biosExpr}, ''), '-') AS BiosDate,
+                        r.ConnectionTime AS LastSeen,
+                        CASE WHEN r.ConnectionTime IS NULL OR r.ConnectionTime < DATEADD(day, -7, GETDATE()) THEN 1 ELSE 0 END AS IsStale,
+                        CASE WHEN NULLIF(LTRIM(RTRIM(ISNULL(r.Model, ''))), '') IS NULL OR NULLIF(LTRIM(RTRIM(ISNULL(r.IP, ''))), '') IS NULL OR NULLIF(LTRIM(RTRIM(ISNULL(${serialExpr}, ''))), '') IS NULL THEN 1 ELSE 0 END AS HasMissingIdentity,
+                        CASE WHEN TRY_CONVERT(date, ${biosExpr}) IS NOT NULL AND TRY_CONVERT(date, ${biosExpr}) < DATEADD(year, -@PCAgeLimit, GETDATE()) THEN 1 ELSE 0 END AS IsOldBios,
+                        CASE
+                            WHEN LOWER(ISNULL(CONCAT(${osExpr}, ' ', ISNULL(${osVersionExpr}, '')), '')) LIKE '%windows 7%'
+                              OR LOWER(ISNULL(CONCAT(${osExpr}, ' ', ISNULL(${osVersionExpr}, '')), '')) LIKE '%windows 8%'
+                              OR LOWER(ISNULL(CONCAT(${osExpr}, ' ', ISNULL(${osVersionExpr}, '')), '')) LIKE '%windows xp%'
+                              OR LOWER(ISNULL(CONCAT(${osExpr}, ' ', ISNULL(${osVersionExpr}, '')), '')) LIKE '%server 2012%'
+                            THEN 1 ELSE 0
+                        END AS IsUnsupportedOs,
+                        CASE
+                            WHEN LOWER(ISNULL(CONCAT(${osExpr}, ' ', ISNULL(${osVersionExpr}, '')), '')) LIKE '%20h2%'
+                              OR LOWER(ISNULL(CONCAT(${osExpr}, ' ', ISNULL(${osVersionExpr}, '')), '')) LIKE '%21h1%'
+                              OR LOWER(ISNULL(CONCAT(${osExpr}, ' ', ISNULL(${osVersionExpr}, '')), '')) LIKE '%21h2%'
+                              OR LOWER(ISNULL(CONCAT(${osExpr}, ' ', ISNULL(${osVersionExpr}, '')), '')) LIKE '%22h2%'
+                            THEN 1 ELSE 0
+                        END AS IsOutdatedOs
+                    FROM TS_OBJECT_ROOT r WITH (NOLOCK)
+                    LEFT JOIN TS_OBJECT_RELATION rel WITH (NOLOCK) ON r.Object_Rel_Idn = rel.Object_Rel_Idn
+                    ${biosJoin}
+                    ${clientJoin}
+                )
+                SELECT TOP 25
+                    DeviceName,
+                    OSName,
+                    Model,
+                    Department,
+                    BiosDate,
+                    LastSeen,
+                    (
+                        CASE WHEN IsUnsupportedOs = 1 THEN 45 ELSE 0 END
+                        + CASE WHEN IsOldBios = 1 THEN 30 ELSE 0 END
+                        + CASE WHEN IsStale = 1 THEN 18 ELSE 0 END
+                        + CASE WHEN HasMissingIdentity = 1 THEN 12 ELSE 0 END
+                    ) AS RiskScore,
+                    CONCAT(
+                        CASE WHEN IsUnsupportedOs = 1 THEN 'Unsupported OS; ' ELSE '' END,
+                        CASE WHEN IsOldBios = 1 THEN 'Old BIOS; ' ELSE '' END,
+                        CASE WHEN IsStale = 1 THEN 'Stale connection; ' ELSE '' END,
+                        CASE WHEN HasMissingIdentity = 1 THEN 'Missing identity; ' ELSE '' END
+                    ) AS Reasons
+                FROM RootRisk
+                WHERE IsUnsupportedOs = 1 OR IsOldBios = 1 OR IsStale = 1 OR HasMissingIdentity = 1
+                ORDER BY RiskScore DESC, DeviceName ASC;
+            `);
+
+        topHardwareRisk = (rootTopResult.recordset || []).map(row => ({
+            deviceName: row.DeviceName || "-",
+            platform: "Windows",
+            model: row.Model || "-",
+            department: row.Department || "Unmapped",
+            lastSeen: itopsDateLabel(row.LastSeen),
+            biosDate: row.BiosDate || "-",
+            osName: row.OSName || "-",
+            riskScore: itopsToNumber(row.RiskScore),
+            reasons: String(row.Reasons || "").replace(/;\s*$/, "")
+        }));
     }
 
     const staleHardwareDevices = itopsToNumber(hardware.staleSync);
@@ -26242,7 +26749,23 @@ async function getItOpsRiskSummary(pool, { hardware, patchSummary, network, geol
     const totalHigh = staleHardwareDevices + oldBiosDevices + failedTaskItems + Math.floor(geolocationRiskItems * 0.35) + Math.floor(networkRiskItems * 0.25);
     const totalMedium = outdatedOsDevices + missingHardwareIdentity + Math.floor(geolocationRiskItems * 0.65) + Math.floor(networkRiskItems * 0.75);
     const totalRiskItems = hardwareRiskItems + geolocationRiskItems + patchCriticalItems + failedTaskItems + networkRiskItems;
-    const score = Math.max(0, Math.min(100, Math.round((totalCritical * 3 + totalHigh * 1.5 + totalMedium) / Math.max(totalDevices || totalRiskItems || 1, 1) * 100)));
+
+    // Exposure index, not a raw percentage. The old score divided thousands of rows
+    // by total devices and easily forced the gauge to 100/100. This weights each
+    // domain by its own denominator so patch rows, geo rows and task rows do not
+    // overwhelm endpoint count.
+    const endpointExposure = itopsExposureRatio(hardwareRiskItems, totalDevices || hardware.totalDevices || 1);
+    const patchExposure = itopsExposureRatio(patchCriticalItems, patchSummary.missingPatches || patchCriticalItems || 1);
+    const geoExposure = itopsExposureRatio(geolocationRiskItems, Math.max(totalDevices + itopsToNumber(geolocation.trackedDevices), totalDevices, itopsToNumber(geolocation.trackedDevices), 1));
+    const networkExposure = itopsExposureRatio(networkRiskItems, itopsToNumber(network.knownIps) || networkRiskItems || 1);
+    const taskExposure = itopsExposureRatio(failedTaskItems, itopsToNumber(tasks.totalTasks) || failedTaskItems || 1);
+    const score = Math.max(0, Math.min(100, Math.round(
+        endpointExposure * 0.30 +
+        patchExposure * 0.20 +
+        geoExposure * 0.15 +
+        networkExposure * 0.20 +
+        taskExposure * 0.15
+    )));
 
     const severityTotal = Math.max(totalCritical + totalHigh + totalMedium, 1);
     const categoryTotal = Math.max(totalRiskItems, 1);
@@ -26487,6 +27010,7 @@ app.get("/api/dashboard/it-operations", authenticateToken, async (req, res) => {
             activeAlerts: incidentSummary.activeAlerts,
             problematicSystems: incidentSummary.problematicSystems,
             serviceDesk: {
+                source: incidentSummary.source || "-",
                 pendingTickets: openIncidents,
                 overdueTickets: itopsToNumber(incidentSummary.overdueTickets),
                 mttr: itopsFormatDuration(incidentSummary.mttrMinutes),
