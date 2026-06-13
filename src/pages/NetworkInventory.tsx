@@ -380,6 +380,16 @@ function countTotal(counts: Partial<NetworkCounts> | undefined) {
   return safe.registered + safe.notRegistered + safe.notInstalled + safe.otherDevice;
 }
 
+function getNetworkTreeCount(node?: NetworkHierarchyNode | null): number {
+  if (!node) return 0;
+  const ownTotal = countTotal(node.counts);
+  if (ownTotal > 0) return ownTotal;
+  const detailTotal = Object.values(node.deviceDetails || {}).reduce((total, rows) => total + (Array.isArray(rows) ? rows.length : 0), 0);
+  if (detailTotal > 0) return detailTotal;
+  if (isIpAddress(node.label)) return 1;
+  return (node.children || []).reduce((total, child) => total + getNetworkTreeCount(child), 0);
+}
+
 function normalizeManualStatus(value: unknown): ManualDeviceStatus {
   const text = getString(value, "Active").toLowerCase();
   if (text.includes("inactive") || text.includes("offline")) return "Inactive";
@@ -655,7 +665,7 @@ export default function NetworkInventory() {
   const selectedNode = useMemo(() => findNode(hierarchy, selectedNodeId) || hierarchy, [hierarchy, selectedNodeId]);
   const selectedCounts = useMemo(() => normalizeCounts(selectedNode?.counts), [selectedNode]);
   const rootCounts = useMemo(() => normalizeCounts(hierarchy?.counts), [hierarchy]);
-  const totalNetworkRecords = countTotal(rootCounts);
+  const totalNetworkRecords = useMemo(() => getNetworkTreeCount(hierarchy), [hierarchy]);
   const subnetCount = useMemo(() => countIpSegments(hierarchy), [hierarchy]);
   const filteredHierarchy = useMemo(() => (hierarchy ? filterHierarchy(hierarchy, treeSearch) : null), [hierarchy, treeSearch]);
   const workgroupStats = useMemo(() => deriveWorkgroupStats(hierarchy, workgroupApiRows), [hierarchy, workgroupApiRows]);
@@ -1452,7 +1462,7 @@ function NetworkTree({
 }) {
   const hasChildren = Boolean(node.children?.length);
   const isOpen = forceOpen || expandedIds.has(node.id);
-  const total = countTotal(node.counts);
+  const total = getNetworkTreeCount(node);
   const displayLabel = getNetworkBranchLabel(node);
   const isLeafIp = isIpAddress(displayLabel);
   const isRootNode = level === 0 || node.id === "organization" || String(node.label || "").trim().toLowerCase() === "organization";

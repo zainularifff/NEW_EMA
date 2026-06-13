@@ -61,6 +61,7 @@ const navSections: NavSection[] = [
       { label: "App Metering", path: "/appmetering", icon: Activity },
       { label: "Internet Metering", path: "/internet-metering", icon: Globe2 },
       { label: "App Restriction", path: "/app-restriction", icon: ShieldOff },
+      { label: "Web Restriction", path: "/web-restriction", icon: Globe2 },
       { label: "Patch Management", path: "/patch-management", icon: ShieldCheck },
       { label: "Software Distribution", path: "/software-distribution", icon: PackageCheck },
       { label: "Task List", path: "/tasklist", icon: ClipboardList },

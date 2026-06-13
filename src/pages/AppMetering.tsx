@@ -610,7 +610,9 @@ function getTreeDepthClass(depth: number) {
 
 function getTreeStatusPillClass(status = "") {
   const treeStatus = getTreeStatusClass(status);
-  return cx("user-pill", treeStatus === "online" && "active", treeStatus === "offline" && "locked", treeStatus === "unknown" && "muted-cell");
+  if (treeStatus === "online") return "user-pill active";
+  if (treeStatus === "offline") return "user-pill hardware-status-pill is-offline appm-status-offline";
+  return "user-pill muted-cell";
 }
 
 function getUsageStatusPillClass(status: UsageStatus) {
@@ -735,6 +737,12 @@ function appMeteringTreeMatchesSearch(node: TreeNode, search: string): boolean {
   return ownText.includes(keyword) || Boolean(node.children?.some((child) => appMeteringTreeMatchesSearch(child, keyword)));
 }
 
+function getAppMeteringTreeCount(node: TreeNode): number {
+  if (typeof node.count === "number" && Number.isFinite(node.count) && node.count > 0) return node.count;
+  if (node.type === "device" || node.type === "package") return 1;
+  return (node.children || []).reduce((total, child) => total + getAppMeteringTreeCount(child), 0);
+}
+
 function AppMeteringTree({
   nodes,
   selectedId,
@@ -793,6 +801,7 @@ function AppMeteringTree({
           >
             <span className="ema-sidebar-tree-icon"><Icon size={15} /></span>
             <span className="ema-sidebar-tree-label">{node.label}</span>
+            {!isRoot && getAppMeteringTreeCount(node) > 0 && <span className="ema-sidebar-tree-count">{getAppMeteringTreeCount(node).toLocaleString()}</span>}
           </button>
         </div>
 
@@ -881,14 +890,32 @@ export default function AppMetering() {
     try {
       const departments = await appMeteringService.getDepartments() as ApiDepartment[];
       const baseTree = buildDepartmentTree(departments);
+      const departmentPaths = collectDepartmentPaths(baseTree);
+      const cacheEntries: Record<string, TreeNode[]> = {};
 
-      // Do not load every /api/assets/:relationID record during initial render.
-      // Device targets are loaded on demand when a folder is selected so the page stays fast.
-      setDepartmentTree(baseTree);
-      setSelectedNode((prev) => findTreeNodeById(baseTree, prev.id) || baseTree[0] || emptyNode);
-      setAppMeteringDevices([]);
+      const assetResults = await Promise.allSettled(
+        departmentPaths.map(async (department) => {
+          const response = await appMeteringService.getAssetsByRelationID(department.relationID);
+          const rows = getDataArray<ApiAsset>(response)
+            .map((asset, index) => normalizeAssetNode(asset, department, index))
+            .filter((item): item is TreeNode => Boolean(item))
+            .sort((a, b) => a.label.localeCompare(b.label));
+
+          cacheEntries[String(department.relationID)] = rows;
+          return rows;
+        })
+      );
+
+      const allDeviceNodes = assetResults
+        .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
+        .sort((a, b) => a.label.localeCompare(b.label));
+      const treeWithCounts = attachDeviceInventoryToTree(baseTree, allDeviceNodes);
+
+      setDepartmentTree(treeWithCounts);
+      setSelectedNode((prev) => findTreeNodeById(treeWithCounts, prev.id) || treeWithCounts[0] || emptyNode);
+      setAppMeteringDevices(allDeviceNodes);
       setScopeDeviceRows([]);
-      setAssetCache({});
+      setAssetCache(cacheEntries);
     } catch (err) {
       setError("Branch view is not available right now.");
       setAppMeteringDevices([]);
@@ -1298,6 +1325,14 @@ export default function AppMetering() {
           opacity: 0.95 !important;
         }
 
+        /* Device offline state follows Hardware: neutral grey, not danger red. */
+        .appmetering-module-root .user-pill.hardware-status-pill.is-offline,
+        .appmetering-module-root .user-pill.appm-status-offline {
+          color: #64748b !important;
+          background: rgba(100, 116, 139, 0.12) !important;
+          border: 1px solid rgba(100, 116, 139, 0.22) !important;
+        }
+
         @media (max-width: 1100px) {
           .appmetering-module-root .settings-layout.appmetering-settings-layout {
             grid-template-columns: 1fr !important;
@@ -1367,8 +1402,8 @@ export default function AppMetering() {
             <div>
               <span className="eyebrow">APPLICATION COMMAND CENTER</span>
               <h2>Application Metering</h2>
-              <p>{kpiScopeType}: {kpiScopeLabel} · {kpiPeriodLabel} · {kpiFilterLabel}</p>
-              {selectedScopeMetering ? <p>Active metering started {formatMeteringStartedAt(selectedScopeMetering.startedAt)} · {selectedScopeMetering.scopeLabel}</p> : null}
+              {/* <p>{kpiScopeType}: {kpiScopeLabel} · {kpiPeriodLabel} · {kpiFilterLabel}</p>
+              {selectedScopeMetering ? <p>Active metering started {formatMeteringStartedAt(selectedScopeMetering.startedAt)} · {selectedScopeMetering.scopeLabel}</p> : null} */}
             </div>
             <div className="settings-score ema-kpi-right-pair">
               <button className="score-box text-start" type="button" onClick={loadUsage}>

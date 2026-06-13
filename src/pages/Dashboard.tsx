@@ -443,13 +443,6 @@ function resolveApiBaseUrl() {
   const envUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
   if (envUrl) return envUrl.replace(/\/$/, '');
 
-  if (typeof window !== 'undefined') {
-    const { hostname, port, protocol } = window.location;
-    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
-    const isVite = port === '5173' || port === '5174' || port === '3000';
-    if (isLocal && isVite) return `${protocol}//${hostname}:3001`;
-  }
-
   return '';
 }
 

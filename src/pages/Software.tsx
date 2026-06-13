@@ -81,6 +81,7 @@ type TreeNode = {
   platformType?: string;
   connectionStatus?: string;
   ip?: string;
+  count?: number;
   devicesLoaded?: boolean;
   devicesLoading?: boolean;
 };
@@ -135,16 +136,6 @@ type ApiRowsPayload = unknown[] | { data?: unknown[] | Record<string, unknown>; 
 function resolveApiBaseUrl() {
   const envUrl = ((import.meta.env.VITE_API_BASE_URL as string | undefined) || (import.meta.env.VITE_API_URL as string | undefined) || "").trim();
   if (envUrl) return envUrl.replace(/\/$/, "");
-
-  if (typeof window !== "undefined") {
-    const { hostname, port, protocol } = window.location;
-    const isLocalHost = hostname === "localhost" || hostname === "127.0.0.1";
-    const isViteDevPort = port === "5173" || port === "5174" || port === "3000";
-
-    if (isLocalHost && isViteDevPort) {
-      return `${protocol}//${hostname}:3001`;
-    }
-  }
 
   return "";
 }
@@ -493,20 +484,38 @@ function getDepartmentName(department: DepartmentNode) {
   return department.Object_Rel_Name || department.Object_Full_Name || `Department ${department.Object_Rel_Idn}`;
 }
 
+function getDepartmentCount(department: DepartmentNode) {
+  const record = department as DepartmentNode & Record<string, unknown>;
+  const count = Number(record.TotalDevices ?? record.DeviceCount ?? record.AssetCount ?? record.TotalAssets ?? record.Count ?? record.count ?? 0);
+  return Number.isFinite(count) ? count : 0;
+}
+
+function getSoftwareTreeCount(node: TreeNode): number {
+  if (typeof node.count === "number" && Number.isFinite(node.count) && node.count > 0) return node.count;
+  if (node.type === "device") return 1;
+  return (node.children || []).reduce((total, child) => total + getSoftwareTreeCount(child), 0);
+}
+
 function mapDepartmentsToTree(departments: DepartmentNode[], depth = 0): TreeNode[] {
-  return departments.map((department) => ({
-    id: `dept-${department.Object_Rel_Idn}`,
-    label: getDepartmentName(department),
-    type: depth <= 0 ? "branch" : "dept",
-    relationId: department.Object_Rel_Idn,
-    children: mapDepartmentsToTree(department.children || [], depth + 1),
-    devicesLoaded: false,
-    devicesLoading: false,
-  }));
+  return departments.map((department) => {
+    const children = mapDepartmentsToTree(department.children || [], depth + 1);
+    const explicitCount = getDepartmentCount(department);
+    return {
+      id: `dept-${department.Object_Rel_Idn}`,
+      label: getDepartmentName(department),
+      type: depth <= 0 ? "branch" : "dept",
+      relationId: department.Object_Rel_Idn,
+      count: explicitCount || children.reduce((total, child) => total + getSoftwareTreeCount(child), 0),
+      children,
+      devicesLoaded: false,
+      devicesLoading: false,
+    };
+  });
 }
 
 function buildDeviceTreeFromDepartments(departments: DepartmentNode[]): TreeNode[] {
-  return [{ id: "org-root", label: "All Branches", type: "org", relationId: -1, children: mapDepartmentsToTree(departments) }];
+  const children = mapDepartmentsToTree(departments);
+  return [{ id: "org-root", label: "All Branches", type: "org", relationId: -1, count: children.reduce((total, child) => total + getSoftwareTreeCount(child), 0), children }];
 }
 
 function collectDepartmentRelationIds(departments: DepartmentNode[]): number[] {
@@ -533,6 +542,47 @@ function mapAssetToDeviceNode(asset: AssetItem, relationId?: number): TreeNode {
     ip: safeString(asset.IP, ""),
     relationId,
   };
+}
+
+function attachSoftwareDeviceInventoryToTree(nodes: TreeNode[], deviceNodes: TreeNode[]): TreeNode[] {
+  const knownRelationIds = new Set<number>();
+  const collectKnownRelations = (items: TreeNode[]) => {
+    items.forEach((item) => {
+      if (typeof item.relationId === "number" && item.relationId > 0) knownRelationIds.add(item.relationId);
+      if (item.children?.length) collectKnownRelations(item.children);
+    });
+  };
+  collectKnownRelations(nodes);
+
+  const devicesByRelation = new Map<number, TreeNode[]>();
+  const rootOnlyDevices: TreeNode[] = [];
+  deviceNodes.forEach((device) => {
+    const relationId = device.relationId || 0;
+    if (relationId && knownRelationIds.has(relationId)) {
+      devicesByRelation.set(relationId, [...(devicesByRelation.get(relationId) || []), device]);
+    } else {
+      rootOnlyDevices.push(device);
+    }
+  });
+
+  const sortDevices = (items: TreeNode[]) => items.slice().sort((a, b) => a.label.localeCompare(b.label));
+  const walk = (node: TreeNode, isRoot = false): TreeNode => {
+    const folderChildren = (node.children || [])
+      .filter((child) => child.type !== "device")
+      .map((child) => walk(child, false));
+    const directDevices = typeof node.relationId === "number" && node.relationId > 0 ? sortDevices(devicesByRelation.get(node.relationId) || []) : [];
+    const orphanDevices = isRoot ? sortDevices(rootOnlyDevices) : [];
+    const totalCount = directDevices.length + orphanDevices.length + folderChildren.reduce((total, child) => total + getSoftwareTreeCount(child), 0);
+    return {
+      ...node,
+      count: totalCount || node.count || 0,
+      children: [...folderChildren, ...directDevices, ...orphanDevices],
+      devicesLoaded: true,
+      devicesLoading: false,
+    };
+  };
+
+  return nodes.map((node, index) => walk(node, index === 0 && node.type === "org"));
 }
 
 function updateTreeNode(nodes: TreeNode[], nodeId: string, updater: (node: TreeNode) => TreeNode): TreeNode[] {
@@ -678,7 +728,17 @@ export default function Software() {
     try {
       const response = await apiGet<DepartmentNode[] | { data?: DepartmentNode[] }>("/api/departments");
       const departments = Array.isArray(response) ? response : Array.isArray(response.data) ? response.data : [];
-      setDeviceTree(buildDeviceTreeFromDepartments(departments));
+      const baseTree = buildDeviceTreeFromDepartments(departments);
+      const relationIds = collectDepartmentRelationIds(departments);
+      const assetResults = await Promise.allSettled(
+        relationIds.map(async (relationId) => {
+          const assetResponse = await apiGet<AssetItem[] | { data?: AssetItem[] }>(`/api/assets/${relationId}`);
+          const assets = Array.isArray(assetResponse) ? assetResponse : Array.isArray(assetResponse.data) ? assetResponse.data : [];
+          return assets.map((asset) => mapAssetToDeviceNode(asset, relationId));
+        })
+      );
+      const deviceNodes = assetResults.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
+      setDeviceTree(attachSoftwareDeviceInventoryToTree(baseTree, deviceNodes));
     } catch (error) {
       const message = "Branch view is not available right now.";
       setTreeError(message);
@@ -1144,6 +1204,7 @@ export default function Software() {
                         : <Folder size={15} />}
                 </span>
                 <span className="ema-sidebar-tree-label">{node.label}</span>
+                {node.type !== "org" && getSoftwareTreeCount(node) > 0 && <span className="ema-sidebar-tree-count">{getSoftwareTreeCount(node).toLocaleString()}</span>}
               </button>
 
               {node.devicesLoading ? <RefreshCw size={12} className="spin" /> : null}

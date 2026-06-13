@@ -86,24 +86,6 @@ type FormState = {
 
 const modules: ModuleConfig[] = [
   {
-    id: 'appBlacklist',
-    label: 'App Restriction',
-    helper: 'S/W restriction blacklist',
-    policyType: 1006,
-    icon: ShieldAlert,
-    color: 'rose',
-    tabs: ['status', 'settings', 'policyStatus'],
-  },
-  {
-    id: 'appWhitelist',
-    label: 'App Whitelist',
-    helper: 'Default permitted software',
-    policyType: 1012,
-    icon: ShieldCheck,
-    color: 'emerald',
-    tabs: ['status', 'settings', 'policyStatus'],
-  },
-  {
     id: 'webRestriction',
     label: 'Web Restriction',
     helper: 'Website restriction policy',
@@ -427,13 +409,17 @@ const getRowText = (row: Record<string, unknown>, keys: string[], fallback = '-'
   return fallback;
 };
 
-const toTarget = (node: RestrictionTreeNode): RestrictionTarget | null => {
-  if (node.type === 'org') return null;
+const getRestrictionDisplayLabel = (node: Pick<RestrictionTreeNode, 'type' | 'label'>, depth = 0) => {
+  const label = String(node.label || '').trim();
+  if (depth === 0 || node.type === 'org' || node.type === 'root') return 'All Branches';
+  return label || 'Unnamed Scope';
+};
 
-  if (node.type === 'root') {
+const toTarget = (node: RestrictionTreeNode): RestrictionTarget | null => {
+  if (node.type === 'org' || node.type === 'root') {
     return {
-      id: node.id,
-      label: node.label,
+      id: node.id || 'organization',
+      label: getRestrictionDisplayLabel(node, 0),
       type: 'root',
       target_type: 1,
       target_id: '-1',
@@ -459,10 +445,10 @@ const toTarget = (node: RestrictionTreeNode): RestrictionTarget | null => {
 const findFirstTarget = (nodes: RestrictionTreeNode[]): RestrictionTarget | null => {
   for (const node of nodes) {
     const target = toTarget(node);
-    if (target?.type === 'device') return target;
+    if (target) return target;
+
     const childTarget = findFirstTarget(node.children || []);
     if (childTarget) return childTarget;
-    if (target) return target;
   }
   return null;
 };
@@ -637,9 +623,9 @@ const createFormFromPolicy = (
   };
 };
 
-export default function AppWebRestriction() {
-  const [activeModule, setActiveModule] = useState<RestrictionModule>('appBlacklist');
-  const [activeTab, setActiveTab] = useState<SubTab>('status');
+export default function WebRestriction() {
+  const [activeModule, setActiveModule] = useState<RestrictionModule>('webRestriction');
+  const [activeTab, setActiveTab] = useState<SubTab>('settings');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [treeNodes, setTreeNodes] = useState<RestrictionTreeNode[]>([]);
   const [targetTreeSearch, setTargetTreeSearch] = useState('');
@@ -1543,9 +1529,11 @@ export default function AppWebRestriction() {
         const hasChildren = Boolean(node.children?.length);
         const isOpen = expandedGroups.has(node.id);
         const target = toTarget(node);
-        const isSelected = target && selectedTarget?.id === target.id;
+        const isSelected = Boolean(target && selectedTarget?.id === target.id);
         const isRootNode = depth === 0 || node.type === 'org' || node.type === 'root';
-        const Icon = node.type === 'org' ? Server : node.type === 'root' ? Layers : node.type === 'department' ? (isOpen ? FolderOpen : Folder) : Laptop;
+        const isDevice = node.type === 'device';
+        const displayLabel = getRestrictionDisplayLabel(node, depth);
+        const Icon = isDevice ? Laptop : hasChildren && isOpen ? FolderOpen : Folder;
         const treeCount = getRestrictionTreeCount(node);
         const countLabel = formatRestrictionTreeCount(treeCount);
         const handleNodeAction = () => {
@@ -1560,29 +1548,28 @@ export default function AppWebRestriction() {
               `depth-${Math.min(depth, 8)}`,
               isSelected && 'is-selected is-active',
               hasChildren && 'is-expandable',
-              isRootNode && 'is-appweb-root',
-              node.type === 'device' && 'is-device-node',
+              isDevice && 'is-device-node',
             )}>
               <button
                 type="button"
                 className="ema-sidebar-tree-toggle"
-                aria-label={hasChildren ? (isOpen ? `Collapse ${node.label}` : `Expand ${node.label}`) : node.label}
+                aria-label={hasChildren ? (isOpen ? `Collapse ${displayLabel}` : `Expand ${displayLabel}`) : displayLabel}
                 onClick={(event) => {
                   event.stopPropagation();
                   if (hasChildren) toggleExpand(node.id);
                 }}
               >
-                {!isRootNode && hasChildren ? (isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />) : <span />}
+                {hasChildren ? (isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />) : <span aria-hidden="true" />}
               </button>
 
               <button
                 type="button"
                 className="ema-sidebar-tree-main"
-                title={node.Object_Full_Name || node.label}
+                title={node.Object_Full_Name || displayLabel}
                 onClick={handleNodeAction}
               >
-                <span className="ema-sidebar-tree-icon"><Icon size={14} /></span>
-                <span className="ema-sidebar-tree-label">{node.label}</span>
+                <span className="ema-sidebar-tree-icon"><Icon size={15} /></span>
+                <span className="ema-sidebar-tree-label">{displayLabel}</span>
                 {!isRootNode && countLabel ? <span className="ema-sidebar-tree-count">{countLabel}</span> : null}
               </button>
 
@@ -1598,63 +1585,47 @@ export default function AppWebRestriction() {
 
 
   return (
-    <main className="settings-module-root ema-module-root ema-settings-pro appwebrestriction-module appweb-scroll-module" data-section="appwebrestriction">
+    <main className="settings-module-root hardware-module-root ema-settings-pro appwebrestriction-module container-fluid p-3 p-xl-4" data-section="appwebrestriction">
       <style>{`
-        main[data-section="appwebrestriction"].appwebrestriction-module .settings-layout.appweb-settings-layout {
+
+
+        /* Hardware sidebar fix: wider panel + keep Branch/Statistics switcher compact. */
+        .hardware-module-root .settings-layout.hardware-settings-layout {
           grid-template-columns: minmax(300px, 322px) minmax(0, 1fr) !important;
         }
 
-        main[data-section="appwebrestriction"].appwebrestriction-module .settings-menu.appweb-left-panel {
+        .hardware-module-root .settings-menu.hardware-left-panel {
           min-width: 300px !important;
         }
 
-        main[data-section="appwebrestriction"].appwebrestriction-module .settings-menu > .ema-module-sidebar-switcher {
+        .hardware-module-root .settings-menu > .ema-module-sidebar-switcher {
           flex: 0 0 auto !important;
           margin: 0 !important;
         }
 
-        main[data-section="appwebrestriction"].appwebrestriction-module .settings-menu > .ema-sidebar-content {
+        .hardware-module-root .settings-menu > .ema-sidebar-content {
           flex: 1 1 auto !important;
           padding-top: 0.65rem !important;
         }
 
-        main[data-section="appwebrestriction"].appwebrestriction-module .ema-sidebar-subpanel {
+        .hardware-module-root .ema-sidebar-subpanel {
           justify-content: flex-start !important;
         }
 
-        main[data-section="appwebrestriction"].appwebrestriction-module .ema-sidebar-tree {
+        .hardware-module-root .ema-sidebar-tree {
           min-height: 0 !important;
         }
 
-        main[data-section="appwebrestriction"].appwebrestriction-module .ema-sidebar-tree-node.is-appweb-root {
-          grid-template-columns: 24px minmax(0, 1fr) !important;
-        }
-
-        main[data-section="appwebrestriction"].appwebrestriction-module .ema-sidebar-tree-node.is-appweb-root .ema-sidebar-tree-toggle svg,
-        main[data-section="appwebrestriction"].appwebrestriction-module .ema-sidebar-tree-node.is-appweb-root .ema-sidebar-tree-count,
-        main[data-section="appwebrestriction"].appwebrestriction-module .ema-sidebar-tree-node.is-appweb-root .ema-sidebar-tree-menu-wrap {
-          display: none !important;
-        }
-
-        main[data-section="appwebrestriction"].appwebrestriction-module .ema-sidebar-empty {
-          border: 1px dashed rgba(148, 163, 184, 0.42);
-          border-radius: 14px;
-          color: #64748b;
-          font-size: 0.82rem;
-          font-weight: 800;
-          padding: 0.75rem;
-        }
-
         @media (max-width: 1100px) {
-          main[data-section="appwebrestriction"].appwebrestriction-module .settings-layout.appweb-settings-layout {
+          .hardware-module-root .settings-layout.hardware-settings-layout {
             grid-template-columns: 1fr !important;
           }
 
-          main[data-section="appwebrestriction"].appwebrestriction-module .settings-menu.appweb-left-panel {
+          .hardware-module-root .settings-menu.hardware-left-panel {
             min-width: 0 !important;
-            max-width: none !important;
           }
         }
+
       `}</style>
       {notice && (
         <div className="settings-toast-layer">
@@ -1672,12 +1643,12 @@ export default function AppWebRestriction() {
           </div>
         </div>
       )}
-      <div className="settings-layout appweb-settings-layout d-grid gap-3">
-        <aside className="settings-menu appweb-left-panel ema-panel-surface">
+      <div className="settings-layout hardware-settings-layout d-grid gap-3">
+        <aside className="settings-menu hardware-left-panel ema-panel-surface">
           <div className="panel-head">
-            <span>APP RESTRICTION</span>
-            <strong>Restriction Control</strong>
-            <small>Device scope and policy modules.</small>
+            <span>WEB RESTRICTION</span>
+            <strong>Web Control</strong>
+            <small>Device scope and website restriction policies.</small>
           </div>
 
           <nav
@@ -1710,7 +1681,7 @@ export default function AppWebRestriction() {
 
           <div className="ema-sidebar-content">
             <div className="ema-sidebar-subpanel">
-              <label className="section-search ema-sidebar-field" htmlFor="restrictionSidebarSearch">
+              <div className="section-search ema-sidebar-field">
                 <Search size={15} />
                 <input
                   id="restrictionSidebarSearch"
@@ -1719,14 +1690,9 @@ export default function AppWebRestriction() {
                   placeholder="Search branch / device..."
                 />
                 {targetTreeSearch && <button type="button" className="ema-sidebar-search-clear" onClick={() => setTargetTreeSearch('')}><X size={14} /></button>}
-              </label>
-
-              <div className="settings-helper-card ema-sidebar-scope-card">
-                <strong>{selectedTarget?.label || 'No target selected'}</strong>
-                <span>{selectedTarget?.Object_Full_Name || 'Select a branch or device from the tree'}</span>
               </div>
 
-              <div className="ema-sidebar-tree" role="tree" aria-label="App and web restriction branch tree">
+              <div className="ema-sidebar-tree" role="tree" aria-label="Web restriction branch tree">
                 {loading && treeNodes.length === 0 ? (
                   <div className="ema-sidebar-empty"><Loader2 className="me-2 animate-spin" size={14} /> Loading branch scope...</div>
                 ) : filteredTreeNodes.length > 0 ? (
@@ -1747,7 +1713,7 @@ export default function AppWebRestriction() {
                 <ChevronRight size={12} />
                 <span>{moduleConfig.label}</span>
               </div>
-              <h2>App / Web Restriction</h2>
+              <h2>Web Restriction</h2>
               <p>
                 Selected target: {selectedTarget?.label || 'None'}
                 {selectedTarget?.Object_Full_Name ? ` (${selectedTarget.Object_Full_Name})` : ''}

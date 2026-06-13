@@ -10,7 +10,8 @@ import TaskList from "./pages/TaskList";
 import Report from "./pages/Report";
 import Software from "./pages/Software";
 import AppMetering from "./pages/AppMetering";
-import AppWebRestriction from "./pages/AppWebRestriction";
+import AppRestriction from "./pages/AppRestriction";
+import WebRestriction from "./pages/WebRestriction";
 import SoftwareDistribution from "./pages/SoftwareDistribution";
 import PatchManagement from "./pages/PatchManagement";
 import InternetMetering from "./pages/InternetMetering";
@@ -41,7 +42,8 @@ export default function App() {
         <Route path="/report" element={<Report />} />
         <Route path="/software" element={<Software />} />
         <Route path="/appmetering" element={<AppMetering />} />
-        <Route path="/app-restriction" element={<AppWebRestriction />} />
+        <Route path="/app-restriction" element={<AppRestriction />} />
+        <Route path="/web-restriction" element={<WebRestriction />} />
         <Route path="/software-distribution" element={<SoftwareDistribution />} />
         <Route path="/patch-management" element={<PatchManagement />} />
         <Route path="/internet-metering" element={<InternetMetering />} />

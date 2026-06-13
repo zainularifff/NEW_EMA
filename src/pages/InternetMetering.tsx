@@ -260,6 +260,62 @@ body.internet-metering-page-active .pricing-table-card,
 body.internet-metering-page-active .settings-helper-card {
   background-color: rgba(255, 255, 255, 0.94) !important;
 }
+
+
+.internet-metering-page .settings-layout.internet-settings-layout {
+  grid-template-columns: minmax(300px, 322px) minmax(0, 1fr) !important;
+}
+
+.internet-metering-page .settings-menu.internet-left-panel {
+  min-width: 300px !important;
+}
+
+.internet-metering-page .settings-menu > .ema-module-sidebar-switcher {
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+}
+
+.internet-metering-page .settings-menu > .ema-sidebar-content {
+  flex: 1 1 auto !important;
+  padding-top: 0.65rem !important;
+}
+
+.internet-metering-page .ema-sidebar-subpanel {
+  justify-content: flex-start !important;
+}
+
+.internet-metering-page .ema-sidebar-tree {
+  min-height: 0 !important;
+}
+
+.internet-metering-page .ema-sidebar-tree-node.is-internet-root {
+  grid-template-columns: 24px minmax(0, 1fr) !important;
+}
+
+.internet-metering-page .ema-sidebar-tree-node.is-internet-root .ema-sidebar-tree-toggle svg,
+.internet-metering-page .ema-sidebar-tree-node.is-internet-root .ema-sidebar-tree-count,
+.internet-metering-page .ema-sidebar-tree-node.is-internet-root .ema-sidebar-tree-menu-wrap {
+  display: none !important;
+}
+
+.internet-metering-page .ema-sidebar-empty {
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+  border-radius: 14px;
+  color: #64748b;
+  font-size: 0.82rem;
+  padding: 0.75rem;
+}
+
+@media (max-width: 1100px) {
+  .internet-metering-page .settings-layout.internet-settings-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .internet-metering-page .settings-menu.internet-left-panel {
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+}
 `;
 
 
@@ -378,11 +434,11 @@ async function preloadDepartmentNode(row: any, index: number, visited = new Set<
   );
   const assets = assetRows.map(mapAsset);
 
-  return {
+  return resolveTreeCounts({
     ...baseNode,
     children: [...departments, ...assets],
     childrenLoaded: true,
-  };
+  });
 }
 
 function mapUsageRow(row: any, index: number): InternetUsageRow {
@@ -440,6 +496,21 @@ function treeDisplayCount(node: TreeNodeType): number {
   if (node.type === 'device' || node.type === 'url') return 1;
   if (!node.children?.length) return 0;
   return node.children.reduce((sum, child) => sum + treeDisplayCount(child), 0);
+}
+
+function resolveTreeCounts(node: TreeNodeType): TreeNodeType {
+  const children = node.children?.map(resolveTreeCounts) || [];
+  const existingCount = typeof node.count === 'number' && Number.isFinite(node.count) && node.count > 0 ? node.count : 0;
+  const computedCount = node.type === 'device' || node.type === 'url'
+    ? 1
+    : children.reduce((sum, child) => sum + treeDisplayCount(child), 0);
+  const count = Math.max(existingCount, computedCount);
+
+  return {
+    ...node,
+    children,
+    count: count > 0 ? count : node.count,
+  };
 }
 
 function filterTreeNode(node: TreeNodeType, query: string): TreeNodeType | null {
@@ -708,40 +779,56 @@ function TreeNode({
   const selected = selectedId === node.id;
   const displayLabel = rootDisplayLabel && level === 0 ? rootDisplayLabel : node.label;
   const Icon = node.type === 'device' ? Laptop : node.type === 'url' ? Globe : open ? FolderOpen : Folder;
-  const indentClass = level > 0 ? `ms-${Math.min(level + 2, 4)}` : '';
-  const subtitle = node.type === 'device'
-    ? (node.objectDeviceID || 'Endpoint device')
-    : node.type === 'url'
-      ? (node.restrict ? 'Restricted URL' : 'Managed URL')
-      : open
-        ? 'Click to collapse scope'
-        : 'Click to expand scope';
+  const isRootNode = level === 0 || node.type === 'all' || node.id === 'all-devices' || node.id === 'url-sidebar-root' || node.id === 'url-root';
+  const count = treeDisplayCount(node);
 
-  const handleSelect = async () => {
-    onSelect(node);
-
+  const loadAndToggle = async () => {
     if (!canExpand) return;
     if (!node.childrenLoaded && onLoadChildren) await onLoadChildren(node);
     setOpen((value) => !value);
   };
 
+  const handleMainClick = async () => {
+    onSelect(node);
+    await loadAndToggle();
+  };
+
   return (
-    <div className={clsx('d-grid gap-2', indentClass)}>
-      <button
-        type="button"
-        className={clsx('setting-btn', selected && 'active')}
-        onClick={handleSelect}
-        title={node.label}
-      >
-        <span className="setting-icon"><Icon size={16} /></span>
-        <span>
-          <strong>{displayLabel}</strong>
-          <small>{subtitle}</small>
-        </span>
-      </button>
+    <div className="ema-sidebar-tree-branch">
+      <div className={clsx(
+        'ema-sidebar-tree-node',
+        `depth-${Math.min(level, 8)}`,
+        selected && 'is-selected is-active',
+        canExpand && 'is-expandable',
+        node.type === 'device' && 'is-device-node',
+        node.type === 'url' && 'is-url-node',
+        isRootNode && 'is-internet-root',
+      )}>
+        <button
+          type="button"
+          className="ema-sidebar-tree-toggle"
+          onClick={async (event) => {
+            event.stopPropagation();
+            await loadAndToggle();
+          }}
+          aria-label={canExpand ? `${open ? 'Collapse' : 'Expand'} ${displayLabel}` : displayLabel}
+        >
+          {!isRootNode && canExpand ? open ? <ChevronDown size={14} /> : <ChevronRight size={14} /> : <span />}
+        </button>
+
+        <button type="button" className="ema-sidebar-tree-main" onClick={handleMainClick} title={node.label}>
+          <span className="ema-sidebar-tree-icon">
+            <Icon size={15} />
+          </span>
+          <span className="ema-sidebar-tree-label">{displayLabel}</span>
+          {!isRootNode && count > 0 && <span className="ema-sidebar-tree-count">{formatNumber(count)}</span>}
+        </button>
+
+        <span />
+      </div>
 
       {open && Boolean(node.children?.length) && (
-        <div className="d-grid gap-2 ms-3">
+        <div className="ema-sidebar-tree-children is-nested">
           {node.children?.map((child) => (
             <TreeNode
               key={child.id}
@@ -814,7 +901,7 @@ export default function InternetMetering() {
       detail: {
         path: window.location.pathname,
         title: 'Internet Metering',
-        subtitle: 'Monitor device web usage, usage results and URL rules.',
+        subtitle: 'Manage device scope and URL rules.',
         searchPlaceholder: 'Search domain, URL, device, user or rule ID...',
       },
     }));
@@ -831,7 +918,7 @@ export default function InternetMetering() {
   const [urlRoot, setUrlRoot] = useState<TreeNodeType>({ id: 'url-root', label: 'Domain Rules', type: 'url-folder', children: [], childrenLoaded: true });
   const [selectedUrl, setSelectedUrl] = useState<TreeNodeType>({ id: 'url-root', label: 'All domains', type: 'url-folder', childrenLoaded: true });
 
-  const [sidebarTab, setSidebarTab] = useState<'organization' | 'statistic' | 'filters'>('organization');
+  const [sidebarTab, setSidebarTab] = useState<'organization' | 'filters'>('organization');
   const [sidebarSearch, setSidebarSearch] = useState('');
 
   const [usageRows, setUsageRows] = useState<InternetUsageRow[]>([]);
@@ -891,7 +978,7 @@ export default function InternetMetering() {
       if (node.type === 'all') {
         const payload = await internetMeteringService.getDepartments();
         const departmentRows = extractDepartmentRows(payload);
-        departments = departmentRows.map((row, index) => mapDepartment(row, index));
+        departments = await Promise.all(departmentRows.map((row, index) => preloadDepartmentNode(row, index)));
       } else if (node.type === 'folder' && node.objectRelIdn) {
         const folderPayload = await internetMeteringService.getDepartmentChildren(node.objectRelIdn).catch(() => ({ departments: [], assets: [] }));
         const departmentRows = extractDepartmentRows(folderPayload);
@@ -902,14 +989,15 @@ export default function InternetMetering() {
           assetRows = extractAssetRows(assetPayload);
         }
 
-        departments = departmentRows.map((row, index) => mapDepartment(row, index));
+        departments = await Promise.all(departmentRows.map((row, index) => preloadDepartmentNode(row, index, new Set([node.objectRelIdn!]))));
         assets = assetRows.map(mapAsset);
       }
 
       if (requestId !== orgLoadSeq.current) return;
 
-      const children = [...departments, ...assets];
-      const nextCount = typeof node.count === 'number' && node.count > 0 ? node.count : children.reduce((sum, item) => sum + treeDisplayCount(item), 0);
+      const children = [...departments, ...assets].map(resolveTreeCounts);
+      const computedCount = children.reduce((sum, item) => sum + treeDisplayCount(item), 0);
+      const nextCount = Math.max(typeof node.count === 'number' && node.count > 0 ? node.count : 0, computedCount);
       writeInternetMeteringCache(cacheKey, children);
       setOrgRoot((current) => updateNode(current, node.id, (target) => ({ ...target, count: nextCount || target.count, children, childrenLoaded: true })));
       setSelectedScope((current) => (current.id === node.id ? { ...current, count: nextCount || current.count, children, childrenLoaded: true } : current));
@@ -1178,13 +1266,6 @@ export default function InternetMetering() {
 
   const sidebarOrgTree = useMemo(() => filterTreeNode(orgRoot, sidebarSearch) || { ...orgRoot, children: [] }, [orgRoot, sidebarSearch]);
   const sidebarDomainTree = useMemo(() => filterTreeNode(sidebarUrlRoot, sidebarSearch) || { ...sidebarUrlRoot, children: [] }, [sidebarUrlRoot, sidebarSearch]);
-  const sidebarStats = useMemo(() => [
-    { id: 'stat-total-records', label: 'Total Records', value: stats.totalRecords },
-    { id: 'stat-total-domains', label: 'Total Domains', value: stats.totalDomains },
-    { id: 'stat-total-usage', label: 'Usage Time', value: formatDuration(stats.totalUsageSeconds) },
-    { id: 'stat-access-count', label: 'Access Count', value: stats.totalCounts },
-  ], [stats]);
-
   const urlRows = useMemo(() => flattenUrlNodes(urlRoot), [urlRoot]);
   const managedUrlRows = useMemo(() => urlRows.filter((node) => node.restrict === 0), [urlRows]);
   const restrictedUrlRows = useMemo(() => urlRows.filter((node) => node.restrict === 1), [urlRows]);
@@ -1408,98 +1489,84 @@ export default function InternetMetering() {
         </div>
       )}
 
-      <div className="settings-layout d-grid gap-3">
-        <aside className="settings-menu ema-panel-surface">
+      <div className="settings-layout internet-settings-layout d-grid gap-3">
+        <aside className="settings-menu internet-left-panel ema-panel-surface">
           <div className="panel-head">
             <span>INTERNET METERING</span>
             <strong>Metering Control</strong>
-            <small>Device scope, usage result and URL rules</small>
+            <small>Device scope and URL rules</small>
           </div>
 
           <nav
-            className="d-grid gap-2 p-2 border-bottom"
-            style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}
+            className="settings-menu-list ema-module-sidebar-nav ema-module-sidebar-switcher"
             role="tablist"
             aria-label="Internet metering navigation"
           >
             <button
               type="button"
-              className={clsx(sidebarTab === 'organization' ? 'primary-btn' : 'soft-btn', 'w-100 flex-column gap-1 px-2 py-2')}
+              className={clsx('setting-btn', sidebarTab === 'organization' && 'active')}
               title="Scope - Branches and devices"
-              onClick={() => setSidebarTab('organization')}
+              onClick={() => {
+                setSidebarTab('organization');
+                setSidebarSearch('');
+              }}
             >
-              <FolderOpen size={15} />
-              <span>Scope</span>
+              <span className="setting-icon"><FolderOpen size={16} /></span>
+              <span><strong>Scope</strong><small>Branch and device scope</small></span>
             </button>
             <button
               type="button"
-              className={clsx(sidebarTab === 'statistic' ? 'primary-btn' : 'soft-btn', 'w-100 flex-column gap-1 px-2 py-2')}
-              title="Usage - Summary and results"
-              onClick={() => setSidebarTab('statistic')}
-            >
-              <FileText size={15} />
-              <span>Usage</span>
-            </button>
-            <button
-              type="button"
-              className={clsx(sidebarTab === 'filters' ? 'primary-btn' : 'soft-btn', 'w-100 flex-column gap-1 px-2 py-2')}
+              className={clsx('setting-btn', sidebarTab === 'filters' && 'active')}
               title="Rules - Managed and restricted URLs"
-              onClick={() => setSidebarTab('filters')}
+              onClick={() => {
+                setSidebarTab('filters');
+                setSidebarSearch('');
+              }}
             >
-              <Globe size={15} />
-              <span>Rules</span>
+              <span className="setting-icon"><Globe size={16} /></span>
+              <span><strong>Rules</strong><small>Managed and restricted URLs</small></span>
             </button>
           </nav>
 
-          <div className="p-3 pb-2">
-            <label className="section-search">
-              <Search size={15} />
-              <input
-                value={sidebarSearch}
-                onChange={(event) => setSidebarSearch(event.target.value)}
-                placeholder={sidebarTab === 'filters' ? 'Search rules...' : sidebarTab === 'statistic' ? 'Search usage...' : 'Search device / scope...'}
-              />
-            </label>
-          </div>
-
-          <div className="settings-menu-list">
-            {sidebarTab === 'organization' && (
-              <>
-                <TreeNode
-                  node={sidebarOrgTree}
-                  selectedId={selectedScope.id}
-                  onSelect={handleSelectScopeNode}
-                  onLoadChildren={loadOrgChildren}
-                  rootDisplayLabel="All Devices"
-                  defaultOpen
+          <div className="ema-sidebar-content">
+            <div className="ema-sidebar-subpanel">
+              <div className="section-search ema-sidebar-field">
+                <Search size={15} />
+                <input
+                  value={sidebarSearch}
+                  onChange={(event) => setSidebarSearch(event.target.value)}
+                  placeholder={sidebarTab === 'filters' ? 'Search rules...' : 'Search branch / device...'}
                 />
-                {treeLoading && <div className="settings-helper-card"><Loader2 className="me-2" size={14} /> Loading device scope...</div>}
-                {sidebarSearch && !sidebarOrgTree.children?.length && sidebarOrgTree.id === orgRoot.id && (
-                  <div className="settings-helper-card">No matching scope.</div>
-                )}
-              </>
-            )}
+              </div>
 
-            {sidebarTab === 'statistic' && (
-              <>
-                {sidebarStats.map((item) => (
-                  <button type="button" key={item.id} className="setting-btn" onClick={() => openResultsLog()}>
-                    <span className="setting-icon"><FileText size={14} /></span>
-                    <span><strong>{typeof item.value === 'number' ? formatNumber(item.value) : item.value}</strong><small>{item.label}</small></span>
-                  </button>
-                ))}
-              </>
-            )}
-
-            {sidebarTab === 'filters' && (
-              <>
-                <TreeNode node={sidebarDomainTree} selectedId={sidebarSelectedUrlId} onSelect={handleSelectUrlNode} rootDisplayLabel="All Domains" defaultOpen />
-                {urlLoading && <div className="settings-helper-card"><Loader2 className="me-2" size={14} /> Loading URL rules...</div>}
-                {sidebarSearch && !sidebarDomainTree.children?.length && (
-                  <div className="settings-helper-card">No matching domain filter.</div>
+              <div className="ema-sidebar-tree" aria-label={sidebarTab === 'filters' ? 'Internet rule tree' : 'Internet metering scope tree'}>
+                {sidebarTab === 'organization' && (
+                  <>
+                    <TreeNode
+                      node={sidebarOrgTree}
+                      selectedId={selectedScope.id}
+                      onSelect={handleSelectScopeNode}
+                      onLoadChildren={loadOrgChildren}
+                      rootDisplayLabel="All Devices"
+                      defaultOpen
+                    />
+                    {sidebarSearch && !sidebarOrgTree.children?.length && sidebarOrgTree.id === orgRoot.id && (
+                      <div className="ema-sidebar-empty">No matching scope.</div>
+                    )}
+                  </>
                 )}
-              </>
-            )}
+
+                {sidebarTab === 'filters' && (
+                  <>
+                    <TreeNode node={sidebarDomainTree} selectedId={sidebarSelectedUrlId} onSelect={handleSelectUrlNode} rootDisplayLabel="All Domains" defaultOpen />
+                    {urlLoading && <div className="ema-sidebar-empty"><Loader2 className="me-2" size={14} /> Loading URL rules...</div>}
+                    {sidebarSearch && !sidebarDomainTree.children?.length && (
+                      <div className="ema-sidebar-empty">No matching domain rule.</div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </aside>
 

@@ -54,7 +54,7 @@ type ModalType =
   | "deleteFolder"
   | null;
 type SessionType = "view" | "full" | "file";
-type ToastType = "success" | "error" | "info";
+type ToastType = "success" | "error" | "info" | "delete";
 type ToastState = {
   type: ToastType;
   title: string;
@@ -404,16 +404,6 @@ function resolveApiBaseUrl() {
   const envUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
   if (envUrl) return envUrl.replace(/\/$/, "");
 
-  if (typeof window !== "undefined") {
-    const { hostname, port, protocol } = window.location;
-    const isLocalHost = hostname === "localhost" || hostname === "127.0.0.1";
-    const isViteDevPort = port === "5173" || port === "5174" || port === "3000";
-
-    if (isLocalHost && isViteDevPort) {
-      return `${protocol}//${hostname}:3001`;
-    }
-  }
-
   return "";
 }
 
@@ -565,9 +555,8 @@ function normalizeHardwareStatRow(row: unknown): HardwareApiRow {
     const nonEmptyKeys = Object.keys(record).filter((key) => key !== "" && record[key] !== undefined && record[key] !== null && String(record[key]).trim() !== "");
     const numericValue = Number(String(emptyKeyValue).replace(/,/g, ""));
 
-    // Some backend statistic stored procedures return the label in a named
-    // column such as TCAVersion/OS and the count under an empty column name:
-    // { TCAVersion: "8.1.1.0", "": 15 }. Normalize that empty field as
+    // Some statistic records return the label in a named column such as TCAVersion/OS
+    // and the count under an empty column name. Normalize that empty field as
     // the count so all statistic tables can read it consistently.
     if (Number.isFinite(numericValue)) {
       normalized.Count = emptyKeyValue;
@@ -751,8 +740,8 @@ function getStatisticTotal(row: HardwareApiRow, fallback = 0) {
 }
 
 function getStatisticPercentage(row: HardwareApiRow, count: number, total: number) {
-  const backendPercentage = readHardwareNumber(row, ["Percentage", "Percent", "Rate", "Ratio"], NaN);
-  if (Number.isFinite(backendPercentage)) return backendPercentage;
+  const reportedPercentage = readHardwareNumber(row, ["Percentage", "Percent", "Rate", "Ratio"], NaN);
+  if (Number.isFinite(reportedPercentage)) return reportedPercentage;
   return total > 0 ? (count / total) * 100 : 0;
 }
 
@@ -882,9 +871,9 @@ function getReportItemText(row: HardwareApiRow, selectedStatistic: string) {
 }
 
 function getReportWorkgroupText(row: HardwareApiRow) {
-  // Do not fall back to column2 here. In the report stored procedure output,
-  // column2 is often a count/frequency/subtotal value, not a Workgroup name.
-  // Only display a value when the backend actually returns a Workgroup-like field.
+  // Do not fall back to column2 here. In the report output, column2 is often
+  // a count/frequency/subtotal value, not a Workgroup name. Only display a
+  // value when the result includes a Workgroup-like field.
   return readHardwareText(row, [
     "Workgroup",
     "WorkGroup",
@@ -1014,11 +1003,11 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<A
   try {
     payload = rawBody ? JSON.parse(rawBody) : ({ success: response.ok, data: undefined as T } as ApiEnvelope<T>);
   } catch {
-    throw new Error("Unable to read server response.");
+    throw new Error("Unable to read the latest result.");
   }
 
   if (!response.ok || payload.success === false) {
-    throw new Error(payload.errorMessage || payload.message || `Request failed: ${response.status}`);
+    throw new Error(payload.errorMessage || payload.message || `Action could not be completed. Status: ${response.status}`);
   }
 
   return payload;
@@ -1518,7 +1507,7 @@ function getGeoRowsFromUnknown(value: unknown, depth = 0, visited = new WeakSet<
     rows.push(...getGeoRowsFromUnknown(candidate, depth + 1, visited));
   }
 
-  // Last safety net: SureMDM responses can be nested differently between versions.
+  // Last safety check: SureMDM data can be nested differently between versions.
   // Search any nested object, but only keep rows that actually contain coordinates.
   for (const nested of Object.values(record)) {
     if (nested && typeof nested === "object") {
@@ -1559,8 +1548,8 @@ function parseLongitudeLatitude(row: GeolocationApiRow | undefined) {
   const second = parseGeoNumber(parts[1]);
 
   if (first !== null && second !== null) {
-    // Backend normalizes LongitudeLatitude as "longitude / latitude".
-    // Some SureMDM payloads use "latitude, longitude", so detect obvious ranges too.
+    // Saved coordinate values can use "longitude / latitude". Some SureMDM records
+    // use "latitude, longitude", so detect obvious ranges too.
     if (Math.abs(first) <= 90 && Math.abs(second) > 90) {
       return { latitude: parts[0], longitude: parts[1] };
     }
@@ -1930,6 +1919,7 @@ function FolderTree({
   expandedKeys,
   folderMenuKey,
   search,
+  countMap,
   onSelect,
   onToggle,
   onMenu,
@@ -1943,6 +1933,7 @@ function FolderTree({
   expandedKeys: Record<string, boolean>;
   folderMenuKey: string | null;
   search: string;
+  countMap: Record<string, number>;
   onSelect: (key: string) => void;
   onToggle: (key: string) => void;
   onMenu: (key: string | null) => void;
@@ -1955,6 +1946,7 @@ function FolderTree({
   const hasChildren = Boolean(node.children?.length);
   const isExpanded = expandedKeys[node.key] ?? false;
   const isSelected = selectedKey === node.key;
+  const displayCount = countMap[node.key] || 0;
 
   return (
     <div className="ema-sidebar-tree-branch">
@@ -1968,6 +1960,7 @@ function FolderTree({
             {hasChildren && isExpanded ? <FolderOpen size={15} /> : <Folder size={15} />}
           </span>
           <span className="ema-sidebar-tree-label">{node.label}</span>
+          {node.key !== "organization" && displayCount > 0 && <span className="ema-sidebar-tree-count">{displayCount.toLocaleString()}</span>}
         </button>
 
         {node.key !== "organization" && (
@@ -2011,6 +2004,7 @@ function FolderTree({
               expandedKeys={expandedKeys}
               folderMenuKey={folderMenuKey}
               search={search}
+              countMap={countMap}
               onSelect={onSelect}
               onToggle={onToggle}
               onMenu={onMenu}
@@ -2200,6 +2194,13 @@ export default function HardwareInventory() {
   }, [allTreeNodes]);
 
   const selectedFolderDescendants = useMemo(() => descendantMap.get(selectedFolderKey) ?? [selectedFolderKey], [descendantMap, selectedFolderKey]);
+  const folderDeviceCountMap = useMemo(() => {
+    return allTreeNodes.reduce<Record<string, number>>((counts, node) => {
+      const folderKeys = descendantMap.get(node.key) ?? [node.key];
+      counts[node.key] = apiDevices.filter((device) => device.pathKeys.some((key) => folderKeys.includes(key))).length;
+      return counts;
+    }, {});
+  }, [allTreeNodes, apiDevices, descendantMap]);
   const selectedFolderLabel = allTreeNodes.find((node) => node.key === selectedFolderKey)?.label ?? "All Branches";
   const folderModalParentLabel = allTreeNodes.find((node) => node.key === folderModalParentKey)?.label ?? "All Branches";
   const allDevices = apiDevices;
@@ -2430,7 +2431,7 @@ export default function HardwareInventory() {
       await loadHardwareInventory();
       if (selectedFolderKey === node.key || (descendantMap.get(node.key) ?? []).includes(selectedFolderKey)) setSelectedFolderKey("organization");
       setPage(1);
-      showToast("success", "Folder deleted", `${node.label} has been deleted successfully.`);
+      showToast("delete", "Folder deleted", `${node.label} has been deleted successfully.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to delete folder.";
       setFolderActionError(message);
@@ -2663,8 +2664,7 @@ export default function HardwareInventory() {
               : `Hardware inventory scan - ${selectedDevice.name}`,
       });
 
-      const jobId = response.data?.Job_Idn ? ` Job ID: ${response.data.Job_Idn}.` : "";
-      const targetCount = response.data?.targetCount ? ` Target: ${response.data.targetCount}.` : "";
+      const targetCount = response.data?.targetCount ? ` Devices included: ${response.data.targetCount}.` : "";
       showToast("success", "Inventory refresh started", `Hardware inventory refresh has started.${targetCount}`);
       setNote(`Hardware inventory refresh started.${targetCount}`);
     } catch (error) {
@@ -2856,7 +2856,7 @@ export default function HardwareInventory() {
       const apiMessage = normalizeApiMessage(response.message, "Success");
       const message = broadcastMessage
         ? `Broadcast message sent to ${successCount}/${total} ${selectedDevice.os || "platform"} device(s).`
-        : `${selectedDevice.name} message response: ${apiMessage}.`;
+        : `${selectedDevice.name} message result: ${apiMessage}.`;
 
       setActiveModal(null);
       setNote(message);
@@ -3374,7 +3374,7 @@ export default function HardwareInventory() {
       }
 
       if (rows.length === 0) {
-        return emptyState("No data returned", "The backend API returned an empty result for this statistic.");
+        return emptyState("No records found", "No information is available for this statistic yet.");
       }
 
       if (selectedStatistic === "conn-summary") {
@@ -3468,7 +3468,7 @@ export default function HardwareInventory() {
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-tight">Changed Items</h4>
-                <p className="text-[9px] text-slate-500 mt-0.5">Live changed hardware data from backend API</p>
+                <p className="text-[9px] text-slate-500 mt-0.5">Latest changed hardware records</p>
               </div>
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{rows.length} Records</span>
             </div>
@@ -3551,8 +3551,8 @@ export default function HardwareInventory() {
 
       if (selectedStatistic.startsWith("stat-")) {
         const summedCount = rows.reduce((sum, row) => sum + getStatisticCount(row), 0);
-        const backendTotal = rows.reduce((max, row) => Math.max(max, getStatisticTotal(row, 0)), 0);
-        const totalCount = backendTotal || summedCount || rows.length;
+        const reportedTotal = rows.reduce((max, row) => Math.max(max, getStatisticTotal(row, 0)), 0);
+        const totalCount = reportedTotal || summedCount || rows.length;
         return (
           <div>
             <div className="mb-3">
@@ -4088,6 +4088,68 @@ export default function HardwareInventory() {
           z-index: 2147483647 !important;
           max-width: min(26rem, calc(100vw - 32px)) !important;
           pointer-events: auto !important;
+          display: flex !important;
+          align-items: flex-start !important;
+          gap: 12px !important;
+          padding: 16px 18px !important;
+          border: 1px solid #bfdbfe !important;
+          border-radius: 18px !important;
+          background: #ffffff !important;
+          box-shadow: 0 18px 42px rgba(15, 23, 42, 0.16) !important;
+        }
+
+        .hardware-module-root .hardware-toast-icon,
+        body .hardware-toast .hardware-toast-icon {
+          width: 40px !important;
+          height: 40px !important;
+          flex: 0 0 40px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          border-radius: 14px !important;
+          color: #2563eb !important;
+          background: #eff6ff !important;
+          border: 1px solid #bfdbfe !important;
+        }
+
+        .hardware-module-root .hardware-toast-success,
+        body .hardware-toast-success {
+          border-color: #bbf7d0 !important;
+        }
+
+        .hardware-module-root .hardware-toast-success .hardware-toast-icon,
+        body .hardware-toast-success .hardware-toast-icon {
+          color: #16a34a !important;
+          background: #dcfce7 !important;
+          border-color: #bbf7d0 !important;
+        }
+
+        .hardware-module-root .hardware-toast-error,
+        .hardware-module-root .hardware-toast-delete,
+        body .hardware-toast-error,
+        body .hardware-toast-delete {
+          border-color: #fecaca !important;
+        }
+
+        .hardware-module-root .hardware-toast-error .hardware-toast-icon,
+        .hardware-module-root .hardware-toast-delete .hardware-toast-icon,
+        body .hardware-toast-error .hardware-toast-icon,
+        body .hardware-toast-delete .hardware-toast-icon {
+          color: #dc2626 !important;
+          background: #fee2e2 !important;
+          border-color: #fecaca !important;
+        }
+
+        .hardware-module-root .hardware-toast-info,
+        body .hardware-toast-info {
+          border-color: #bfdbfe !important;
+        }
+
+        .hardware-module-root .hardware-toast-info .hardware-toast-icon,
+        body .hardware-toast-info .hardware-toast-icon {
+          color: #2563eb !important;
+          background: #eff6ff !important;
+          border-color: #bfdbfe !important;
         }
 
         @media (max-width: 720px) {
@@ -4232,7 +4294,7 @@ export default function HardwareInventory() {
               onClick={() => setActiveTab("organization")}
             >
               <span className="setting-icon"><FolderOpen size={16} /></span>
-              <span><strong>Branch</strong><small>Branch endpoint scope</small></span>
+              <span><strong>Branch</strong><small>Branch device scope</small></span>
             </button>
             <button
               type="button"
@@ -4265,6 +4327,7 @@ export default function HardwareInventory() {
                         expandedKeys={expandedKeys}
                         folderMenuKey={folderMenuKey}
                         search={searchHierarchy}
+                        countMap={folderDeviceCountMap}
                         onSelect={handleFolderSelect}
                         onToggle={handleFolderToggle}
                         onMenu={setFolderMenuKey}
@@ -4458,7 +4521,7 @@ export default function HardwareInventory() {
                 {activeTableFilterCount ? ` • Table filters: ${activeTableFilterCount}` : ""}
                 {searchDevices ? ` • Search: ${searchDevices}` : ""}
                 {inventoryLoading ? " • Loading device data..." : ""}
-                {apiError ? ` • Notice: ${apiError}` : ""}
+                {apiError ? " • Note: Some records could not be refreshed." : ""}
               </span>
             </div>
           </div>
@@ -4674,7 +4737,7 @@ export default function HardwareInventory() {
 
       {toast && (
         <div className={`hardware-toast hardware-toast-${toast.type}`} role="status">
-          <div className="hardware-toast-icon">{toast.type === "success" ? <CheckCircle size={18} /> : <AlertCircle size={18} />}</div>
+          <div className="hardware-toast-icon">{toast.type === "success" ? <CheckCircle size={18} /> : toast.type === "delete" ? <Trash2 size={18} /> : <AlertCircle size={18} />}</div>
           <div>
             <strong>{toast.title}</strong>
             <span>{toast.message}</span>
