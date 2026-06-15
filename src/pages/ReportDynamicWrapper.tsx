@@ -88,6 +88,7 @@ const DYNAMIC_REPORT_IDS = Object.keys(DYNAMIC_REPORTS);
 const LAST_DYNAMIC_PAYLOAD_KEY = "__emaLastDynamicReportPayload";
 const FETCH_PATCHED_KEY = "__emaDynamicReportFetchNormalised";
 const PRINT_PATCHED_KEY = "__emaDynamicReportPrintGuardInstalled";
+const DAILY_CACHE_PREFIX = "__emaDynamicReportDailyCache:";
 const DAILY_DISCLAIMER = "AI Dynamic Reporting is generated once per day for each selected report title. The content reflects the latest available dataset at generation time and should be reviewed by the report owner before management sign-off.";
 
 function safeJsonParse(value: any): AnyRecord | null {
@@ -112,10 +113,22 @@ function requestUrl(input: RequestInfo | URL) {
   return String(input || "");
 }
 
+function reportDayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function dailyCacheKey(definition: DynamicReportDefinition) {
+  return `${DAILY_CACHE_PREFIX}${definition.id}:${reportDayKey()}`;
+}
+
 function cleanDynamicText(value: any, fallback = "") {
   const text = String(value ?? "").replace(/\s+/g, " ").trim();
   if (!text) return fallback;
-  return text.replace(/AI Executive Summary/gi, "AI Dynamic Report").replace(/Executive Summary/gi, "Dynamic Report").replace(/executive summary/g, "dynamic report");
+  return text
+    .replace(/AI Executive Summary/gi, "AI Dynamic Report")
+    .replace(/Executive Management Brief/gi, "AI Dynamic Narrative")
+    .replace(/Executive Summary/gi, "Dynamic Report")
+    .replace(/executive summary/g, "dynamic report");
 }
 
 function isStaticExecutiveTemplate(value: any) {
@@ -129,13 +142,11 @@ function isStaticExecutiveTemplate(value: any) {
     "software inventory record(s) are available in scope",
     "executive management brief",
     "recommended response is to prioritise breached",
-    "reporting cycle"
+    "reporting cycle",
+    "offline or not online",
+    "stale or missing last-seen telemetry"
   ];
   return markers.some((marker) => text.includes(marker));
-}
-
-function reportDayKey() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 function dynamicAiInstruction(definition: DynamicReportDefinition) {
@@ -143,16 +154,81 @@ function dynamicAiInstruction(definition: DynamicReportDefinition) {
     `Generate a fresh ${definition.title} using Gemini Flash narrative.`,
     `Focus only on ${definition.promptFocus}.`,
     `Do not reuse Executive Summary wording, do not use the heading Immediate management attention is required, and do not produce generic endpoint-only paragraphs unless they directly support ${definition.title}.`,
+    "Do not copy the same paragraph structure across dynamic report titles.",
     "Every paragraph, finding, section insight and recommendation must be specific to the selected report title.",
     "This AI Dynamic Reporting output is generated once per day for this report title; include a short disclaimer that the report reflects the latest available dataset at generation time and requires owner review before management sign-off."
   ].join(" ");
+}
+
+function fallbackNarrative(definition: DynamicReportDefinition) {
+  const byId: Record<string, { title: string; paragraphs: string[]; findings: string[] }> = {
+    "dynamic-compliance-report": {
+      title: "Compliance evidence requires owner validation before sign-off",
+      paragraphs: [
+        "This Compliance Report is an AI-assisted governance review for audit readiness, control evidence and exception ownership. The analysis should focus on whether inventory, OS, software and service records are strong enough to support compliance sign-off.",
+        "The management priority is to confirm every compliance gap has a named owner, supporting evidence, target closure date and an approved acceptance status before it is presented as closed or acceptable.",
+        "The recommended response is to validate compliance exceptions, confirm unsupported or unverified assets, and prepare a traceable evidence register before management approval."
+      ],
+      findings: [
+        "Compliance output must be reviewed against evidence quality.",
+        "Exception ownership should be confirmed before sign-off.",
+        "Audit-ready records should include owner, status and closure date."
+      ]
+    },
+    "dynamic-cost-saving-report": {
+      title: "Cost saving opportunities require tracked financial ownership",
+      paragraphs: [
+        "This Cost Saving Report is an AI-assisted optimisation review for recurring cost, renewal exposure and avoidable support workload. The analysis should focus on savings opportunities rather than repeat endpoint health commentary.",
+        "Management should separate quick-win savings from planned procurement decisions so every opportunity has an expected value, owner, dependency and target review date.",
+        "The recommended response is to create a savings tracker covering unused software, overlapping applications, refresh candidates and procurement decisions that can reduce recurring cost."
+      ],
+      findings: [
+        "Savings items need owner and estimated value.",
+        "Software rationalisation should be reviewed before renewal.",
+        "Refresh planning should prioritise avoidable support cost."
+      ]
+    },
+    "dynamic-risk-management-report": {
+      title: "Risk exposure requires severity-based remediation ownership",
+      paragraphs: [
+        "This Risk Management Report is an AI-assisted exposure review for severity, remediation accountability and governance escalation. The analysis should convert operational signals into a risk treatment plan.",
+        "Management should review each risk signal by business impact, likelihood, owner and target date so unresolved operational gaps are converted into accountable remediation actions.",
+        "The recommended response is to maintain a risk register with severity, exception approval status, remediation evidence and escalation path for overdue items."
+      ],
+      findings: [
+        "Risk items need severity and owner validation.",
+        "Unsupported or stale assets should be treated as exposure signals.",
+        "Remediation evidence should be tracked before governance review."
+      ]
+    }
+  };
+  return byId[definition.id];
+}
+
+function safeDynamicField(value: any, definition: DynamicReportDefinition, fallback: string) {
+  const cleaned = cleanDynamicText(value);
+  if (!cleaned || isStaticExecutiveTemplate(cleaned)) return fallback;
+  return cleaned;
+}
+
+function sanitiseDynamicRow(row: any, definition: DynamicReportDefinition, index: number) {
+  if (!row || typeof row !== "object") return row;
+  const fallback = fallbackNarrative(definition);
+  const insight = fallback.findings[index % fallback.findings.length] || definition.summaryLabel;
+  const result: AnyRecord = { ...row };
+  Object.keys(result).forEach((key) => {
+    if (typeof result[key] !== "string") return;
+    result[key] = safeDynamicField(result[key], definition, insight);
+  });
+  return result;
 }
 
 function normaliseDynamicSections(sections: any[], definition: DynamicReportDefinition) {
   const sourceSections = Array.isArray(sections) ? sections : [];
   const mapped = sourceSections.map((section, index) => {
     const type = String(section?.type || "table");
-    return { ...section, title: definition.sectionTitles[type] || `${definition.title} Section ${index + 1}`, rows: Array.isArray(section?.rows) ? section.rows : [] };
+    const rows = Array.isArray(section?.rows) ? section.rows.map((row: any, rowIndex: number) => sanitiseDynamicRow(row, definition, rowIndex)) : [];
+    return { ...section, title: definition.sectionTitles[type] || `${definition.title} Section ${index + 1}`, rows };
   });
 
   mapped.unshift({
@@ -178,48 +254,47 @@ function normaliseDynamicSections(sections: any[], definition: DynamicReportDefi
   return mapped;
 }
 
-function fallbackNarrative(definition: DynamicReportDefinition) {
-  const byId: Record<string, { title: string; paragraphs: string[]; findings: string[] }> = {
-    "dynamic-compliance-report": {
-      title: "Compliance evidence requires owner validation before sign-off",
-      paragraphs: [
-        "This Compliance Report should be treated as an AI-assisted governance review, not a repeated operational executive summary. The report focus is audit readiness, control evidence, exception ownership and whether available inventory data is strong enough for compliance sign-off.",
-        "The key management concern is not only the number of devices or software records, but whether each compliance gap has a named owner, supporting evidence, target closure date and clear acceptance status.",
-        "The recommended action is to validate compliance exceptions, confirm unsupported or unverified assets, and prepare a traceable evidence register before management approval."
-      ],
-      findings: ["Compliance output must be reviewed against evidence quality.", "Exception ownership should be confirmed before sign-off.", "Audit-ready records should include owner, status and closure date."]
-    },
-    "dynamic-cost-saving-report": {
-      title: "Cost saving opportunities require tracked financial ownership",
-      paragraphs: [
-        "This Cost Saving Report should highlight optimisation opportunities rather than repeat endpoint health commentary. The report focus is software rationalisation, renewal cleanup, duplicate tooling, refresh planning and avoidable support cost.",
-        "Management should separate quick-win savings from planned procurement decisions so every opportunity has an expected value, owner, dependency and target review date.",
-        "The recommended action is to create a savings tracker covering unused software, overlapping applications, refresh candidates and procurement decisions that can reduce recurring cost."
-      ],
-      findings: ["Savings items need owner and estimated value.", "Software rationalisation should be reviewed before renewal.", "Refresh planning should prioritise avoidable support cost."]
-    },
-    "dynamic-risk-management-report": {
-      title: "Risk exposure requires severity-based remediation ownership",
-      paragraphs: [
-        "This Risk Management Report should focus on exposure, severity and remediation accountability rather than repeat a general executive summary. The report focus is risk ownership, unsupported assets, SLA pressure, data quality and remediation priority.",
-        "Management should review each risk signal by business impact, likelihood, owner and target date so unresolved operational gaps are converted into accountable treatment actions.",
-        "The recommended action is to maintain a risk register with severity, exception approval status, remediation evidence and escalation path for overdue items."
-      ],
-      findings: ["Risk items need severity and owner validation.", "Unsupported or stale assets should be treated as exposure signals.", "Remediation evidence should be tracked before governance review."]
-    }
-  };
-  return byId[definition.id];
-}
-
 function normaliseRecommendations(rawPayload: AnyRecord, definition: DynamicReportDefinition) {
   const source = Array.isArray(rawPayload.recommendations) ? rawPayload.recommendations : [];
   const cleaned = source.map((item: any) => {
-    if (typeof item === "string") return { priority: "AI", action: cleanDynamicText(item) };
-    const action = cleanDynamicText(item?.action || item?.recommendation || item?.description || "");
-    if (!action || isStaticExecutiveTemplate(action)) return null;
+    if (typeof item === "string") {
+      const action = safeDynamicField(item, definition, "");
+      return action ? { priority: "AI", action } : null;
+    }
+    const action = safeDynamicField(item?.action || item?.recommendation || item?.description || "", definition, "");
+    if (!action) return null;
     return { ...item, priority: item?.priority || item?.severity || "AI", action };
   }).filter(Boolean);
   return cleaned.length ? cleaned : definition.fallbackRecommendations;
+}
+
+function hasUsableAiNarrative(payload: AnyRecord, definition: DynamicReportDefinition) {
+  const narrative = payload?.narrative || {};
+  const summary = cleanDynamicText(narrative.executiveSummary || narrative.summary || "");
+  const title = cleanDynamicText(narrative.title || "");
+  return Boolean(
+    payload?.report?.id === definition.id &&
+    summary &&
+    title &&
+    !isStaticExecutiveTemplate(summary) &&
+    !isStaticExecutiveTemplate(title)
+  );
+}
+
+function readDailyCache(definition: DynamicReportDefinition) {
+  if (typeof window === "undefined") return null;
+  const cached = safeJsonParse(window.localStorage?.getItem(dailyCacheKey(definition)) || "");
+  if (!cached || !hasUsableAiNarrative(cached, definition)) return null;
+  return cached;
+}
+
+function writeDailyCache(definition: DynamicReportDefinition, payload: AnyRecord) {
+  if (typeof window === "undefined" || !hasUsableAiNarrative(payload, definition)) return;
+  try {
+    window.localStorage.setItem(dailyCacheKey(definition), JSON.stringify(payload));
+  } catch {
+    // Ignore storage quota or privacy-mode errors. The report still renders from the live payload.
+  }
 }
 
 function normaliseDynamicPayload(rawPayload: AnyRecord, requestPayload: AnyRecord, definition: DynamicReportDefinition) {
@@ -232,15 +307,53 @@ function normaliseDynamicPayload(rawPayload: AnyRecord, requestPayload: AnyRecor
   const useRawSummary = rawSummary && !isStaticExecutiveTemplate(rawSummary);
   const useRawConclusion = rawConclusion && !isStaticExecutiveTemplate(rawConclusion);
   const useRawTitle = rawTitle && !isStaticExecutiveTemplate(rawTitle);
-  const aiFindings = (Array.isArray(rawNarrative.keyFindings) ? rawNarrative.keyFindings : []).map((item: any) => cleanDynamicText(item)).filter((item: string) => item && !isStaticExecutiveTemplate(item));
+  const aiFindings = (Array.isArray(rawNarrative.keyFindings) ? rawNarrative.keyFindings : [])
+    .map((item: any) => cleanDynamicText(item))
+    .filter((item: string) => item && !isStaticExecutiveTemplate(item));
   const recommendations = normaliseRecommendations(rawPayload, definition);
 
   const normalised = {
     ...rawPayload,
+    success: rawPayload.success !== false,
     mode: "dynamic-reporting",
-    report: { ...existingReport, id: definition.id, title: definition.title, type: definition.type, description: definition.description, source: definition.source, category: "Dynamic Reporting", outputs: Array.isArray(existingReport.outputs) && existingReport.outputs.length ? existingReport.outputs : ["PDF", "PowerPoint", "Excel"] },
-    filters: { ...(rawPayload.filters || {}), ...requestPayload, useAiAnalysis: true, aiProvider: "google", aiEngine: "gemini-flash", aiModel: requestPayload.aiModel || "gemini-2.5-flash", aiReportMode: "dynamic-reporting", aiPrompt: requestPayload.aiPrompt || dynamicAiInstruction(definition), forceAiNarrative: true, disableStaticNarrative: true, dynamicReportType: definition.id, dynamicReportTitle: definition.title, dynamicReportCategory: "Dynamic Reporting", generationFrequency: "once-per-day", dailyGenerationKey: `${definition.id}-${reportDayKey()}`, aiDisclaimer: DAILY_DISCLAIMER },
-    narrative: { ...rawNarrative, title: useRawTitle ? rawTitle : fallback.title, executiveSummary: `${useRawSummary ? rawSummary : fallback.paragraphs.join("\n\n")}\n\n${DAILY_DISCLAIMER}`, keyFindings: (aiFindings.length ? aiFindings : fallback.findings).slice(0, 7), managementConclusion: useRawConclusion ? rawConclusion : `${definition.title} requires owner-led follow-up based on AI findings, available evidence and management priority.`, disclaimer: DAILY_DISCLAIMER, recommendations: recommendations.map((item: any) => item.action) },
+    generatedAt: rawPayload.generatedAt || new Date().toISOString(),
+    report: {
+      ...existingReport,
+      id: definition.id,
+      title: definition.title,
+      type: definition.type,
+      description: definition.description,
+      source: definition.source,
+      category: "Dynamic Reporting",
+      outputs: Array.isArray(existingReport.outputs) && existingReport.outputs.length ? existingReport.outputs : ["PDF", "PowerPoint", "Excel"]
+    },
+    filters: {
+      ...(rawPayload.filters || {}),
+      ...requestPayload,
+      useAiAnalysis: true,
+      aiProvider: "google",
+      aiEngine: "gemini-flash",
+      aiModel: requestPayload.aiModel || "gemini-2.5-flash",
+      aiReportMode: "dynamic-reporting",
+      aiPrompt: requestPayload.aiPrompt || dynamicAiInstruction(definition),
+      forceAiNarrative: true,
+      disableStaticNarrative: true,
+      dynamicReportType: definition.id,
+      dynamicReportTitle: definition.title,
+      dynamicReportCategory: "Dynamic Reporting",
+      generationFrequency: "once-per-day",
+      dailyGenerationKey: `${definition.id}-${reportDayKey()}`,
+      aiDisclaimer: DAILY_DISCLAIMER
+    },
+    narrative: {
+      ...rawNarrative,
+      title: useRawTitle ? rawTitle : fallback.title,
+      executiveSummary: `${useRawSummary ? rawSummary : fallback.paragraphs.join("\n\n")}\n\n${DAILY_DISCLAIMER}`,
+      keyFindings: (aiFindings.length ? aiFindings : fallback.findings).slice(0, 7),
+      managementConclusion: useRawConclusion ? rawConclusion : `${definition.title} requires owner-led follow-up based on AI findings, available evidence and management priority.`,
+      disclaimer: DAILY_DISCLAIMER,
+      recommendations: recommendations.map((item: any) => item.action)
+    },
     sections: normaliseDynamicSections(rawPayload.sections, definition),
     recommendations,
     dataSources: Array.isArray(rawPayload.dataSources) ? rawPayload.dataSources : [],
@@ -248,11 +361,18 @@ function normaliseDynamicPayload(rawPayload: AnyRecord, requestPayload: AnyRecor
   };
 
   if (typeof window !== "undefined") (window as any)[LAST_DYNAMIC_PAYLOAD_KEY] = normalised;
+  writeDailyCache(definition, normalised);
   return normalised;
 }
 
 function resolveDynamicDefinition(requestPayload: AnyRecord | null, payload: AnyRecord | null) {
-  const candidates = [requestPayload?.dynamicReportType, requestPayload?.reportId, requestPayload?.report?.id, payload?.filters?.dynamicReportType, payload?.report?.id].map((item) => String(item || ""));
+  const candidates = [
+    requestPayload?.dynamicReportType,
+    requestPayload?.reportId,
+    requestPayload?.report?.id,
+    payload?.filters?.dynamicReportType,
+    payload?.report?.id
+  ].map((item) => String(item || ""));
   const id = candidates.find((candidate) => DYNAMIC_REPORT_IDS.includes(candidate));
   return id ? DYNAMIC_REPORTS[id] : null;
 }
@@ -268,16 +388,44 @@ function normaliseDynamicResponseBody(body: AnyRecord, requestPayload: AnyRecord
 
 function enrichDynamicRequestBody(payload: AnyRecord | null, definition: DynamicReportDefinition | null) {
   if (!payload || !definition) return payload;
-  return { ...payload, useAiAnalysis: true, aiProvider: "google", aiEngine: "gemini-flash", aiModel: payload.aiModel || "gemini-2.5-flash", aiReportMode: "dynamic-reporting", dynamicReportType: definition.id, dynamicReportTitle: definition.title, dynamicReportCategory: "Dynamic Reporting", aiPrompt: payload.aiPrompt || dynamicAiInstruction(definition), aiInstruction: payload.aiInstruction || dynamicAiInstruction(definition), forceAiNarrative: true, disableStaticNarrative: true, aiTemperature: payload.aiTemperature ?? 0.85, aiUniquenessSeed: `${definition.id}-${reportDayKey()}`, generationFrequency: "once-per-day", dailyGenerationKey: `${definition.id}-${reportDayKey()}`, aiDisclaimer: DAILY_DISCLAIMER };
+  return {
+    ...payload,
+    useAiAnalysis: true,
+    aiProvider: "google",
+    aiEngine: "gemini-flash",
+    aiModel: payload.aiModel || "gemini-2.5-flash",
+    aiReportMode: "dynamic-reporting",
+    dynamicReportType: definition.id,
+    dynamicReportTitle: definition.title,
+    dynamicReportCategory: "Dynamic Reporting",
+    aiPrompt: payload.aiPrompt || dynamicAiInstruction(definition),
+    aiInstruction: payload.aiInstruction || dynamicAiInstruction(definition),
+    forceAiNarrative: true,
+    disableStaticNarrative: true,
+    aiTemperature: payload.aiTemperature ?? 0.85,
+    aiUniquenessSeed: `${definition.id}-${reportDayKey()}`,
+    generationFrequency: "once-per-day",
+    dailyGenerationKey: `${definition.id}-${reportDayKey()}`,
+    aiDisclaimer: DAILY_DISCLAIMER
+  };
 }
 
 function htmlEscape(value: any) {
-  return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#039;");
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function printParagraphsHtml(payload: AnyRecord) {
   const narrative = payload?.narrative || {};
-  const paragraphs = String(narrative.executiveSummary || narrative.managementConclusion || "").split(/(?:\n{2,}|\r?\n)/).map((item) => cleanDynamicText(item)).filter(Boolean).slice(0, 5);
+  const paragraphs = String(narrative.executiveSummary || narrative.managementConclusion || "")
+    .split(/(?:\n{2,}|\r?\n)/)
+    .map((item) => cleanDynamicText(item))
+    .filter(Boolean)
+    .slice(0, 5);
   return paragraphs.map((paragraph) => `<p class="pdf-justified">${htmlEscape(paragraph)}</p>`).join("");
 }
 
@@ -285,10 +433,19 @@ function normaliseDynamicPrintHtml(html: string) {
   if (typeof window === "undefined") return html;
   const payload = (window as any)[LAST_DYNAMIC_PAYLOAD_KEY];
   const definition = resolveDynamicDefinition(payload?.filters || null, payload || null);
-  if (!payload || !definition || !html.includes("Executive Management Brief")) return html;
+  if (!payload || !definition) return html;
+
+  let patched = html
+    .replace(/Executive Management Brief/g, `${definition.title} AI Dynamic Narrative`)
+    .replace(/Immediate management attention is required/g, cleanDynamicText(payload.narrative?.title || definition.title));
+
   const headline = cleanDynamicText(payload.narrative?.title || definition.title);
   const replacement = `<div class="pdf-summary-copy"><span class="pdf-eyebrow">${htmlEscape(definition.title)} AI Dynamic Narrative</span><h2>${htmlEscape(headline)}</h2>${printParagraphsHtml(payload)}<p class="pdf-justified"><strong>AI Dynamic Reporting Notice:</strong> ${htmlEscape(DAILY_DISCLAIMER)}</p></div>`;
-  return html.replace(/<div class="pdf-summary-copy">[\s\S]*?<\/div>/, replacement);
+
+  if (patched.includes("pdf-summary-copy")) {
+    patched = patched.replace(/<div class="pdf-summary-copy">[\s\S]*?<\/div>/, replacement);
+  }
+  return patched;
 }
 
 function installDynamicReportPrintGuard() {
@@ -303,6 +460,16 @@ function installDynamicReportPrintGuard() {
   };
 }
 
+function responseFromPayload(payload: AnyRecord, response?: Response) {
+  const headers = new Headers(response?.headers || undefined);
+  headers.set("content-type", "application/json");
+  return new Response(JSON.stringify(payload), {
+    status: response?.status || 200,
+    statusText: response?.statusText || "OK",
+    headers
+  });
+}
+
 function installDynamicReportFetchNormaliser() {
   if (typeof window === "undefined" || typeof window.fetch !== "function") return;
   const globalWindow = window as any;
@@ -314,17 +481,30 @@ function installDynamicReportFetchNormaliser() {
     const isReportEndpoint = url.includes("/api/reports/preview") || url.includes("/api/reports/generate");
     let payload = requestBody(input, init);
     const definition = isReportEndpoint ? resolveDynamicDefinition(payload, null) : null;
+    if (!isReportEndpoint || !definition) return originalFetch(input, init);
+
+    const cached = readDailyCache(definition);
+    if (cached) {
+      (window as any)[LAST_DYNAMIC_PAYLOAD_KEY] = cached;
+      return responseFromPayload(cached);
+    }
+
     let nextInit = init;
-    if (definition && payload && typeof init?.body === "string") nextInit = { ...init, body: JSON.stringify(enrichDynamicRequestBody(payload, definition)) };
+    if (payload && typeof init?.body === "string") {
+      const enriched = enrichDynamicRequestBody(payload, definition);
+      payload = enriched;
+      nextInit = { ...init, body: JSON.stringify(enriched) };
+    }
+
     const response = await originalFetch(input, nextInit);
-    if (!isReportEndpoint || !definition) return response;
     try {
       const json = await response.clone().json();
       const normalised = normaliseDynamicResponseBody(json, payload);
-      const headers = new Headers(response.headers);
-      headers.set("content-type", "application/json");
-      return new Response(JSON.stringify(normalised), { status: response.status, statusText: response.statusText, headers });
-    } catch { return response; }
+      return responseFromPayload(normalised, response);
+    } catch {
+      const fallback = normaliseDynamicPayload({ success: true }, payload || {}, definition);
+      return responseFromPayload(fallback, response);
+    }
   };
 }
 
