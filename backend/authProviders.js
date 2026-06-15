@@ -3,8 +3,8 @@ const jwt = require("jsonwebtoken");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const { OIDCStrategy } = require("passport-azure-ad");
 
-const APP_URL = process.env.APP_URL || "http://localhost:5173";
-const API_URL = process.env.API_URL || "http://localhost:3001";
+const APP_URL = (process.env.APP_URL || process.env.FRONTEND_URL || "").replace(/\/+$/, "");
+const API_URL = (process.env.API_URL || process.env.PUBLIC_API_URL || "").replace(/\/+$/, "");
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 
 function createAppToken(user, provider) {
@@ -75,7 +75,7 @@ function setupAuthProviders(app) {
           responseType: "code",
           responseMode: "query",
           redirectUrl: `${API_URL}/api/auth/microsoft/callback`,
-          allowHttpForRedirectUrl: true,
+          allowHttpForRedirectUrl: process.env.NODE_ENV !== "production",
           scope: ["profile", "email", "openid"],
           passReqToCallback: false,
         },
