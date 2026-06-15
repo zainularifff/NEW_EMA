@@ -1,6 +1,13 @@
 /* Simplified Report Center UI
-   Keep the report workflow focused: choose report, set output/scope, preview/generate. */
+   Keep the workflow focused: choose report, set output/scope, preview/generate. */
 
+.ema-report-module-root .settings-layout.report-settings-layout {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 12px !important;
+}
+
+.ema-report-module-root .settings-hero.users-hero,
+.ema-report-module-root .featured-report-nav-panel .panel-head,
 .ema-report-module-root .report-live-summary-panel,
 .ema-report-module-root .client-rnr-summary-panel,
 .ema-report-module-root .report-analysis-panel,
@@ -14,8 +21,121 @@
   display: none !important;
 }
 
+/* The old left sidebar becomes a compact report picker at the top. */
+.ema-report-module-root .featured-report-nav-panel {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  position: relative !important;
+  top: auto !important;
+  overflow: visible !important;
+  padding: 12px !important;
+  border-radius: 20px !important;
+}
+
+.ema-report-module-root .featured-report-nav-list {
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  padding: 0 !important;
+}
+
+.ema-report-module-root .featured-report-nav-group {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 16px !important;
+  background: transparent !important;
+}
+
+.ema-report-module-root .featured-report-nav-group + .featured-report-nav-group {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+.ema-report-module-root .featured-report-nav-group-title.report-nav-section-title {
+  min-height: 36px !important;
+  margin: 0 0 8px !important;
+  padding: 8px 10px !important;
+  border-radius: 14px !important;
+  pointer-events: none !important;
+}
+
+.ema-report-module-root .report-nav-children,
+.ema-report-module-root .featured-report-nav-children,
+.ema-report-module-root .dynamic-report-nav-children {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-left: 0 !important;
+}
+
+.ema-report-module-root .featured-report-nav-item.report-nav-child-item {
+  min-height: 52px !important;
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+  gap: 8px !important;
+  padding: 8px 10px !important;
+  border: 1px solid #dbe7f6 !important;
+  border-radius: 15px !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.ema-report-module-root .featured-report-nav-item.report-nav-child-item.active {
+  color: #ffffff !important;
+  border-color: transparent !important;
+  background: linear-gradient(135deg, var(--pack-accent, #2563eb) 0%, color-mix(in srgb, var(--pack-accent, #2563eb) 74%, #071d3b) 100%) !important;
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--pack-accent, #2563eb) 22%, transparent) !important;
+}
+
+.ema-report-module-root .featured-report-nav-icon {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 12px !important;
+}
+
+.ema-report-module-root .featured-report-nav-copy strong {
+  font-size: 0.76rem !important;
+  line-height: 1.15 !important;
+}
+
+.ema-report-module-root .featured-report-nav-copy small {
+  font-size: 0.64rem !important;
+  line-height: 1.15 !important;
+}
+
+.ema-report-module-root .featured-report-nav-badge {
+  display: none !important;
+}
+
+.ema-report-module-root .settings-content.report-main-content {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.ema-report-module-root .report-workspace-shell {
+  margin-top: 0 !important;
+}
+
+.ema-report-module-root .report-workspace-body {
+  padding-top: 0 !important;
+}
+
+.ema-report-module-root .featured-report-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 430px) !important;
+  gap: 14px !important;
+}
+
 .ema-report-module-root .report-pack-command-card {
-  min-height: 118px !important;
+  min-height: 112px !important;
   padding: 18px 20px !important;
 }
 
@@ -65,4 +185,25 @@
 .ema-report-module-root .config-actions .btn {
   width: 100% !important;
   min-height: 40px !important;
+}
+
+@media (max-width: 1280px) {
+  .ema-report-module-root .featured-report-nav-list,
+  .ema-report-module-root .featured-report-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ema-report-module-root .report-nav-children,
+  .ema-report-module-root .featured-report-nav-children,
+  .ema-report-module-root .dynamic-report-nav-children {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .ema-report-module-root .report-nav-children,
+  .ema-report-module-root .featured-report-nav-children,
+  .ema-report-module-root .dynamic-report-nav-children {
+    grid-template-columns: 1fr !important;
+  }
 }
