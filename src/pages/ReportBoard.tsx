@@ -1,1 +1,1 @@
-export { default } from "./ReportBuilderLegacyPdf";
+export { default } from "./ReportBuilderRules";
