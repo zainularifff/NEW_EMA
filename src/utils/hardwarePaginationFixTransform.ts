@@ -172,8 +172,14 @@ export function hardwarePaginationFixTransform(): Plugin {
       // When the filtered result shrinks, keep users on the last valid page instead of jumping to page 1.
       next = next.replace('  useEffect(() => {\n    if (page > pageCount) setPage(1);\n  }, [page, pageCount]);', '  useEffect(() => {\n    setPage((current) => Math.min(Math.max(1, current), pageCount));\n  }, [pageCount]);');
 
-      const marker = `        .hardware-module-root .hardware-pagination {\n          flex: 0 0 auto !important;\n        }`;
-      next = next.includes(marker) ? next.replace(marker, HARDWARE_PAGINATION_FIX) : next;
+      const standaloneMarker = `        .hardware-module-root .hardware-pagination {\n          flex: 0 0 auto !important;\n        }`;
+      const groupedMarker = `        .hardware-module-root .hardware-registry-toolbar,\n        .hardware-module-root .hardware-registry-subhead,\n        .hardware-module-root .hardware-pagination {\n          flex: 0 0 auto !important;\n        }`;
+
+      if (next.includes(standaloneMarker)) {
+        next = next.replace(standaloneMarker, HARDWARE_PAGINATION_FIX);
+      } else if (next.includes(groupedMarker)) {
+        next = next.replace(groupedMarker, `${groupedMarker}\n\n${HARDWARE_PAGINATION_FIX}`);
+      }
 
       return next === code ? null : { code: next, map: null };
     },
