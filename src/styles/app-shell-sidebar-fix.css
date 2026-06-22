@@ -135,6 +135,47 @@ body.ema-settings-page-active .management-control-wrapper {
   transform: none !important;
 }
 
+/* Management Control now owns the left menu in SettingsWithNotifications.
+   Hide the nested LegacySettings menu so Device Pricing, Aging PC Rule and
+   Management Policy do not render a second Configuration Area sidebar. */
+body.ema-settings-page-active .settings-management-shell .management-control-content .settings-module-root,
+body.ema-settings-page-active .settings-management-shell .management-control-content .settings-module-root > .settings-layout,
+body.ema-settings-page-active .settings-management-shell .management-control-content .settings-content {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+body.ema-settings-page-active .settings-management-shell .management-control-content .settings-module-root > .settings-layout {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 0 !important;
+  padding: 0 !important;
+}
+
+body.ema-settings-page-active .settings-management-shell .management-control-content .settings-menu,
+body.ema-settings-page-active .settings-management-shell .management-control-content .settings-menu-list,
+body.ema-settings-page-active .settings-management-shell .management-control-content .panel-head {
+  display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 /* Toast-layer guard: module-ui-fixes has a broad [class*="-toast"] rule.
    Without this override, the body-level settings toast wrapper becomes a
    tall white fixed panel on the left whenever a save notification appears. */
