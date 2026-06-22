@@ -135,6 +135,36 @@ body.ema-settings-page-active .management-control-wrapper {
   transform: none !important;
 }
 
+/* Toast-layer guard: module-ui-fixes has a broad [class*="-toast"] rule.
+   Without this override, the body-level settings toast wrapper becomes a
+   tall white fixed panel on the left whenever a save notification appears. */
+body > .settings-toast-layer,
+.settings-toast-layer,
+.toast-layer,
+[class*="toast-layer"] {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  font-weight: inherit !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+
+body > .settings-toast-layer .settings-toast,
+.settings-toast-layer .settings-toast {
+  pointer-events: auto !important;
+}
+
 @media (max-width: 1100px) {
   body.ema-settings-page-active .ema-shell {
     grid-template-columns: 280px minmax(0, 1fr) !important;
