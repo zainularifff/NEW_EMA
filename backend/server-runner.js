@@ -3,6 +3,7 @@ require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const sql = require('mssql');
 const registerNotificationSettingsRoutes = require('./notificationSettingsRoutes');
+const registerSoftwarePolicyRoutes = require('./softwarePolicyRoutes');
 
 const dbConfig = {
   user: process.env.DB_USER,
@@ -48,6 +49,15 @@ function wrappedExpress(...args) {
   if (!app.__emaNotificationRoutesRegistered) {
     app.__emaNotificationRoutesRegistered = true;
     registerNotificationSettingsRoutes(app, {
+      authenticateToken: notificationAuthenticateToken,
+      dbConfig,
+      sql
+    });
+  }
+
+  if (!app.__emaSoftwarePolicyRoutesRegistered) {
+    app.__emaSoftwarePolicyRoutesRegistered = true;
+    registerSoftwarePolicyRoutes(app, {
       authenticateToken: notificationAuthenticateToken,
       dbConfig,
       sql
