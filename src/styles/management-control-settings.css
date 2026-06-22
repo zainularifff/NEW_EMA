@@ -79,11 +79,11 @@
 }
 
 .settings-with-notifications .setting-btn {
-  align-items: flex-start !important;
-  min-height: auto !important;
+  align-items: center !important;
+  min-height: 52px !important;
   height: auto !important;
   gap: 12px !important;
-  padding: 12px 13px !important;
+  padding: 11px 13px !important;
   overflow: visible !important;
 }
 
@@ -94,23 +94,18 @@
   overflow: visible !important;
 }
 
-.settings-with-notifications .setting-btn strong,
-.settings-with-notifications .setting-btn small {
+.settings-with-notifications .setting-btn strong {
   display: block !important;
   white-space: normal !important;
   overflow: visible !important;
   text-overflow: clip !important;
   overflow-wrap: anywhere !important;
   word-break: normal !important;
-}
-
-.settings-with-notifications .setting-btn strong {
   line-height: 1.18 !important;
 }
 
 .settings-with-notifications .setting-btn small {
-  margin-top: 3px !important;
-  line-height: 1.25 !important;
+  display: none !important;
 }
 
 .settings-with-notifications .settings-content {
@@ -194,10 +189,7 @@
 }
 
 .management-control-tab small {
-  margin-top: 4px;
-  font-size: 11px;
-  font-weight: 800;
-  color: #64748b;
+  display: none !important;
 }
 
 .management-control-tab.active strong,
