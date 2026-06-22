@@ -3,6 +3,10 @@ export type QueryParams = Record<string, QueryValue | QueryValue[]>;
 
 export type ApiRequestConfig = Omit<RequestInit, "body"> & {
   params?: QueryParams;
+  /** Request payload for legacy DELETE calls that pass axios-style config.data. */
+  data?: unknown;
+  /** Legacy axios-style response type. Currently supports blob and text in addition to JSON. */
+  responseType?: "json" | "blob" | "text" | string;
   /**
    * Frontend memory-cache TTL for GET requests. Set to 0 to skip cache for this request.
    * The default is controlled by VITE_API_CLIENT_CACHE_TTL_MS or 90000ms.
@@ -38,6 +42,14 @@ function getRuntimeOrigin() {
 const configuredApiBaseUrl = (readEnv("VITE_API_BASE_URL") || readEnv("VITE_API_URL")).replace(/\/+$/, "");
 
 export const API_BASE_URL = configuredApiBaseUrl || getRuntimeOrigin();
+export const SERVER_PORT = (() => {
+  try {
+    const parsed = new URL(API_BASE_URL || getRuntimeOrigin());
+    return parsed.port || (parsed.protocol === "https:" ? "443" : parsed.protocol === "http:" ? "80" : "");
+  } catch {
+    return "";
+  }
+})();
 
 function readPositiveNumberEnv(name: string, fallback: number) {
   const parsed = Number(readEnv(name));
@@ -101,7 +113,6 @@ export function clearApiClientCache(match?: string | RegExp) {
     if (shouldDelete) getMemoryCache.delete(key);
   }
 }
-
 
 const TOKEN_STORAGE_KEYS = [
   "ema-access-token",
@@ -204,7 +215,10 @@ export function buildApiUrl(path: string, params?: QueryParams) {
   return url.toString();
 }
 
-async function parseResponse(response: Response) {
+async function parseResponse(response: Response, responseType?: string) {
+  if (responseType === "blob") return response.blob();
+  if (responseType === "text") return response.text();
+
   const contentType = response.headers.get("content-type") || "";
   const text = await response.text();
   if (!text) return {};
@@ -232,9 +246,11 @@ export async function request<T = any>(
 ): Promise<T> {
   const normalizedMethod = method.toUpperCase();
   const token = getStoredToken();
-  const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
+  const payloadData = data !== undefined ? data : config.data;
+  const isFormData = typeof FormData !== "undefined" && payloadData instanceof FormData;
   const headers = new Headers(config.headers || {});
   const url = buildApiUrl(path, config.params);
+  const responseType = config.responseType;
 
   if (!isFormData && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -252,6 +268,8 @@ export async function request<T = any>(
   delete requestConfig.params;
   delete requestConfig.cacheTtlMs;
   delete requestConfig.forceRefresh;
+  delete requestConfig.data;
+  delete requestConfig.responseType;
 
   const runFetch = async () => {
     const response = await fetch(url, {
@@ -263,20 +281,21 @@ export async function request<T = any>(
         normalizedMethod === "GET" || normalizedMethod === "HEAD"
           ? undefined
           : isFormData
-            ? (data as BodyInit)
-            : data !== undefined
-              ? JSON.stringify(data)
+            ? (payloadData as BodyInit)
+            : payloadData !== undefined
+              ? JSON.stringify(payloadData)
               : undefined,
     });
 
-    const payload = await parseResponse(response);
+    const payload = await parseResponse(response, responseType);
 
     if (!response.ok) {
+      const maybeRecord = payload as Record<string, any>;
       const message =
-        payload?.message ||
-        payload?.error ||
-        payload?.errorMessage ||
-        payload?.status ||
+        maybeRecord?.message ||
+        maybeRecord?.error ||
+        maybeRecord?.errorMessage ||
+        maybeRecord?.status ||
         `Request failed with status ${response.status}`;
 
       const error = new Error(message);
@@ -341,7 +360,7 @@ export async function apiRequest<T = any>(path: string, config: ApiRequestConfig
       ? body
       : typeof body === "string"
         ? safeParseJson(body) ?? body
-        : body ?? undefined;
+        : body ?? requestConfig.data ?? undefined;
 
   return request<T>(method, path, data, requestConfig);
 }
@@ -380,7 +399,7 @@ export const api = {
   },
 
   delete<T = any>(path: string, config: ApiRequestConfig = {}) {
-    return request<T>("DELETE", path, undefined, config);
+    return request<T>("DELETE", path, config.data, config);
   },
 };
 

@@ -16,6 +16,8 @@ export type ModuleServiceKey =
   | "settings"
   | "taskList";
 
+export type ModuleKey = ModuleServiceKey;
+
 export const moduleApiRegistry = {
   auth: () => import("./authService"),
   dashboard: () => import("./dashboardService"),

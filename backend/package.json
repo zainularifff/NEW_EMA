@@ -3,18 +3,21 @@
   "version": "1.0.0",
   "type": "commonjs",
   "scripts": {
-    "dev": "nodemon server.js",
-    "start": "node server.js",
-    "dev:ts": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "nodemon server-runner.js",
+    "start": "node server-runner.js",
+    "dev:ts": "nodemon server-runner.js",
     "build": "tsc",
-    "start:dist": "node dist/index.js"
+    "start:dist": "node server-runner.js"
   },
   "dependencies": {
+    "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
+    "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
     "express": "^4.22.2",
+    "form-data": "^4.0.4",
     "jsonwebtoken": "^9.0.3",
     "mssql": "^11.0.1",
     "multer": "^2.1.1",

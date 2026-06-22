@@ -882,7 +882,7 @@ const createFormFromPolicy = (
   };
 };
 
-export default function AppWebRestriction() {
+export default function AppRestriction() {
   const [activeModule, setActiveModule] = useState<RestrictionModule>('appBlacklist');
   const [activeTab, setActiveTab] = useState<SubTab>('status');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -3106,160 +3106,562 @@ export default function AppWebRestriction() {
     const selectedPackageId = selectedManagerPackage ? getPackageId(selectedManagerPackage) : '';
     const isPackageSaved = Boolean(selectedPackageId);
 
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-        <div className="flex max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Application Package Editor</p>
-              <h3 className="text-base font-black text-slate-900">Package Manager</h3>
-              <p className="text-[11px] font-bold text-slate-500">Step 1: create or select a package. Step 2: search Software Inventory EXE records and add them into that package.</p>
+    const s = {
+      overlay: {
+        position: 'fixed',
+        inset: 0,
+        zIndex: 2147483647,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+        background: 'rgba(15, 23, 42, 0.42)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+      } as CSSProperties,
+      modal: {
+        width: 'min(1320px, calc(100vw - 48px))',
+        maxHeight: 'min(820px, calc(100vh - 48px))',
+        background: '#ffffff',
+        borderRadius: 28,
+        overflow: 'hidden',
+        boxShadow: '0 30px 90px rgba(15, 23, 42, 0.32)',
+        display: 'flex',
+        flexDirection: 'column',
+        border: '1px solid rgba(226, 232, 240, 0.95)',
+      } as CSSProperties,
+      header: {
+        padding: '18px 22px',
+        borderBottom: '1px solid #e5edf7',
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 16,
+        flexShrink: 0,
+      } as CSSProperties,
+      eyebrow: {
+        margin: 0,
+        fontSize: 10,
+        lineHeight: '14px',
+        fontWeight: 900,
+        letterSpacing: '0.26em',
+        color: '#2563eb',
+        textTransform: 'uppercase',
+      } as CSSProperties,
+      title: {
+        margin: '3px 0 0',
+        fontSize: 17,
+        lineHeight: '24px',
+        fontWeight: 900,
+        color: '#0f172a',
+      } as CSSProperties,
+      subtitle: {
+        margin: '2px 0 0',
+        fontSize: 11,
+        lineHeight: '16px',
+        fontWeight: 800,
+        color: '#64748b',
+      } as CSSProperties,
+      closeButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 12,
+        border: 'none',
+        background: 'transparent',
+        color: '#94a3b8',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        flexShrink: 0,
+      } as CSSProperties,
+      body: {
+        minHeight: 0,
+        flex: 1,
+        display: 'grid',
+        gridTemplateColumns: '0.95fr 1.35fr',
+        overflow: 'hidden',
+      } as CSSProperties,
+      left: {
+        minHeight: 0,
+        padding: 16,
+        background: '#f8fafc',
+        borderRight: '1px solid #e5edf7',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      } as CSSProperties,
+      searchRow: {
+        display: 'flex',
+        gap: 8,
+        marginBottom: 12,
+        flexShrink: 0,
+      } as CSSProperties,
+      searchBoxWrap: {
+        position: 'relative',
+        flex: 1,
+        minWidth: 0,
+      } as CSSProperties,
+      searchIcon: {
+        position: 'absolute',
+        left: 12,
+        top: '50%',
+        transform: 'translateY(-50%)',
+        color: '#94a3b8',
+        pointerEvents: 'none',
+      } as CSSProperties,
+      searchInput: {
+        height: 38,
+        width: '100%',
+        borderRadius: 14,
+        border: '1px solid #dbe5f1',
+        background: '#ffffff',
+        padding: '0 12px 0 36px',
+        fontSize: 11,
+        fontWeight: 800,
+        color: '#334155',
+        outline: 'none',
+        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+      } as CSSProperties,
+      darkButton: {
+        height: 38,
+        borderRadius: 14,
+        border: 'none',
+        background: '#0f172a',
+        color: '#ffffff',
+        padding: '0 14px',
+        fontSize: 10,
+        fontWeight: 900,
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+      } as CSSProperties,
+      lightButton: {
+        height: 38,
+        borderRadius: 14,
+        border: '1px solid #dbe5f1',
+        background: '#ffffff',
+        color: '#475569',
+        padding: '0 14px',
+        fontSize: 10,
+        fontWeight: 900,
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+      } as CSSProperties,
+      packageList: {
+        minHeight: 0,
+        flex: 1,
+        overflowY: 'auto',
+        borderRadius: 18,
+        border: '1px solid #dbe5f1',
+        background: '#ffffff',
+      } as CSSProperties,
+      emptyList: {
+        padding: 32,
+        textAlign: 'center',
+        fontSize: 11,
+        fontWeight: 800,
+        color: '#94a3b8',
+      } as CSSProperties,
+      right: {
+        minHeight: 0,
+        overflowY: 'auto',
+        padding: 20,
+        background: '#ffffff',
+      } as CSSProperties,
+      formGrid: {
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 12,
+        marginBottom: 16,
+      } as CSSProperties,
+      fullCol: {
+        gridColumn: '1 / -1',
+      } as CSSProperties,
+      label: {
+        display: 'block',
+        marginBottom: 6,
+        fontSize: 9,
+        lineHeight: '12px',
+        fontWeight: 900,
+        letterSpacing: '0.18em',
+        color: '#64748b',
+        textTransform: 'uppercase',
+      } as CSSProperties,
+      input: {
+        height: 34,
+        width: '100%',
+        borderRadius: 10,
+        border: '1px solid #dbe5f1',
+        background: '#ffffff',
+        padding: '0 10px',
+        fontSize: 11,
+        fontWeight: 800,
+        color: '#334155',
+        outline: 'none',
+        boxShadow: 'inset 0 1px 2px rgba(15, 23, 42, 0.04)',
+      } as CSSProperties,
+      actionRow: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 12,
+      } as CSSProperties,
+      primaryButton: {
+        height: 38,
+        borderRadius: 13,
+        border: 'none',
+        background: '#2563eb',
+        color: '#ffffff',
+        padding: '0 16px',
+        fontSize: 10,
+        fontWeight: 900,
+        cursor: 'pointer',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        boxShadow: '0 10px 22px rgba(37, 99, 235, 0.22)',
+      } as CSSProperties,
+      dangerButton: {
+        height: 38,
+        borderRadius: 13,
+        border: '1px solid #fecdd3',
+        background: '#fff1f2',
+        color: '#be123c',
+        padding: '0 16px',
+        fontSize: 10,
+        fontWeight: 900,
+        cursor: 'pointer',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+      } as CSSProperties,
+      disabledButton: {
+        opacity: 0.55,
+        cursor: 'not-allowed',
+        boxShadow: 'none',
+      } as CSSProperties,
+      warning: {
+        marginBottom: 20,
+        borderRadius: 16,
+        border: '1px solid #facc15',
+        background: '#fffbeb',
+        color: '#92400e',
+        padding: '14px 16px',
+        fontSize: 11,
+        lineHeight: '17px',
+        fontWeight: 800,
+      } as CSSProperties,
+      filesCard: {
+        borderRadius: 18,
+        border: '1px solid #dbe5f1',
+        background: isPackageSaved ? '#ffffff' : 'rgba(248, 250, 252, 0.85)',
+        padding: 16,
+      } as CSSProperties,
+      filesHead: {
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 12,
+        marginBottom: 12,
+      } as CSSProperties,
+      sectionTitle: {
+        margin: 0,
+        fontSize: 10,
+        fontWeight: 900,
+        letterSpacing: '0.18em',
+        color: '#334155',
+        textTransform: 'uppercase',
+      } as CSSProperties,
+      smallMuted: {
+        margin: '2px 0 0',
+        fontSize: 10,
+        lineHeight: '14px',
+        fontWeight: 800,
+        color: '#94a3b8',
+      } as CSSProperties,
+      badge: {
+        borderRadius: 999,
+        background: '#f1f5f9',
+        color: '#64748b',
+        padding: '4px 9px',
+        fontSize: 9,
+        fontWeight: 900,
+        whiteSpace: 'nowrap',
+      } as CSSProperties,
+      fileSearchRow: {
+        display: 'flex',
+        gap: 8,
+        marginBottom: 12,
+      } as CSSProperties,
+      resultsBox: {
+        marginBottom: 16,
+        maxHeight: 176,
+        overflowY: 'auto',
+        borderRadius: 14,
+        border: '1px solid #bfdbfe',
+        background: 'rgba(239, 246, 255, 0.55)',
+      } as CSSProperties,
+      tableWrap: {
+        maxHeight: 270,
+        overflowY: 'auto',
+        borderRadius: 14,
+        border: '1px solid #dbe5f1',
+        background: '#ffffff',
+      } as CSSProperties,
+      table: {
+        width: '100%',
+        borderCollapse: 'separate',
+        borderSpacing: 0,
+        fontSize: 11,
+        textAlign: 'left',
+      } as CSSProperties,
+      th: {
+        position: 'sticky',
+        top: 0,
+        background: '#f8fafc',
+        padding: '10px 12px',
+        fontSize: 9,
+        fontWeight: 900,
+        letterSpacing: '0.16em',
+        color: '#64748b',
+        textTransform: 'uppercase',
+        borderBottom: '1px solid #e5edf7',
+      } as CSSProperties,
+      td: {
+        padding: '10px 12px',
+        borderTop: '1px solid #eef2f7',
+        color: '#475569',
+        fontWeight: 700,
+        verticalAlign: 'middle',
+      } as CSSProperties,
+    };
+
+    const closePackageManager = () => {
+      setShowPackageManager(false);
+    };
+
+    const stopModalClick = (event: { stopPropagation: () => void }) => {
+      event.stopPropagation();
+    };
+
+    const renderPackageRow = (item: RestrictionPackage) => {
+      const id = getPackageId(item);
+      const selected = selectedPackageId === id;
+      const policies = Number(item.used_policy_count || 0);
+      return (
+        <button
+          key={id || `${getPackageName(item)}-${item.sample_file || ''}`}
+          type="button"
+          onClick={() => selectManagerPackage(item)}
+          style={{
+            display: 'block',
+            width: '100%',
+            border: 'none',
+            borderBottom: '1px solid #eef2f7',
+            background: selected ? '#eff6ff' : '#ffffff',
+            padding: '12px 13px',
+            textAlign: 'left',
+            cursor: 'pointer',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, lineHeight: '16px', fontWeight: 900, color: '#0f172a' }}>
+                {getPackageName(item) || 'Unnamed Package'}
+              </p>
+              <p style={{ margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10, lineHeight: '14px', fontWeight: 800, color: '#64748b' }}>
+                {item.SW_Pkg_Company || item.sample_file || '-'}
+              </p>
             </div>
-            <button type="button" onClick={() => setShowPackageManager(false)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+            <div style={{ display: 'flex', flexShrink: 0, gap: 5, alignItems: 'center' }}>
+              <span style={{ borderRadius: 999, background: '#f1f5f9', color: '#64748b', padding: '3px 8px', fontSize: 9, fontWeight: 900, whiteSpace: 'nowrap' }}>
+                {item.file_count || 0} files
+              </span>
+              <span style={{ borderRadius: 999, background: policies > 0 ? '#fef3c7' : '#d1fae5', color: policies > 0 ? '#b45309' : '#047857', padding: '3px 8px', fontSize: 9, fontWeight: 900, whiteSpace: 'nowrap' }}>
+                {item.used_policy_count || 0} policies
+              </span>
+            </div>
+          </div>
+        </button>
+      );
+    };
+
+    return (
+      <div style={s.overlay} onMouseDown={closePackageManager} role="dialog" aria-modal="true" aria-label="Package Manager">
+        <div style={s.modal} onMouseDown={stopModalClick}>
+          <div style={s.header}>
+            <div>
+              <p style={s.eyebrow}>Application Package Editor</p>
+              <h3 style={s.title}>Package Manager</h3>
+              <p style={s.subtitle}>Step 1: create or select a package. Step 2: search Software Inventory EXE records and add them into that package.</p>
+            </div>
+            <button type="button" onClick={closePackageManager} style={s.closeButton} aria-label="Close package manager">
               <X size={18} />
             </button>
           </div>
 
-          <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[0.95fr_1.35fr]">
-            <aside className="min-h-0 border-r border-slate-100 bg-slate-50 p-4">
-              <div className="mb-3 flex gap-2">
-                <div className="relative flex-1">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input value={packageManagerSearch} onChange={(event) => setPackageManagerSearch(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && loadPackageManager(packageManagerSearch)} placeholder="Search package or file" className="h-9 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-[11px] font-bold outline-none focus:border-blue-400" />
+          <div style={s.body}>
+            <aside style={s.left}>
+              <div style={s.searchRow}>
+                <div style={s.searchBoxWrap}>
+                  <Search size={14} style={s.searchIcon} />
+                  <input
+                    value={packageManagerSearch}
+                    onChange={(event) => setPackageManagerSearch(event.target.value)}
+                    onKeyDown={(event) => event.key === 'Enter' && loadPackageManager(packageManagerSearch)}
+                    placeholder="Search package or file"
+                    style={s.searchInput}
+                  />
                 </div>
-                <button type="button" onClick={() => loadPackageManager(packageManagerSearch)} className="h-9 rounded-xl bg-slate-900 px-3 text-[10px] font-black text-white">
-                  Search
-                </button>
-                <button type="button" onClick={resetPackageForm} className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-600">
-                  New
-                </button>
+                <button type="button" onClick={() => loadPackageManager(packageManagerSearch)} style={s.darkButton}>Search</button>
+                <button type="button" onClick={resetPackageForm} style={s.lightButton}>New</button>
               </div>
 
-              <div className="max-h-[66vh] overflow-auto rounded-2xl border border-slate-200 bg-white">
-                {filteredPackageManagerRows.length === 0 ? (
-                  <div className="p-8 text-center text-[11px] font-bold text-slate-400">No packages found.</div>
-                ) : filteredPackageManagerRows.map((item) => {
-                  const id = getPackageId(item);
-                  const selected = selectedPackageId === id;
-                  return (
-                    <button key={id} type="button" onClick={() => selectManagerPackage(item)} className={clsx('block w-full border-b border-slate-100 px-3 py-3 text-left last:border-b-0 hover:bg-blue-50', selected && 'bg-blue-50')}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="truncate text-[11px] font-black text-slate-800">{getPackageName(item)}</p>
-                          <p className="truncate text-[10px] font-bold text-slate-400">{item.SW_Pkg_Company || item.sample_file || '-'}</p>
-                        </div>
-                        <div className="flex shrink-0 gap-1">
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-black text-slate-500">{item.file_count || 0} files</span>
-                          <span className={clsx('rounded-full px-2 py-0.5 text-[9px] font-black', Number(item.used_policy_count || 0) > 0 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700')}>
-                            {item.used_policy_count || 0} policies
-                          </span>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
+              <div style={s.packageList}>
+                {packageManagerLoading && packageManagerRows.length === 0 ? (
+                  <div style={s.emptyList}>Loading packages...</div>
+                ) : filteredPackageManagerRows.length === 0 ? (
+                  <div style={s.emptyList}>No packages found.</div>
+                ) : filteredPackageManagerRows.map(renderPackageRow)}
               </div>
             </aside>
 
-            <main className="min-h-0 overflow-auto p-5">
-              <div className="mb-4 grid gap-3 md:grid-cols-2">
+            <main style={s.right}>
+              <div style={s.formGrid}>
                 <div>
-                  <label className={labelClass}>Package Name</label>
-                  <input value={packageForm.SW_Pkg_Name} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Pkg_Name: event.target.value }))} className={fieldClass} placeholder="Example: Google Chrome" />
+                  <label style={s.label}>Package Name</label>
+                  <input value={packageForm.SW_Pkg_Name} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Pkg_Name: event.target.value }))} style={s.input} placeholder="Example: Google Chrome" />
                 </div>
                 <div>
-                  <label className={labelClass}>Company / Vendor</label>
-                  <input value={packageForm.SW_Pkg_Company || ''} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Pkg_Company: event.target.value }))} className={fieldClass} placeholder="Example: Google LLC" />
+                  <label style={s.label}>Company / Vendor</label>
+                  <input value={packageForm.SW_Pkg_Company || ''} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Pkg_Company: event.target.value }))} style={s.input} placeholder="Example: Google LLC" />
                 </div>
                 <div>
-                  <label className={labelClass}>Category ID</label>
-                  <input type="number" value={packageForm.SW_Catg || 0} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Catg: Number(event.target.value || 0) }))} className={fieldClass} />
+                  <label style={s.label}>Category ID</label>
+                  <input type="number" value={packageForm.SW_Catg || 0} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Catg: Number(event.target.value || 0) }))} style={s.input} />
                 </div>
                 <div>
-                  <label className={labelClass}>Active</label>
-                  <select value={String(packageForm.Selected ?? 1)} onChange={(event) => setPackageForm((prev) => ({ ...prev, Selected: Number(event.target.value) }))} className={fieldClass}>
+                  <label style={s.label}>Active</label>
+                  <select value={String(packageForm.Selected ?? 1)} onChange={(event) => setPackageForm((prev) => ({ ...prev, Selected: Number(event.target.value) }))} style={s.input}>
                     <option value="1">Yes</option>
                     <option value="0">No</option>
                   </select>
                 </div>
-                <div className="md:col-span-2">
-                  <label className={labelClass}>Etc Info / Description</label>
-                  <input value={packageForm.SW_Package_EtcInfo || ''} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Package_EtcInfo: event.target.value }))} className={fieldClass} placeholder="Usually first executable name or package note" />
+                <div style={s.fullCol}>
+                  <label style={s.label}>Etc Info / Description</label>
+                  <input value={packageForm.SW_Package_EtcInfo || ''} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Package_EtcInfo: event.target.value }))} style={s.input} placeholder="Usually first executable name or package note" />
                 </div>
               </div>
 
-              <div className="mb-3 flex flex-wrap gap-2">
-                <button type="button" onClick={saveManagerPackage} disabled={packageManagerLoading} className="inline-flex h-9 items-center gap-2 rounded-xl bg-blue-600 px-4 text-[10px] font-black text-white disabled:bg-slate-300">
+              <div style={s.actionRow}>
+                <button
+                  type="button"
+                  onClick={saveManagerPackage}
+                  disabled={packageManagerLoading}
+                  style={{ ...s.primaryButton, ...(packageManagerLoading ? s.disabledButton : {}) }}
+                >
                   {packageManagerLoading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} {selectedManagerPackage ? 'Save Package' : 'Create Package'}
                 </button>
                 {selectedManagerPackage && (
-                  <button type="button" onClick={() => deleteManagerPackage(selectedManagerPackage)} disabled={packageManagerLoading} className="inline-flex h-9 items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 text-[10px] font-black text-rose-700 disabled:opacity-50">
+                  <button
+                    type="button"
+                    onClick={() => deleteManagerPackage(selectedManagerPackage)}
+                    disabled={packageManagerLoading}
+                    style={{ ...s.dangerButton, ...(packageManagerLoading ? s.disabledButton : {}) }}
+                  >
                     <Trash2 size={14} /> Delete Package
                   </button>
                 )}
               </div>
 
               {!isPackageSaved && (
-                <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] font-bold text-amber-800">
+                <div style={s.warning}>
                   Create the package first. After the package is saved and has a Package ID, the Software Inventory EXE search and Add buttons will be enabled.
                 </div>
               )}
 
-              <section className={clsx('rounded-2xl border p-4', isPackageSaved ? 'border-slate-200' : 'border-slate-200 bg-slate-50/70')}>
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <section style={s.filesCard}>
+                <div style={s.filesHead}>
                   <div>
-                    <h4 className={sectionTitleClass}>Files inside package</h4>
-                    <p className="text-[10px] font-bold text-slate-400">Files are copied from collected Software Inventory EXE data into TSSI_PACKAGE_FILES.</p>
+                    <h4 style={s.sectionTitle}>Files inside package</h4>
+                    <p style={s.smallMuted}>Files are copied from collected Software Inventory EXE data into TSSI_PACKAGE_FILES.</p>
                   </div>
-                  <span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black text-slate-500">{files.length} files</span>
+                  <span style={s.badge}>{files.length} files</span>
                 </div>
 
-                <div className="mb-3 flex gap-2">
-                  <input value={packageFileSearch} onChange={(event) => setPackageFileSearch(event.target.value)} onKeyDown={(event) => isPackageSaved && event.key === 'Enter' && searchInventoryFilesForPackage()} disabled={!isPackageSaved} placeholder={isPackageSaved ? 'Search inventory file name, e.g. chrome' : 'Create the package first before searching EXE files'} className={fieldClass} />
-                  <button type="button" onClick={searchInventoryFilesForPackage} disabled={!isPackageSaved || packageManagerLoading} className="h-8 rounded-lg bg-slate-900 px-3 text-[10px] font-black text-white disabled:bg-slate-300">Search Inventory</button>
-                  <button type="button" onClick={addManualFileToPackage} disabled={!isPackageSaved || packageManagerLoading} className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-600 disabled:opacity-40">Manual Add</button>
+                <div style={s.fileSearchRow}>
+                  <input
+                    value={packageFileSearch}
+                    onChange={(event) => setPackageFileSearch(event.target.value)}
+                    onKeyDown={(event) => isPackageSaved && event.key === 'Enter' && searchInventoryFilesForPackage()}
+                    disabled={!isPackageSaved}
+                    placeholder={isPackageSaved ? 'Search inventory file name, e.g. chrome' : 'Create the package first before searching EXE files'}
+                    style={{ ...s.input, flex: 1, minWidth: 0, background: isPackageSaved ? '#ffffff' : '#f1f5f9', color: isPackageSaved ? '#334155' : '#94a3b8' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={searchInventoryFilesForPackage}
+                    disabled={!isPackageSaved || packageManagerLoading}
+                    style={{ ...s.darkButton, height: 34, borderRadius: 10, ...(isPackageSaved && !packageManagerLoading ? {} : s.disabledButton) }}
+                  >
+                    Search Inventory
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addManualFileToPackage}
+                    disabled={!isPackageSaved || packageManagerLoading}
+                    style={{ ...s.lightButton, height: 34, borderRadius: 10, ...(isPackageSaved && !packageManagerLoading ? {} : s.disabledButton) }}
+                  >
+                    Manual Add
+                  </button>
                 </div>
 
                 {isPackageSaved && packageInventoryFiles.length > 0 && (
-                  <div className="mb-4 max-h-44 overflow-auto rounded-xl border border-blue-100 bg-blue-50/40">
+                  <div style={s.resultsBox}>
                     {packageInventoryFiles.map((file, index) => (
-                      <div key={`${file.SW_Idn || file.FileName}-${index}`} className="flex items-center justify-between gap-2 border-b border-blue-100 px-3 py-2 last:border-b-0">
-                        <div className="min-w-0">
-                          <p className="truncate text-[11px] font-black text-slate-700">{file.FileName}</p>
-                          <p className="truncate text-[10px] font-bold text-slate-400">Version: {file.FileVersion || '-'} {file.OriginalFileName ? ` / ${file.OriginalFileName}` : ''}</p>
+                      <div key={`${file.SW_Idn || file.FileName}-${index}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderBottom: '1px solid #bfdbfe', padding: '10px 12px' }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, fontWeight: 900, color: '#334155' }}>{file.FileName}</p>
+                          <p style={{ margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10, fontWeight: 800, color: '#64748b' }}>Version: {file.FileVersion || '-'} {file.OriginalFileName ? ` / ${file.OriginalFileName}` : ''}</p>
                         </div>
-                        <button type="button" onClick={() => addInventoryFileToPackage(file)} disabled={!isPackageSaved || packageManagerLoading} className="rounded-lg bg-blue-600 px-3 py-1.5 text-[10px] font-black text-white disabled:bg-slate-300">Add</button>
+                        <button type="button" onClick={() => addInventoryFileToPackage(file)} disabled={!isPackageSaved || packageManagerLoading} style={{ ...s.primaryButton, height: 30, borderRadius: 10, padding: '0 12px', boxShadow: 'none', ...(packageManagerLoading ? s.disabledButton : {}) }}>Add</button>
                       </div>
                     ))}
                   </div>
                 )}
 
                 {isPackageSaved && packageInventoryFiles.length === 0 && packageFileSearch.trim() && (
-                  <div className="mb-4 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold text-slate-500">
+                  <div style={{ marginBottom: 16, borderRadius: 12, border: '1px solid #dbe5f1', background: '#ffffff', padding: '10px 12px', fontSize: 10, fontWeight: 800, color: '#64748b' }}>
                     No search result is shown yet. Click Search Inventory to find collected EXE records from Software Inventory.
                   </div>
                 )}
 
-                <div className="max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white">
-                  <table className="w-full text-left text-[11px]">
-                    <thead className="sticky top-0 bg-slate-50 text-[9px] uppercase tracking-widest text-slate-500">
+                <div style={s.tableWrap}>
+                  <table style={s.table}>
+                    <thead>
                       <tr>
-                        <th className="px-3 py-2">File Name</th>
-                        <th className="px-3 py-2">Version</th>
-                        <th className="px-3 py-2">Size</th>
-                        <th className="px-3 py-2 text-right">Action</th>
+                        <th style={s.th}>File Name</th>
+                        <th style={s.th}>Version</th>
+                        <th style={s.th}>Size</th>
+                        <th style={{ ...s.th, textAlign: 'right' }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {files.length === 0 ? (
-                        <tr><td colSpan={4} className="px-3 py-8 text-center font-bold text-slate-400">No files in this package.</td></tr>
+                        <tr>
+                          <td colSpan={4} style={{ ...s.td, padding: '34px 12px', textAlign: 'center', color: '#94a3b8', fontWeight: 900 }}>
+                            No files in this package.
+                          </td>
+                        </tr>
                       ) : files.map((file) => (
-                        <tr key={file.ID || file.FileName} className="border-t border-slate-100">
-                          <td className="px-3 py-2 font-black text-slate-700">{file.FileName}</td>
-                          <td className="px-3 py-2 text-slate-500">{file.FileVersion || '-'}</td>
-                          <td className="px-3 py-2 text-slate-500">{file.FileSize || 0}</td>
-                          <td className="px-3 py-2 text-right">
-                            <button type="button" onClick={() => deletePackageFile(file)} className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={13} /></button>
+                        <tr key={file.ID || file.FileName}>
+                          <td style={{ ...s.td, color: '#334155', fontWeight: 900 }}>{file.FileName}</td>
+                          <td style={s.td}>{file.FileVersion || '-'}</td>
+                          <td style={s.td}>{file.FileSize || 0}</td>
+                          <td style={{ ...s.td, textAlign: 'right' }}>
+                            <button type="button" onClick={() => deletePackageFile(file)} style={{ width: 30, height: 30, borderRadius: 10, border: 'none', background: 'transparent', color: '#94a3b8', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Trash2 size={13} />
+                            </button>
                           </td>
                         </tr>
                       ))}

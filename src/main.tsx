@@ -19,6 +19,11 @@ import "./styles/pagination.css";
 import "./styles/toast.css";
 import "./styles/settings-widgets.css";
 import "./styles/ema-layout.css";
+import "./styles/module-container.css";
+import "./styles/management-control-settings.css";
+import "./styles/notification-channels.css";
+import "./styles/ema-system-shell.css";
+import "./styles/module-ui-fixes.css";
 
 import App from "./App";
 import { AuthProvider } from "./context/AuthContext";

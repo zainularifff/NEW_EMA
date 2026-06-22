@@ -1,0 +1,254 @@
+@import "./notification-channels-density.css";
+
+/* =========================================================
+   Notification Channels global module shell alignment
+   ---------------------------------------------------------
+   This module keeps its notification-* component classes, but the outer
+   page shell must follow the same global module container pattern as
+   inventory, metering, restriction, patch, task list and settings pages.
+========================================================= */
+.settings-notification-shell {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  gap: var(--ema-module-gap, 0.72rem) !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: var(--ema-module-surface-soft, #f8fafc) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Notification sits inside Settings, so its canvas must stay light like the
+   other Settings pages. Do not inherit the dark inventory canvas here. */
+.ema-page:has(> .settings-notification-shell) {
+  background: var(--ema-module-surface-soft, #f8fafc) !important;
+}
+
+.ema-page > .settings-notification-shell {
+  background: var(--ema-module-surface-soft, #f8fafc) !important;
+}
+
+.settings-notification-shell .notification-topbar {
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 0.9rem !important;
+  padding: 0.85rem 1.05rem !important;
+  border: 1px solid var(--ema-module-border, #dbe7fb) !important;
+  border-radius: var(--ema-module-radius, 20px) !important;
+  background: var(--ema-module-surface, #ffffff) !important;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.045) !important;
+}
+
+.settings-notification-shell .notification-topbar h2 {
+  margin: 0 !important;
+  font-size: clamp(1.45rem, 1.75vw, 2rem) !important;
+  line-height: 1.04 !important;
+  letter-spacing: -0.055em !important;
+}
+
+.settings-notification-shell .notification-topbar p {
+  margin: 0.2rem 0 0 !important;
+  font-size: 0.72rem !important;
+  line-height: 1.35 !important;
+  color: var(--ema-module-muted, #64748b) !important;
+}
+
+.settings-notification-shell .notification-tabs {
+  justify-content: flex-end !important;
+}
+
+.settings-notification-shell .notification-body {
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 0.9rem 1rem 2.2rem !important;
+  border: 1px solid var(--ema-module-border, #dbe7fb) !important;
+  border-radius: var(--ema-module-radius, 20px) !important;
+  background: var(--ema-module-surface, #ffffff) !important;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.045) !important;
+  scrollbar-gutter: stable !important;
+  overscroll-behavior: contain !important;
+}
+
+.settings-notification-shell .notification-grid {
+  gap: var(--ema-module-gap, 0.72rem) !important;
+}
+
+.settings-notification-shell .notification-panel,
+.settings-notification-shell .notification-card,
+.settings-notification-shell .notification-rule-card {
+  border-color: var(--ema-module-border, #dbe7fb) !important;
+  border-radius: var(--ema-module-radius-sm, 16px) !important;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.045) !important;
+}
+
+.notification-field-hint {
+  display: block;
+  margin-top: -2px;
+  color: #64748b;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.notification-field > span {
+  color: #64748b;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: .075em;
+  text-transform: uppercase;
+}
+
+.notification-actions.split {
+  display: grid;
+  grid-template-columns: auto minmax(8px, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.notification-btn.danger {
+  color: #b91c1c;
+  border-color: #fecaca;
+  background: #fff1f2;
+}
+
+.notification-receiver-grid {
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, .72fr);
+}
+
+.notification-recipient-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.notification-recipient-options label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 9px;
+  border: 1px solid #dbe7fb;
+  border-radius: 11px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.notification-recipient-list-panel {
+  min-width: 0;
+}
+
+.notification-recipient-list {
+  max-height: 440px;
+  overflow: auto;
+}
+
+.notification-recipient-card {
+  display: grid;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid #dbe7fb;
+  border-radius: 15px;
+  background: #ffffff;
+}
+
+.notification-recipient-card strong {
+  display: block;
+  color: #0f2347;
+  font-size: 12.5px;
+  font-weight: 900;
+}
+
+.notification-recipient-card span,
+.notification-recipient-card small {
+  display: block;
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.notification-recipient-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.notification-recipient-badges i,
+.notification-recipient-badges b {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.notification-recipient-badges b.enabled {
+  background: #dcfce7;
+  color: #047857;
+}
+
+.notification-recipient-badges b.disabled {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.notification-recipient-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.notification-rule-template {
+  display: inline-flex;
+  margin-top: 5px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 9.5px;
+  font-weight: 900;
+}
+
+@media (max-width: 1100px) {
+  .settings-notification-shell .notification-topbar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .notification-receiver-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .notification-actions.split {
+    grid-template-columns: 1fr;
+  }
+
+  .notification-recipient-options {
+    grid-template-columns: 1fr;
+  }
+
+  .notification-recipient-actions {
+    justify-content: stretch;
+    flex-direction: column;
+  }
+}

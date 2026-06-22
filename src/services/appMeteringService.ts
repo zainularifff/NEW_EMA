@@ -40,13 +40,7 @@ function normalizeApplicationUsageParams(params?: QueryParams): QueryParams {
 
 export async function getUsage(params?: QueryParams) {
   const payload = await api.get("/api/application-metering/usage", { params: normalizeApplicationUsageParams(params) });
-
-  // Keep the full API envelope here because /usage returns both:
-  // - data: backend-normalized rows
-  // - raw: original stored-procedure rows
-  // The frontend needs raw so fields like SW_FileName, ActiveTime, CCount,
-  // App_StartTime, App_EndTime, SW_Path, IP and Object_Full_Name display correctly.
-  return payload;
+  return unwrapData(payload, payload);
 }
 
 export async function getStats(params?: QueryParams) {

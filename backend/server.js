@@ -20,6 +20,7 @@ const crypto = require("crypto");
 const cookieParser = require("cookie-parser");
 const path = require('path');
 const fs = require('fs');
+const zlib = require('zlib');
 const multer = require('multer');
 const axios = require("axios");
 const FormData = require("form-data");
@@ -187,8 +188,8 @@ const dbConfig = {
     password: process.env.DB_PASSWORD,
     server: process.env.DB_SERVER,
     database: process.env.DB_NAME,
-    connectionTimeout: 30000,
-    requestTimeout: 60000,
+    connectionTimeout: Number(process.env.DB_CONNECTION_TIMEOUT || 30000),
+    requestTimeout: Number(process.env.DB_REQUEST_TIMEOUT || 180000),
     options: {
         encrypt: false,
         trustServerCertificate: true
@@ -3456,7 +3457,20 @@ app.post('/api/incidents', authenticateToken, async (req, res) => {
                     @firstResponseAt, @resolvedAt, @rootCause, @actionPlan, @additionalMemo
                 )
             `);
-        res.json({ success: true, id, ...req.body });
+
+        const incidentPayload = { id, title, description, priority, status: normalizeServiceDeskIncidentStatus(status, 'Awaiting'), requesterName, assignedTo };
+        let notificationResult = null;
+        try {
+            notificationResult = await triggerIncidentNotification(pool, 'INCIDENT_CREATED', incidentPayload, req);
+            if (notificationResult?.error || notificationResult?.skipped || Number(notificationResult?.sent || 0) === 0) {
+                console.warn('INCIDENT_CREATED notification warning:', notificationResult?.error || notificationResult?.reason || notificationResult);
+            }
+        } catch (notifyErr) {
+            notificationResult = { sent: 0, error: notifyErr.message };
+            console.warn('INCIDENT_CREATED notification skipped:', notifyErr.message);
+        }
+
+        res.json({ success: true, id, ...req.body, notification: notificationResult });
     } catch (err) {
         console.error('POST /api/incidents error:', err);
         res.status(500).json({ status: 'error', message: 'Failed to create incident', error: err.message });
@@ -3475,6 +3489,10 @@ app.put('/api/incidents/:id', authenticateToken, async (req, res) => {
     
     try {
         const pool = await sql.connect(dbConfig);
+        const previousIncidentResult = await pool.request()
+            .input('id', sql.NVarChar, id)
+            .query(`SELECT TOP 1 Status, Title, Priority, AssignedTo, RequesterName FROM EMA_Incidents WITH (NOLOCK) WHERE IncidentID = @id;`);
+        const previousStatus = normalizeServiceDeskIncidentStatus(previousIncidentResult.recordset?.[0]?.Status || '', '');
         await pool.request()
             .input('id', sql.NVarChar, id)
             .input('title', sql.NVarChar, title || '')
@@ -3523,7 +3541,26 @@ app.put('/api/incidents/:id', authenticateToken, async (req, res) => {
                     AdditionalMemo = @additionalMemo
                 WHERE IncidentID = @id
             `);
-        res.json({ success: true, id, ...req.body });
+
+        const normalizedStatus = normalizeServiceDeskIncidentStatus(status, 'Awaiting');
+        const previousStatusText = String(previousStatus || '').toLowerCase();
+        const currentStatusText = String(normalizedStatus || '').toLowerCase();
+        const resolvedNow = ['resolved', 'solved', 'closed'].includes(currentStatusText);
+        const wasResolved = ['resolved', 'solved', 'closed'].includes(previousStatusText);
+        const notificationRuleKey = resolvedNow && !wasResolved ? 'INCIDENT_RESOLVED' : 'INCIDENT_UPDATED';
+        const incidentPayload = { id, title, description, priority, status: normalizedStatus, requesterName, assignedTo, rootCause, actionPlan };
+        let notificationResult = null;
+        try {
+            notificationResult = await triggerIncidentNotification(pool, notificationRuleKey, incidentPayload, req);
+            if (notificationResult?.error || notificationResult?.skipped || Number(notificationResult?.sent || 0) === 0) {
+                console.warn(`${notificationRuleKey} notification warning:`, notificationResult?.error || notificationResult?.reason || notificationResult);
+            }
+        } catch (notifyErr) {
+            notificationResult = { sent: 0, error: notifyErr.message };
+            console.warn(`${notificationRuleKey} notification skipped:`, notifyErr.message);
+        }
+
+        res.json({ success: true, id, ...req.body, notification: notificationResult });
     } catch (err) {
         console.error('PUT /api/incidents/:id error:', err);
         res.status(500).json({ status: 'error', message: 'Failed to update incident', error: err.message });
@@ -7353,12 +7390,1257 @@ app.delete("/api/settings/incident-config/details/:id", authenticateToken, async
 });
 
 // NOTIFICATION CHANNELS
+const NOTIFICATION_WHATSAPP_MONTHLY_LIMIT = 200;
+
+const DEFAULT_NOTIFICATION_RULES = [
+    { RuleKey: "INCIDENT_CREATED", RuleName: "Incident Created", Enabled: true, WhatsAppEnabled: true, Description: "New incident ticket created" },
+    { RuleKey: "INCIDENT_UPDATED", RuleName: "Incident Updated", Enabled: true, WhatsAppEnabled: true, Description: "Incident ticket updated" },
+    { RuleKey: "INCIDENT_RESOLVED", RuleName: "Incident Resolved", Enabled: true, WhatsAppEnabled: true, Description: "Incident ticket resolved or closed" },
+    { RuleKey: "SYSTEM_LICENSE_EXPIRY_3M", RuleName: "System License Expiry 3m", Enabled: true, WhatsAppEnabled: true, Description: "System license expiring in 3 months" },
+    { RuleKey: "SYSTEM_LICENSE_EXPIRY_1M", RuleName: "System License Expiry 1m", Enabled: true, WhatsAppEnabled: true, Description: "System license expiring in 1 month" },
+    { RuleKey: "SYSTEM_LICENSE_EXPIRY_1W", RuleName: "System License Expiry 1w", Enabled: true, WhatsAppEnabled: true, Description: "System license expiring in 1 week" },
+    { RuleKey: "SYSTEM_LICENSE_EXPIRED", RuleName: "System License Expired", Enabled: true, WhatsAppEnabled: true, Description: "System license has expired" },
+    { RuleKey: "LICENSE_EXCEEDED", RuleName: "License Exceeded", Enabled: true, WhatsAppEnabled: true, Description: "Installed assets exceed licensed count" }
+];
+
+const WHATSAPP_TEMPLATE_SAMPLE_VARIABLES = {
+    INCIDENT_CREATED: { 1: "INC-0001", 2: "Printer offline at HQ", 3: "High" },
+    INCIDENT_UPDATED: { 1: "INC-0001", 2: "In Progress", 3: "Support Admin" },
+    INCIDENT_RESOLVED: { 1: "INC-0001", 2: "Printer service restored", 3: "Support Admin" },
+    SYSTEM_LICENSE_EXPIRY_3M: { 1: "EMA System", 2: "Enterprise License", 3: "31 Aug 2026" },
+    SYSTEM_LICENSE_EXPIRY_1M: { 1: "EMA System", 2: "Enterprise License", 3: "31 Aug 2026" },
+    SYSTEM_LICENSE_EXPIRY_1W: { 1: "EMA System", 2: "Enterprise License", 3: "31 Aug 2026" },
+    SYSTEM_LICENSE_EXPIRED: { 1: "EMA System", 2: "Enterprise License", 3: "31 Aug 2026" },
+    LICENSE_EXCEEDED: { 1: "EMA System License", 2: "120", 3: "100" }
+};
+
+function notificationBool(value, fallback = false) {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value === 1;
+    if (typeof value === "string") return ["true", "1", "yes", "on", "enabled"].includes(value.toLowerCase());
+    return fallback;
+}
+
+function notificationMonthKey(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    return `${year}-${month}`;
+}
+
+function notificationUserKey(req) {
+    return req.user?.userID || req.user?.UserID || req.user?.emaUserID || req.user?.console_Idn || "system";
+}
+
+function normalizeWhatsappAddress(value) {
+    let text = String(value || "").trim();
+    if (!text) return "";
+    if (text.toLowerCase().startsWith("whatsapp:")) return text;
+    text = text.replace(/[^0-9+]/g, "");
+    if (text.startsWith("00")) text = `+${text.slice(2)}`;
+    if (!text.startsWith("+")) text = `+${text}`;
+    return `whatsapp:${text}`;
+}
+
+function stripWhatsappPrefix(value) {
+    return String(value || "").replace(/^whatsapp:/i, "");
+}
+
+function getTwilioErrorMessage(err) {
+    return err?.response?.data?.message || err?.response?.data?.error_message || err?.message || "Twilio request failed";
+}
+
+async function normalizeNotificationRules(pool) {
+    await pool.request().query(`
+        DELETE FROM dbo.EMA_NotificationRules
+        WHERE RuleKey = 'CRM_CREATED';
+
+        IF EXISTS (SELECT 1 FROM dbo.EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_3M')
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM dbo.EMA_NotificationRules WHERE RuleKey = 'SYSTEM_LICENSE_EXPIRY_3M')
+                UPDATE dbo.EMA_NotificationRules
+                SET RuleKey = 'SYSTEM_LICENSE_EXPIRY_3M',
+                    RuleName = 'System License Expiry 3m',
+                    Description = 'System license expiring in 3 months',
+                    UpdatedAt = GETDATE()
+                WHERE RuleKey = 'LEASE_EXPIRY_3M';
+            ELSE
+            BEGIN
+                UPDATE target
+                SET WhatsAppContentSID = COALESCE(NULLIF(target.WhatsAppContentSID, ''), NULLIF(source.WhatsAppContentSID, '')),
+                    UpdatedAt = GETDATE()
+                FROM dbo.EMA_NotificationRules target
+                CROSS JOIN dbo.EMA_NotificationRules source
+                WHERE target.RuleKey = 'SYSTEM_LICENSE_EXPIRY_3M'
+                  AND source.RuleKey = 'LEASE_EXPIRY_3M';
+                DELETE FROM dbo.EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_3M';
+            END
+        END;
+
+        IF EXISTS (SELECT 1 FROM dbo.EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_1M')
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM dbo.EMA_NotificationRules WHERE RuleKey = 'SYSTEM_LICENSE_EXPIRY_1M')
+                UPDATE dbo.EMA_NotificationRules
+                SET RuleKey = 'SYSTEM_LICENSE_EXPIRY_1M',
+                    RuleName = 'System License Expiry 1m',
+                    Description = 'System license expiring in 1 month',
+                    UpdatedAt = GETDATE()
+                WHERE RuleKey = 'LEASE_EXPIRY_1M';
+            ELSE
+            BEGIN
+                UPDATE target
+                SET WhatsAppContentSID = COALESCE(NULLIF(target.WhatsAppContentSID, ''), NULLIF(source.WhatsAppContentSID, '')),
+                    UpdatedAt = GETDATE()
+                FROM dbo.EMA_NotificationRules target
+                CROSS JOIN dbo.EMA_NotificationRules source
+                WHERE target.RuleKey = 'SYSTEM_LICENSE_EXPIRY_1M'
+                  AND source.RuleKey = 'LEASE_EXPIRY_1M';
+                DELETE FROM dbo.EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_1M';
+            END
+        END;
+
+        IF EXISTS (SELECT 1 FROM dbo.EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_1W')
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM dbo.EMA_NotificationRules WHERE RuleKey = 'SYSTEM_LICENSE_EXPIRY_1W')
+                UPDATE dbo.EMA_NotificationRules
+                SET RuleKey = 'SYSTEM_LICENSE_EXPIRY_1W',
+                    RuleName = 'System License Expiry 1w',
+                    Description = 'System license expiring in 1 week',
+                    UpdatedAt = GETDATE()
+                WHERE RuleKey = 'LEASE_EXPIRY_1W';
+            ELSE
+            BEGIN
+                UPDATE target
+                SET WhatsAppContentSID = COALESCE(NULLIF(target.WhatsAppContentSID, ''), NULLIF(source.WhatsAppContentSID, '')),
+                    UpdatedAt = GETDATE()
+                FROM dbo.EMA_NotificationRules target
+                CROSS JOIN dbo.EMA_NotificationRules source
+                WHERE target.RuleKey = 'SYSTEM_LICENSE_EXPIRY_1W'
+                  AND source.RuleKey = 'LEASE_EXPIRY_1W';
+                DELETE FROM dbo.EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_1W';
+            END
+        END;
+
+        UPDATE dbo.EMA_NotificationRules
+        SET RuleKey = 'SYSTEM_LICENSE_EXPIRY_3M',
+            RuleName = 'System License Expiry 3m',
+            Description = 'System license expiring in 3 months',
+            UpdatedAt = GETDATE()
+        WHERE RuleKey = 'LICENSE_EXPIRY_3M';
+
+        UPDATE dbo.EMA_NotificationRules
+        SET RuleKey = 'SYSTEM_LICENSE_EXPIRY_1M',
+            RuleName = 'System License Expiry 1m',
+            Description = 'System license expiring in 1 month',
+            UpdatedAt = GETDATE()
+        WHERE RuleKey = 'LICENSE_EXPIRY_1M';
+
+        UPDATE dbo.EMA_NotificationRules
+        SET RuleKey = 'SYSTEM_LICENSE_EXPIRY_1W',
+            RuleName = 'System License Expiry 1w',
+            Description = 'System license expiring in 1 week',
+            UpdatedAt = GETDATE()
+        WHERE RuleKey = 'LICENSE_EXPIRY_1W';
+
+        UPDATE dbo.EMA_NotificationRules
+        SET WhatsAppContentSID = NULL,
+            UpdatedAt = GETDATE()
+        WHERE WhatsAppContentSID IN (
+            'HX_INCIDENT_CREATED',
+            'HX_INCIDENT_UPDATED',
+            'HX_INCIDENT_RESOLVED',
+            'HX_LEASE_EXPIRY_3M',
+            'HX_LEASE_EXPIRY_1M',
+            'HX_LEASE_EXPIRY_1W',
+            'HX_LICENSE_EXCEEDED',
+            'HX_SYSTEM_LICENSE_EXPIRY_3M',
+            'HX_SYSTEM_LICENSE_EXPIRY_1M',
+            'HX_SYSTEM_LICENSE_EXPIRY_1W',
+            'HX_SYSTEM_LICENSE_EXPIRED'
+        );
+    `);
+}
+
+async function readNotificationRule(pool, ruleKey = "INCIDENT_CREATED") {
+    await ensureNotificationSettingsTables(pool);
+    const key = String(ruleKey || "INCIDENT_CREATED").trim().toUpperCase();
+    const result = await pool.request()
+        .input("RuleKey", sql.NVarChar(100), key)
+        .query(`
+            SELECT TOP 1
+                RuleKey,
+                COALESCE(NULLIF(RuleName, ''), RuleKey) AS RuleName,
+                Description,
+                EmailEnabled,
+                WhatsAppEnabled,
+                IsEnabled,
+                WhatsAppContentSID
+            FROM dbo.EMA_NotificationRules WITH (NOLOCK)
+            WHERE RuleKey = @RuleKey
+              AND ISNULL(IsEnabled, 1) = 1;
+        `);
+
+    return result.recordset?.[0] || null;
+}
+
+function normalizeWhatsappTemplateVariables(value, ruleKey = "INCIDENT_CREATED") {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+        const mapped = {};
+        Object.entries(value).forEach(([key, val]) => {
+            const cleanKey = String(key).replace(/[{}]/g, "").trim();
+            if (!cleanKey) return;
+            mapped[cleanKey] = String(val ?? "");
+        });
+        return mapped;
+    }
+
+    const key = String(ruleKey || "INCIDENT_CREATED").trim().toUpperCase();
+    return WHATSAPP_TEMPLATE_SAMPLE_VARIABLES[key] || WHATSAPP_TEMPLATE_SAMPLE_VARIABLES.INCIDENT_CREATED;
+}
+
+
+function mapNotificationRecipient(row = {}) {
+    return {
+        recipientID: row.RecipientID,
+        RecipientID: row.RecipientID,
+        recipientName: row.RecipientName || "",
+        RecipientName: row.RecipientName || "",
+        recipientRole: row.RecipientRole || "",
+        RecipientRole: row.RecipientRole || "",
+        email: row.Email || "",
+        Email: row.Email || "",
+        whatsAppNumber: stripWhatsappPrefix(row.WhatsAppNumber || ""),
+        WhatsAppNumber: stripWhatsappPrefix(row.WhatsAppNumber || ""),
+        receiveIncidentCreated: notificationBool(row.ReceiveIncidentCreated, true),
+        ReceiveIncidentCreated: notificationBool(row.ReceiveIncidentCreated, true),
+        receiveIncidentUpdated: notificationBool(row.ReceiveIncidentUpdated, true),
+        ReceiveIncidentUpdated: notificationBool(row.ReceiveIncidentUpdated, true),
+        receiveIncidentResolved: notificationBool(row.ReceiveIncidentResolved, true),
+        ReceiveIncidentResolved: notificationBool(row.ReceiveIncidentResolved, true),
+        receiveSystemLicense: notificationBool(row.ReceiveSystemLicense, true),
+        ReceiveSystemLicense: notificationBool(row.ReceiveSystemLicense, true),
+        receiveLicenseExceeded: notificationBool(row.ReceiveLicenseExceeded, true),
+        ReceiveLicenseExceeded: notificationBool(row.ReceiveLicenseExceeded, true),
+        isEnabled: notificationBool(row.IsEnabled, true),
+        IsEnabled: notificationBool(row.IsEnabled, true),
+        createdAt: row.CreatedAt || null,
+        updatedAt: row.UpdatedAt || null
+    };
+}
+
+function notificationRecipientFlagForRule(ruleKey = "") {
+    const key = String(ruleKey || "").trim().toUpperCase();
+    if (key === "INCIDENT_CREATED") return "ReceiveIncidentCreated";
+    if (key === "INCIDENT_UPDATED") return "ReceiveIncidentUpdated";
+    if (key === "INCIDENT_RESOLVED") return "ReceiveIncidentResolved";
+    if (key.startsWith("SYSTEM_LICENSE_")) return "ReceiveSystemLicense";
+    if (key === "LICENSE_EXCEEDED") return "ReceiveLicenseExceeded";
+    return "IsEnabled";
+}
+
+function notificationRecipientAllowed(row = {}, ruleKey = "") {
+    if (!notificationBool(row.IsEnabled, true)) return false;
+    if (!String(row.WhatsAppNumber || "").trim()) return false;
+    const flag = notificationRecipientFlagForRule(ruleKey);
+    return notificationBool(row[flag], true);
+}
+
+function buildNotificationContentVariables(ruleKey = "", payload = {}) {
+    const key = String(ruleKey || "").trim().toUpperCase();
+    const incidentId = String(payload.incidentId || payload.id || payload.IncidentID || payload.ticketNo || "INC-0001");
+    const title = String(payload.title || payload.Title || payload.description || payload.Description || "Incident notification");
+    const priority = String(payload.priority || payload.Priority || "Medium");
+    const status = String(payload.status || payload.Status || "Updated");
+    const actor = String(payload.updatedBy || payload.resolvedBy || payload.assignedTo || payload.requesterName || payload.user || "EMA System");
+    const resolution = String(payload.resolution || payload.actionPlan || payload.rootCause || payload.ActionPlan || payload.RootCause || status || "Resolved");
+
+    if (key === "INCIDENT_CREATED") {
+        return { 1: incidentId, 2: title, 3: priority };
+    }
+    if (key === "INCIDENT_UPDATED") {
+        return { 1: incidentId, 2: status, 3: actor };
+    }
+    if (key === "INCIDENT_RESOLVED") {
+        return { 1: incidentId, 2: resolution, 3: actor };
+    }
+    if (key.startsWith("SYSTEM_LICENSE_")) {
+        return {
+            1: String(payload.systemName || payload.product || "EMA System"),
+            2: String(payload.licenseType || payload.type || "Enterprise License"),
+            3: String(payload.expiryDate || payload.expiredOn || payload.date || "31 Aug 2026")
+        };
+    }
+    if (key === "LICENSE_EXCEEDED") {
+        return {
+            1: String(payload.licenseName || payload.product || "EMA System License"),
+            2: String(payload.used || payload.usedCount || "120"),
+            3: String(payload.licensed || payload.licensedCount || "100")
+        };
+    }
+
+    return normalizeWhatsappTemplateVariables(payload.contentVariables, key);
+}
+
+async function readNotificationRecipients(pool, ruleKey = "") {
+    await ensureNotificationSettingsTables(pool);
+    const result = await pool.request().query(`
+        SELECT
+            RecipientID,
+            RecipientName,
+            RecipientRole,
+            Email,
+            WhatsAppNumber,
+            ReceiveIncidentCreated,
+            ReceiveIncidentUpdated,
+            ReceiveIncidentResolved,
+            ReceiveSystemLicense,
+            ReceiveLicenseExceeded,
+            IsEnabled,
+            CreatedAt,
+            UpdatedAt
+        FROM dbo.EMA_NotificationRecipients WITH (NOLOCK)
+        WHERE ISNULL(IsEnabled, 1) = 1
+        ORDER BY RecipientName ASC, RecipientID ASC;
+    `);
+
+    return (result.recordset || []).filter((row) => notificationRecipientAllowed(row, ruleKey));
+}
+
+async function sendWhatsappTemplateMessage(pool, { setting, rule, recipientNumber, variables }) {
+    const accountSid = String(setting?.AccountSID || setting?.AccountSid || "").trim();
+    const authToken = String(setting?.AuthToken || "").trim();
+    const fromNumber = normalizeWhatsappAddress(setting?.FromNumber || "");
+    const toNumber = normalizeWhatsappAddress(recipientNumber || "");
+    const contentSid = String(rule?.WhatsAppContentSID || rule?.ContentSid || "").trim();
+
+    if (!accountSid || !authToken || !fromNumber || !toNumber || !contentSid) {
+        return { sent: false, skipped: true, reason: "Missing WhatsApp sender, recipient or template SID." };
+    }
+
+    const form = new URLSearchParams();
+    form.append("From", fromNumber);
+    form.append("To", toNumber);
+    form.append("ContentSid", contentSid);
+    form.append("ContentVariables", JSON.stringify(variables || {}));
+
+    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/Messages.json`;
+    const twilioResponse = await axios.post(twilioUrl, form.toString(), {
+        auth: { username: accountSid, password: authToken },
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        timeout: 20000
+    });
+
+    await incrementWhatsappUsage(pool);
+
+    return {
+        sent: true,
+        sid: twilioResponse.data?.sid,
+        status: twilioResponse.data?.status,
+        to: stripWhatsappPrefix(toNumber),
+        contentSid
+    };
+}
+
+async function sendNotificationByRule(pool, ruleKey, payload = {}, req = null) {
+    const normalizedRuleKey = String(ruleKey || "").trim().toUpperCase();
+    const skipNotification = (reason, extra = {}) => {
+        const result = { sent: 0, skipped: true, reason, ...extra };
+        console.warn(`[WhatsApp Notification] ${normalizedRuleKey} skipped: ${reason}`, extra);
+        return result;
+    };
+
+    try {
+        await ensureNotificationSettingsTables(pool);
+        const rule = await readNotificationRule(pool, normalizedRuleKey);
+        if (!rule || !notificationBool(rule.IsEnabled, true) || !notificationBool(rule.WhatsAppEnabled, false)) {
+            return skipNotification("Notification rule is disabled.", {
+                ruleFound: Boolean(rule),
+                isEnabled: rule?.IsEnabled,
+                whatsAppEnabled: rule?.WhatsAppEnabled
+            });
+        }
+
+        if (!String(rule.WhatsAppContentSID || "").trim()) {
+            return skipNotification(`WhatsAppContentSID is missing for ${normalizedRuleKey}.`, { ruleKey: normalizedRuleKey });
+        }
+
+        const setting = await readWhatsappSettingRow(pool);
+        if (!setting || !notificationBool(setting.IsEnabled, false)) {
+            return skipNotification("WhatsApp channel is disabled.", {
+                settingFound: Boolean(setting),
+                isEnabled: setting?.IsEnabled
+            });
+        }
+
+        const usage = await readWhatsappUsage(pool);
+        if (Number(usage.limit || 0) > 0 && Number(usage.count || 0) >= Number(usage.limit || 0)) {
+            return skipNotification("WhatsApp monthly limit reached.", usage);
+        }
+
+        const recipients = await readNotificationRecipients(pool, normalizedRuleKey);
+        if (recipients.length === 0) {
+            return skipNotification("No enabled WhatsApp recipients configured.", { ruleKey: normalizedRuleKey });
+        }
+
+        const variables = buildNotificationContentVariables(normalizedRuleKey, payload);
+        const results = [];
+        for (const recipient of recipients) {
+            try {
+                const result = await sendWhatsappTemplateMessage(pool, {
+                    setting,
+                    rule,
+                    recipientNumber: recipient.WhatsAppNumber,
+                    variables
+                });
+                results.push({ recipientID: recipient.RecipientID, recipientName: recipient.RecipientName, ...result });
+            } catch (err) {
+                const message = getTwilioErrorMessage(err);
+                console.error(`WhatsApp notification failed for ${normalizedRuleKey}:`, message, err?.response?.data || "");
+                results.push({ recipientID: recipient.RecipientID, recipientName: recipient.RecipientName, sent: false, error: message });
+            }
+        }
+
+        const sent = results.filter((item) => item.sent).length;
+        if (req) {
+            await logEmaAudit(pool, req, `Triggered ${normalizedRuleKey} WhatsApp Notification`, "Notification Channels", sent ? "Success" : "Warning", {
+                ruleKey: normalizedRuleKey,
+                sent,
+                totalRecipients: recipients.length
+            });
+        }
+
+        const finalResult = { sent, recipients: recipients.length, results, usage: await readWhatsappUsage(pool) };
+        console.log(`[WhatsApp Notification] ${normalizedRuleKey} completed: ${sent}/${recipients.length} sent`, finalResult);
+        return finalResult;
+    } catch (err) {
+        console.error(`sendNotificationByRule(${normalizedRuleKey}) error:`, err.message);
+        return { sent: 0, error: err.message };
+    }
+}
+
+async function triggerIncidentNotification(pool, ruleKey, incident = {}, req = null) {
+    return sendNotificationByRule(pool, ruleKey, {
+        incidentId: incident.id || incident.IncidentID || incident.incidentId,
+        title: incident.title || incident.Title,
+        description: incident.description || incident.Description,
+        priority: incident.priority || incident.Priority,
+        status: normalizeServiceDeskIncidentStatus(incident.status || incident.Status || "Updated"),
+        requesterName: incident.requesterName || incident.RequesterName,
+        assignedTo: incident.assignedTo || incident.AssignedTo,
+        updatedBy: notificationUserKey(req || {}),
+        rootCause: incident.rootCause || incident.RootCause,
+        actionPlan: incident.actionPlan || incident.ActionPlan
+    }, req);
+}
+
+async function ensureNotificationSettingsTables(pool) {
+    await pool.request().query(`
+        IF OBJECT_ID('dbo.EMA_EmailSettings', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.EMA_EmailSettings (
+                SettingID INT IDENTITY(1,1) PRIMARY KEY,
+                Provider NVARCHAR(50) NOT NULL DEFAULT 'SMTP',
+                SmtpHost NVARCHAR(255) NULL,
+                SmtpPort INT NULL,
+                SmtpUser NVARCHAR(255) NULL,
+                SmtpPassword NVARCHAR(MAX) NULL,
+                FromEmail NVARCHAR(255) NULL,
+                FromName NVARCHAR(255) NULL,
+                UseTLS BIT NOT NULL DEFAULT 1,
+                IsEnabled BIT NOT NULL DEFAULT 1,
+                CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+                UpdatedAt DATETIME NULL
+            );
+        END;
+
+        IF COL_LENGTH('dbo.EMA_EmailSettings', 'FromEmail') IS NULL
+            ALTER TABLE dbo.EMA_EmailSettings ADD FromEmail NVARCHAR(255) NULL;
+        IF COL_LENGTH('dbo.EMA_EmailSettings', 'FromName') IS NULL
+            ALTER TABLE dbo.EMA_EmailSettings ADD FromName NVARCHAR(255) NULL;
+        IF COL_LENGTH('dbo.EMA_EmailSettings', 'UseTLS') IS NULL
+            ALTER TABLE dbo.EMA_EmailSettings ADD UseTLS BIT NOT NULL CONSTRAINT DF_EMA_EmailSettings_UseTLS DEFAULT 1;
+        IF COL_LENGTH('dbo.EMA_EmailSettings', 'IsEnabled') IS NULL
+            ALTER TABLE dbo.EMA_EmailSettings ADD IsEnabled BIT NOT NULL CONSTRAINT DF_EMA_EmailSettings_IsEnabled DEFAULT 1;
+
+        IF OBJECT_ID('dbo.EMA_WhatsAppSettings', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.EMA_WhatsAppSettings (
+                SettingID INT IDENTITY(1,1) PRIMARY KEY,
+                Provider NVARCHAR(50) NOT NULL DEFAULT 'Twilio',
+                AccountSID NVARCHAR(255) NULL,
+                AuthToken NVARCHAR(MAX) NULL,
+                FromNumber NVARCHAR(100) NULL,
+                IsEnabled BIT NOT NULL DEFAULT 0,
+                MonthlyLimit INT NOT NULL DEFAULT 200,
+                CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+                UpdatedAt DATETIME NULL
+            );
+        END;
+
+        IF COL_LENGTH('dbo.EMA_WhatsAppSettings', 'AccountSID') IS NULL
+            ALTER TABLE dbo.EMA_WhatsAppSettings ADD AccountSID NVARCHAR(255) NULL;
+        IF COL_LENGTH('dbo.EMA_WhatsAppSettings', 'MonthlyLimit') IS NULL
+            ALTER TABLE dbo.EMA_WhatsAppSettings ADD MonthlyLimit INT NOT NULL CONSTRAINT DF_EMA_WhatsAppSettings_MonthlyLimit DEFAULT 200;
+
+        IF OBJECT_ID('dbo.EMA_NotificationRules', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.EMA_NotificationRules (
+                RuleID INT IDENTITY(1,1) PRIMARY KEY,
+                RuleKey NVARCHAR(100) NOT NULL UNIQUE,
+                RuleName NVARCHAR(150) NULL,
+                Description NVARCHAR(500) NULL,
+                EmailEnabled BIT NOT NULL DEFAULT 0,
+                WhatsAppEnabled BIT NOT NULL DEFAULT 0,
+                WhatsAppContentSID NVARCHAR(80) NULL,
+                IsEnabled BIT NOT NULL DEFAULT 1,
+                CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+                UpdatedAt DATETIME NULL
+            );
+        END;
+
+        IF COL_LENGTH('dbo.EMA_NotificationRules', 'RuleName') IS NULL
+            ALTER TABLE dbo.EMA_NotificationRules ADD RuleName NVARCHAR(150) NULL;
+        IF COL_LENGTH('dbo.EMA_NotificationRules', 'EmailEnabled') IS NULL
+            ALTER TABLE dbo.EMA_NotificationRules ADD EmailEnabled BIT NOT NULL CONSTRAINT DF_EMA_NotificationRules_EmailEnabled DEFAULT 0;
+        IF COL_LENGTH('dbo.EMA_NotificationRules', 'WhatsAppEnabled') IS NULL
+            ALTER TABLE dbo.EMA_NotificationRules ADD WhatsAppEnabled BIT NOT NULL CONSTRAINT DF_EMA_NotificationRules_WhatsAppEnabled DEFAULT 0;
+        IF COL_LENGTH('dbo.EMA_NotificationRules', 'WhatsAppContentSID') IS NULL
+            ALTER TABLE dbo.EMA_NotificationRules ADD WhatsAppContentSID NVARCHAR(80) NULL;
+        IF COL_LENGTH('dbo.EMA_NotificationRules', 'IsEnabled') IS NULL
+            ALTER TABLE dbo.EMA_NotificationRules ADD IsEnabled BIT NOT NULL CONSTRAINT DF_EMA_NotificationRules_IsEnabled DEFAULT 1;
+
+        IF OBJECT_ID('dbo.EMA_NotificationStats', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.EMA_NotificationStats (
+                StatID INT IDENTITY(1,1) PRIMARY KEY,
+                Channel NVARCHAR(50) NOT NULL,
+                PeriodKey NVARCHAR(20) NOT NULL,
+                SentCount INT NOT NULL DEFAULT 0,
+                CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+                UpdatedAt DATETIME NULL
+            );
+        END;
+
+        IF NOT EXISTS (
+            SELECT 1
+            FROM sys.indexes
+            WHERE name = 'UQ_EMA_NotificationStats_Channel_Period'
+              AND object_id = OBJECT_ID('dbo.EMA_NotificationStats')
+        )
+        BEGIN
+            CREATE UNIQUE INDEX UQ_EMA_NotificationStats_Channel_Period
+                ON dbo.EMA_NotificationStats (Channel, PeriodKey);
+        END;
+
+
+        IF OBJECT_ID('dbo.EMA_NotificationRecipients', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.EMA_NotificationRecipients (
+                RecipientID INT IDENTITY(1,1) PRIMARY KEY,
+                RecipientName NVARCHAR(150) NULL,
+                RecipientRole NVARCHAR(100) NULL,
+                Email NVARCHAR(255) NULL,
+                WhatsAppNumber NVARCHAR(50) NULL,
+                ReceiveIncidentCreated BIT NOT NULL DEFAULT 1,
+                ReceiveIncidentUpdated BIT NOT NULL DEFAULT 1,
+                ReceiveIncidentResolved BIT NOT NULL DEFAULT 1,
+                ReceiveSystemLicense BIT NOT NULL DEFAULT 1,
+                ReceiveLicenseExceeded BIT NOT NULL DEFAULT 1,
+                IsEnabled BIT NOT NULL DEFAULT 1,
+                CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+                UpdatedAt DATETIME NULL
+            );
+        END;
+
+        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'RecipientName') IS NULL
+            ALTER TABLE dbo.EMA_NotificationRecipients ADD RecipientName NVARCHAR(150) NULL;
+        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'RecipientRole') IS NULL
+            ALTER TABLE dbo.EMA_NotificationRecipients ADD RecipientRole NVARCHAR(100) NULL;
+        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'Email') IS NULL
+            ALTER TABLE dbo.EMA_NotificationRecipients ADD Email NVARCHAR(255) NULL;
+        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'WhatsAppNumber') IS NULL
+            ALTER TABLE dbo.EMA_NotificationRecipients ADD WhatsAppNumber NVARCHAR(50) NULL;
+        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'ReceiveIncidentCreated') IS NULL
+            ALTER TABLE dbo.EMA_NotificationRecipients ADD ReceiveIncidentCreated BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_ReceiveIncidentCreated DEFAULT 1;
+        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'ReceiveIncidentUpdated') IS NULL
+            ALTER TABLE dbo.EMA_NotificationRecipients ADD ReceiveIncidentUpdated BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_ReceiveIncidentUpdated DEFAULT 1;
+        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'ReceiveIncidentResolved') IS NULL
+            ALTER TABLE dbo.EMA_NotificationRecipients ADD ReceiveIncidentResolved BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_ReceiveIncidentResolved DEFAULT 1;
+        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'ReceiveSystemLicense') IS NULL
+            ALTER TABLE dbo.EMA_NotificationRecipients ADD ReceiveSystemLicense BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_ReceiveSystemLicense DEFAULT 1;
+        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'ReceiveLicenseExceeded') IS NULL
+            ALTER TABLE dbo.EMA_NotificationRecipients ADD ReceiveLicenseExceeded BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_ReceiveLicenseExceeded DEFAULT 1;
+        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'IsEnabled') IS NULL
+            ALTER TABLE dbo.EMA_NotificationRecipients ADD IsEnabled BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_IsEnabled DEFAULT 1;
+    `);
+
+    await normalizeNotificationRules(pool);
+
+    for (const rule of DEFAULT_NOTIFICATION_RULES) {
+        const ruleName = rule.RuleName || String(rule.RuleKey || "")
+            .toLowerCase()
+            .split("_")
+            .filter(Boolean)
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" ");
+
+        await pool.request()
+            .input("RuleKey", sql.NVarChar(100), rule.RuleKey)
+            .input("RuleName", sql.NVarChar(150), ruleName)
+            .input("EmailEnabled", sql.Bit, notificationBool(rule.Enabled))
+            .input("WhatsAppEnabled", sql.Bit, notificationBool(rule.WhatsAppEnabled))
+            .input("Description", sql.NVarChar(500), rule.Description)
+            .query(`
+                IF NOT EXISTS (SELECT 1 FROM dbo.EMA_NotificationRules WHERE RuleKey = @RuleKey)
+                BEGIN
+                    INSERT INTO dbo.EMA_NotificationRules
+                        (RuleKey, RuleName, Description, EmailEnabled, WhatsAppEnabled, IsEnabled)
+                    VALUES
+                        (@RuleKey, @RuleName, @Description, @EmailEnabled, @WhatsAppEnabled, 1);
+                END
+                ELSE
+                BEGIN
+                    UPDATE dbo.EMA_NotificationRules
+                    SET RuleName = @RuleName,
+                        Description = @Description,
+                        UpdatedAt = GETDATE()
+                    WHERE RuleKey = @RuleKey;
+                END;
+            `);
+    }
+}
+
+function mapEmailSetting(row = {}) {
+    return {
+        provider: row.Provider || "SMTP",
+        host: row.SmtpHost || "",
+        port: row.SmtpPort || 587,
+        user: row.SmtpUser || row.FromEmail || "",
+        pass: "",
+        ssl: notificationBool(row.UseTLS ?? row.SslTls, true),
+        isActive: notificationBool(row.IsEnabled ?? row.IsActive, false),
+        fromEmail: row.FromEmail || row.SmtpUser || "",
+        fromName: row.FromName || ""
+    };
+}
+
+function mapWhatsappSetting(row = {}) {
+    return {
+        accountSid: row.AccountSID || row.AccountSid || "",
+        authToken: "",
+        fromNumber: stripWhatsappPrefix(row.FromNumber || ""),
+        isEnabled: notificationBool(row.IsEnabled, false)
+    };
+}
+
+async function readWhatsappSettingRow(pool) {
+    await ensureNotificationSettingsTables(pool);
+    const result = await pool.request().query(`SELECT TOP 1 * FROM dbo.EMA_WhatsAppSettings ORDER BY SettingID DESC;`);
+    return result.recordset?.[0] || null;
+}
+
+async function readWhatsappUsage(pool) {
+    await ensureNotificationSettingsTables(pool);
+    const periodKey = notificationMonthKey();
+    const statResult = await pool.request()
+        .input("Channel", sql.NVarChar(50), "whatsapp")
+        .input("PeriodKey", sql.NVarChar(20), periodKey)
+        .query(`SELECT TOP 1 SentCount FROM dbo.EMA_NotificationStats WHERE Channel = @Channel AND PeriodKey = @PeriodKey;`);
+
+    const setting = await readWhatsappSettingRow(pool);
+    const limit = Number(setting?.MonthlyLimit || NOTIFICATION_WHATSAPP_MONTHLY_LIMIT) || NOTIFICATION_WHATSAPP_MONTHLY_LIMIT;
+    const count = Number(statResult.recordset?.[0]?.SentCount || 0);
+    return {
+        count,
+        limit,
+        remaining: Math.max(0, limit - count),
+        activeProvider: setting?.Provider || "Twilio"
+    };
+}
+
+async function incrementWhatsappUsage(pool) {
+    await ensureNotificationSettingsTables(pool);
+    const periodKey = notificationMonthKey();
+    await pool.request()
+        .input("Channel", sql.NVarChar(50), "whatsapp")
+        .input("PeriodKey", sql.NVarChar(20), periodKey)
+        .query(`
+            MERGE dbo.EMA_NotificationStats AS target
+            USING (SELECT @Channel AS Channel, @PeriodKey AS PeriodKey) AS source
+            ON target.Channel = source.Channel AND target.PeriodKey = source.PeriodKey
+            WHEN MATCHED THEN
+                UPDATE SET SentCount = ISNULL(SentCount, 0) + 1, UpdatedAt = GETDATE()
+            WHEN NOT MATCHED THEN
+                INSERT (Channel, PeriodKey, SentCount) VALUES (@Channel, @PeriodKey, 1);
+        `);
+    return readWhatsappUsage(pool);
+}
+
+app.get("/api/settings/email", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        await ensureNotificationSettingsTables(pool);
+        const result = await pool.request().query(`SELECT * FROM dbo.EMA_EmailSettings ORDER BY Provider ASC, SettingID ASC;`);
+        const rows = result.recordset?.length ? result.recordset.map(mapEmailSetting) : [{ provider: "SMTP", host: "", port: 587, user: "", pass: "", ssl: true, isActive: true }];
+        return res.json({ success: true, data: rows });
+    } catch (err) {
+        console.error("GET /api/settings/email error:", err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+async function saveEmailSetting(pool, body = {}, req) {
+    await ensureNotificationSettingsTables(pool);
+    const provider = String(body.provider || body.Provider || "SMTP").trim() || "SMTP";
+    const existing = await pool.request()
+        .input("Provider", sql.NVarChar(50), provider)
+        .query(`SELECT TOP 1 * FROM dbo.EMA_EmailSettings WHERE Provider = @Provider ORDER BY SettingID DESC;`);
+    const existingRow = existing.recordset?.[0] || {};
+
+    const smtpUser = String(body.user ?? body.SmtpUser ?? existingRow.SmtpUser ?? "").trim();
+    const fromEmail = String(body.fromEmail ?? body.FromEmail ?? existingRow.FromEmail ?? smtpUser).trim();
+    const fromName = String(body.fromName ?? body.FromName ?? existingRow.FromName ?? "").trim();
+
+    await pool.request()
+        .input("Provider", sql.NVarChar(50), provider)
+        .input("SmtpHost", sql.NVarChar(255), body.host ?? body.SmtpHost ?? existingRow.SmtpHost ?? "")
+        .input("SmtpPort", sql.Int, parseInt(body.port ?? body.SmtpPort ?? existingRow.SmtpPort ?? 587, 10) || 587)
+        .input("SmtpUser", sql.NVarChar(255), smtpUser)
+        .input("SmtpPassword", sql.NVarChar(sql.MAX), body.pass || body.SmtpPassword || existingRow.SmtpPassword || "")
+        .input("FromEmail", sql.NVarChar(255), fromEmail)
+        .input("FromName", sql.NVarChar(255), fromName)
+        .input("UseTLS", sql.Bit, notificationBool(body.ssl ?? body.UseTLS ?? body.SslTls, notificationBool(existingRow.UseTLS ?? existingRow.SslTls, true)))
+        .input("IsEnabled", sql.Bit, notificationBool(body.isActive ?? body.isEnabled ?? body.IsEnabled ?? body.IsActive, notificationBool(existingRow.IsEnabled ?? existingRow.IsActive, true)))
+        .query(`
+            IF EXISTS (SELECT 1 FROM dbo.EMA_EmailSettings WHERE Provider = @Provider)
+            BEGIN
+                UPDATE dbo.EMA_EmailSettings
+                SET SmtpHost = @SmtpHost,
+                    SmtpPort = @SmtpPort,
+                    SmtpUser = @SmtpUser,
+                    SmtpPassword = CASE WHEN @SmtpPassword = '' THEN SmtpPassword ELSE @SmtpPassword END,
+                    FromEmail = @FromEmail,
+                    FromName = @FromName,
+                    UseTLS = @UseTLS,
+                    IsEnabled = @IsEnabled,
+                    UpdatedAt = GETDATE()
+                WHERE Provider = @Provider;
+            END
+            ELSE
+            BEGIN
+                INSERT INTO dbo.EMA_EmailSettings
+                    (Provider, SmtpHost, SmtpPort, SmtpUser, SmtpPassword, FromEmail, FromName, UseTLS, IsEnabled)
+                VALUES
+                    (@Provider, @SmtpHost, @SmtpPort, @SmtpUser, @SmtpPassword, @FromEmail, @FromName, @UseTLS, @IsEnabled);
+            END;
+        `);
+
+    await logEmaAudit(pool, req, "Saved Email Notification Settings", "Notification Channels", "Success", { provider, fromEmail });
+    return { saved: true, provider, fromEmail, fromName };
+}
+
+app.post("/api/settings/email", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const data = await saveEmailSetting(pool, req.body || {}, req);
+        return res.json({ success: true, data });
+    } catch (err) {
+        console.error("POST /api/settings/email error:", err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.put("/api/settings/email", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const data = await saveEmailSetting(pool, req.body || {}, req);
+        return res.json({ success: true, data });
+    } catch (err) {
+        console.error("PUT /api/settings/email error:", err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post("/api/settings/email/test", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        await ensureNotificationSettingsTables(pool);
+        await logEmaAudit(pool, req, "Tested Email Notification", "Notification Channels", "Info", { provider: req.body?.provider || "SMTP" });
+        return res.json({ success: true, data: { simulated: true, provider: req.body?.provider || "SMTP" }, message: "Email test simulated successfully" });
+    } catch (err) {
+        console.error("POST /api/settings/email/test error:", err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.get("/api/settings/whatsapp", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const row = await readWhatsappSettingRow(pool);
+        return res.json({ success: true, data: mapWhatsappSetting(row || {}) });
+    } catch (err) {
+        console.error("GET /api/settings/whatsapp error:", err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+async function saveWhatsappSetting(pool, body = {}, req) {
+    await ensureNotificationSettingsTables(pool);
+    const existing = await readWhatsappSettingRow(pool);
+    const accountSid = String(body.accountSid ?? body.AccountSID ?? body.AccountSid ?? existing?.AccountSID ?? existing?.AccountSid ?? "").trim();
+    const authToken = String(body.authToken || body.AuthToken || existing?.AuthToken || "").trim();
+    const fromNumber = stripWhatsappPrefix(body.fromNumber ?? body.FromNumber ?? existing?.FromNumber ?? "").trim();
+    const isEnabled = notificationBool(body.isEnabled ?? body.IsEnabled, notificationBool(existing?.IsEnabled, false));
+    const monthlyLimit = Number(existing?.MonthlyLimit || NOTIFICATION_WHATSAPP_MONTHLY_LIMIT) || NOTIFICATION_WHATSAPP_MONTHLY_LIMIT;
+
+    await pool.request()
+        .input("AccountSID", sql.NVarChar(255), accountSid)
+        .input("AuthToken", sql.NVarChar(sql.MAX), authToken)
+        .input("FromNumber", sql.NVarChar(100), fromNumber)
+        .input("IsEnabled", sql.Bit, isEnabled)
+        .input("MonthlyLimit", sql.Int, monthlyLimit)
+        .query(`
+            IF EXISTS (SELECT 1 FROM dbo.EMA_WhatsAppSettings)
+            BEGIN
+                UPDATE dbo.EMA_WhatsAppSettings
+                SET AccountSID = @AccountSID,
+                    AuthToken = CASE WHEN @AuthToken = '' THEN AuthToken ELSE @AuthToken END,
+                    FromNumber = @FromNumber,
+                    IsEnabled = @IsEnabled,
+                    MonthlyLimit = @MonthlyLimit,
+                    UpdatedAt = GETDATE();
+            END
+            ELSE
+            BEGIN
+                INSERT INTO dbo.EMA_WhatsAppSettings (Provider, AccountSID, AuthToken, FromNumber, IsEnabled, MonthlyLimit)
+                VALUES ('Twilio', @AccountSID, @AuthToken, @FromNumber, @IsEnabled, @MonthlyLimit);
+            END;
+        `);
+
+    await logEmaAudit(pool, req, "Saved WhatsApp Notification Settings", "Notification Channels", "Success", { accountSid, fromNumber, isEnabled });
+    return { saved: true, accountSid, fromNumber, isEnabled };
+}
+
+app.post("/api/settings/whatsapp", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const data = await saveWhatsappSetting(pool, req.body || {}, req);
+        return res.json({ success: true, data });
+    } catch (err) {
+        console.error("POST /api/settings/whatsapp error:", err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.put("/api/settings/whatsapp", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const data = await saveWhatsappSetting(pool, req.body || {}, req);
+        return res.json({ success: true, data });
+    } catch (err) {
+        console.error("PUT /api/settings/whatsapp error:", err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.get("/api/settings/whatsapp/usage", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const usage = await readWhatsappUsage(pool);
+        return res.json({ success: true, data: usage });
+    } catch (err) {
+        console.error("GET /api/settings/whatsapp/usage error:", err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+
+app.get("/api/settings/notification-recipients", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        await ensureNotificationSettingsTables(pool);
+        const result = await pool.request().query(`
+            SELECT
+                RecipientID,
+                RecipientName,
+                RecipientRole,
+                Email,
+                WhatsAppNumber,
+                ReceiveIncidentCreated,
+                ReceiveIncidentUpdated,
+                ReceiveIncidentResolved,
+                ReceiveSystemLicense,
+                ReceiveLicenseExceeded,
+                IsEnabled,
+                CreatedAt,
+                UpdatedAt
+            FROM dbo.EMA_NotificationRecipients WITH (NOLOCK)
+            ORDER BY ISNULL(IsEnabled, 1) DESC, RecipientName ASC, RecipientID ASC;
+        `);
+        return res.json({ success: true, data: (result.recordset || []).map(mapNotificationRecipient) });
+    } catch (err) {
+        console.error("GET /api/settings/notification-recipients error:", err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+async function saveNotificationRecipient(pool, body = {}, recipientId = 0) {
+    await ensureNotificationSettingsTables(pool);
+    const id = Number(recipientId || body.recipientID || body.RecipientID || 0) || 0;
+    const recipientName = String(body.recipientName || body.RecipientName || body.name || "").trim();
+    const recipientRole = String(body.recipientRole || body.RecipientRole || body.role || "").trim();
+    const email = String(body.email || body.Email || "").trim();
+    const whatsAppNumber = stripWhatsappPrefix(body.whatsAppNumber || body.WhatsAppNumber || body.phone || body.phoneNo || "").trim();
+
+    if (!recipientName) {
+        const error = new Error("Recipient name is required.");
+        error.statusCode = 400;
+        throw error;
+    }
+    if (!whatsAppNumber && !email) {
+        const error = new Error("WhatsApp number or email is required.");
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const request = pool.request()
+        .input("RecipientID", sql.Int, id)
+        .input("RecipientName", sql.NVarChar(150), recipientName)
+        .input("RecipientRole", sql.NVarChar(100), recipientRole)
+        .input("Email", sql.NVarChar(255), email)
+        .input("WhatsAppNumber", sql.NVarChar(50), whatsAppNumber)
+        .input("ReceiveIncidentCreated", sql.Bit, notificationBool(body.receiveIncidentCreated ?? body.ReceiveIncidentCreated, true))
+        .input("ReceiveIncidentUpdated", sql.Bit, notificationBool(body.receiveIncidentUpdated ?? body.ReceiveIncidentUpdated, true))
+        .input("ReceiveIncidentResolved", sql.Bit, notificationBool(body.receiveIncidentResolved ?? body.ReceiveIncidentResolved, true))
+        .input("ReceiveSystemLicense", sql.Bit, notificationBool(body.receiveSystemLicense ?? body.ReceiveSystemLicense, true))
+        .input("ReceiveLicenseExceeded", sql.Bit, notificationBool(body.receiveLicenseExceeded ?? body.ReceiveLicenseExceeded, true))
+        .input("IsEnabled", sql.Bit, notificationBool(body.isEnabled ?? body.IsEnabled, true));
+
+    const result = await request.query(`
+        IF @RecipientID > 0 AND EXISTS (SELECT 1 FROM dbo.EMA_NotificationRecipients WHERE RecipientID = @RecipientID)
+        BEGIN
+            UPDATE dbo.EMA_NotificationRecipients
+            SET RecipientName = @RecipientName,
+                RecipientRole = @RecipientRole,
+                Email = @Email,
+                WhatsAppNumber = @WhatsAppNumber,
+                ReceiveIncidentCreated = @ReceiveIncidentCreated,
+                ReceiveIncidentUpdated = @ReceiveIncidentUpdated,
+                ReceiveIncidentResolved = @ReceiveIncidentResolved,
+                ReceiveSystemLicense = @ReceiveSystemLicense,
+                ReceiveLicenseExceeded = @ReceiveLicenseExceeded,
+                IsEnabled = @IsEnabled,
+                UpdatedAt = GETDATE()
+            WHERE RecipientID = @RecipientID;
+
+            SELECT TOP 1 * FROM dbo.EMA_NotificationRecipients WHERE RecipientID = @RecipientID;
+        END
+        ELSE
+        BEGIN
+            INSERT INTO dbo.EMA_NotificationRecipients
+                (RecipientName, RecipientRole, Email, WhatsAppNumber, ReceiveIncidentCreated, ReceiveIncidentUpdated, ReceiveIncidentResolved, ReceiveSystemLicense, ReceiveLicenseExceeded, IsEnabled)
+            OUTPUT INSERTED.*
+            VALUES
+                (@RecipientName, @RecipientRole, @Email, @WhatsAppNumber, @ReceiveIncidentCreated, @ReceiveIncidentUpdated, @ReceiveIncidentResolved, @ReceiveSystemLicense, @ReceiveLicenseExceeded, @IsEnabled);
+        END;
+    `);
+
+    return mapNotificationRecipient(result.recordset?.[0] || {});
+}
+
+app.post("/api/settings/notification-recipients", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const data = await saveNotificationRecipient(pool, req.body || {}, 0);
+        await logEmaAudit(pool, req, "Added Notification Recipient", "Notification Channels", "Success", { recipientID: data.RecipientID, recipientName: data.RecipientName });
+        return res.json({ success: true, data });
+    } catch (err) {
+        console.error("POST /api/settings/notification-recipients error:", err);
+        return res.status(err.statusCode || 500).json({ success: false, message: err.message });
+    }
+});
+
+app.put("/api/settings/notification-recipients/:id", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const data = await saveNotificationRecipient(pool, req.body || {}, req.params.id);
+        await logEmaAudit(pool, req, "Updated Notification Recipient", "Notification Channels", "Success", { recipientID: data.RecipientID, recipientName: data.RecipientName });
+        return res.json({ success: true, data });
+    } catch (err) {
+        console.error("PUT /api/settings/notification-recipients/:id error:", err);
+        return res.status(err.statusCode || 500).json({ success: false, message: err.message });
+    }
+});
+
+app.delete("/api/settings/notification-recipients/:id", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        await ensureNotificationSettingsTables(pool);
+        const id = Number(req.params.id || 0) || 0;
+        await pool.request()
+            .input("RecipientID", sql.Int, id)
+            .query(`DELETE FROM dbo.EMA_NotificationRecipients WHERE RecipientID = @RecipientID;`);
+        await logEmaAudit(pool, req, "Deleted Notification Recipient", "Notification Channels", "Warning", { recipientID: id });
+        return res.json({ success: true, data: { recipientID: id } });
+    } catch (err) {
+        console.error("DELETE /api/settings/notification-recipients/:id error:", err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.get("/api/settings/notification-diagnostics", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        await ensureNotificationSettingsTables(pool);
+        const whatsapp = await readWhatsappSettingRow(pool);
+        const usage = await readWhatsappUsage(pool);
+        const rulesResult = await pool.request().query(`
+            SELECT RuleKey, RuleName, EmailEnabled, WhatsAppEnabled, IsEnabled, WhatsAppContentSID
+            FROM dbo.EMA_NotificationRules WITH (NOLOCK)
+            ORDER BY RuleID;
+        `);
+        const recipientsResult = await pool.request().query(`
+            SELECT RecipientID, RecipientName, RecipientRole, Email, WhatsAppNumber,
+                   ReceiveIncidentCreated, ReceiveIncidentUpdated, ReceiveIncidentResolved,
+                   ReceiveSystemLicense, ReceiveLicenseExceeded, IsEnabled
+            FROM dbo.EMA_NotificationRecipients WITH (NOLOCK)
+            ORDER BY RecipientID;
+        `);
+
+        return res.json({
+            success: true,
+            data: {
+                whatsapp: {
+                    configured: Boolean(whatsapp),
+                    provider: whatsapp?.Provider || "Twilio",
+                    accountSidConfigured: Boolean(String(whatsapp?.AccountSID || whatsapp?.AccountSid || "").trim()),
+                    authTokenConfigured: Boolean(String(whatsapp?.AuthToken || "").trim()),
+                    fromNumber: stripWhatsappPrefix(whatsapp?.FromNumber || ""),
+                    isEnabled: notificationBool(whatsapp?.IsEnabled, false),
+                    monthlyLimit: Number(whatsapp?.MonthlyLimit || NOTIFICATION_WHATSAPP_MONTHLY_LIMIT) || NOTIFICATION_WHATSAPP_MONTHLY_LIMIT
+                },
+                usage,
+                rules: rulesResult.recordset || [],
+                recipients: (recipientsResult.recordset || []).map(mapNotificationRecipient)
+            }
+        });
+    } catch (err) {
+        console.error("GET /api/settings/notification-diagnostics error:", err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post("/api/settings/whatsapp/test", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        await ensureNotificationSettingsTables(pool);
+        if (req.body?.accountSid || req.body?.fromNumber || req.body?.authToken) {
+            await saveWhatsappSetting(pool, req.body || {}, req);
+        }
+
+        const stored = await readWhatsappSettingRow(pool);
+        const accountSid = String(req.body?.accountSid || stored?.AccountSID || stored?.AccountSid || "").trim();
+        const authToken = String(req.body?.authToken || stored?.AuthToken || "").trim();
+        const fromNumber = normalizeWhatsappAddress(req.body?.fromNumber || stored?.FromNumber || "");
+        const toNumber = normalizeWhatsappAddress(req.body?.testNumber || req.body?.to || req.body?.recipient || "");
+        const ruleKey = String(req.body?.ruleKey || req.body?.RuleKey || req.body?.templateRuleKey || "INCIDENT_CREATED").trim().toUpperCase();
+        const rule = await readNotificationRule(pool, ruleKey);
+        const contentSid = String(
+            req.body?.contentSid ||
+            req.body?.ContentSid ||
+            req.body?.WhatsAppContentSID ||
+            req.body?.whatsAppContentSID ||
+            rule?.WhatsAppContentSID ||
+            ""
+        ).trim();
+        const contentVariables = normalizeWhatsappTemplateVariables(req.body?.contentVariables || req.body?.variables, ruleKey);
+
+        if (!accountSid || !authToken || !fromNumber || !toNumber) {
+            return res.status(400).json({
+                success: false,
+                message: "Account SID, Auth Token, From Number and Test Recipient are required."
+            });
+        }
+
+        if (!contentSid) {
+            return res.status(400).json({
+                success: false,
+                message: `WhatsApp template SID is not configured for ${ruleKey}. Please update WhatsAppContentSID in Notification Rules.`
+            });
+        }
+
+        const form = new URLSearchParams();
+        form.append("From", fromNumber);
+        form.append("To", toNumber);
+        form.append("ContentSid", contentSid);
+        form.append("ContentVariables", JSON.stringify(contentVariables));
+
+        const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/Messages.json`;
+        const twilioResponse = await axios.post(twilioUrl, form.toString(), {
+            auth: { username: accountSid, password: authToken },
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            timeout: 20000
+        });
+
+        const usage = await incrementWhatsappUsage(pool);
+        await logEmaAudit(pool, req, "Sent WhatsApp Template Test Notification", "Notification Channels", "Success", {
+            toNumber: stripWhatsappPrefix(toNumber),
+            sid: twilioResponse.data?.sid,
+            ruleKey,
+            contentSid
+        });
+
+        return res.json({
+            success: true,
+            data: {
+                sent: true,
+                provider: "Twilio",
+                sid: twilioResponse.data?.sid,
+                status: twilioResponse.data?.status,
+                to: stripWhatsappPrefix(toNumber),
+                ruleKey,
+                contentSid,
+                usage
+            },
+            message: "WhatsApp template test sent successfully"
+        });
+    } catch (err) {
+        const message = getTwilioErrorMessage(err);
+        console.error("POST /api/settings/whatsapp/test error:", message, err?.response?.data || "");
+        return res.status(err?.response?.status || 500).json({
+            success: false,
+            message,
+            error: message,
+            detail: err?.response?.data || null
+        });
+    }
+});
+
+app.get("/api/settings/notification-rules", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        await ensureNotificationSettingsTables(pool);
+        const result = await pool.request().query(`
+            SELECT
+                RuleKey,
+                COALESCE(NULLIF(RuleName, ''), RuleKey) AS RuleName,
+                Description,
+                EmailEnabled AS Enabled,
+                EmailEnabled,
+                WhatsAppEnabled,
+                IsEnabled,
+                WhatsAppContentSID
+            FROM dbo.EMA_NotificationRules
+            WHERE ISNULL(IsEnabled, 1) = 1
+            ORDER BY RuleID ASC;
+        `);
+        return res.json({ success: true, data: result.recordset || [] });
+    } catch (err) {
+        console.error("GET /api/settings/notification-rules error:", err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.put("/api/settings/notification-rules", authenticateToken, async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        await ensureNotificationSettingsTables(pool);
+        const rules = Array.isArray(req.body) ? req.body : Array.isArray(req.body?.rules) ? req.body.rules : [];
+
+        for (const rule of rules) {
+            const ruleKey = String(rule.RuleKey || rule.ruleKey || "").trim();
+            if (!ruleKey) continue;
+
+            const ruleName = String(rule.RuleName || rule.ruleName || "")
+                || ruleKey.toLowerCase().split("_").filter(Boolean).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+
+            await pool.request()
+                .input("RuleKey", sql.NVarChar(100), ruleKey)
+                .input("RuleName", sql.NVarChar(150), ruleName)
+                .input("Description", sql.NVarChar(500), rule.Description || rule.description || "")
+                .input("EmailEnabled", sql.Bit, notificationBool(rule.EmailEnabled ?? rule.Enabled ?? rule.enabled, false))
+                .input("WhatsAppEnabled", sql.Bit, notificationBool(rule.WhatsAppEnabled ?? rule.whatsAppEnabled ?? rule.whatsappEnabled, false))
+                .input("WhatsAppContentSID", sql.NVarChar(80), String(rule.WhatsAppContentSID || rule.whatsAppContentSID || rule.contentSid || "").trim() || null)
+                .input("IsEnabled", sql.Bit, notificationBool(rule.IsEnabled ?? rule.isEnabled, true))
+                .query(`
+                    MERGE dbo.EMA_NotificationRules AS target
+                    USING (SELECT @RuleKey AS RuleKey) AS source
+                    ON target.RuleKey = source.RuleKey
+                    WHEN MATCHED THEN
+                        UPDATE SET
+                            RuleName = @RuleName,
+                            Description = @Description,
+                            EmailEnabled = @EmailEnabled,
+                            WhatsAppEnabled = @WhatsAppEnabled,
+                            WhatsAppContentSID = CASE WHEN @WhatsAppContentSID IS NULL THEN WhatsAppContentSID ELSE @WhatsAppContentSID END,
+                            IsEnabled = @IsEnabled,
+                            UpdatedAt = GETDATE()
+                    WHEN NOT MATCHED THEN
+                        INSERT (RuleKey, RuleName, Description, EmailEnabled, WhatsAppEnabled, WhatsAppContentSID, IsEnabled)
+                        VALUES (@RuleKey, @RuleName, @Description, @EmailEnabled, @WhatsAppEnabled, @WhatsAppContentSID, @IsEnabled);
+                `);
+        }
+
+        await logEmaAudit(pool, req, "Updated Notification Rules", "Notification Channels", "Success", { count: rules.length });
+
+        const result = await pool.request().query(`
+            SELECT
+                RuleKey,
+                COALESCE(NULLIF(RuleName, ''), RuleKey) AS RuleName,
+                Description,
+                EmailEnabled AS Enabled,
+                EmailEnabled,
+                WhatsAppEnabled,
+                IsEnabled,
+                WhatsAppContentSID
+            FROM dbo.EMA_NotificationRules
+            WHERE ISNULL(IsEnabled, 1) = 1
+            ORDER BY RuleID ASC;
+        `);
+
+        return res.json({ success: true, data: result.recordset || [] });
+    } catch (err) {
+        console.error("PUT /api/settings/notification-rules error:", err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// Legacy combined settings endpoint kept for compatibility with older Settings pages.
 app.get("/api/settings/notifications", authenticateToken, async (req, res) => {
     try {
         const pool = await sql.connect(dbConfig);
-        const jsonValue = await getSettingValue(pool, "notificationSettings", "{}");
-        const data = safeJsonParse(jsonValue, {});
-        return res.json({ success: true, data });
+        const [emailResult, whatsappRow, usage, rulesResult] = await Promise.all([
+            (async () => {
+                await ensureNotificationSettingsTables(pool);
+                return pool.request().query(`SELECT * FROM dbo.EMA_EmailSettings ORDER BY Provider ASC, SettingID ASC;`);
+            })(),
+            readWhatsappSettingRow(pool),
+            readWhatsappUsage(pool),
+            (async () => {
+                await ensureNotificationSettingsTables(pool);
+                return pool.request().query(`
+                    SELECT
+                        RuleKey,
+                        COALESCE(NULLIF(RuleName, ''), RuleKey) AS RuleName,
+                        Description,
+                        EmailEnabled AS Enabled,
+                        EmailEnabled,
+                        WhatsAppEnabled,
+                        IsEnabled
+                    FROM dbo.EMA_NotificationRules
+                    WHERE ISNULL(IsEnabled, 1) = 1
+                    ORDER BY RuleID ASC;
+                `);
+            })()
+        ]);
+        return res.json({
+            success: true,
+            data: {
+                email: (emailResult.recordset || []).map(mapEmailSetting),
+                whatsapp: mapWhatsappSetting(whatsappRow || {}),
+                usage,
+                rules: rulesResult.recordset || []
+            }
+        });
     } catch (err) {
         console.error("GET /api/settings/notifications error:", err);
         return res.status(500).json({ success: false, message: err.message });
@@ -7368,7 +8650,7 @@ app.get("/api/settings/notifications", authenticateToken, async (req, res) => {
 app.put("/api/settings/notifications", authenticateToken, async (req, res) => {
     try {
         const pool = await sql.connect(dbConfig);
-        await upsertSettingValue(pool, "notificationSettings", JSON.stringify(req.body || {}), req.user?.userID);
+        await upsertSettingValue(pool, "notificationSettings", JSON.stringify(req.body || {}), notificationUserKey(req));
         await logEmaAudit(pool, req, "Updated Notification Settings", "Notification Channels", "Success", req.body);
         return res.json({ success: true, data: req.body });
     } catch (err) {
@@ -7379,10 +8661,14 @@ app.put("/api/settings/notifications", authenticateToken, async (req, res) => {
 
 app.post("/api/settings/notifications/test", authenticateToken, async (req, res) => {
     try {
+        const channel = String(req.body?.channel || "email").toLowerCase();
+        if (channel === "whatsapp") {
+            req.body = { ...(req.body || {}), testNumber: req.body?.testNumber || req.body?.to || req.body?.recipient };
+            return res.redirect(307, "/api/settings/whatsapp/test");
+        }
         const pool = await sql.connect(dbConfig);
-        const channel = req.body.channel || "email";
         await logEmaAudit(pool, req, `Tested ${channel} Notification`, "Notification Channels", "Info", req.body);
-        return res.json({ success: true, message: `${channel} test simulated successfully` });
+        return res.json({ success: true, data: { simulated: true, channel }, message: `${channel} test simulated successfully` });
     } catch (err) {
         console.error("POST /api/settings/notifications/test error:", err);
         return res.status(500).json({ success: false, message: err.message });
@@ -7849,7 +9135,7 @@ async function getMdmAssetByObjectRoot(pool, objectRootIdn, options = {}) {
 |--------------------------------------------------------------------------
 | Frontend APIs read from TSMDM_GEOLOCATION.
 | Background workers keep TSMDM_GEOLOCATION populated from SureMDM /v2/location
-| and backfill missing LocationName values using LocationIQ reverse geocoding.
+| and backfill missing LocationName values using the self-hosted Nominatim reverse geocode gateway.
 |--------------------------------------------------------------------------
 */
 
@@ -8009,19 +9295,27 @@ async function getExistingGeoAddress(pool, latitude, longitude) {
 }
 
 function getReverseGeocodeApiKey() {
-    let config = {};
-    try {
-        config = getMdmConfig() || {};
-    } catch (_) {}
+    return normalizeMdmValue(process.env.REVERSE_GEOCODE_API_KEY);
+}
 
+function getReverseGeocodeUrl() {
+    return normalizeMdmValue(process.env.REVERSE_GEOCODE_URL, "http://localhost:8081/reversegeo/api/reverse");
+}
+
+function getReverseGeocodeTimeoutMs() {
+    return getGeoEnvInt("REVERSE_GEOCODE_TIMEOUT", 15000, 1000, 60000);
+}
+
+function normalizeReverseGeocodeAddress(payload) {
     return normalizeMdmValue(firstMdmDefined(
-        process.env.LOCATIONIQ_API_KEY,
-        process.env.REVERSE_GEOCODE_API_KEY,
-        process.env.APIKEY_REVERSEGEOCODE,
-        config.apiKey_reverseGeocode,
-        config.apiKeyReverseGeocode,
-        config.reverseGeocodeApiKey,
-        config.locationIqApiKey
+        payload?.display_name,
+        payload?.displayName,
+        payload?.address?.road,
+        payload?.address?.commercial,
+        payload?.address?.suburb,
+        payload?.address?.city,
+        payload?.address?.state,
+        payload?.address?.country
     ));
 }
 
@@ -8033,9 +9327,8 @@ async function reverseGeocodeLocation(latitude, longitude) {
     const lon = normalizeMdmValue(longitude);
     if (!lat || !lon) return "";
 
-    const providerUrl = normalizeMdmValue(process.env.REVERSE_GEOCODE_URL, "https://us1.locationiq.com/v1/reverse");
-    const response = await axios.get(providerUrl, {
-        timeout: Number(process.env.REVERSE_GEOCODE_TIMEOUT || 15000),
+    const response = await axios.get(getReverseGeocodeUrl(), {
+        timeout: getReverseGeocodeTimeoutMs(),
         params: {
             key: apiKey,
             lat,
@@ -8044,11 +9337,7 @@ async function reverseGeocodeLocation(latitude, longitude) {
         }
     });
 
-    return normalizeMdmValue(firstMdmDefined(
-        response.data?.display_name,
-        response.data?.displayName,
-        response.data?.address?.road
-    ));
+    return normalizeReverseGeocodeAddress(response.data);
 }
 
 async function updateMissingGeoAddressByCoordinate(pool, latitude, longitude, locationName) {
@@ -8575,6 +9864,38 @@ async function getDistinctMissingGeoCoordinates(pool, limit = 100) {
     return result.recordset || [];
 }
 
+async function reverseGeocodeSingleCoordinate(options = {}) {
+    const pool = await getSqlPoolWithRetry();
+    const latitude = normalizeMdmValue(firstMdmDefined(options.latitude, options.Latitude, options.lat));
+    const longitude = normalizeMdmValue(firstMdmDefined(options.longitude, options.Longitude, options.lon, options.lng));
+    const startedAt = new Date();
+
+    if (!latitude || !longitude) {
+        throw new Error("Latitude and Longitude are required.");
+    }
+
+    if (!getReverseGeocodeApiKey()) {
+        throw new Error("REVERSE_GEOCODE_API_KEY is not configured.");
+    }
+
+    const address = await reverseGeocodeLocation(latitude, longitude) || "Unable to fetch the address.";
+    const updatedRows = isMissingGeoAddress(address)
+        ? 0
+        : await updateMissingGeoAddressByCoordinate(pool, latitude, longitude, address);
+
+    return {
+        startedAt,
+        endedAt: new Date(),
+        Latitude: latitude,
+        Longitude: longitude,
+        LocationName: address,
+        address,
+        updatedRows,
+        storedInDatabase: updatedRows > 0,
+        source: "nominatim-java-gateway"
+    };
+}
+
 async function backfillMissingGeoAddresses(options = {}) {
     const pool = await getSqlPoolWithRetry();
     const limit = parseMdmInt(options.limit, getGeoEnvInt("GEO_REVERSE_GEOCODE_BATCH_SIZE", 50, 1, 1000));
@@ -8591,19 +9912,26 @@ async function backfillMissingGeoAddresses(options = {}) {
     for (const coordinate of coordinates) {
         const latitude = coordinate.Latitude;
         const longitude = coordinate.Longitude;
+        const missingRows = coordinate.MissingRows || 0;
 
         try {
             let address = await getExistingGeoAddress(pool, latitude, longitude);
-            if (address) {
+            const usedExistingAddress = Boolean(address);
+
+            if (usedExistingAddress) {
                 reusedExisting += 1;
             } else {
                 if (!getReverseGeocodeApiKey()) {
                     results.push({
                         Latitude: latitude,
                         Longitude: longitude,
+                        MissingRows: missingRows,
+                        LocationName: "",
+                        address: "",
                         updatedRows: 0,
+                        storedInDatabase: false,
                         skipped: true,
-                        reason: "Reverse geocode API key is not configured."
+                        reason: "REVERSE_GEOCODE_API_KEY is not configured."
                     });
                     continue;
                 }
@@ -8622,16 +9950,23 @@ async function backfillMissingGeoAddresses(options = {}) {
             results.push({
                 Latitude: latitude,
                 Longitude: longitude,
+                MissingRows: missingRows,
+                LocationName: address,
                 address,
                 updatedRows: affectedRows,
-                source: reusedExisting ? "existing-db-address-or-provider" : "provider"
+                storedInDatabase: affectedRows > 0,
+                source: usedExistingAddress ? "existing-db-address" : "nominatim-java-gateway"
             });
         } catch (err) {
             failedCount += 1;
             results.push({
                 Latitude: latitude,
                 Longitude: longitude,
+                MissingRows: missingRows,
+                LocationName: "",
+                address: "",
                 updatedRows: 0,
+                storedInDatabase: false,
                 errorMessage: getMdmErrorMessage(err.response?.data || err.responseData, err.message || String(err))
             });
         }
@@ -8764,6 +10099,14 @@ app.post("/api/geolocation/sync-all", authenticateToken, async (req, res) => {
 
 app.post("/api/geolocation/reverse-geocode", authenticateToken, async (req, res) => {
     try {
+        const latitude = firstMdmDefined(req.body?.latitude, req.body?.Latitude, req.body?.lat);
+        const longitude = firstMdmDefined(req.body?.longitude, req.body?.Longitude, req.body?.lon, req.body?.lng);
+
+        if (latitude !== undefined && longitude !== undefined) {
+            const data = await reverseGeocodeSingleCoordinate({ latitude, longitude });
+            return res.json({ success: true, message: "Reverse geocode completed.", data });
+        }
+
         const data = await backfillMissingGeoAddresses({
             limit: firstMdmDefined(req.body?.limit, req.body?.Limit),
             delayMs: firstMdmDefined(req.body?.delayMs, req.body?.DelayMs)
@@ -8773,7 +10116,7 @@ app.post("/api/geolocation/reverse-geocode", authenticateToken, async (req, res)
     } catch (err) {
         return res.status(500).json({
             success: false,
-            message: "Failed to reverse geocode missing geolocation addresses.",
+            message: "Failed to reverse geocode geolocation address.",
             errorMessage: getMdmErrorMessage(err.response?.data || err.responseData, err.message || String(err))
         });
     }
@@ -16458,18 +17801,44 @@ async function sendTaskActionResponse(req, res) {
                 .input("Job_Idn", sql.Int, jobId)
                 .input("Job_Status", sql.Int, newStatus)
                 .query(`
-                    UPDATE TS_JOB
+                    SET NOCOUNT ON;
+
+                    DECLARE @affectedJobRows int = 0;
+                    DECLARE @affectedHistoryRows int = 0;
+
+                    UPDATE dbo.TS_JOB
                     SET Job_Status = @Job_Status
                     WHERE Job_Idn = @Job_Idn;
 
-                    SELECT @@ROWCOUNT AS affectedRows;
+                    SET @affectedJobRows = @@ROWCOUNT;
+
+                    IF OBJECT_ID(N'dbo.TS_JOB_HISTORY', N'U') IS NOT NULL
+                    BEGIN
+                        UPDATE dbo.TS_JOB_HISTORY
+                        SET Job_Status = @Job_Status,
+                            LastChangedTime = GETDATE()
+                        WHERE Job_Idn = @Job_Idn;
+
+                        SET @affectedHistoryRows = @@ROWCOUNT;
+                    END
+
+                    SELECT
+                        @affectedJobRows AS affectedRows,
+                        @affectedHistoryRows AS affectedHistoryRows;
                 `);
 
             const affectedRows = result.recordset?.[0]?.affectedRows || 0;
+            const affectedHistoryRows = result.recordset?.[0]?.affectedHistoryRows || 0;
             return res.json({
                 success: affectedRows > 0,
                 message: affectedRows > 0 ? `Task ${action} updated.` : "Task not found.",
-                data: { Job_Idn: jobId, Job_Status: newStatus, statusLabel: resolveTaskStatusLabel(newStatus), affectedRows }
+                data: {
+                    Job_Idn: jobId,
+                    Job_Status: newStatus,
+                    statusLabel: resolveTaskStatusLabel(newStatus),
+                    affectedRows,
+                    affectedHistoryRows
+                }
             });
         }
 
@@ -17307,7 +18676,7 @@ function registerInternetMeteringApis(options = {}) {
             const source = { ...(req.query || {}), ...(req.body || {}) };
             const relationID = parseWebInt(firstWebDefined(source.relationID, source.relationId, source.Object_Rel_Idn, source.relation_id), -1);
             const clientID = parseWebInt(firstWebDefined(source.clientID, source.clientId, source.Object_Root_Idn, source.client_id), 0);
-            const urlID = parseWebInt(firstWebDefined(source.urlID, source.urlId, source.URLMain_Idn, source.url_id), 0);
+            const urlID = normalizeWebUrlMainId(firstWebDefined(source.urlID, source.urlId, source.URLMain_Idn, source.url_id));
             const meterDate = formatWebMeteringDate(firstWebDefined(source.startDate, source.meterDate, source.fromDate), 30);
             const meterToDate = formatWebMeteringDate(firstWebDefined(source.endDate, source.meterToDate, source.metertoDate, source.toDate), 0);
             const page = Math.max(parseWebInt(source.page, 1), 1);
@@ -17377,7 +18746,7 @@ function registerInternetMeteringApis(options = {}) {
             const source = { ...(req.query || {}), ...(req.body || {}) };
             const relationID = parseWebInt(firstWebDefined(source.relationID, source.relationId, source.Object_Rel_Idn, source.relation_id), -1);
             const clientID = parseWebInt(firstWebDefined(source.clientID, source.clientId, source.Object_Root_Idn, source.client_id), 0);
-            const urlID = parseWebInt(firstWebDefined(source.urlID, source.urlId, source.URLMain_Idn, source.url_id), 0);
+            const urlID = normalizeWebUrlMainId(firstWebDefined(source.urlID, source.urlId, source.URLMain_Idn, source.url_id));
             const restrict = parseWebInt(firstWebDefined(source.restrict, source.restrict_id), -1);
             const meterDate = formatWebMeteringDate(firstWebDefined(source.startDate, source.meterDate, source.fromDate), 30);
             const meterToDate = formatWebMeteringDate(firstWebDefined(source.endDate, source.meterToDate, source.metertoDate, source.toDate), 0);
@@ -18110,6 +19479,74 @@ function networkRowToScanTarget(row) {
     };
 }
 
+async function resolveNetworkScanTargetFromObjectRoot(pool, target) {
+    const normalized = normalizeNetworkScanTarget(target);
+    if (!normalized) return null;
+
+    const ip = normalizeNetworkValue(normalized.ip);
+    const existingRootId = parseNetworkInt(normalized.objectRootIdn, 0);
+    const existingDeviceId = normalizeNetworkValue(normalized.objectDeviceID);
+
+    if (!ip) {
+        return {
+            ...normalized,
+            objectRootIdn: existingRootId,
+            objectDeviceID: existingDeviceId
+        };
+    }
+
+    try {
+        const result = await pool.request()
+            .input("IP", sql.VarChar(255), ip)
+            .query(`
+                SELECT TOP 1
+                    Object_Root_Idn,
+                    Object_DeviceID
+                FROM dbo.TS_OBJECT_ROOT WITH (NOLOCK)
+                WHERE ISNULL(Object_Root_Idn, 0) > 0
+                  AND (
+                        LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), IP), ''))) = @IP
+                     OR LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), RealIP), ''))) = @IP
+                  )
+                ORDER BY
+                    CASE
+                        WHEN LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), IP), ''))) = @IP THEN 0
+                        WHEN LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), RealIP), ''))) = @IP THEN 1
+                        ELSE 2
+                    END,
+                    ISNULL(ConnectionStatus, 0) DESC,
+                    ISNULL(ConnectionTime, '19000101') DESC,
+                    ISNULL(Object_Root_Idn, 0) DESC;
+            `);
+
+        const row = result.recordset?.[0];
+
+        return {
+            ...normalized,
+            objectRootIdn: parseNetworkInt(row?.Object_Root_Idn, existingRootId),
+            objectDeviceID: normalizeNetworkValue(row?.Object_DeviceID, existingDeviceId)
+        };
+    } catch (err) {
+        console.warn(`[Network Scan] Failed to resolve TS_OBJECT_ROOT identity for IP ${ip}:`, err.message || err);
+        return {
+            ...normalized,
+            objectRootIdn: existingRootId,
+            objectDeviceID: existingDeviceId
+        };
+    }
+}
+
+async function resolveNetworkScanTargetsFromObjectRoot(pool, targets = []) {
+    const resolved = [];
+
+    for (const target of dedupeNetworkScanTargets(targets)) {
+        const resolvedTarget = await resolveNetworkScanTargetFromObjectRoot(pool, target);
+        if (resolvedTarget) resolved.push(resolvedTarget);
+    }
+
+    return dedupeNetworkScanTargets(resolved);
+}
+
 async function resolveNetworkScanTargets(pool, payload = {}) {
     const mode = normalizeNetworkScanMode(firstNetworkScanDefined(
         payload.scanMode,
@@ -18152,7 +19589,7 @@ async function resolveNetworkScanTargets(pool, payload = {}) {
             mode,
             subnet,
             requestedIp: ipAddress,
-            targets: explicitTargets
+            targets: await resolveNetworkScanTargetsFromObjectRoot(pool, explicitTargets)
         };
     }
 
@@ -18161,7 +19598,7 @@ async function resolveNetworkScanTargets(pool, payload = {}) {
             mode,
             subnet,
             requestedIp: ipAddress,
-            targets: [{ ip: ipAddress, objectRootIdn: 0, objectDeviceID: "" }]
+            targets: await resolveNetworkScanTargetsFromObjectRoot(pool, [{ ip: ipAddress }])
         };
     }
 
@@ -18193,7 +19630,7 @@ async function resolveNetworkScanTargets(pool, payload = {}) {
         mode,
         subnet,
         requestedIp: ipAddress,
-        targets: dedupeNetworkScanTargets(targets)
+        targets: await resolveNetworkScanTargetsFromObjectRoot(pool, dedupeNetworkScanTargets(targets))
     };
 }
 
@@ -18346,15 +19783,32 @@ async function createNetworkInventoryScanJob(req, res) {
                         Object_DeviceID,
                         IP
                     )
-                    VALUES
-                    (
+                    SELECT
                         @Job_Idn,
-                        @Object_Root_Idn,
+                        ISNULL(NULLIF(@Object_Root_Idn, 0), ISNULL(root.Object_Root_Idn, 0)),
                         @Job_Status,
                         @LastChangedTime,
-                        @Object_DeviceID,
+                        ISNULL(NULLIF(@Object_DeviceID, ''), ISNULL(root.Object_DeviceID, '')),
                         @IP
-                    );
+                    FROM (SELECT 1 AS seed) s
+                    OUTER APPLY (
+                        SELECT TOP 1
+                            r.Object_Root_Idn,
+                            r.Object_DeviceID
+                        FROM [dbo].[TS_OBJECT_ROOT] r WITH (NOLOCK)
+                        WHERE ISNULL(r.Object_Root_Idn, 0) > 0
+                          AND (
+                                LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.IP), ''))) = @IP
+                             OR ',' + REPLACE(REPLACE(LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.IP), ''))), ';', ','), ' ', '') + ',' LIKE '%,' + REPLACE(@IP, ' ', '') + ',%'
+                             OR LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.RealIP), ''))) = @IP
+                             OR LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.IP), ''))) LIKE '%' + @IP + '%'
+                          )
+                        ORDER BY
+                            CASE WHEN LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.IP), ''))) = @IP THEN 0 ELSE 1 END,
+                            ISNULL(r.ConnectionStatus, 0) DESC,
+                            ISNULL(r.ConnectionTime, '19000101') DESC,
+                            ISNULL(r.Object_Root_Idn, 0) DESC
+                    ) root;
                 `);
         }
 
@@ -22472,7 +23926,7 @@ app.get("/api/settings/management-policy", authenticateToken, async (req, res) =
     }
 });
 
-app.post("/api/settings/management-policy", authenticateToken, async (req, res) => {
+async function saveManagementPolicyHandler(req, res) {
     let transaction;
     try {
         const pool = await sql.connect(dbConfig);
@@ -22561,7 +24015,14 @@ app.post("/api/settings/management-policy", authenticateToken, async (req, res) 
             error: err.message
         });
     }
-});
+
+}
+
+// Management Policy save route.
+// Frontend Settings.tsx uses PUT, while older backend exposed only POST.
+// Keep both methods mapped to the same handler so existing screens and saved clients work.
+app.post("/api/settings/management-policy", authenticateToken, saveManagementPolicyHandler);
+app.put("/api/settings/management-policy", authenticateToken, saveManagementPolicyHandler);
 
 // online_patching_apis_only.js
 // Extracted Online Patching API block for EMA backend.
@@ -25234,19 +26695,108 @@ function getHwCategory(categoryKey) {
     return match || HW_CATEGORY_MAP[categoryKey];
 }
 
+function getHardwareStatisticRawValue(row = {}) {
+    const explicitValue =
+        row.rawValue ??
+        row.RawValue ??
+        row.item ??
+        row.Item ??
+        row.Items ??
+        row.Value ??
+        row.Category_Inventory ??
+        row.category_inventory ??
+        row[""];
+
+    if (explicitValue !== undefined && explicitValue !== null && String(explicitValue).trim() !== "") {
+        return explicitValue;
+    }
+
+    const ignoredKeys = new Set([
+        "ccount", "count", "cnt", "total", "totalcount", "devicecount",
+        "percentage", "percent", "rate", "ratio"
+    ]);
+
+    const fallbackEntry = Object.entries(row).find(([key, value]) => {
+        const normalizedKey = String(key).replace(/[\s_\-()/.]+/g, "").toLowerCase();
+        return !ignoredKeys.has(normalizedKey) && value !== undefined && value !== null && String(value).trim() !== "";
+    });
+
+    return fallbackEntry ? fallbackEntry[1] : "";
+}
+
+function formatHardwareStatisticDisplayValue(value, category) {
+    const text = String(value ?? "").trim();
+    if (!text) return "";
+
+    if (category?.code === 4) {
+        const memoryMb = Number(text.replace(/,/g, ""));
+        if (Number.isFinite(memoryMb) && memoryMb > 0) {
+            const memoryGb = memoryMb / 1024;
+            const roundedGb = Math.abs(memoryGb - Math.round(memoryGb)) < 0.05
+                ? String(Math.round(memoryGb))
+                : memoryGb.toFixed(1);
+            return `${roundedGb} GB`;
+        }
+    }
+
+    return text;
+}
+
+function normalizeHardwareStatisticRows(rows = [], category) {
+    const normalizedRows = (Array.isArray(rows) ? rows : [])
+        .map(row => {
+            const source = row && typeof row === "object" ? row : {};
+            const rawValue = getHardwareStatisticRawValue(source);
+            const countValue =
+                source.count ??
+                source.CCount ??
+                source.Count ??
+                source.Cnt ??
+                source.DeviceCount ??
+                source.TotalCount ??
+                0;
+            const count = Number(String(countValue ?? 0).replace(/,/g, ""));
+            const rawText = String(rawValue ?? "").trim();
+
+            if (!rawText || !Number.isFinite(count) || count <= 0) return null;
+
+            return {
+                item: formatHardwareStatisticDisplayValue(rawText, category),
+                displayValue: formatHardwareStatisticDisplayValue(rawText, category),
+                rawValue: rawText,
+                count,
+                CCount: count
+            };
+        })
+        .filter(Boolean);
+
+    const totalDevices = normalizedRows.reduce((sum, row) => sum + row.count, 0);
+    const data = normalizedRows.map(row => ({
+        ...row,
+        percentage: totalDevices > 0
+            ? Number(((row.count / totalDevices) * 100).toFixed(1))
+            : 0
+    }));
+
+    return { data, totalDevices };
+}
+
 async function getAllHardwareStatistics(pool, relationID) {
     const entries = await Promise.all(
         HW_CATEGORY_LIST.map(async category => {
-            const rows = await executeStoredProcedure(pool, "spGetHWAllStat2", {
+            const rawRows = await executeStoredProcedure(pool, "spGetHWStat2", {
                 nRelationID: { type: sql.Int, value: relationID },
                 Catg: { type: sql.Int, value: category.code }
             });
+            const normalized = normalizeHardwareStatisticRows(rawRows, category);
 
             return [category.key, {
                 category: category.key,
                 label: category.label,
                 code: category.code,
-                data: rows
+                totalRecords: normalized.data.length,
+                totalDevices: normalized.totalDevices,
+                data: normalized.data
             }];
         })
     );
@@ -30304,6 +31854,7 @@ app.put("/api/assets/:objectAgent/:assetId/department", authenticateToken, handl
 app.patch("/api/assets/:objectAgent/:assetId/department", authenticateToken, handleMoveAssetDepartment);
 
 
+
 // GET /api/hardware-inventory/assets
 // Optimized Hardware Inventory loader. Returns all EM + unmapped MDM assets in one request
 // so the frontend does not need to call /api/assets/:relationID for every department.
@@ -30362,149 +31913,798 @@ app.get("/api/assets/:relationID", authenticateToken, async (req, res) => {
     }
 });
 
-async function getEMAData(pool, Object_Root_Idn) {
+function isNonEmptySqlText(value) {
+    return typeof value === "string" && value.trim().length > 0;
+}
+
+function normalizeQueryExportKey(value) {
+    return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function pickSqlQueryExport(moduleObject, preferredKey, aliases = []) {
+    if (!moduleObject || typeof moduleObject !== "object") return "";
+
+    const directKeys = [preferredKey, ...aliases].filter(Boolean);
+    for (const key of directKeys) {
+        if (isNonEmptySqlText(moduleObject[key])) return moduleObject[key];
+    }
+
+    const normalizedWanted = directKeys.map(normalizeQueryExportKey).filter(Boolean);
+    const exportKeys = Object.keys(moduleObject);
+
+    for (const key of exportKeys) {
+        if (normalizedWanted.includes(normalizeQueryExportKey(key)) && isNonEmptySqlText(moduleObject[key])) {
+            return moduleObject[key];
+        }
+    }
+
+    // Last chance: older query files sometimes use slightly different casing or
+    // omit underscores, e.g. queryHWMainInfo, Query_HW_MAIN_INFO, queryDiskDrive.
+    const preferredNormalized = normalizeQueryExportKey(preferredKey);
+    const looseTokens = [];
+    if (preferredNormalized.includes("hwmaininfo")) looseTokens.push("hwmaininfo", "maininfo");
+    if (preferredNormalized.includes("diskdrives")) looseTokens.push("diskdrives", "diskdrive", "drives");
+    if (preferredNormalized.includes("drivers")) looseTokens.push("drivers", "driver");
+
+    for (const token of looseTokens) {
+        const matchKey = exportKeys.find((key) => normalizeQueryExportKey(key).includes(token) && isNonEmptySqlText(moduleObject[key]));
+        if (matchKey) return moduleObject[matchKey];
+    }
+
+    return "";
+}
+
+function getEmaDetailQueryStatus() {
+    return {
+        query_HWMainInfo: Boolean(pickSqlQueryExport(queries_EMA, "query_HWMainInfo", ["queryHWMainInfo", "query_HW_MAIN_INFO", "HWMainInfo"])),
+        query_DISKDRIVES: Boolean(pickSqlQueryExport(queries_EMA, "query_DISKDRIVES", ["queryDiskDrives", "query_DISK_DRIVES", "query_DiskDrives", "DISKDRIVES"])),
+        query_DRIVERS: Boolean(pickSqlQueryExport(queries_EMA, "query_DRIVERS", ["queryDrivers", "query_DRIVER", "DRIVERS"]))
+    };
+}
+
+
+async function hwStoredProcedureExists(pool, procedureName) {
+    const name = String(procedureName || "").trim().replace(/^dbo\./i, "");
+    if (!name) return false;
+
     try {
-        const [
-            hwMainInfo,
-            diskDrives,
-            drivers
-
-        ] = await Promise.all([
-
-            executeQuery(
-                pool,
-                queries_EMA.query_HWMainInfo,
-                {
-                    input_Object_Root_Idn: {
-                        type: sql.Int,
-                        value: Object_Root_Idn
-                    }
-                }
-            ),
-
-            executeQuery(
-                pool,
-                queries_EMA.query_DISKDRIVES,
-                {
-                    input_Object_Root_Idn: {
-                        type: sql.Int,
-                        value: Object_Root_Idn
-                    }
-                }
-            ),
-
-            executeQuery(
-                pool,
-                queries_EMA.query_DRIVERS,
-                {
-                    input_Object_Root_Idn: {
-                        type: sql.Int,
-                        value: Object_Root_Idn
-                    }
-                }
-            )
-
-        ]);
-
-        const responseObject = {
-            HWMainInfo: hwMainInfo,
-            DiskDrives: diskDrives,
-            Drivers: drivers,
-        };
-
-        return responseObject;
-
+        const result = await pool.request()
+            .input("procedureName", sql.NVarChar(255), name)
+            .query(`
+                SELECT TOP 1 1 AS existsFlag
+                FROM sys.procedures WITH (NOLOCK)
+                WHERE name = @procedureName;
+            `);
+        return getSafeRecordset(result).length > 0;
     } catch (err) {
-        console.error("getEMAData Error:", err);
-        throw err;
+        console.warn(`[hardware detail] Procedure existence check skipped for ${name}:`, err.message);
+        return false;
     }
 }
 
-async function getTSMDMData(pool, MDM_Asset_Idn) {
+async function hwExecuteStoredProcedureRows(pool, procedureName, inputs = {}) {
+    const name = String(procedureName || "").trim().replace(/^dbo\./i, "");
+    if (!name) return [];
+
+    const exists = await hwStoredProcedureExists(pool, name);
+    if (!exists) return [];
+
     try {
-        const [
-            hwMainInfo,
-            diskDrives,
-            additionalMac,
-            phoneSignal
+        const request = pool.request();
+        Object.entries(inputs || {}).forEach(([key, input]) => {
+            if (!input || !input.type) return;
+            request.input(key, input.type, input.value);
+        });
 
-        ] = await Promise.all([
+        const result = await request.execute(name);
+        return getSafeRecordset(result).map(cloneDbRow);
+    } catch (err) {
+        console.warn(`[hardware detail] Stored procedure ${name} skipped:`, err.message);
+        return [];
+    }
+}
 
-            executeQuery(
+async function getJavaHardwareClientDetailSections(pool, Object_Root_Idn) {
+    const inputId = Number(Object_Root_Idn) || 0;
+    if (inputId <= 0) {
+        return {
+            infoEx: [],
+            workgroup: [],
+            HDD: [],
+            LanCard: [],
+            ETCField: [],
+            Custom: []
+        };
+    }
+
+    const [infoEx, workgroup, hdd, lanCard, etcField, custom] = await Promise.all([
+        hwExecuteStoredProcedureRows(pool, "spGetClientInfoEx", {
+            Object_Root_Idn: { type: sql.Int, value: inputId }
+        }),
+        hwExecuteStoredProcedureRows(pool, "spGetClientWorkgroupComName", {
+            ObjectIdn: { type: sql.Int, value: inputId }
+        }),
+        hwExecuteStoredProcedureRows(pool, "spGetClientLHDD", {
+            nObjectIdn: { type: sql.Int, value: inputId }
+        }),
+        hwExecuteStoredProcedureRows(pool, "spGetClientLancard", {
+            nObjectIdn: { type: sql.Int, value: inputId }
+        }),
+        hwExecuteStoredProcedureRows(pool, "spGetClientETCField", {
+            nObjectIdn: { type: sql.Int, value: inputId }
+        }),
+        hwExecuteStoredProcedureRows(pool, "spGetClientCustomData", {
+            Object_Root_Idn: { type: sql.Int, value: inputId }
+        })
+    ]);
+
+    return {
+        infoEx,
+        workgroup,
+        HDD: hdd,
+        LanCard: lanCard,
+        ETCField: etcField,
+        Custom: custom
+    };
+}
+
+function asJavaHardwareSection(rows) {
+    return {
+        data: Array.isArray(rows) ? rows : []
+    };
+}
+
+async function getHardwareTableColumnSet(pool, tableName) {
+    const normalizedTableName = String(tableName || "").trim();
+    if (!normalizedTableName) return new Set();
+
+    try {
+        const result = await pool.request()
+            .input("tableName", sql.NVarChar(128), normalizedTableName)
+            .query(`
+                SELECT COLUMN_NAME
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME = @tableName;
+            `);
+
+        return new Set(getSafeRecordset(result).map(row => String(row.COLUMN_NAME || row.column_name || "").toLowerCase()));
+    } catch (err) {
+        console.warn(`[hardware detail] Column inspection skipped for ${normalizedTableName}:`, err.message);
+        return new Set();
+    }
+}
+
+function hasHardwareColumn(columnSet, columnName) {
+    return columnSet instanceof Set && columnSet.has(String(columnName || "").toLowerCase());
+}
+
+function hardwareNullExpression(type = "text") {
+    if (type === "int") return "CAST(NULL AS INT)";
+    if (type === "datetime") return "CAST(NULL AS DATETIME)";
+    return "CAST(NULL AS NVARCHAR(255))";
+}
+
+function hardwareColumnExpression(alias, columnSet, columnName, outputAlias = columnName, type = "text") {
+    const safeAlias = String(alias || "t").replace(/[^a-zA-Z0-9_]/g, "");
+    const safeColumn = String(columnName || "").replace(/]/g, "]]");
+    const safeOutputAlias = String(outputAlias || columnName || "").replace(/]/g, "]]");
+
+    if (hasHardwareColumn(columnSet, columnName)) {
+        return `${safeAlias}.[${safeColumn}] AS [${safeOutputAlias}]`;
+    }
+
+    return `${hardwareNullExpression(type)} AS [${safeOutputAlias}]`;
+}
+
+async function executeHardwareDetailSection(pool, label, query, inputs = {}, fallbackFactory = null, status = {}) {
+    const sectionLabel = String(label || "hardware-detail-section");
+    const hasQuery = isNonEmptySqlText(query);
+
+    if (hasQuery) {
+        try {
+            const rows = await executeQuery(pool, query, inputs);
+            status[sectionLabel] = { source: "query-export", success: true, totalRecords: rows.length };
+            return rows;
+        } catch (err) {
+            console.warn(`[hardware detail] ${sectionLabel} query export failed; falling back when possible:`, err.message);
+            status[sectionLabel] = { source: "query-export", success: false, error: err.message };
+        }
+    } else {
+        status[sectionLabel] = { source: "query-export", success: false, error: "Query export missing" };
+    }
+
+    if (typeof fallbackFactory === "function") {
+        try {
+            const rows = await fallbackFactory();
+            status[sectionLabel] = {
+                ...(status[sectionLabel] || {}),
+                fallbackSource: "fallback",
+                fallbackSuccess: true,
+                fallbackTotalRecords: rows.length
+            };
+            return rows;
+        } catch (fallbackErr) {
+            console.warn(`[hardware detail] ${sectionLabel} fallback failed:`, fallbackErr.message);
+            status[sectionLabel] = {
+                ...(status[sectionLabel] || {}),
+                fallbackSource: "fallback",
+                fallbackSuccess: false,
+                fallbackError: fallbackErr.message
+            };
+        }
+    }
+
+    return [];
+}
+
+async function fallbackEmaHwMainInfo(pool, Object_Root_Idn) {
+    const objectId = Number(Object_Root_Idn) || 0;
+    if (objectId <= 0) return [];
+
+    const hasRoot = await tableExists(pool, "TS_OBJECT_ROOT");
+    if (!hasRoot) return [];
+
+    const [
+        rootColumns,
+        hasRelation,
+        hasClientInfo,
+        hasMdmAsset,
+        hasMdmMapping,
+        hasGeo
+    ] = await Promise.all([
+        getHardwareTableColumnSet(pool, "TS_OBJECT_ROOT"),
+        tableExists(pool, "TS_OBJECT_RELATION"),
+        tableExists(pool, "TS_CLIENT_INFO"),
+        tableExists(pool, "TSMDM_ASSET"),
+        tableExists(pool, "TSMDM_TS_OBJECT_MAPPING"),
+        tableExists(pool, "TSMDM_GEOLOCATION")
+    ]);
+
+    const clientColumns = hasClientInfo ? await getHardwareTableColumnSet(pool, "TS_CLIENT_INFO") : new Set();
+    const mdmColumns = hasMdmAsset ? await getHardwareTableColumnSet(pool, "TSMDM_ASSET") : new Set();
+    const geoColumns = hasGeo ? await getHardwareTableColumnSet(pool, "TSMDM_GEOLOCATION") : new Set();
+
+    const relationJoin = hasRelation
+        ? "LEFT JOIN TS_OBJECT_RELATION rel WITH (NOLOCK) ON root.Object_Rel_Idn = rel.Object_Rel_Idn"
+        : "";
+
+    const relationSelect = hasRelation
+        ? `rel.Object_Full_Name,
+           rel.Object_Rel_Name,
+           rel.Object_PR_Idn,`
+        : `CAST(NULL AS NVARCHAR(500)) AS Object_Full_Name,
+           CAST(NULL AS NVARCHAR(255)) AS Object_Rel_Name,
+           CAST(NULL AS INT) AS Object_PR_Idn,`;
+
+    const clientJoin = hasClientInfo && hasHardwareColumn(clientColumns, "Object_Root_Idn")
+        ? "LEFT JOIN TS_CLIENT_INFO ci WITH (NOLOCK) ON root.Object_Root_Idn = ci.Object_Root_Idn"
+        : "";
+
+    const osFromRoot = hasHardwareColumn(rootColumns, "OS") ? "NULLIF(root.OS, '')" : "NULL";
+    const osFromClient = clientJoin && hasHardwareColumn(clientColumns, "OS_FullName") ? "NULLIF(ci.OS_FullName, '')" : "NULL";
+    const modelFromRoot = hasHardwareColumn(rootColumns, "Model") ? "NULLIF(root.Model, '')" : "NULL";
+    const modelFromClient = clientJoin && hasHardwareColumn(clientColumns, "MachineType") ? "NULLIF(ci.MachineType, '')" : "NULL";
+    const biosFromClient = clientJoin && hasHardwareColumn(clientColumns, "BiosSerialkey") ? "ci.BiosSerialkey" : "CAST(NULL AS NVARCHAR(255))";
+    const userFromRoot = hasHardwareColumn(rootColumns, "Object_Client_Name") ? "NULLIF(root.Object_Client_Name, '')" : "NULL";
+    const ipFromRoot = hasHardwareColumn(rootColumns, "IP") ? "NULLIF(root.IP, '')" : "NULL";
+
+    const mappingJoin = hasMdmMapping
+        ? "LEFT JOIN TSMDM_TS_OBJECT_MAPPING map WITH (NOLOCK) ON map.MDM_Asset_Idn = mdm.MDM_Asset_Idn"
+        : "";
+
+    const mdmCanApply = hasMdmAsset && hasHardwareColumn(mdmColumns, "MDM_Asset_Idn") && (
+        (hasMdmMapping && hasHardwareColumn(rootColumns, "Object_Root_Idn")) ||
+        (hasHardwareColumn(mdmColumns, "DeviceName") && hasHardwareColumn(rootColumns, "ComputerName"))
+    );
+
+    const mdmApplyConditions = [];
+    if (hasMdmMapping) mdmApplyConditions.push("map.Object_Root_Idn = root.Object_Root_Idn");
+    if (hasHardwareColumn(mdmColumns, "DeviceName") && hasHardwareColumn(rootColumns, "ComputerName")) {
+        mdmApplyConditions.push("(mdm.DeviceName IS NOT NULL AND mdm.DeviceName <> '' AND mdm.DeviceName = root.ComputerName)");
+    }
+    if (hasHardwareColumn(mdmColumns, "SerialNumber") && clientJoin && hasHardwareColumn(clientColumns, "BiosSerialkey")) {
+        mdmApplyConditions.push("(mdm.SerialNumber IS NOT NULL AND mdm.SerialNumber <> '' AND mdm.SerialNumber = ci.BiosSerialkey)");
+    }
+
+    const mdmApply = mdmCanApply && mdmApplyConditions.length
+        ? `OUTER APPLY (
+              SELECT TOP 1 mdm.*
+              FROM TSMDM_ASSET mdm WITH (NOLOCK)
+              ${mappingJoin}
+              WHERE ${mdmApplyConditions.join(" OR ")}
+              ORDER BY ${hasMdmMapping ? "CASE WHEN map.Object_Root_Idn = root.Object_Root_Idn THEN 0 ELSE 1 END," : ""}
+                       mdm.MDM_Asset_Idn DESC
+          ) mdm`
+        : "";
+
+    const mdmSelect = mdmApply
+        ? `${hardwareColumnExpression("mdm", mdmColumns, "MDM_Asset_Idn", "MDM_Asset_Idn", "int")},
+           ${hardwareColumnExpression("mdm", mdmColumns, "DeviceID", "MDM_DeviceID")},
+           ${hardwareColumnExpression("mdm", mdmColumns, "DeviceName", "MDM_DeviceName")},
+           ${hardwareColumnExpression("mdm", mdmColumns, "DeviceModelName", "MDM_DeviceModelName")},
+           ${hardwareColumnExpression("mdm", mdmColumns, "PlatformType", "MDM_PlatformType")},
+           ${hardwareColumnExpression("mdm", mdmColumns, "SerialNumber", "MDM_SerialNumber")},
+           ${hardwareColumnExpression("mdm", mdmColumns, "LastLoggedInUser", "MDM_LastLoggedInUser")},
+           ${hardwareColumnExpression("mdm", mdmColumns, "DeviceIPAddress", "MDM_DeviceIPAddress")},
+           ${hardwareColumnExpression("mdm", mdmColumns, "DeviceLocalIPAddress", "MDM_DeviceLocalIPAddress")},`
+        : `CAST(NULL AS INT) AS MDM_Asset_Idn,
+           CAST(NULL AS NVARCHAR(255)) AS MDM_DeviceID,
+           CAST(NULL AS NVARCHAR(255)) AS MDM_DeviceName,
+           CAST(NULL AS NVARCHAR(255)) AS MDM_DeviceModelName,
+           CAST(NULL AS NVARCHAR(255)) AS MDM_PlatformType,
+           CAST(NULL AS NVARCHAR(255)) AS MDM_SerialNumber,
+           CAST(NULL AS NVARCHAR(255)) AS MDM_LastLoggedInUser,
+           CAST(NULL AS NVARCHAR(255)) AS MDM_DeviceIPAddress,
+           CAST(NULL AS NVARCHAR(255)) AS MDM_DeviceLocalIPAddress,`;
+
+    const geoCanApply = hasGeo && mdmApply && hasHardwareColumn(geoColumns, "DeviceID") && hasHardwareColumn(mdmColumns, "DeviceID");
+    const geoApply = geoCanApply
+        ? `OUTER APPLY (
+              SELECT TOP 1 geo.*
+              FROM TSMDM_GEOLOCATION geo WITH (NOLOCK)
+              WHERE geo.DeviceID = mdm.DeviceID
+              ORDER BY ${hasHardwareColumn(geoColumns, "Time") ? "geo.[Time]" : "1"} DESC
+          ) geo`
+        : "";
+
+    const geoTimeExpr = geoCanApply && hasHardwareColumn(geoColumns, "Time") ? "geo.[Time]" : "CAST(NULL AS DATETIME)";
+    const geoAccuracyExpr =
+        geoCanApply && hasHardwareColumn(geoColumns, "LocationAccuracy") && hasHardwareColumn(geoColumns, "Accuracy") ? "COALESCE(geo.LocationAccuracy, geo.Accuracy)" :
+        geoCanApply && hasHardwareColumn(geoColumns, "LocationAccuracy") ? "geo.LocationAccuracy" :
+        geoCanApply && hasHardwareColumn(geoColumns, "Accuracy") ? "geo.Accuracy" :
+        "CAST(NULL AS NVARCHAR(100))";
+
+    const geoSelect = geoCanApply
+        ? `${hardwareColumnExpression("geo", geoColumns, "Latitude", "Latitude")},
+           ${hardwareColumnExpression("geo", geoColumns, "Longitude", "Longitude")},
+           ${geoAccuracyExpr} AS Accuracy,
+           ${geoTimeExpr} AS LastUpdate,
+           ${hardwareColumnExpression("geo", geoColumns, "LocationName", "LocationName")},`
+        : `CAST(NULL AS NVARCHAR(100)) AS Latitude,
+           CAST(NULL AS NVARCHAR(100)) AS Longitude,
+           CAST(NULL AS NVARCHAR(100)) AS Accuracy,
+           CAST(NULL AS DATETIME) AS LastUpdate,
+           CAST(NULL AS NVARCHAR(500)) AS LocationName,`;
+
+    const connectionTimeExpr = hasHardwareColumn(rootColumns, "ConnectionTime") ? "root.ConnectionTime" : "NULL";
+    const hiUpdateExpr = hasHardwareColumn(rootColumns, "HIUpdateTime") ? "root.HIUpdateTime" : "NULL";
+    const rawConnectionExpr = hasHardwareColumn(rootColumns, "ConnectionStatus") ? "CAST(root.ConnectionStatus AS NVARCHAR(100))" : "CAST(NULL AS NVARCHAR(100))";
+    const hasRootConnectionStatus = hasHardwareColumn(rootColumns, "ConnectionStatus");
+    const onlineCaseExpr = hasHardwareColumn(rootColumns, "ConnectionTime")
+        ? "CASE WHEN root.ConnectionTime > DATEADD(second, -20, GETDATE()) THEN 'Online' ELSE 'Offline' END"
+        : hasRootConnectionStatus
+            ? "CASE WHEN ISNULL(root.ConnectionStatus, 0) = 1 THEN 'Online' ELSE 'Offline' END"
+            : "'Offline'";
+    const isOnlineExpr = hasHardwareColumn(rootColumns, "ConnectionTime")
+        ? "CASE WHEN root.ConnectionTime > DATEADD(second, -20, GETDATE()) THEN 1 ELSE 0 END"
+        : hasRootConnectionStatus
+            ? "CASE WHEN ISNULL(root.ConnectionStatus, 0) = 1 THEN 1 ELSE 0 END"
+            : "0";
+
+    const ipAddressExpr = mdmApply && hasHardwareColumn(mdmColumns, "DeviceLocalIPAddress") && hasHardwareColumn(mdmColumns, "DeviceIPAddress")
+        ? `COALESCE(NULLIF(mdm.DeviceLocalIPAddress, ''), NULLIF(mdm.DeviceIPAddress, ''), ${ipFromRoot})`
+        : ipFromRoot;
+
+    const userExpr = mdmApply && hasHardwareColumn(mdmColumns, "LastLoggedInUser")
+        ? `COALESCE(NULLIF(mdm.LastLoggedInUser, ''), ${userFromRoot}, '-')`
+        : `COALESCE(${userFromRoot}, '-')`;
+
+    const result = await pool.request()
+        .input("input_Object_Root_Idn", sql.Int, objectId)
+        .query(`
+            SELECT TOP 1
+                root.Object_Root_Idn,
+                root.Object_Root_Idn AS ObjectRootIdn,
+                ${hardwareColumnExpression("root", rootColumns, "Object_Root_Status", "Object_Root_Status", "int")},
+                ${hardwareColumnExpression("root", rootColumns, "Object_RPR_Idn", "Object_RPR_Idn", "int")},
+                serverRoot.IP AS Server_IP,
+                serverRoot.ComputerName AS Server_Name,
+                ${hardwareColumnExpression("root", rootColumns, "Object_DeviceID", "Object_DeviceID")},
+                ${hardwareColumnExpression("root", rootColumns, "ComputerName", "ComputerName")},
+                ${hardwareColumnExpression("root", rootColumns, "Object_Client_Name", "Object_Client_Name")},
+                ${hardwareColumnExpression("root", rootColumns, "Object_Rel_Idn", "Object_Rel_Idn", "int")},
+                ${relationSelect}
+                'Windows' AS PlatformType,
+                COALESCE(${osFromRoot}, ${osFromClient}, 'Windows') AS OS,
+                ${hardwareColumnExpression("root", rootColumns, "OS_Version", "OS_Version")},
+                ${hardwareColumnExpression("root", rootColumns, "OS_ServicePack", "OS_ServicePack")},
+                COALESCE(${modelFromClient}, ${modelFromRoot}, '-') AS Model,
+                ${hardwareColumnExpression("root", rootColumns, "Model", "ComputerModel")},
+                ${hardwareColumnExpression("root", rootColumns, "IP", "IP")},
+                ${hardwareColumnExpression("root", rootColumns, "RealIP", "RealIP")},
+                ${hardwareColumnExpression("root", rootColumns, "Email", "Email")},
+                ${hardwareColumnExpression("root", rootColumns, "TelNumber", "TelNumber")},
+                ${hardwareColumnExpression("root", rootColumns, "CPU", "CPU")},
+                ${hasHardwareColumn(rootColumns, "CPU_Clock") ? "CASE WHEN root.CPU_Clock IS NULL THEN NULL ELSE CONVERT(varchar(10), root.CPU_Clock) + 'Mhz' END" : "CAST(NULL AS NVARCHAR(100))"} AS CPU_SPEED,
+                ${hasHardwareColumn(rootColumns, "RAM") ? "CASE WHEN root.RAM IS NULL THEN NULL ELSE CONVERT(varchar(10), root.RAM) + ' Mb' END" : "CAST(NULL AS NVARCHAR(100))"} AS RAM,
+                ${hardwareColumnExpression("root", rootColumns, "MadeCompany", "MadeCompany")},
+                ${hardwareColumnExpression("root", rootColumns, "Reserved0", "Reserved0")},
+                ${hardwareColumnExpression("root", rootColumns, "Reserved1", "Reserved1")},
+                ${hardwareColumnExpression("root", rootColumns, "Reserved2", "Reserved2")},
+                ${hardwareColumnExpression("root", rootColumns, "TCAVersion", "TCAVersion")},
+                ${hardwareColumnExpression("root", rootColumns, "Macaddress", "Macaddress")},
+                ${hardwareColumnExpression("root", rootColumns, "SerialKey", "SerialKey")},
+                ${hardwareColumnExpression("root", rootColumns, "RegDate", "RegDate", "datetime")},
+                CONVERT(varchar(30), ${connectionTimeExpr}, 20) AS ConnectionTime,
+                CONVERT(varchar(30), ${hiUpdateExpr}, 20) AS HIUpdateTime,
+                ${rawConnectionExpr} AS RawConnectionStatus,
+                ${onlineCaseExpr} AS ConnectionStatus,
+                ${isOnlineExpr} AS IsOnline,
+                ${biosFromClient} AS BiosSerialkey,
+                ${osFromClient} AS OS_FullName,
+                ${modelFromClient} AS MachineType,
+                ${mdmSelect}
+                ${geoSelect}
+                ${userExpr} AS UserName,
+                ${ipAddressExpr} AS IPAddress,
+                'fallback-direct-sql-safe' AS detailSource
+            FROM TS_OBJECT_ROOT root WITH (NOLOCK)
+            ${relationJoin}
+            ${clientJoin}
+            OUTER APPLY (
+                SELECT TOP 1 parentServer.IP, parentServer.ComputerName
+                FROM TS_OBJECT_ROOT parentServer WITH (NOLOCK)
+                WHERE ${hasHardwareColumn(rootColumns, "Object_RPR_Idn") ? "parentServer.Object_Root_Idn = root.Object_RPR_Idn OR" : ""}
+                      parentServer.Object_RPR_Idn = -1
+                ORDER BY ${hasHardwareColumn(rootColumns, "Object_RPR_Idn") ? "CASE WHEN parentServer.Object_Root_Idn = root.Object_RPR_Idn THEN 0 ELSE 1 END," : ""}
+                         parentServer.Object_Root_Idn DESC
+            ) serverRoot
+            ${mdmApply}
+            ${geoApply}
+            WHERE root.Object_Root_Idn = @input_Object_Root_Idn;
+        `);
+
+    return getSafeRecordset(result).map(cloneDbRow);
+}
+
+async function fallbackEmaDiskDrives(pool, Object_Root_Idn) {
+    // The old query module is the real source for detailed disk rows. When it is
+    // missing, return a safe empty list instead of logging repeated invalid-query warnings.
+    return [];
+}
+
+async function fallbackEmaDrivers(pool, Object_Root_Idn) {
+    // The old query module is the real source for detailed driver rows. When it is
+    // missing, return a safe empty list instead of logging repeated invalid-query warnings.
+    return [];
+}
+
+async function getEMAData(pool, Object_Root_Idn) {
+    const detailStatus = {};
+
+    try {
+        const hwMainInfoQuery = pickSqlQueryExport(queries_EMA, "query_HWMainInfo", ["queryHWMainInfo", "query_HW_MAIN_INFO", "HWMainInfo"]);
+        const diskDrivesQuery = pickSqlQueryExport(queries_EMA, "query_DISKDRIVES", ["queryDiskDrives", "query_DISK_DRIVES", "query_DiskDrives", "DISKDRIVES"]);
+        const driversQuery = pickSqlQueryExport(queries_EMA, "query_DRIVERS", ["queryDrivers", "query_DRIVER", "DRIVERS"]);
+
+        const [hwMainInfo, diskDrives, drivers, javaSections] = await Promise.all([
+            executeHardwareDetailSection(
                 pool,
-                queries_TSMDM.query_HWMainInfo,
+                "EMA.HWMainInfo",
+                hwMainInfoQuery,
                 {
-                    input_MDM_Asset_Idn: {
+                    input_Object_Root_Idn: {
                         type: sql.Int,
-                        value: MDM_Asset_Idn
+                        value: Object_Root_Idn
                     }
-                }
+                },
+                () => fallbackEmaHwMainInfo(pool, Object_Root_Idn),
+                detailStatus
             ),
 
-            executeQuery(
+            executeHardwareDetailSection(
                 pool,
-                queries_TSMDM.query_DISKDRIVES_WINDOWS,
+                "EMA.DiskDrives",
+                diskDrivesQuery,
                 {
-                    MDM_Asset_Idn: {
+                    input_Object_Root_Idn: {
                         type: sql.Int,
-                        value: MDM_Asset_Idn
+                        value: Object_Root_Idn
                     }
-                }
+                },
+                () => fallbackEmaDiskDrives(pool, Object_Root_Idn),
+                detailStatus
             ),
 
-            executeQuery(
+            executeHardwareDetailSection(
                 pool,
-                queries_TSMDM.query_AdditionalMac,
+                "EMA.Drivers",
+                driversQuery,
                 {
-                    MDM_Asset_Idn: {
+                    input_Object_Root_Idn: {
                         type: sql.Int,
-                        value: MDM_Asset_Idn
+                        value: Object_Root_Idn
                     }
-                }
+                },
+                () => fallbackEmaDrivers(pool, Object_Root_Idn),
+                detailStatus
             ),
 
-            executeQuery(
-                pool,
-                queries_TSMDM.query_PhoneSignal,
-                {
-                    input_MDM_Asset_Idn: {
-                        type: sql.Int,
-                        value: MDM_Asset_Idn
-                    }
-                }
-            )
-
+            getJavaHardwareClientDetailSections(pool, Object_Root_Idn).catch(err => {
+                console.warn("[hardware detail] Java-compatible hardware sections skipped:", err.message);
+                detailStatus["EMA.JavaDetailProcedures"] = { success: false, error: err.message };
+                return {
+                    infoEx: [],
+                    workgroup: [],
+                    HDD: [],
+                    LanCard: [],
+                    ETCField: [],
+                    Custom: []
+                };
+            })
         ]);
 
-        const responseObject = {
+        const hddRows = Array.isArray(diskDrives) && diskDrives.length > 0
+            ? diskDrives
+            : (javaSections.HDD || []);
+
+        return {
+            // React/new-Node names.
+            HWMainInfo: hwMainInfo,
+            DiskDrives: hddRows,
+            Drivers: drivers,
+
+            // Java-compatible names from /api/hw/get_HW_ClientInfo.do.
+            HWMain: asJavaHardwareSection(hwMainInfo),
+            infoEx: asJavaHardwareSection(javaSections.infoEx),
+            workgroup: asJavaHardwareSection(javaSections.workgroup),
+            HDD: asJavaHardwareSection(hddRows),
+            LanCard: asJavaHardwareSection(javaSections.LanCard),
+            ETCField: asJavaHardwareSection(javaSections.ETCField),
+            Custom: asJavaHardwareSection(javaSections.Custom),
+
+            queryStatus: {
+                ...getEmaDetailQueryStatus(),
+                detailStatus
+            },
+            fallbackUsed: {
+                HWMainInfo: !hwMainInfoQuery || Boolean(detailStatus["EMA.HWMainInfo"]?.fallbackSuccess),
+                DiskDrives: !diskDrivesQuery || Boolean(detailStatus["EMA.DiskDrives"]?.fallbackSuccess),
+                Drivers: !driversQuery || Boolean(detailStatus["EMA.Drivers"]?.fallbackSuccess),
+                JavaDetailProcedures: true
+            }
+        };
+
+    } catch (err) {
+        console.error("getEMAData Error:", err);
+        return {
+            HWMainInfo: [],
+            DiskDrives: [],
+            Drivers: [],
+            HWMain: asJavaHardwareSection([]),
+            infoEx: asJavaHardwareSection([]),
+            workgroup: asJavaHardwareSection([]),
+            HDD: asJavaHardwareSection([]),
+            LanCard: asJavaHardwareSection([]),
+            ETCField: asJavaHardwareSection([]),
+            Custom: asJavaHardwareSection([]),
+            queryStatus: {
+                ...getEmaDetailQueryStatus(),
+                detailStatus,
+                fatalError: err.message
+            },
+            fallbackUsed: {
+                HWMainInfo: true,
+                DiskDrives: true,
+                Drivers: true,
+                JavaDetailProcedures: true
+            }
+        };
+    }
+}
+
+function getTsMdmDetailQueryStatus() {
+    return {
+        query_HWMainInfo: Boolean(pickSqlQueryExport(queries_TSMDM, "query_HWMainInfo", ["queryHWMainInfo", "query_HW_MAIN_INFO", "HWMainInfo"])),
+        query_DISKDRIVES_WINDOWS: Boolean(pickSqlQueryExport(queries_TSMDM, "query_DISKDRIVES_WINDOWS", ["queryDiskDrivesWindows", "query_DISK_DRIVES_WINDOWS", "query_DISKDRIVES", "DISKDRIVES_WINDOWS"])),
+        query_AdditionalMac: Boolean(pickSqlQueryExport(queries_TSMDM, "query_AdditionalMac", ["queryAdditionalMac", "query_ADDITIONAL_MAC", "AdditionalMac"])),
+        query_PhoneSignal: Boolean(pickSqlQueryExport(queries_TSMDM, "query_PhoneSignal", ["queryPhoneSignal", "query_PHONE_SIGNAL", "PhoneSignal"]))
+    };
+}
+
+async function fallbackTsMdmHwMainInfo(pool, MDM_Asset_Idn) {
+    const hasGeo = await tableExists(pool, "TSMDM_GEOLOCATION");
+
+    const [hasGeoLocationAccuracy, hasGeoAccuracy] = hasGeo
+        ? await Promise.all([
+            tableColumnExists(pool, "TSMDM_GEOLOCATION", "LocationAccuracy"),
+            tableColumnExists(pool, "TSMDM_GEOLOCATION", "Accuracy")
+        ])
+        : [false, false];
+
+    const geoAccuracyExpr = hasGeoLocationAccuracy && hasGeoAccuracy
+        ? "COALESCE(geo.LocationAccuracy, geo.Accuracy)"
+        : hasGeoLocationAccuracy
+            ? "geo.LocationAccuracy"
+            : hasGeoAccuracy
+                ? "geo.Accuracy"
+                : "CAST(NULL AS NVARCHAR(100))";
+
+    const geoApply = hasGeo
+        ? `OUTER APPLY (
+              SELECT TOP 1 geo.*
+              FROM TSMDM_GEOLOCATION geo WITH (NOLOCK)
+              WHERE geo.DeviceID = mdm.DeviceID
+              ORDER BY geo.[Time] DESC
+          ) geo`
+        : "";
+
+    const geoSelect = hasGeo
+        ? `geo.Latitude,
+           geo.Longitude,
+           ${geoAccuracyExpr} AS Accuracy,
+           geo.[Time] AS LastUpdate,
+           geo.LocationName,`
+        : `CAST(NULL AS NVARCHAR(100)) AS Latitude,
+           CAST(NULL AS NVARCHAR(100)) AS Longitude,
+           CAST(NULL AS NVARCHAR(100)) AS Accuracy,
+           CAST(NULL AS DATETIME) AS LastUpdate,
+           CAST(NULL AS NVARCHAR(500)) AS LocationName,`;
+
+    const result = await pool.request()
+        .input("input_MDM_Asset_Idn", sql.Int, MDM_Asset_Idn)
+        .query(`
+            SELECT TOP 1
+                mdm.MDM_Asset_Idn,
+                mdm.DeviceID,
+                mdm.DeviceID AS MDM_DeviceID,
+                mdm.DeviceName,
+                mdm.DeviceName AS MDM_DeviceName,
+                mdm.PlatformType,
+                mdm.PlatformType AS OS,
+                mdm.DeviceModelName AS Model,
+                mdm.DeviceModelName AS MDM_DeviceModelName,
+                mdm.SerialNumber,
+                mdm.SerialNumber AS MDM_SerialNumber,
+                mdm.LastLoggedInUser AS UserName,
+                mdm.LastLoggedInUser AS MDM_LastLoggedInUser,
+                mdm.DeviceIPAddress,
+                mdm.DeviceLocalIPAddress,
+                COALESCE(NULLIF(mdm.DeviceLocalIPAddress, ''), NULLIF(mdm.DeviceIPAddress, '')) AS IPAddress,
+                mdm.DeviceTimeStamp AS ConnectionTime,
+                mdm.ConnectionStatus,
+                ${geoSelect}
+                'fallback-direct-sql' AS detailSource
+            FROM TSMDM_ASSET mdm WITH (NOLOCK)
+            ${geoApply}
+            WHERE mdm.MDM_Asset_Idn = @input_MDM_Asset_Idn;
+        `);
+
+    return getSafeRecordset(result).map(cloneDbRow);
+}
+
+async function fallbackTsMdmDiskDrives(pool, MDM_Asset_Idn) {
+    return [];
+}
+
+async function fallbackTsMdmAdditionalMac(pool, MDM_Asset_Idn) {
+    return [];
+}
+
+async function fallbackTsMdmPhoneSignal(pool, MDM_Asset_Idn) {
+    return [];
+}
+
+async function getTSMDMData(pool, MDM_Asset_Idn) {
+    const detailStatus = {};
+
+    try {
+        const hwMainInfoQuery = pickSqlQueryExport(queries_TSMDM, "query_HWMainInfo", ["queryHWMainInfo", "query_HW_MAIN_INFO", "HWMainInfo"]);
+        const diskDrivesQuery = pickSqlQueryExport(queries_TSMDM, "query_DISKDRIVES_WINDOWS", ["queryDiskDrivesWindows", "query_DISK_DRIVES_WINDOWS", "query_DISKDRIVES", "DISKDRIVES_WINDOWS"]);
+        const additionalMacQuery = pickSqlQueryExport(queries_TSMDM, "query_AdditionalMac", ["queryAdditionalMac", "query_ADDITIONAL_MAC", "AdditionalMac"]);
+        const phoneSignalQuery = pickSqlQueryExport(queries_TSMDM, "query_PhoneSignal", ["queryPhoneSignal", "query_PHONE_SIGNAL", "PhoneSignal"]);
+
+        const [hwMainInfo, diskDrives, additionalMac, phoneSignal] = await Promise.all([
+            executeHardwareDetailSection(
+                pool,
+                "MDM.HWMainInfo",
+                hwMainInfoQuery,
+                {
+                    input_MDM_Asset_Idn: {
+                        type: sql.Int,
+                        value: MDM_Asset_Idn
+                    }
+                },
+                () => fallbackTsMdmHwMainInfo(pool, MDM_Asset_Idn),
+                detailStatus
+            ),
+
+            executeHardwareDetailSection(
+                pool,
+                "MDM.DiskDrives",
+                diskDrivesQuery,
+                {
+                    MDM_Asset_Idn: {
+                        type: sql.Int,
+                        value: MDM_Asset_Idn
+                    }
+                },
+                () => fallbackTsMdmDiskDrives(pool, MDM_Asset_Idn),
+                detailStatus
+            ),
+
+            executeHardwareDetailSection(
+                pool,
+                "MDM.AdditionalMac",
+                additionalMacQuery,
+                {
+                    MDM_Asset_Idn: {
+                        type: sql.Int,
+                        value: MDM_Asset_Idn
+                    }
+                },
+                () => fallbackTsMdmAdditionalMac(pool, MDM_Asset_Idn),
+                detailStatus
+            ),
+
+            executeHardwareDetailSection(
+                pool,
+                "MDM.PhoneSignal",
+                phoneSignalQuery,
+                {
+                    input_MDM_Asset_Idn: {
+                        type: sql.Int,
+                        value: MDM_Asset_Idn
+                    }
+                },
+                () => fallbackTsMdmPhoneSignal(pool, MDM_Asset_Idn),
+                detailStatus
+            )
+        ]);
+
+        return {
             HWMainInfo: hwMainInfo,
             DiskDrives: diskDrives,
             AdditionalMac: additionalMac,
-            PhoneSignal: phoneSignal
+            PhoneSignal: phoneSignal,
+            queryStatus: {
+                ...getTsMdmDetailQueryStatus(),
+                detailStatus
+            },
+            fallbackUsed: {
+                HWMainInfo: !hwMainInfoQuery || Boolean(detailStatus["MDM.HWMainInfo"]?.fallbackSuccess),
+                DiskDrives: !diskDrivesQuery || Boolean(detailStatus["MDM.DiskDrives"]?.fallbackSuccess),
+                AdditionalMac: !additionalMacQuery || Boolean(detailStatus["MDM.AdditionalMac"]?.fallbackSuccess),
+                PhoneSignal: !phoneSignalQuery || Boolean(detailStatus["MDM.PhoneSignal"]?.fallbackSuccess)
+            }
         };
-
-        return responseObject;
 
     } catch (err) {
         console.error("getTSMDMData Error:", err);
-        throw err;
+        return {
+            HWMainInfo: [],
+            DiskDrives: [],
+            AdditionalMac: [],
+            PhoneSignal: [],
+            queryStatus: {
+                ...getTsMdmDetailQueryStatus(),
+                detailStatus,
+                fatalError: err.message
+            },
+            fallbackUsed: {
+                HWMainInfo: true,
+                DiskDrives: true,
+                AdditionalMac: true,
+                PhoneSignal: true
+            }
+        };
     }
 }
 
 // GET /api/asset/:objectAgent/:assetId
 app.get("/api/asset/:objectAgent/:assetId", authenticateToken, async (req, res) => {
     try {
-        const objectAgent = req.params.objectAgent;
-        const assetId = parseInt(req.params.assetId);
+        const objectAgent = String(req.params.objectAgent || "").trim().toUpperCase();
+        const assetId = parseInt(req.params.assetId, 10);
 
-        if (!objectAgent) {
+        if (!objectAgent || !["EM", "MDM"].includes(objectAgent)) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid object agent"
+                message: "Invalid object agent. Expected EM or MDM."
             });
         }
 
-        if (isNaN(assetId)) {
+        if (Number.isNaN(assetId) || assetId <= 0) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid asset ID"
@@ -30514,17 +32714,61 @@ app.get("/api/asset/:objectAgent/:assetId", authenticateToken, async (req, res) 
         const pool = await sql.connect(dbConfig);
 
         let data = {};
-        if (objectAgent=='EM') {
+
+        if (objectAgent === "EM") {
             data = await getEMAData(pool, assetId);
 
-            let MDM_Asset_Idn = data['HWMainInfo'][0].MDM_Asset_Idn;
-            if (MDM_Asset_Idn)
-                data['MDM'] = await getTSMDMData(pool, MDM_Asset_Idn);
-            else
-                data['MDM'] = [];
-        }
-        else if (objectAgent=='MDM')
+            const hwMainInfoRows = Array.isArray(data?.HWMainInfo) ? data.HWMainInfo : [];
+            const hwMainInfo = hwMainInfoRows[0] || null;
+
+            if (!hwMainInfo) {
+                const queryStatus = data?.queryStatus || getEmaDetailQueryStatus();
+
+                console.warn("[GET /api/asset/:objectAgent/:assetId] No HWMainInfo row returned for EM asset.", {
+                    objectAgent,
+                    assetId,
+                    queryStatus
+                });
+
+                data.MDM = [];
+                data.warning = "No HWMainInfo row was returned for this EM asset. The backend tried the query export and fallback direct SQL. Check queries_EMA exports, TS_OBJECT_ROOT, and the Object_Root_Idn value.";
+                data.queryStatus = queryStatus;
+
+                return res.json({
+                    success: true,
+                    message: "Asset detail returned without HWMainInfo/MDM details.",
+                    data
+                });
+            }
+
+            const MDM_Asset_Idn = parseInt(
+                hwMainInfo.MDM_Asset_Idn ??
+                hwMainInfo.MDM_Asset_IDN ??
+                hwMainInfo.mdm_asset_idn ??
+                0,
+                10
+            );
+
+            if (MDM_Asset_Idn > 0) {
+                try {
+                    data.MDM = await getTSMDMData(pool, MDM_Asset_Idn);
+                } catch (mdmErr) {
+                    console.warn("[GET /api/asset/:objectAgent/:assetId] MDM detail fallback skipped:", mdmErr.message);
+                    data.MDM = {
+                        HWMainInfo: [],
+                        DiskDrives: [],
+                        AdditionalMac: [],
+                        PhoneSignal: [],
+                        error: mdmErr.message
+                    };
+                    data.mdmWarning = "Mapped MDM detail failed, but EM asset detail was returned.";
+                }
+            } else {
+                data.MDM = [];
+            }
+        } else if (objectAgent === "MDM") {
             data = await getTSMDMData(pool, assetId);
+        }
 
         return res.json({
             success: true,
@@ -30532,11 +32776,12 @@ app.get("/api/asset/:objectAgent/:assetId", authenticateToken, async (req, res) 
         });
 
     } catch (err) {
-        console.error(err);
+        console.error("GET /api/asset/:objectAgent/:assetId error:", err);
 
         return res.status(500).json({
             success: false,
-            message: "Failed to retrieve asset data"
+            message: "Failed to retrieve asset data",
+            error: err.message
         });
     }
 });
@@ -31041,18 +33286,390 @@ app.get("/api/software-distribution/packages/:pkgName", authenticateToken, async
 
 /*
 |--------------------------------------------------------------------------
-| Create Package / Webloader
+| Create Package / Webloader - direct Node implementation
 |--------------------------------------------------------------------------
-| This still forwards multipart upload to Java:
-|   /sd/CreatePackage
-|   /sd/CreateWebloader
+| This replaces the Java proxy for create package only.
+| Existing list/detail/delete/send/pull/status APIs are kept untouched.
 |
-| Reason: the Java flow handles file upload to package directory, CRC,
-| compression, and package-file metadata.
+| Java blueprint copied:
+|   1. spGetEsdPackageVersions
+|   2. spInsertESDPackage4Console
+|   3. spInsertESDPackageList
+|   4. spInsertPKGInstalled
+|   5. Save uploaded files under C:\Packages\{Pkg_Name}\Ver_{version}
+|   6. Compress file to .tsz and update TSSD_PACKAGES_FILES
 |--------------------------------------------------------------------------
 */
 
+const SD_PACKAGE_WRITE_DIR = normalizeSdValue(
+    process.env.SD_PACKAGE_WRITE_DIR ||
+    process.env.PACKAGE_WRITE_DIR ||
+    process.env.SD_PACKAGE_ROOT ||
+    "C:\\Packages"
+);
+
+const SD_PACKAGE_DB_DIR = normalizeSdValue(
+    process.env.SD_PACKAGE_DB_DIR ||
+    process.env.PACKAGE_DB_DIR ||
+    process.env.SD_PACKAGE_DB_ROOT ||
+    "C:\\Packages"
+);
+
+const SD_DEFAULT_SOURCE_PATH = process.env.SD_DEFAULT_SOURCE_PATH || "C:\\PackageSource";
+const SD_DEFAULT_DESTINATION_PATH = process.env.SD_DEFAULT_DESTINATION_PATH || "C:\\";
+
+const sdCreateCrcTable = (() => {
+    const table = new Array(256);
+    for (let n = 0; n < 256; n += 1) {
+        let c = n;
+        for (let k = 0; k < 8; k += 1) {
+            c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        }
+        table[n] = c >>> 0;
+    }
+    return table;
+})();
+
+function sdCreateCrc32(buffer) {
+    let crc = 0 ^ -1;
+    for (let i = 0; i < buffer.length; i += 1) {
+        crc = (crc >>> 8) ^ sdCreateCrcTable[(crc ^ buffer[i]) & 0xFF];
+    }
+    return (crc ^ -1) >>> 0;
+}
+
+function sdCreateToSqlInt32(value) {
+    return value | 0;
+}
+
+function sdCreateWinPath(...parts) {
+    return path.win32.normalize(path.win32.join(...parts.filter(part => part !== undefined && part !== null && String(part) !== "")));
+}
+
+function sdCreateNormalizeWinPath(value, fallback = "") {
+    const text = normalizeSdValue(value, fallback);
+    return text ? path.win32.normalize(text) : fallback;
+}
+
+function sdCreateSafePackageName(value) {
+    const text = normalizeSdValue(value);
+    if (!text) return "";
+
+    // Match Windows invalid filename characters because package folders are created on Windows.
+    if (/[<>:"/\\|?*]/.test(text)) {
+        throw new Error("Package name contains invalid Windows filename characters: \\ / : * ? \" < > |");
+    }
+
+    if (/^(loader|vloader|sloader)$/i.test(text)) {
+        throw new Error("Package name cannot be Loader, vLoader, or sLoader.");
+    }
+
+    return text;
+}
+
+function sdCreateSafeFileName(value, fallback = "package-file") {
+    const base = path.win32.basename(normalizeSdValue(value, fallback));
+    const cleaned = base.replace(/[<>:"/\\|?*]/g, "_").trim();
+    return cleaned || fallback;
+}
+
+function sdCreateStripDrivePrefix(sourcePath) {
+    const normalized = sdCreateNormalizeWinPath(sourcePath, "");
+    if (!normalized) return "";
+
+    // Java did this by splitting C:\folder and removing the first item (C:).
+    const driveMatch = normalized.match(/^[A-Za-z]:\\?(.*)$/);
+    if (driveMatch) return path.win32.normalize(driveMatch[1] || "");
+
+    // UNC path fallback: keep useful folder parts without the leading \\server\share.
+    if (normalized.startsWith("\\\\")) {
+        const parts = normalized.split(/[\\/]+/).filter(Boolean);
+        if (parts.length > 2) return path.win32.normalize(parts.slice(2).join("\\"));
+        return "";
+    }
+
+    return normalized.replace(/^[\\/]+/, "");
+}
+
+function sdCreateTszFileName(fileName) {
+    const safeName = sdCreateSafeFileName(fileName);
+    return safeName.toLowerCase().endsWith(".tsz") ? safeName : `${safeName}.tsz`;
+}
+
+function sdCreateDosDateTime(date = new Date()) {
+    const year = Math.max(1980, date.getFullYear());
+    const dosTime = ((date.getHours() & 0x1F) << 11) | ((date.getMinutes() & 0x3F) << 5) | ((Math.floor(date.getSeconds() / 2)) & 0x1F);
+    const dosDate = (((year - 1980) & 0x7F) << 9) | (((date.getMonth() + 1) & 0x0F) << 5) | (date.getDate() & 0x1F);
+    return { dosTime, dosDate };
+}
+
+function sdCreateZipArchiveBuffer(fileName, fileBuffer) {
+    const nameBuffer = Buffer.from(sdCreateSafeFileName(fileName), "utf8");
+    const compressed = zlib.deflateRawSync(fileBuffer, { level: 9 });
+    const crcUnsigned = sdCreateCrc32(fileBuffer);
+    const { dosTime, dosDate } = sdCreateDosDateTime();
+
+    const localHeader = Buffer.alloc(30);
+    localHeader.writeUInt32LE(0x04034b50, 0);
+    localHeader.writeUInt16LE(20, 4);
+    localHeader.writeUInt16LE(0, 6);
+    localHeader.writeUInt16LE(8, 8);
+    localHeader.writeUInt16LE(dosTime, 10);
+    localHeader.writeUInt16LE(dosDate, 12);
+    localHeader.writeUInt32LE(crcUnsigned, 14);
+    localHeader.writeUInt32LE(compressed.length, 18);
+    localHeader.writeUInt32LE(fileBuffer.length, 22);
+    localHeader.writeUInt16LE(nameBuffer.length, 26);
+    localHeader.writeUInt16LE(0, 28);
+
+    const localOffset = 0;
+    const centralOffset = localHeader.length + nameBuffer.length + compressed.length;
+
+    const centralHeader = Buffer.alloc(46);
+    centralHeader.writeUInt32LE(0x02014b50, 0);
+    centralHeader.writeUInt16LE(20, 4);
+    centralHeader.writeUInt16LE(20, 6);
+    centralHeader.writeUInt16LE(0, 8);
+    centralHeader.writeUInt16LE(8, 10);
+    centralHeader.writeUInt16LE(dosTime, 12);
+    centralHeader.writeUInt16LE(dosDate, 14);
+    centralHeader.writeUInt32LE(crcUnsigned, 16);
+    centralHeader.writeUInt32LE(compressed.length, 20);
+    centralHeader.writeUInt32LE(fileBuffer.length, 24);
+    centralHeader.writeUInt16LE(nameBuffer.length, 28);
+    centralHeader.writeUInt16LE(0, 30);
+    centralHeader.writeUInt16LE(0, 32);
+    centralHeader.writeUInt16LE(0, 34);
+    centralHeader.writeUInt16LE(0, 36);
+    centralHeader.writeUInt32LE(0, 38);
+    centralHeader.writeUInt32LE(localOffset, 42);
+
+    const centralSize = centralHeader.length + nameBuffer.length;
+
+    const endHeader = Buffer.alloc(22);
+    endHeader.writeUInt32LE(0x06054b50, 0);
+    endHeader.writeUInt16LE(0, 4);
+    endHeader.writeUInt16LE(0, 6);
+    endHeader.writeUInt16LE(1, 8);
+    endHeader.writeUInt16LE(1, 10);
+    endHeader.writeUInt32LE(centralSize, 12);
+    endHeader.writeUInt32LE(centralOffset, 16);
+    endHeader.writeUInt16LE(0, 20);
+
+    return Buffer.concat([
+        localHeader,
+        nameBuffer,
+        compressed,
+        centralHeader,
+        nameBuffer,
+        endHeader
+    ]);
+}
+
+function sdCreateBuildDetectionXml(pkgName) {
+    return `<?xml version="1.0"?><tcoroot><tcoxml type="pmsscan" version="1.0"><product name="${String(pkgName).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")}"><Message></Message><os></os><os-bit><order>same</order><architecture>X86</architecture><architecture>AMD64</architecture></os-bit><Language></Language><IE></IE><detection></detection></product></tcoxml></tcoroot>`;
+}
+
+async function sdCreateGetOsCode(dbContext, osname) {
+    const osText = normalizeSdValue(osname);
+    if (!osText) return "";
+
+    try {
+        const result = await new sql.Request(dbContext)
+            .input("OSName", sql.VarChar(255), osText)
+            .query(`
+                SELECT TOP 1 OSCode
+                FROM TS_OS_CODE WITH (NOLOCK)
+                WHERE Supported = 1
+                  AND OSName = @OSName;
+            `);
+
+        return normalizeSdValue(result.recordset?.[0]?.OSCode);
+    } catch (err) {
+        console.warn("Software distribution OSCode lookup skipped:", err.message);
+        return "";
+    }
+}
+
+async function sdCreateGetLatestVersion(dbContext, pkgName, owner) {
+    try {
+        const result = await new sql.Request(dbContext)
+            .input("PKG_Name", sql.NVarChar(100), pkgName)
+            .input("Pkg_Owner", sql.Int, owner)
+            .query(`
+                EXEC spGetEsdPackageVersions
+                    @PKG_Name = @PKG_Name,
+                    @Pkg_bDeleted = 0,
+                    @Pkg_Owner = @Pkg_Owner;
+            `);
+
+        const row = result.recordset?.[0] || {};
+        return parseSdInt(firstDefined(row.PKG_Version, row.Pkg_Version, row.pkg_Version), 0);
+    } catch (err) {
+        console.warn("spGetEsdPackageVersions failed; falling back to MAX(Pkg_Version):", err.message);
+
+        const fallbackResult = await new sql.Request(dbContext)
+            .input("PKG_Name", sql.NVarChar(100), pkgName)
+            .input("Pkg_Owner", sql.Int, owner)
+            .query(`
+                SELECT ISNULL(MAX(Pkg_Version), 0) AS LatestVersion
+                FROM TSSD_PACKAGES WITH (NOLOCK)
+                WHERE Pkg_Name = @PKG_Name
+                  AND ISNULL(Pkg_bDeleted, 0) = 0
+                  AND (@Pkg_Owner = 0 OR Pkg_Owner = @Pkg_Owner);
+            `);
+
+        return parseSdInt(fallbackResult.recordset?.[0]?.LatestVersion, 0);
+    }
+}
+
+async function sdCreateInsertPackageHeader(transaction, payload) {
+    const result = await new sql.Request(transaction)
+        .input("PKG_Name", sql.NVarChar(100), payload.pkgName)
+        .input("PKG_Version", sql.Int, payload.pkgVersion)
+        .input("PKG_Info", sql.NVarChar(200), payload.pkgDescription)
+        .input("Pkg_ListFile", sql.NVarChar(510), "\\")
+        .input("Pkg_Owner", sql.Int, payload.owner)
+        .query(`
+            DECLARE @PKG_Idn int;
+
+            EXEC spInsertESDPackage4Console
+                @PKG_Name = @PKG_Name,
+                @PKG_Version = @PKG_Version,
+                @PKG_Info = @PKG_Info,
+                @PKG_OS = '0000000',
+                @Pkg_ListFile = @Pkg_ListFile,
+                @nResult = @PKG_Idn OUTPUT,
+                @Pkg_Owner = @Pkg_Owner;
+
+            SELECT @PKG_Idn AS PKG_Idn;
+        `);
+
+    const pkgIdn = parseSdInt(result.recordset?.[0]?.PKG_Idn || result.recordset?.[0]?.Pkg_Idn, -1);
+    if (pkgIdn <= 0) throw new Error("spInsertESDPackage4Console did not return a valid PKG_Idn.");
+    return pkgIdn;
+}
+
+async function sdCreateInsertPackageFile(transaction, fileMeta) {
+    const result = await new sql.Request(transaction)
+        .input("Pkg_Idn", sql.Int, fileMeta.pkgIdn)
+        .input("Pkg_File_Name", sql.NVarChar(512), fileMeta.fileName)
+        .input("Pkg_File_Version", sql.NVarChar(100), fileMeta.fileVersion)
+        .input("Pkg_File_OCRC", sql.Int, fileMeta.oCrc)
+        .input("Pkg_File_ZCRC", sql.Int, fileMeta.zCrc)
+        .input("Pkg_File_OSize", sql.Int, fileMeta.oSize)
+        .input("Pkg_File_ZSize", sql.Int, 0)
+        .input("Pkg_File_CmdLine", sql.NVarChar(512), fileMeta.cmdLine)
+        .input("Pkg_File_Execute", sql.Int, fileMeta.executeOrder)
+        .input("Pkg_File_SSDir", sql.NVarChar(512), fileMeta.ssDir)
+        .input("Pkg_File_CSDir", sql.NVarChar(512), fileMeta.csDir)
+        .input("Pkg_File_CTDir", sql.NVarChar(512), fileMeta.ctDir)
+        .input("Pkg_File_SODir", sql.NVarChar(512), fileMeta.soDir)
+        .query(`
+            EXEC spInsertESDPackageList
+                @Pkg_Idn = @Pkg_Idn,
+                @Pkg_File_Name = @Pkg_File_Name,
+                @Pkg_File_Version = @Pkg_File_Version,
+                @Pkg_File_OCRC = @Pkg_File_OCRC,
+                @Pkg_File_ZCRC = @Pkg_File_ZCRC,
+                @Pkg_File_OSize = @Pkg_File_OSize,
+                @Pkg_File_ZSize = @Pkg_File_ZSize,
+                @Pkg_File_LTime = 0,
+                @Pkg_File_HTime = 0,
+                @Pkg_File_CmdLine = @Pkg_File_CmdLine,
+                @Pkg_File_Execute = @Pkg_File_Execute,
+                @Pkg_File_Status = 0,
+                @Pkg_File_SExists = 0,
+                @Pkg_File_SSDir = @Pkg_File_SSDir,
+                @Pkg_File_CSDir = @Pkg_File_CSDir,
+                @Pkg_File_CTDir = @Pkg_File_CTDir,
+                @Pkg_FIle_SODir = @Pkg_File_SODir,
+                @Pkg_File_Atrribute = 0,
+                @Pkg_F_E_Priority = 0,
+                @Pkg_F_E_Show = 0,
+                @Pkg_F_E_Wait = 0;
+
+            SELECT TOP 1 *
+            FROM TSSD_PACKAGES_FILES
+            WHERE Pkg_Idn = @Pkg_Idn
+              AND Pkg_File_Name = @Pkg_File_Name
+            ORDER BY Pkg_File_Idn DESC;
+        `);
+
+    const row = result.recordset?.[0] || {};
+    const fileIdn = parseSdInt(row.Pkg_File_Idn || row.pkg_File_Idn, -1);
+    if (fileIdn <= 0) throw new Error(`spInsertESDPackageList did not return a valid Pkg_File_Idn for ${fileMeta.fileName}.`);
+    return { fileIdn, row };
+}
+
+async function sdCreateInsertPackageInstalled(transaction, payload) {
+    const osCode = await sdCreateGetOsCode(transaction, payload.osname);
+    const result = await new sql.Request(transaction)
+        .input("Pkg_Idn", sql.Int, payload.pkgIdn)
+        .input("Detection", sql.NVarChar(sql.MAX), sdCreateBuildDetectionXml(payload.pkgName))
+        .input("OSCode", sql.VarChar(1300), osCode)
+        .input("Exclude", sql.SmallInt, payload.exclude)
+        .query(`
+            EXEC spInsertPKGInstalled
+                @Pkg_Idn = @Pkg_Idn,
+                @Detection = @Detection,
+                @OSCode = @OSCode,
+                @Exclude = @Exclude,
+                @IEVersion = '',
+                @IEVersionCmp = 0,
+                @LangCode = '';
+
+            SELECT TOP 1 *
+            FROM TSSD_PACKAGES_INSTALLED
+            WHERE Pkg_Idn = @Pkg_Idn;
+        `);
+
+    return result.recordset?.[0] || null;
+}
+
+async function sdCreateUpdateCompressedFile(transaction, fileIdn, compressedName, compressedSize) {
+    await new sql.Request(transaction)
+        .input("Pkg_File_Idn", sql.Int, fileIdn)
+        .input("Pkg_File_Name", sql.NVarChar(512), compressedName)
+        .input("Pkg_File_ZSize", sql.Int, compressedSize)
+        .query(`
+            UPDATE TSSD_PACKAGES_FILES
+            SET Pkg_File_ZSize = @Pkg_File_ZSize,
+                Pkg_File_Name = @Pkg_File_Name
+            WHERE Pkg_File_Idn = @Pkg_File_Idn;
+        `);
+}
+
+async function sdCreateWriteAndCompressFile(file, writeDir) {
+    await fs.promises.mkdir(writeDir, { recursive: true });
+
+    const originalFileName = sdCreateSafeFileName(file.originalname);
+    const rawWritePath = path.win32.join(writeDir, originalFileName);
+    const compressedFileName = sdCreateTszFileName(originalFileName);
+    const compressedWritePath = path.win32.join(writeDir, compressedFileName);
+
+    await fs.promises.writeFile(rawWritePath, file.buffer);
+
+    const zipBuffer = sdCreateZipArchiveBuffer(originalFileName, file.buffer);
+    await fs.promises.writeFile(compressedWritePath, zipBuffer);
+
+    try {
+        await fs.promises.unlink(rawWritePath);
+    } catch (_) {}
+
+    return {
+        originalFileName,
+        compressedFileName,
+        rawWritePath,
+        compressedWritePath,
+        compressedSize: zipBuffer.length
+    };
+}
+
 async function handleCreateSoftwareDistributionPackage(req, res, { isWebloader = false } = {}) {
+    let transaction = null;
+    const createdWriteDirs = new Set();
+
     try {
         const body = req.body || {};
         const files = req.files || [];
@@ -31064,15 +33681,20 @@ async function handleCreateSoftwareDistributionPackage(req, res, { isWebloader =
             });
         }
 
-        const form = new FormData();
-
-        const pkgName = normalizeSdValue(firstDefined(
+        const pkgName = sdCreateSafePackageName(firstDefined(
             body.Pkg_Name,
             body.pkg_Name,
             body.pkgName,
             body.packageName,
             body.name
         ));
+
+        if (!pkgName) {
+            return res.status(400).json({
+                success: false,
+                message: "Package name is required"
+            });
+        }
 
         const pkgDescription = normalizeSdValue(firstDefined(
             body.Pkg_Description,
@@ -31081,22 +33703,14 @@ async function handleCreateSoftwareDistributionPackage(req, res, { isWebloader =
             body.description
         ), isWebloader ? "Webloader package" : "Software distribution package");
 
-        const destinationPath = normalizeSdValue(firstDefined(
+        const destinationPath = sdCreateNormalizeWinPath(firstDefined(
             body.destination_path,
             body.destinationPath
-        ), "C:\\PACKAGE");
+        ), SD_DEFAULT_DESTINATION_PATH);
 
-        const osname = normalizeSdValue(firstDefined(
-            body.osname,
-            body.osName
-        ), "Windows 10");
-
-        const exclude = parseSdInt(firstDefined(body.exclude), 0);
-
-        const keepParentDirectories = parseSdInt(firstDefined(
-            body.keep_parent_directories,
-            body.keepParentDirectories
-        ), 0);
+        const osname = normalizeSdValue(firstDefined(body.osname, body.osName), "");
+        const exclude = parseSdInt(firstDefined(body.exclude), -1);
+        const keepParentDirectories = parseSdInt(firstDefined(body.keep_parent_directories, body.keepParentDirectories), 0);
 
         const owner = parseSdInt(firstDefined(
             body.Pkg_Owner,
@@ -31106,64 +33720,193 @@ async function handleCreateSoftwareDistributionPackage(req, res, { isWebloader =
             getConsoleOwner(req)
         ), getConsoleOwner(req));
 
-        if (!pkgName) {
-            return res.status(400).json({
-                success: false,
-                message: "Package name is required"
-            });
-        }
-
         const sourcePaths = normalizeSdArray(body.source_paths, body.sourcePaths);
         const cmdlines = normalizeSdArray(body.cmdlines, body.commandLines, body.commands);
         const executionOrders = normalizeSdArray(body.execution_orders, body.executionOrders);
         const fileVersions = normalizeSdArray(body.pkg_File_Versions, body.fileVersions, body.pkgFileVersions);
 
-        form.append("pkg_Name", pkgName);
-        form.append("pkg_Description", pkgDescription);
-        form.append("destination_path", destinationPath);
-        form.append("osname", osname);
-        form.append("exclude", String(exclude));
-        form.append("keep_parent_directories", String(keepParentDirectories));
-        form.append("pkg_Owner", String(owner));
-
-        files.forEach((file, index) => {
-            form.append("files", file.buffer, {
-                filename: file.originalname,
-                contentType: file.mimetype || "application/octet-stream"
+        if (sourcePaths.length && sourcePaths.length !== files.length) {
+            return res.status(400).json({
+                success: false,
+                message: "Incorrect parameter: source_paths count must match files count."
             });
+        }
 
-            form.append("source_paths", normalizeSdValue(sourcePaths[index], `C:\\${file.originalname}`));
-            form.append("cmdlines", normalizeSdValue(cmdlines[index], ""));
-            form.append("execution_orders", normalizeSdValue(executionOrders[index], "0"));
-            form.append("pkg_File_Versions", normalizeSdValue(fileVersions[index], ""));
+        if (executionOrders.length && executionOrders.length !== files.length) {
+            return res.status(400).json({
+                success: false,
+                message: "Incorrect parameter: execution_orders count must match files count."
+            });
+        }
+
+        const pool = await sql.connect(dbConfig);
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        const latestVersion = await sdCreateGetLatestVersion(transaction, pkgName, owner);
+        const pkgVersion = latestVersion + 1;
+
+        const pkgIdn = await sdCreateInsertPackageHeader(transaction, {
+            pkgName,
+            pkgVersion,
+            pkgDescription,
+            owner
         });
 
-        const result = await callSdWebAgent(
-            "post",
-            isWebloader ? "/sd/CreateWebloader" : "/sd/CreatePackage",
-            {
-                data: form,
-                headers: form.getHeaders(),
-                maxBodyLength: Infinity,
-                maxContentLength: Infinity
-            }
-        );
+        const packageRootDbDir = sdCreateWinPath(SD_PACKAGE_DB_DIR, pkgName, `Ver_${pkgVersion}`);
+        const packageRootWriteDir = sdCreateWinPath(SD_PACKAGE_WRITE_DIR, pkgName, `Ver_${pkgVersion}`);
+
+        const fileResults = [];
+
+        for (let index = 0; index < files.length; index += 1) {
+            const file = files[index];
+            const originalFileName = sdCreateSafeFileName(file.originalname, `file-${index + 1}`);
+            const sourcePath = sdCreateNormalizeWinPath(sourcePaths[index], SD_DEFAULT_SOURCE_PATH);
+            const sourcePathWithoutDrive = sdCreateStripDrivePrefix(sourcePath);
+            const executeOrder = parseSdInt(executionOrders[index], 0);
+            const cmdLine = normalizeSdValue(cmdlines[index], "");
+            const fileVersion = normalizeSdValue(fileVersions[index], "");
+            const originalCrcUnsigned = sdCreateCrc32(file.buffer);
+            const originalCrcSql = sdCreateToSqlInt32(originalCrcUnsigned);
+
+            const dbCsDir = keepParentDirectories === 1 && sourcePathWithoutDrive
+                ? sdCreateWinPath(packageRootDbDir, sourcePathWithoutDrive)
+                : packageRootDbDir;
+
+            const writeDir = keepParentDirectories === 1 && sourcePathWithoutDrive
+                ? sdCreateWinPath(packageRootWriteDir, sourcePathWithoutDrive)
+                : packageRootWriteDir;
+
+            createdWriteDirs.add(writeDir);
+
+            const fileMeta = {
+                pkgIdn,
+                fileName: originalFileName,
+                fileVersion,
+                oCrc: originalCrcSql,
+                zCrc: originalCrcSql,
+                oSize: file.size || file.buffer.length,
+                cmdLine,
+                executeOrder,
+                ssDir: sourcePathWithoutDrive ? sdCreateWinPath(packageRootDbDir, sourcePathWithoutDrive) : packageRootDbDir,
+                csDir: dbCsDir,
+                ctDir: destinationPath,
+                soDir: sourcePath
+            };
+
+            const insertedFile = await sdCreateInsertPackageFile(transaction, fileMeta);
+            const compressed = await sdCreateWriteAndCompressFile(file, writeDir);
+
+            await sdCreateUpdateCompressedFile(transaction, insertedFile.fileIdn, compressed.compressedFileName, compressed.compressedSize);
+
+            fileResults.push({
+                Pkg_File_Idn: insertedFile.fileIdn,
+                originalFileName,
+                compressedFileName: compressed.compressedFileName,
+                Pkg_File_OCRC: originalCrcSql,
+                Pkg_File_ZCRC: originalCrcSql,
+                Pkg_File_OSize: fileMeta.oSize,
+                Pkg_File_ZSize: compressed.compressedSize,
+                Pkg_File_SSDir: fileMeta.ssDir,
+                Pkg_File_CSDir: fileMeta.csDir,
+                Pkg_File_CTDir: fileMeta.ctDir,
+                Pkg_File_SODir: fileMeta.soDir,
+                writePath: compressed.compressedWritePath,
+                commandLine: cmdLine,
+                executionOrder: executeOrder
+            });
+        }
+
+        const installedRow = await sdCreateInsertPackageInstalled(transaction, {
+            pkgIdn,
+            pkgName,
+            osname,
+            exclude
+        });
+
+        await transaction.commit();
+        transaction = null;
+
+        if (typeof clearTimedResponseCache === "function") {
+            clearTimedResponseCache("software");
+        }
 
         return res.json({
             success: true,
             message: isWebloader
-                ? "Webloader create request completed"
-                : "Package create request completed",
-            data: result
+                ? "Webloader package created directly in database and server package folder."
+                : "Software distribution package created directly in database and server package folder.",
+            data: {
+                action: isWebloader ? "Create Webloader" : "Create Package",
+                mode: "node-direct",
+                Pkg_Idn: pkgIdn,
+                Pkg_Name: pkgName,
+                Pkg_Version: pkgVersion,
+                Pkg_Owner: owner,
+                Pkg_Info: pkgDescription,
+                packageRootWriteDir,
+                packageRootDbDir,
+                files: fileResults,
+                installed: installedRow,
+                subActions: [
+                    {
+                        subAction: "exec spInsertESDPackage4Console",
+                        errorCode: 0,
+                        result: `PKG_Idn: ${pkgIdn}`
+                    },
+                    {
+                        subAction: "exec spInsertESDPackageList",
+                        results: fileResults.map(item => ({
+                            errorCode: 0,
+                            result: `File ID: ${item.Pkg_File_Idn}`,
+                            fileName: item.compressedFileName
+                        }))
+                    },
+                    {
+                        subAction: "exec spInsertPKGInstalled",
+                        errorCode: 0,
+                        result: `PKG_Idn: ${pkgIdn}`
+                    },
+                    {
+                        action: "Upload Files to Server",
+                        errorCode: 0,
+                        noOfFiles: files.length,
+                        results: fileResults.map(item => ({
+                            errorCode: 0,
+                            fileName: item.compressedFileName,
+                            result: `File upload successful at (${item.Pkg_File_CSDir})`
+                        }))
+                    }
+                ]
+            }
         });
     } catch (err) {
-        console.error("Create package failed:", serializeSdError(err));
-        return res.status(getSdErrorStatus(err)).json({
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackErr) {
+                console.error("Create package rollback failed:", rollbackErr);
+            }
+        }
+
+        // Best-effort cleanup. Only removes the new empty/failed package directories that this request touched.
+        for (const dir of Array.from(createdWriteDirs).sort((a, b) => b.length - a.length)) {
+            try {
+                if (dir && fs.existsSync(dir)) {
+                    await fs.promises.rm(dir, { recursive: true, force: true });
+                }
+            } catch (cleanupErr) {
+                console.warn("Create package cleanup skipped:", cleanupErr.message);
+            }
+        }
+
+        console.error("Create package failed:", err);
+        return res.status(500).json({
             success: false,
             message: isWebloader
-                ? "Failed to create webloader package"
-                : "Failed to create software distribution package",
-            error: serializeSdError(err)
+                ? "Failed to create webloader package directly in database/server folder."
+                : "Failed to create software distribution package directly in database/server folder.",
+            error: err.message || String(err)
         });
     }
 }
@@ -34335,18 +37078,44 @@ async function sendTaskActionResponse(req, res) {
                 .input("Job_Idn", sql.Int, jobId)
                 .input("Job_Status", sql.Int, newStatus)
                 .query(`
-                    UPDATE TS_JOB
+                    SET NOCOUNT ON;
+
+                    DECLARE @affectedJobRows int = 0;
+                    DECLARE @affectedHistoryRows int = 0;
+
+                    UPDATE dbo.TS_JOB
                     SET Job_Status = @Job_Status
                     WHERE Job_Idn = @Job_Idn;
 
-                    SELECT @@ROWCOUNT AS affectedRows;
+                    SET @affectedJobRows = @@ROWCOUNT;
+
+                    IF OBJECT_ID(N'dbo.TS_JOB_HISTORY', N'U') IS NOT NULL
+                    BEGIN
+                        UPDATE dbo.TS_JOB_HISTORY
+                        SET Job_Status = @Job_Status,
+                            LastChangedTime = GETDATE()
+                        WHERE Job_Idn = @Job_Idn;
+
+                        SET @affectedHistoryRows = @@ROWCOUNT;
+                    END
+
+                    SELECT
+                        @affectedJobRows AS affectedRows,
+                        @affectedHistoryRows AS affectedHistoryRows;
                 `);
 
             const affectedRows = result.recordset?.[0]?.affectedRows || 0;
+            const affectedHistoryRows = result.recordset?.[0]?.affectedHistoryRows || 0;
             return res.json({
                 success: affectedRows > 0,
                 message: affectedRows > 0 ? `Task ${action} updated.` : "Task not found.",
-                data: { Job_Idn: jobId, Job_Status: newStatus, statusLabel: resolveTaskStatusLabel(newStatus), affectedRows }
+                data: {
+                    Job_Idn: jobId,
+                    Job_Status: newStatus,
+                    statusLabel: resolveTaskStatusLabel(newStatus),
+                    affectedRows,
+                    affectedHistoryRows
+                }
             });
         }
 
@@ -34586,6 +37355,22 @@ function firstWebDefined(...values) {
     return values.find(value => value !== undefined && value !== null && String(value).trim() !== "");
 }
 
+function parseWebArray(value) {
+    if (value === undefined || value === null || value === "") return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (!trimmed) return [];
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) return parsed;
+            if (parsed && typeof parsed === "object") return [parsed];
+        } catch (_) {}
+        return trimmed.split(",").map(item => item.trim()).filter(Boolean);
+    }
+    return [value];
+}
+
 function pickWebValue(row, keys, fallback = "") {
     if (!row) return fallback;
 
@@ -34651,6 +37436,234 @@ function normalizeWebMeteringStats(rows = []) {
     };
 }
 
+
+function normalizeWebUrlMainId(value, fallback = -1) {
+    const parsed = parseWebInt(value, fallback);
+    // Legacy WEB stored procedures use -1 to represent "All domains".
+    // Treat 0, missing, null and negative values as all domains so the UI cannot accidentally filter by URLMain_Idn = 0.
+    return parsed > 0 ? parsed : -1;
+}
+
+async function getWebMeteringAllUrlUsageRows(pool, options = {}) {
+    const relationID = parseWebInt(options.relationID, -1);
+    const clientID = parseWebInt(options.clientID, 0);
+    const restrict = parseWebInt(options.restrict, -1);
+    const page = Math.max(parseWebInt(options.page, 1), 1);
+    const limit = Math.min(Math.max(parseWebInt(options.limit, 100), 1), 1000);
+    const meterDate = normalizeWebValue(options.meterDate);
+    const meterToDate = normalizeWebValue(options.meterToDate);
+    const offset = (page - 1) * limit;
+    const fetchRows = limit + 1; // Fetch one extra row so the UI can know whether a next page exists without COUNT(*) over a huge history table.
+
+    const selectColumns = `
+        SELECT
+            CONVERT(nvarchar(10), root.Object_Root_Idn) AS Object_Root_Idn,
+            root.Object_DeviceID,
+            root.Object_Client_Name,
+            rel.Object_Full_Name,
+            root.IP,
+            root.Email,
+            root.TelNumber,
+            root.Reserved0,
+            root.Reserved1,
+            root.Reserved2,
+            root.TCAVersion,
+            root.ConnectionTime,
+            root.Workgroup,
+            root.ComputerName,
+            main.URLMain_Idn,
+            main.URLMain AS DomainName,
+            main.URLMain,
+            DATEDIFF(ss, hist.URL_StartTime, ISNULL(hist.URL_EndTime, hist.URL_StartTime)) AS UsedTime,
+            1 AS Counts,
+            hist.URL_StartTime AS MeterDate,
+            hist.URL_StartTime,
+            hist.URL_EndTime,
+            hist.URLSub,
+            hist.URLTitle,
+            root.Object_Root_Status
+    `;
+
+    const commonWhere = `
+          AND ISNULL(main.IsDeleted, 0) = 0
+          AND (@nRestrict < 0 OR ISNULL(main.nRestrict, 0) = @nRestrict)
+          AND hist.URL_StartTime >= CONVERT(datetime, @MeterDate)
+          AND hist.URL_StartTime < CONVERT(datetime, @MeterToDate)
+    `;
+
+    let query;
+
+    if (clientID > 0) {
+        // Fast path for one selected device. Avoid the old OR/COUNT OVER query plan because it can scan/sort the full URL history table.
+        query = `
+            SET NOCOUNT ON;
+            SET DATEFORMAT YMD;
+
+            ${selectColumns}
+            FROM TSSM_URL_HISTORY hist WITH (NOLOCK)
+            INNER JOIN TSSM_URL_MAIN main WITH (NOLOCK)
+                ON main.URLMain_Idn = hist.URLMain_Idn
+            INNER JOIN TS_OBJECT_ROOT root WITH (NOLOCK)
+                ON hist.Object_Root_Idn = root.Object_Root_Idn
+            LEFT JOIN TS_OBJECT_RELATION rel WITH (NOLOCK)
+                ON root.Object_Rel_Idn = rel.Object_Rel_Idn
+            WHERE hist.Object_Root_Idn = @Object_Root_Idn
+            ${commonWhere}
+            ORDER BY hist.URL_StartTime DESC, hist.URL_EndTime DESC, main.URLMain, hist.URLSub
+            OFFSET @PageOffset ROWS
+            FETCH NEXT @FetchRows ROWS ONLY
+            OPTION (RECOMPILE);
+        `;
+    } else if (relationID > 0) {
+        // Folder scope. Keep recursive relation lookup, but join through scoped roots instead of using a large OR expression.
+        query = `
+            SET NOCOUNT ON;
+            SET DATEFORMAT YMD;
+
+            ;WITH RelationTree AS (
+                SELECT Object_Rel_Idn
+                FROM TS_OBJECT_RELATION WITH (NOLOCK)
+                WHERE Object_Rel_Idn = @Object_Rel_Idn
+
+                UNION ALL
+
+                SELECT child.Object_Rel_Idn
+                FROM TS_OBJECT_RELATION child WITH (NOLOCK)
+                INNER JOIN RelationTree parent
+                    ON child.Object_PR_Idn = parent.Object_Rel_Idn
+                WHERE ISNULL(child.Object_Rel_Deleted, 0) = 0
+            ), ScopeRoots AS (
+                SELECT root.*
+                FROM TS_OBJECT_ROOT root WITH (NOLOCK)
+                INNER JOIN RelationTree tree
+                    ON root.Object_Rel_Idn = tree.Object_Rel_Idn
+            )
+            ${selectColumns}
+            FROM TSSM_URL_HISTORY hist WITH (NOLOCK)
+            INNER JOIN TSSM_URL_MAIN main WITH (NOLOCK)
+                ON main.URLMain_Idn = hist.URLMain_Idn
+            INNER JOIN ScopeRoots root
+                ON hist.Object_Root_Idn = root.Object_Root_Idn
+            LEFT JOIN TS_OBJECT_RELATION rel WITH (NOLOCK)
+                ON root.Object_Rel_Idn = rel.Object_Rel_Idn
+            WHERE 1 = 1
+            ${commonWhere}
+            ORDER BY hist.URL_StartTime DESC, hist.URL_EndTime DESC, main.URLMain, hist.URLSub
+            OFFSET @PageOffset ROWS
+            FETCH NEXT @FetchRows ROWS ONLY
+            OPTION (MAXRECURSION 100, RECOMPILE);
+        `;
+    } else {
+        // Whole company scope. This can still be large, so only fetch the requested page + one extra row.
+        query = `
+            SET NOCOUNT ON;
+            SET DATEFORMAT YMD;
+
+            ${selectColumns}
+            FROM TSSM_URL_HISTORY hist WITH (NOLOCK)
+            INNER JOIN TSSM_URL_MAIN main WITH (NOLOCK)
+                ON main.URLMain_Idn = hist.URLMain_Idn
+            INNER JOIN TS_OBJECT_ROOT root WITH (NOLOCK)
+                ON hist.Object_Root_Idn = root.Object_Root_Idn
+            LEFT JOIN TS_OBJECT_RELATION rel WITH (NOLOCK)
+                ON root.Object_Rel_Idn = rel.Object_Rel_Idn
+            WHERE 1 = 1
+            ${commonWhere}
+            ORDER BY hist.URL_StartTime DESC, hist.URL_EndTime DESC, main.URLMain, hist.URLSub
+            OFFSET @PageOffset ROWS
+            FETCH NEXT @FetchRows ROWS ONLY
+            OPTION (RECOMPILE);
+        `;
+    }
+
+    const fetchedRows = await executeQuery(pool, query, {
+        Object_Rel_Idn: { type: sql.Int, value: relationID },
+        Object_Root_Idn: { type: sql.Int, value: clientID },
+        nRestrict: { type: sql.Int, value: restrict },
+        MeterDate: { type: sql.VarChar(50), value: meterDate },
+        MeterToDate: { type: sql.VarChar(50), value: meterToDate },
+        PageOffset: { type: sql.Int, value: offset },
+        FetchRows: { type: sql.Int, value: fetchRows }
+    });
+
+    const hasMore = fetchedRows.length > limit;
+    const rows = hasMore ? fetchedRows.slice(0, limit) : fetchedRows;
+
+    // Approximate total avoids a slow COUNT(*) / COUNT OVER() on TSSM_URL_HISTORY.
+    // It is enough for frontend pagination: if there is one extra row, show at least one next page.
+    rows.__webHasMore = hasMore;
+    rows.__webApproxTotalRecords = hasMore ? (page * limit) + 1 : offset + rows.length;
+    return rows;
+}
+
+async function getWebMeteringAllUrlStats(pool, options = {}) {
+    const relationID = parseWebInt(options.relationID, -1);
+    const clientID = parseWebInt(options.clientID, 0);
+    const restrict = parseWebInt(options.restrict, -1);
+    const meterDate = normalizeWebValue(options.meterDate);
+    const meterToDate = normalizeWebValue(options.meterToDate);
+
+    const query = `
+        SET NOCOUNT ON;
+        SET DATEFORMAT YMD;
+
+        ;WITH RelationTree AS (
+            SELECT Object_Rel_Idn
+            FROM TS_OBJECT_RELATION WITH (NOLOCK)
+            WHERE Object_Rel_Idn = @Object_Rel_Idn
+
+            UNION ALL
+
+            SELECT child.Object_Rel_Idn
+            FROM TS_OBJECT_RELATION child WITH (NOLOCK)
+            INNER JOIN RelationTree parent
+                ON child.Object_PR_Idn = parent.Object_Rel_Idn
+            WHERE ISNULL(child.Object_Rel_Deleted, 0) = 0
+        ), FilteredRows AS (
+            SELECT
+                main.URLMain_Idn,
+                DATEDIFF(ss, hist.URL_StartTime, ISNULL(hist.URL_EndTime, hist.URL_StartTime)) AS UsedTime
+            FROM TSSM_URL_MAIN main WITH (NOLOCK)
+            INNER JOIN TSSM_URL_HISTORY hist WITH (NOLOCK)
+                ON main.URLMain_Idn = hist.URLMain_Idn
+            INNER JOIN TS_OBJECT_ROOT root WITH (NOLOCK)
+                ON hist.Object_Root_Idn = root.Object_Root_Idn
+            WHERE ISNULL(main.IsDeleted, 0) = 0
+              AND (
+                    (@Object_Root_Idn > 0 AND root.Object_Root_Idn = @Object_Root_Idn)
+                 OR (@Object_Root_Idn <= 0 AND (@Object_Rel_Idn < 0 OR root.Object_Rel_Idn IN (SELECT Object_Rel_Idn FROM RelationTree)))
+              )
+              AND (@nRestrict < 0 OR ISNULL(main.nRestrict, 0) = @nRestrict)
+              AND hist.URL_StartTime >= CONVERT(datetime, @MeterDate)
+              AND hist.URL_StartTime < CONVERT(datetime, @MeterToDate)
+        )
+        SELECT
+            COUNT(1) AS totalRecords,
+            COUNT(DISTINCT URLMain_Idn) AS totalDomains,
+            ISNULL(SUM(UsedTime), 0) AS totalUsageSeconds,
+            COUNT(1) AS totalCounts
+        FROM FilteredRows
+        OPTION (MAXRECURSION 100);
+    `;
+
+    const rows = await executeQuery(pool, query, {
+        Object_Rel_Idn: { type: sql.Int, value: relationID },
+        Object_Root_Idn: { type: sql.Int, value: clientID },
+        nRestrict: { type: sql.Int, value: restrict },
+        MeterDate: { type: sql.VarChar(50), value: meterDate },
+        MeterToDate: { type: sql.VarChar(50), value: meterToDate }
+    });
+
+    const statsRow = rows[0] || {};
+    return {
+        totalRecords: parseWebInt(statsRow.totalRecords, 0),
+        totalDomains: parseWebInt(statsRow.totalDomains, 0),
+        totalUsageSeconds: parseWebInt(statsRow.totalUsageSeconds, 0),
+        totalCounts: parseWebInt(statsRow.totalCounts, 0),
+        rows: []
+    };
+}
+
 function normalizeWebUrlRow(row, index = 0, parentLabel = "") {
     const url = normalizeWebValue(pickWebValue(row, [
         "URLMain", "URL_Main", "URL", "url_main", "DomainName", "domainName", "WebSite", "Website", "HostName", "Host"
@@ -34668,6 +37681,164 @@ function normalizeWebUrlRow(row, index = 0, parentLabel = "") {
     };
 }
 
+
+function normalizeWebMeteringTargetInput(payload = {}) {
+    const rawTarget = firstWebDefined(payload.targetNode, payload.target, payload.targets);
+    if (rawTarget === undefined || rawTarget === null || rawTarget === "") return {};
+
+    let target = rawTarget;
+    if (typeof target === "string") {
+        const trimmed = target.trim();
+        try {
+            target = JSON.parse(trimmed);
+        } catch (_) {
+            return {};
+        }
+    }
+
+    if (Array.isArray(target)) target = target[0] || {};
+    if (!target || typeof target !== "object") return {};
+
+    const raw = target.raw && typeof target.raw === "object" ? target.raw : {};
+    return {
+        ...raw,
+        ...target,
+        objectRelIdn: firstWebDefined(target.objectRelIdn, target.Object_Rel_Idn, raw.Object_Rel_Idn),
+        objectRootIdn: firstWebDefined(target.objectRootIdn, target.Object_Root_Idn, raw.Object_Root_Idn, raw._Idn),
+        objectDeviceID: firstWebDefined(target.objectDeviceID, target.Object_DeviceID, raw.Object_DeviceID),
+        type: firstWebDefined(target.type, target.targetMode, target.mode),
+        label: firstWebDefined(target.label, target.ComputerName, raw.ComputerName, raw.Object_Rel_Name)
+    };
+}
+
+async function getWebMeteringTargets(pool, payload = {}) {
+    const target = normalizeWebMeteringTargetInput(payload);
+    const rawMode = normalizeWebValue(firstWebDefined(payload.scanMode, payload.targetMode, payload.mode, target.type), "folder").toLowerCase();
+    const scanMode = ["all", "organization", "organisation", "org"].includes(rawMode)
+        ? "all"
+        : ["folder", "department", "relation"].includes(rawMode)
+            ? "folder"
+            : "device";
+
+    const objectRelIdn = parseWebInt(firstWebDefined(
+        payload.Object_Rel_Idn,
+        payload.objectRelIdn,
+        payload.relationID,
+        payload.relationId,
+        target.objectRelIdn,
+        target.Object_Rel_Idn
+    ), scanMode === "all" ? -1 : 0);
+
+    const objectRootIdn = parseWebInt(firstWebDefined(
+        payload.Object_Root_Idn,
+        payload.objectRootIdn,
+        payload.objectRootID,
+        payload.assetId,
+        target.objectRootIdn,
+        target.Object_Root_Idn
+    ), 0);
+
+    const objectDeviceID = normalizeWebValue(firstWebDefined(
+        payload.Object_DeviceID,
+        payload.objectDeviceID,
+        payload.deviceID,
+        payload.deviceId,
+        target.objectDeviceID,
+        target.Object_DeviceID
+    ));
+
+    if (scanMode === "all") {
+        const result = await pool.request().query(`
+            SELECT DISTINCT
+                r.Object_Root_Idn,
+                r.Object_Rel_Idn,
+                r.Object_DeviceID,
+                r.IP,
+                r.ComputerName,
+                r.Object_Client_Name
+            FROM TS_OBJECT_ROOT r WITH (NOLOCK)
+            WHERE ISNULL(r.Object_Root_Idn, 0) > 0
+            ORDER BY r.ComputerName, r.Object_DeviceID;
+        `);
+
+        return {
+            scanMode,
+            objectRelIdn: -1,
+            targets: result.recordset || []
+        };
+    }
+
+    if (scanMode === "folder") {
+        if (!objectRelIdn && objectRelIdn !== -1) {
+            throw new Error("Object_Rel_Idn is required for folder web/internet metering.");
+        }
+
+        const result = await pool.request()
+            .input("Object_Rel_Idn", sql.Int, objectRelIdn)
+            .query(`
+                ;WITH RelationTree AS (
+                    SELECT Object_Rel_Idn
+                    FROM TS_OBJECT_RELATION WITH (NOLOCK)
+                    WHERE Object_Rel_Idn = @Object_Rel_Idn
+
+                    UNION ALL
+
+                    SELECT child.Object_Rel_Idn
+                    FROM TS_OBJECT_RELATION child WITH (NOLOCK)
+                    INNER JOIN RelationTree parent
+                        ON child.Object_PR_Idn = parent.Object_Rel_Idn
+                    WHERE ISNULL(child.Object_Rel_Deleted, 0) = 0
+                )
+                SELECT DISTINCT
+                    r.Object_Root_Idn,
+                    r.Object_Rel_Idn,
+                    r.Object_DeviceID,
+                    r.IP,
+                    r.ComputerName,
+                    r.Object_Client_Name
+                FROM RelationTree tree
+                INNER JOIN TS_OBJECT_ROOT r WITH (NOLOCK)
+                    ON r.Object_Rel_Idn = tree.Object_Rel_Idn
+                WHERE ISNULL(r.Object_Root_Idn, 0) > 0
+                ORDER BY r.ComputerName, r.Object_DeviceID
+                OPTION (MAXRECURSION 100);
+            `);
+
+        return {
+            scanMode,
+            objectRelIdn,
+            targets: result.recordset || []
+        };
+    }
+
+    if (!objectRootIdn && !objectDeviceID) {
+        throw new Error("Object_Root_Idn or Object_DeviceID is required for device web/internet metering.");
+    }
+
+    const result = await pool.request()
+        .input("Object_Root_Idn", sql.Int, objectRootIdn || 0)
+        .input("Object_DeviceID", sql.VarChar(255), objectDeviceID)
+        .query(`
+            SELECT TOP 1
+                r.Object_Root_Idn,
+                r.Object_Rel_Idn,
+                r.Object_DeviceID,
+                r.IP,
+                r.ComputerName,
+                r.Object_Client_Name
+            FROM TS_OBJECT_ROOT r WITH (NOLOCK)
+            WHERE (@Object_Root_Idn > 0 AND r.Object_Root_Idn = @Object_Root_Idn)
+               OR (@Object_DeviceID <> '' AND r.Object_DeviceID = @Object_DeviceID)
+            ORDER BY r.ComputerName, r.Object_DeviceID;
+        `);
+
+    return {
+        scanMode,
+        objectRelIdn: result.recordset?.[0]?.Object_Rel_Idn || 0,
+        targets: result.recordset || []
+    };
+}
+
 function getWebMeteringConsoleId(req) {
     return pickTaskJobPositiveConsoleId(
         req.user?.console_Idn,
@@ -34680,9 +37851,9 @@ function getWebMeteringConsoleId(req) {
 }
 
 function buildWebMeteringJobOptions(payload = {}) {
-    const timeRanges = parseAmArray(firstWebDefined(payload.timeRanges, payload.time_data));
+    const timeRanges = parseWebArray(firstWebDefined(payload.timeRanges, payload.time_data));
     const timeFlag = parseWebInt(firstWebDefined(payload.time_flag, payload.timeFlag), 0);
-    const excludedTargets = parseAmArray(firstWebDefined(payload.exclude, payload.excludedTargets));
+    const excludedTargets = parseWebArray(firstWebDefined(payload.exclude, payload.excludedTargets));
 
     return {
         // Java /api/update/Web_Metering.do compatible fields.
@@ -34694,7 +37865,7 @@ function buildWebMeteringJobOptions(payload = {}) {
         time_upload: normalizeWebValue(firstWebDefined(payload.time_upload, payload.collectionTime)),
         scheduleTime: normalizeWebValue(firstWebDefined(payload.scheduleTime, payload.Job_ScheduleTime, payload.jobScheduleTime)),
         desc: normalizeWebValue(firstWebDefined(payload.desc, payload.description, payload.Job_Description)),
-        target: parseAmArray(firstWebDefined(payload.target, payload.targets, payload.targetNode)),
+        target: parseWebArray(firstWebDefined(payload.target, payload.targets, payload.targetNode)),
         exclude: excludedTargets,
 
         // Friendly React fields.
@@ -34713,7 +37884,7 @@ async function createWebMeteringJob(req, res, command = WEB_METERING_START_COMMA
     try {
         const payload = req.body || {};
         const pool = await sql.connect(dbConfig);
-        const resolved = await getApplicationMeteringTargets(pool, payload);
+        const resolved = await getWebMeteringTargets(pool, payload);
         const targets = resolved.targets || [];
 
         if (targets.length === 0) {
@@ -34898,7 +38069,7 @@ async function sendWebMeteringUsageResponse(req, res) {
         const source = { ...(req.query || {}), ...(req.body || {}) };
         const relationID = parseWebInt(firstWebDefined(source.relationID, source.relationId, source.Object_Rel_Idn, source.relation_id), -1);
         const clientID = parseWebInt(firstWebDefined(source.clientID, source.clientId, source.Object_Root_Idn, source.client_id), 0);
-        const urlID = parseWebInt(firstWebDefined(source.urlID, source.urlId, source.URLMain_Idn, source.url_id), 0);
+        const urlID = normalizeWebUrlMainId(firstWebDefined(source.urlID, source.urlId, source.URLMain_Idn, source.url_id));
         const meterDate = formatWebMeteringDate(firstWebDefined(source.startDate, source.meterDate, source.fromDate), 30);
         const meterToDate = formatWebMeteringDate(firstWebDefined(source.endDate, source.meterToDate, source.metertoDate, source.toDate), 0);
         const page = Math.max(parseWebInt(source.page, 1), 1);
@@ -34946,14 +38117,23 @@ async function sendWebMeteringUsageResponse(req, res) {
                 };
         }
 
-        const rawRows = await executeStoredProcedure(pool, procedure, inputs);
+        const useDirectAllUrlQuery = urlID < 0;
+        const rawRows = useDirectAllUrlQuery
+            ? await getWebMeteringAllUrlUsageRows(pool, { relationID, clientID, restrict: parseWebInt(firstWebDefined(source.restrict, source.restrict_id), -1), meterDate, meterToDate, page, limit })
+            : await executeStoredProcedure(pool, procedure, inputs);
         const rows = rawRows.map((row, index) => normalizeWebMeteringUsageRow(row, index));
+        const approximateTotalRecords = parseWebInt(rawRows.__webApproxTotalRecords, rows.length);
+        const resolvedTotalRecords = parseWebInt(
+            pickWebValue(rawRows[0], ["TotalRecords", "totalRecords", "Total", "total"], approximateTotalRecords),
+            approximateTotalRecords
+        );
 
         return res.json({
             success: true,
-            totalRecords: rows.length,
-            procedure,
-            filters: { relationID, clientID, urlID, meterDate, meterToDate, page, limit, oneYear, nextpage },
+            totalRecords: resolvedTotalRecords,
+            hasMore: Boolean(rawRows.__webHasMore),
+            procedure: useDirectAllUrlQuery ? `${procedure}_DIRECT_ALL_URL_FIX_FAST_PAGED` : procedure,
+            filters: { relationID, clientID, urlID, meterDate, meterToDate, page, limit, oneYear, nextpage, allUrlFallback: useDirectAllUrlQuery },
             data: rows,
             raw: rawRows
         });
@@ -34968,7 +38148,7 @@ async function sendWebMeteringStatsResponse(req, res) {
         const source = { ...(req.query || {}), ...(req.body || {}) };
         const relationID = parseWebInt(firstWebDefined(source.relationID, source.relationId, source.Object_Rel_Idn, source.relation_id), -1);
         const clientID = parseWebInt(firstWebDefined(source.clientID, source.clientId, source.Object_Root_Idn, source.client_id), 0);
-        const urlID = parseWebInt(firstWebDefined(source.urlID, source.urlId, source.URLMain_Idn, source.url_id), 0);
+        const urlID = normalizeWebUrlMainId(firstWebDefined(source.urlID, source.urlId, source.URLMain_Idn, source.url_id));
         const restrict = parseWebInt(firstWebDefined(source.restrict, source.restrict_id), -1);
         const meterDate = formatWebMeteringDate(firstWebDefined(source.startDate, source.meterDate, source.fromDate), 30);
         const meterToDate = formatWebMeteringDate(firstWebDefined(source.endDate, source.meterToDate, source.metertoDate, source.toDate), 0);
@@ -35011,13 +38191,18 @@ async function sendWebMeteringStatsResponse(req, res) {
                 };
         }
 
-        const rawRows = await executeStoredProcedure(pool, procedure, inputs);
+        const useDirectAllUrlQuery = urlID < 0;
+        const rawRows = useDirectAllUrlQuery ? [] : await executeStoredProcedure(pool, procedure, inputs);
+        const data = useDirectAllUrlQuery
+            ? await getWebMeteringAllUrlStats(pool, { relationID, clientID, restrict, meterDate, meterToDate })
+            : normalizeWebMeteringStats(rawRows);
+
         return res.json({
             success: true,
-            totalRecords: rawRows.length,
-            procedure,
-            filters: { relationID, clientID, urlID, restrict, meterDate, meterToDate, oneYear, nextpage },
-            data: normalizeWebMeteringStats(rawRows),
+            totalRecords: data.totalRecords || rawRows.length,
+            procedure: useDirectAllUrlQuery ? `${procedure}_DIRECT_ALL_URL_FIX` : procedure,
+            filters: { relationID, clientID, urlID, restrict, meterDate, meterToDate, oneYear, nextpage, allUrlFallback: useDirectAllUrlQuery },
+            data,
             raw: rawRows
         });
     } catch (err) {
@@ -36116,6 +39301,73 @@ const NETWORK_SCAN_JOB_TYPE = 10600;
 const NETWORK_SCAN_JOB_COMMAND = 1800;
 const NETWORK_SCAN_INITIAL_STATUS = 2200;
 
+// HARD FIX: Network scan only sends IP. Resolve the selected IP directly from TS_OBJECT_ROOT
+// before writing TS_JOB_HISTORY and before returning the preview payload.
+async function resolveNetworkScanTargetFromTsObjectRootByIp(pool, ip) {
+    const requestedIp = normalizeNetworkValue(ip);
+    if (!requestedIp) return null;
+
+    try {
+        const result = await pool.request()
+            .input("IP", sql.VarChar(255), requestedIp)
+            .query(`
+                SELECT TOP 1
+                    r.Object_Root_Idn,
+                    r.Object_DeviceID,
+                    r.IP
+                FROM [dbo].[TS_OBJECT_ROOT] r WITH (NOLOCK)
+                WHERE ISNULL(r.Object_Root_Idn, 0) > 0
+                  AND LTRIM(RTRIM(CONVERT(varchar(255), ISNULL(r.IP, '')))) = @IP
+                ORDER BY
+                    ISNULL(r.ConnectionStatus, 0) DESC,
+                    ISNULL(r.ConnectionTime, '19000101') DESC,
+                    ISNULL(r.Object_Root_Idn, 0) DESC;
+            `);
+
+        const row = result.recordset?.[0];
+        if (!row) return null;
+
+        return {
+            ip: requestedIp,
+            objectRootIdn: parseNetworkInt(row.Object_Root_Idn, 0),
+            objectDeviceID: normalizeNetworkValue(row.Object_DeviceID),
+            source: "TS_OBJECT_ROOT.IP"
+        };
+    } catch (err) {
+        console.warn("Network scan direct TS_OBJECT_ROOT IP lookup failed:", err.message || err);
+        return null;
+    }
+}
+
+async function forceResolveNetworkScanTargetsFromTsObjectRoot(pool, targets = []) {
+    const normalizedTargets = dedupeNetworkScanTargets(targets);
+    const resolvedTargets = [];
+
+    for (const target of normalizedTargets) {
+        const ip = normalizeNetworkValue(target.ip);
+        let nextTarget = { ...target, ip };
+
+        const hasRoot = parseNetworkInt(nextTarget.objectRootIdn, 0) > 0;
+        const hasDeviceId = Boolean(normalizeNetworkValue(nextTarget.objectDeviceID));
+
+        if (ip && (!hasRoot || !hasDeviceId)) {
+            const identity = await resolveNetworkScanTargetFromTsObjectRootByIp(pool, ip);
+            if (identity) {
+                nextTarget = {
+                    ...nextTarget,
+                    objectRootIdn: hasRoot ? parseNetworkInt(nextTarget.objectRootIdn, 0) : identity.objectRootIdn,
+                    objectDeviceID: hasDeviceId ? normalizeNetworkValue(nextTarget.objectDeviceID) : identity.objectDeviceID
+                };
+            }
+        }
+
+        resolvedTargets.push(nextTarget);
+    }
+
+    return dedupeNetworkScanTargets(resolvedTargets);
+}
+
+
 function firstNetworkScanDefined(...values) {
     return values.find(value => value !== undefined && value !== null && String(value).trim() !== "");
 }
@@ -36212,16 +39464,28 @@ function normalizeNetworkScanTarget(item) {
         ip,
         objectRootIdn: parseNetworkInt(firstNetworkScanDefined(
             item.Object_Root_Idn,
+            item.ObjectRootIdn,
+            item.ObjectRootID,
             item.objectRootIdn,
             item.objectRootID,
             item.clientID,
-            item.ClientID
+            item.ClientID,
+            item.ReferenceObject,
+            item.referenceObject,
+            item.Reference_Object,
+            item.RefObject,
+            item.refObject,
+            item.InventoryID,
+            item.inventoryID
         ), 0),
         objectDeviceID: normalizeNetworkValue(firstNetworkScanDefined(
             item.Object_DeviceID,
+            item.ObjectDeviceID,
             item.objectDeviceID,
+            item.objectDeviceId,
             item.deviceID,
             item.DeviceID,
+            item.deviceId,
             item.computerName,
             item.ComputerName
         ))
@@ -36255,17 +39519,647 @@ function networkRowToScanTarget(row) {
         objectRootIdn: parseNetworkInt(pickFirst(row, [
             "Object_Root_Idn",
             "ObjectRootIdn",
+            "ObjectRootID",
             "ClientID",
-            "clientID"
+            "clientID",
+            "ReferenceObject",
+            "referenceObject",
+            "Reference_Object",
+            "RefObject",
+            "refObject",
+            "InventoryID",
+            "inventoryID"
         ], 0), 0),
         objectDeviceID: normalizeNetworkValue(pickFirst(row, [
             "Object_DeviceID",
             "ObjectDeviceID",
             "DeviceID",
+            "deviceID",
             "ComputerName",
             "DeviceName"
         ], ""))
     };
+}
+
+function pickNetworkScanObjectRootId(row) {
+    return parseNetworkInt(pickFirst(row, [
+        "Object_Root_Idn",
+        "ObjectRootIdn",
+        "ObjectRootID",
+        "Object_Root_ID",
+        "ClientID",
+        "clientID",
+        "Client_Idn",
+        "Client_Id",
+        "ReferenceObject",
+        "referenceObject",
+        "Reference_Object",
+        "RefObject",
+        "refObject",
+        "nClientID",
+        "nClientId",
+        "nClient_Idn",
+        "ObjectID",
+        "Object_Idn"
+    ], 0), 0);
+}
+
+function pickNetworkScanObjectDeviceID(row) {
+    return normalizeNetworkValue(pickFirst(row, [
+        "Object_DeviceID",
+        "ObjectDeviceID",
+        "Object_Device_Id",
+        "DeviceID",
+        "ObjectDeviceId",
+        "Device_Id",
+        "ClientDeviceID",
+        "clientDeviceID",
+        "deviceID",
+        "deviceId",
+        "ComputerName",
+        "Computer Name",
+        "DeviceName",
+        "HostName"
+    ], ""));
+}
+
+function mergeNetworkScanIdentity(target, identity = {}) {
+    if (!identity) return target;
+
+    const currentRootId = parseNetworkInt(target.objectRootIdn, 0);
+    const resolvedRootId = parseNetworkInt(identity.objectRootIdn || identity.Object_Root_Idn, 0);
+
+    return {
+        ...target,
+        ip: normalizeNetworkValue(target.ip) || normalizeNetworkValue(identity.ip || identity.IP),
+        objectRootIdn: currentRootId > 0 ? currentRootId : resolvedRootId,
+        objectDeviceID: normalizeNetworkValue(target.objectDeviceID) || normalizeNetworkValue(identity.objectDeviceID || identity.Object_DeviceID)
+    };
+}
+
+function readNetworkScanIdentityFromRows(rows = [], requestedIp = "") {
+    const ip = normalizeNetworkValue(requestedIp).toLowerCase();
+
+    for (const row of rows || []) {
+        const rowIp = normalizeNetworkValue(getIpFromNetworkRow(row)).toLowerCase();
+        if (ip && rowIp && rowIp !== ip) continue;
+
+        const objectRootIdn = pickNetworkScanObjectRootId(row);
+        const objectDeviceID = pickNetworkScanObjectDeviceID(row);
+
+        if (objectRootIdn > 0 || objectDeviceID) {
+            return {
+                ip: rowIp || ip,
+                objectRootIdn,
+                objectDeviceID,
+                source: "network-inventory-row"
+            };
+        }
+    }
+
+    return null;
+}
+
+async function lookupNetworkScanIdentityFromSubnetProcedures(pool, ip) {
+    const requestedIp = normalizeNetworkValue(ip);
+    if (!requestedIp) return null;
+
+    try {
+        const [objectResult, agentResult] = await Promise.allSettled([
+            executeNetworkProcedure(pool, "spGetSubnetObject", {
+                Subnet: { type: sql.VarChar(50), value: requestedIp }
+            }),
+            executeNetworkProcedure(pool, "spGetSubnetAgent", {
+                Subnet: { type: sql.VarChar(50), value: requestedIp }
+            })
+        ]);
+
+        const rows = [
+            ...(objectResult.status === "fulfilled" && Array.isArray(objectResult.value) ? objectResult.value : []),
+            ...(agentResult.status === "fulfilled" && Array.isArray(agentResult.value) ? agentResult.value : [])
+        ];
+
+        const identity = readNetworkScanIdentityFromRows(rows, requestedIp);
+        if (identity?.objectRootIdn > 0) {
+            return await lookupNetworkScanIdentityFromObjectRootByRootId(pool, identity.objectRootIdn, requestedIp) || {
+                ...identity,
+                ip: requestedIp,
+                source: identity.source || "subnet-procedure"
+            };
+        }
+
+        const inventoryId = rows.reduce((found, row) => found || pickNetworkScanInventoryId(row), 0);
+        if (inventoryId > 0) {
+            const byInventory = await lookupNetworkScanIdentityFromNiObjectProcedure(pool, inventoryId, requestedIp);
+            if (byInventory) return byInventory;
+        }
+
+        const hint = identity?.objectDeviceID || rows.reduce((found, row) => found || pickNetworkScanDeviceHint(row), "");
+        if (hint) {
+            const byHint = await lookupNetworkScanIdentityFromObjectRootByDeviceHint(pool, requestedIp, hint);
+            if (byHint) return byHint;
+        }
+
+        return identity ? {
+            ...identity,
+            ip: requestedIp,
+            source: identity.source || "subnet-procedure"
+        } : null;
+    } catch (err) {
+        console.warn("Network scan subnet identity lookup skipped:", err.message || err);
+        return null;
+    }
+}
+
+async function lookupNetworkScanIdentityFromInventoryLists(pool, ip) {
+    const requestedIp = normalizeNetworkValue(ip);
+    if (!requestedIp) return null;
+
+    try {
+        const rows = await getNetworkInventoryRows(pool, {});
+        return readNetworkScanIdentityFromRows(rows, requestedIp);
+    } catch (err) {
+        console.warn("Network scan inventory-list identity lookup skipped:", err.message || err);
+        return null;
+    }
+}
+
+async function lookupNetworkScanIdentityFromObjectRoot(pool, ip) {
+    const requestedIp = normalizeNetworkValue(ip);
+    if (!requestedIp) return null;
+
+    // Direct lookup from the real EM/KANA endpoint table.
+    // Network Inventory scan only sends an IP, so the missing identity must be
+    // resolved from TS_Object_Root before TS_JOB_HISTORY is created.
+    const tableCandidates = ["dbo.TS_Object_Root", "dbo.TS_OBJECT_ROOT"];
+
+    for (const tableName of tableCandidates) {
+        try {
+            const result = await pool.request()
+                .input("IP", sql.VarChar(255), requestedIp)
+                .query(`
+                    SELECT TOP 1
+                        r.Object_Root_Idn,
+                        r.Object_DeviceID,
+                        r.IP
+                    FROM ${tableName} r WITH (NOLOCK)
+                    WHERE ISNULL(r.Object_Root_Idn, 0) > 0
+                      AND (
+                            LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.IP), ''))) = @IP
+                         OR ',' + REPLACE(REPLACE(LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.IP), ''))), ';', ','), ' ', '') + ',' LIKE '%,' + REPLACE(@IP, ' ', '') + ',%'
+                         OR LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.IP), ''))) LIKE '%' + @IP + '%'
+                      )
+                    ORDER BY
+                        CASE WHEN LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.IP), ''))) = @IP THEN 0 ELSE 1 END,
+                        ISNULL(r.ConnectionStatus, 0) DESC,
+                        ISNULL(r.ConnectionTime, '19000101') DESC,
+                        ISNULL(r.Object_Root_Idn, 0) DESC;
+                `);
+
+            const row = result.recordset?.[0];
+            if (row) {
+                return {
+                    ip: requestedIp,
+                    objectRootIdn: parseNetworkInt(row.Object_Root_Idn, 0),
+                    objectDeviceID: normalizeNetworkValue(row.Object_DeviceID),
+                    source: "TS_Object_Root.IP"
+                };
+            }
+        } catch (err) {
+            // Try the next table-name casing before giving up. Some customer DBs
+            // use case-sensitive collations and expose TS_Object_Root exactly.
+            const message = String(err?.message || err || "");
+            if (!/invalid object name|invalid column name/i.test(message)) {
+                console.warn("Network scan TS_Object_Root identity lookup skipped:", message);
+            }
+        }
+    }
+
+    return null;
+}
+
+function quoteNetworkScanSqlIdentifier(name) {
+    return `[${String(name || '').replace(/]/g, ']]')}]`;
+}
+
+async function firstExistingNetworkScanColumn(pool, tableName, candidates = []) {
+    for (const candidate of candidates) {
+        try {
+            if (await tableColumnExists(pool, tableName, candidate)) return candidate;
+        } catch (_) {
+            // Keep checking other candidate names.
+        }
+    }
+    return "";
+}
+
+function pickNetworkScanInventoryId(row) {
+    return parseNetworkInt(pickFirst(row, [
+        "InventoryID",
+        "Inventory_Idn",
+        "Object_Inventory_Idn",
+        "NIObjectID",
+        "NI_Object_Idn",
+        "ID",
+        "id"
+    ], 0), 0);
+}
+
+function pickNetworkScanDeviceHint(row) {
+    return normalizeNetworkValue(pickFirst(row, [
+        "Object_DeviceID",
+        "ObjectDeviceID",
+        "Object_Device_Id",
+        "DeviceID",
+        "ObjectDeviceId",
+        "Device_Id",
+        "ClientDeviceID",
+        "clientDeviceID",
+        "ComputerName",
+        "Computer Name",
+        "HostName",
+        "DeviceName",
+        "Name"
+    ], ""));
+}
+
+async function lookupNetworkScanIdentityFromObjectRootByRootId(pool, rootId, requestedIp = "") {
+    const objectRootIdn = parseNetworkInt(rootId, 0);
+    if (objectRootIdn <= 0) return null;
+
+    try {
+        const [hasObjectRootTable, hasDeviceIdColumn, hasComputerNameColumn, hasIpColumn] = await Promise.all([
+            tableExists(pool, "TS_OBJECT_ROOT"),
+            tableColumnExists(pool, "TS_OBJECT_ROOT", "Object_DeviceID"),
+            tableColumnExists(pool, "TS_OBJECT_ROOT", "ComputerName"),
+            tableColumnExists(pool, "TS_OBJECT_ROOT", "IP")
+        ]);
+
+        if (!hasObjectRootTable) return null;
+
+        const deviceIdSelect = hasDeviceIdColumn
+            ? "r.Object_DeviceID"
+            : hasComputerNameColumn
+                ? "r.ComputerName AS Object_DeviceID"
+                : "CAST('' AS varchar(255)) AS Object_DeviceID";
+        const ipSelect = hasIpColumn ? "r.IP" : "CAST('' AS varchar(255)) AS IP";
+
+        const result = await pool.request()
+            .input("Object_Root_Idn", sql.Int, objectRootIdn)
+            .query(`
+                SELECT TOP 1
+                    r.Object_Root_Idn,
+                    ${deviceIdSelect},
+                    ${ipSelect}
+                FROM dbo.TS_OBJECT_ROOT r WITH (NOLOCK)
+                WHERE r.Object_Root_Idn = @Object_Root_Idn;
+            `);
+
+        const row = result.recordset?.[0];
+        if (!row) return {
+            ip: normalizeNetworkValue(requestedIp),
+            objectRootIdn,
+            objectDeviceID: "",
+            source: "ReferenceObject"
+        };
+
+        return {
+            ip: normalizeNetworkValue(requestedIp) || normalizeNetworkValue(row.IP),
+            objectRootIdn: parseNetworkInt(row.Object_Root_Idn, objectRootIdn),
+            objectDeviceID: normalizeNetworkValue(row.Object_DeviceID),
+            source: "TS_OBJECT_ROOT.Object_Root_Idn"
+        };
+    } catch (err) {
+        console.warn("Network scan TS_OBJECT_ROOT root-id lookup skipped:", err.message || err);
+        return null;
+    }
+}
+
+async function lookupNetworkScanIdentityFromObjectRootByDeviceHint(pool, ip, deviceHint) {
+    const requestedIp = normalizeNetworkValue(ip);
+    const cleanHint = normalizeNetworkValue(deviceHint);
+    if (!requestedIp && !cleanHint) return null;
+
+    try {
+        const hasObjectRootTable = await tableExists(pool, "TS_OBJECT_ROOT");
+        if (!hasObjectRootTable) return null;
+
+        const [deviceIdColumn, computerNameColumn, ipColumn] = await Promise.all([
+            firstExistingNetworkScanColumn(pool, "TS_OBJECT_ROOT", ["Object_DeviceID", "ObjectDeviceID", "DeviceID"]),
+            firstExistingNetworkScanColumn(pool, "TS_OBJECT_ROOT", ["ComputerName", "DeviceName", "HostName"]),
+            firstExistingNetworkScanColumn(pool, "TS_OBJECT_ROOT", ["IP", "IPAddress", "IP_Address"])
+        ]);
+
+        const predicates = [];
+        const rankParts = [];
+        if (cleanHint && deviceIdColumn) {
+            const col = `CONVERT(varchar(255), r.${quoteNetworkScanSqlIdentifier(deviceIdColumn)})`;
+            predicates.push(`LTRIM(RTRIM(ISNULL(${col}, ''))) = @DeviceHint`);
+            rankParts.push(`WHEN LTRIM(RTRIM(ISNULL(${col}, ''))) = @DeviceHint THEN 1`);
+        }
+        if (cleanHint && computerNameColumn) {
+            const col = `CONVERT(varchar(255), r.${quoteNetworkScanSqlIdentifier(computerNameColumn)})`;
+            predicates.push(`LTRIM(RTRIM(ISNULL(${col}, ''))) = @DeviceHint`);
+            predicates.push(`LOWER(LTRIM(RTRIM(ISNULL(${col}, '')))) = LOWER(@DeviceHint)`);
+            rankParts.push(`WHEN LOWER(LTRIM(RTRIM(ISNULL(${col}, '')))) = LOWER(@DeviceHint) THEN 2`);
+        }
+        if (requestedIp && ipColumn) {
+            const col = `CONVERT(varchar(255), r.${quoteNetworkScanSqlIdentifier(ipColumn)})`;
+            predicates.push(`LTRIM(RTRIM(ISNULL(${col}, ''))) = @IP`);
+            predicates.push(`',' + REPLACE(REPLACE(LTRIM(RTRIM(ISNULL(${col}, ''))), ';', ','), ' ', '') + ',' LIKE '%,' + REPLACE(@IP, ' ', '') + ',%'`);
+            predicates.push(`LTRIM(RTRIM(ISNULL(${col}, ''))) LIKE '%' + @IP + '%'`);
+            rankParts.push(`WHEN LTRIM(RTRIM(ISNULL(${col}, ''))) = @IP THEN 3`);
+        }
+
+        if (predicates.length === 0) return null;
+
+        const deviceIdSelect = deviceIdColumn
+            ? `r.${quoteNetworkScanSqlIdentifier(deviceIdColumn)}`
+            : computerNameColumn
+                ? `r.${quoteNetworkScanSqlIdentifier(computerNameColumn)} AS Object_DeviceID`
+                : `CAST('' AS varchar(255)) AS Object_DeviceID`;
+        const ipSelect = ipColumn
+            ? `r.${quoteNetworkScanSqlIdentifier(ipColumn)} AS IP`
+            : `CAST('' AS varchar(255)) AS IP`;
+        const connectionStatusOrder = await tableColumnExists(pool, "TS_OBJECT_ROOT", "ConnectionStatus")
+            ? `ISNULL(r.ConnectionStatus, 0) DESC,`
+            : ``;
+
+        const result = await pool.request()
+            .input("IP", sql.VarChar(255), requestedIp)
+            .input("DeviceHint", sql.VarChar(255), cleanHint)
+            .query(`
+                SELECT TOP 1
+                    r.Object_Root_Idn,
+                    ${deviceIdSelect},
+                    ${ipSelect}
+                FROM dbo.TS_OBJECT_ROOT r WITH (NOLOCK)
+                WHERE ISNULL(r.Object_Root_Idn, 0) > 0
+                  AND (${predicates.join(" OR ")})
+                ORDER BY
+                    CASE
+                        ${rankParts.join("\n                        ")}
+                        ELSE 9
+                    END,
+                    ${connectionStatusOrder}
+                    ISNULL(r.Object_Root_Idn, 0) DESC;
+            `);
+
+        const row = result.recordset?.[0];
+        if (!row) return null;
+
+        return {
+            ip: requestedIp || normalizeNetworkValue(row.IP),
+            objectRootIdn: parseNetworkInt(row.Object_Root_Idn, 0),
+            objectDeviceID: normalizeNetworkValue(row.Object_DeviceID) || cleanHint,
+            source: "TS_OBJECT_ROOT.device-hint"
+        };
+    } catch (err) {
+        console.warn("Network scan TS_OBJECT_ROOT device-hint lookup skipped:", err.message || err);
+        return null;
+    }
+}
+
+async function lookupNetworkScanIdentityFromNiObjectProcedure(pool, inventoryId, requestedIp = "") {
+    const cleanInventoryId = parseNetworkInt(inventoryId, 0);
+    if (cleanInventoryId <= 0) return null;
+
+    try {
+        const rows = await executeNetworkProcedure(pool, "spGetNIObject", {
+            InventoryID: { type: sql.Int, value: cleanInventoryId }
+        });
+
+        const identity = readNetworkScanIdentityFromRows(rows, requestedIp);
+        if (identity?.objectRootIdn > 0) {
+            return await lookupNetworkScanIdentityFromObjectRootByRootId(pool, identity.objectRootIdn, requestedIp) || identity;
+        }
+
+        const hint = identity?.objectDeviceID || pickNetworkScanDeviceHint((rows || [])[0]);
+        if (hint) {
+            const byHint = await lookupNetworkScanIdentityFromObjectRootByDeviceHint(pool, requestedIp, hint);
+            if (byHint) return byHint;
+        }
+
+        return identity;
+    } catch (err) {
+        console.warn("Network scan spGetNIObject identity lookup skipped:", err.message || err);
+        return null;
+    }
+}
+
+async function lookupNetworkScanIdentityFromTsniObjectTable(pool, ip) {
+    const requestedIp = normalizeNetworkValue(ip);
+    if (!requestedIp) return null;
+
+    try {
+        const hasTable = await tableExists(pool, "TSNI_OBJECT");
+        if (!hasTable) return null;
+
+        const [ipColumn, refColumn, inventoryColumn, deviceColumn] = await Promise.all([
+            firstExistingNetworkScanColumn(pool, "TSNI_OBJECT", ["IPAddress", "IP_Address", "IP", "ClientIP"]),
+            firstExistingNetworkScanColumn(pool, "TSNI_OBJECT", ["ReferenceObject", "Reference_Object", "RefObject", "Object_Root_Idn", "ClientID"]),
+            firstExistingNetworkScanColumn(pool, "TSNI_OBJECT", ["InventoryID", "Inventory_Idn", "Object_Inventory_Idn", "ID"]),
+            firstExistingNetworkScanColumn(pool, "TSNI_OBJECT", ["Object_DeviceID", "DeviceID", "ComputerName", "HostName", "DeviceName"])
+        ]);
+
+        if (!ipColumn) return null;
+
+        const refSelect = refColumn ? `o.${quoteNetworkScanSqlIdentifier(refColumn)} AS ReferenceObject` : `CAST(0 AS int) AS ReferenceObject`;
+        const inventorySelect = inventoryColumn ? `o.${quoteNetworkScanSqlIdentifier(inventoryColumn)} AS InventoryID` : `CAST(0 AS int) AS InventoryID`;
+        const deviceSelect = deviceColumn ? `o.${quoteNetworkScanSqlIdentifier(deviceColumn)} AS DeviceHint` : `CAST('' AS varchar(255)) AS DeviceHint`;
+        const ipExpr = `CONVERT(varchar(255), o.${quoteNetworkScanSqlIdentifier(ipColumn)})`;
+
+        const result = await pool.request()
+            .input("IP", sql.VarChar(255), requestedIp)
+            .query(`
+                SELECT TOP 1
+                    ${refSelect},
+                    ${inventorySelect},
+                    ${deviceSelect},
+                    ${ipExpr} AS IP
+                FROM dbo.TSNI_OBJECT o WITH (NOLOCK)
+                WHERE LTRIM(RTRIM(ISNULL(${ipExpr}, ''))) = @IP
+                   OR ',' + REPLACE(REPLACE(LTRIM(RTRIM(ISNULL(${ipExpr}, ''))), ';', ','), ' ', '') + ',' LIKE '%,' + REPLACE(@IP, ' ', '') + ',%'
+                   OR LTRIM(RTRIM(ISNULL(${ipExpr}, ''))) LIKE '%' + @IP + '%'
+                ORDER BY
+                    CASE WHEN LTRIM(RTRIM(ISNULL(${ipExpr}, ''))) = @IP THEN 1 ELSE 2 END;
+            `);
+
+        const row = result.recordset?.[0];
+        if (!row) return null;
+
+        const rootId = parseNetworkInt(row.ReferenceObject, 0);
+        if (rootId > 0) {
+            return await lookupNetworkScanIdentityFromObjectRootByRootId(pool, rootId, requestedIp) || {
+                ip: requestedIp,
+                objectRootIdn: rootId,
+                objectDeviceID: normalizeNetworkValue(row.DeviceHint),
+                source: "TSNI_OBJECT.ReferenceObject"
+            };
+        }
+
+        const inventoryId = parseNetworkInt(row.InventoryID, 0);
+        if (inventoryId > 0) {
+            const byInventory = await lookupNetworkScanIdentityFromNiObjectProcedure(pool, inventoryId, requestedIp);
+            if (byInventory) return byInventory;
+        }
+
+        const hint = normalizeNetworkValue(row.DeviceHint);
+        if (hint) {
+            const byHint = await lookupNetworkScanIdentityFromObjectRootByDeviceHint(pool, requestedIp, hint);
+            if (byHint) return byHint;
+        }
+
+        return null;
+    } catch (err) {
+        console.warn("Network scan TSNI_OBJECT identity lookup skipped:", err.message || err);
+        return null;
+    }
+}
+
+async function hydrateNetworkScanTargetsWithDeviceIdentity(pool, targets = []) {
+    const normalizedTargets = dedupeNetworkScanTargets(targets);
+    const hydratedTargets = [];
+
+    for (const target of normalizedTargets) {
+        const currentRootId = parseNetworkInt(target.objectRootIdn, 0);
+        const currentDeviceId = normalizeNetworkValue(target.objectDeviceID);
+
+        if (currentRootId > 0 && currentDeviceId) {
+            hydratedTargets.push(target);
+            continue;
+        }
+
+        const ip = normalizeNetworkValue(target.ip);
+        let hydrated = target;
+
+        // First try TS_OBJECT_ROOT.IP for normal registered endpoint rows.
+        const rootIdentity = await lookupNetworkScanIdentityFromObjectRoot(pool, ip);
+        if (rootIdentity) hydrated = mergeNetworkScanIdentity(hydrated, rootIdentity);
+
+        // Network Inventory stores the scanned object separately. For registered devices,
+        // TSNI_OBJECT.ReferenceObject is the bridge back to TS_OBJECT_ROOT.Object_Root_Idn.
+        if (parseNetworkInt(hydrated.objectRootIdn, 0) <= 0 || !normalizeNetworkValue(hydrated.objectDeviceID)) {
+            const niObjectIdentity = await lookupNetworkScanIdentityFromTsniObjectTable(pool, ip);
+            if (niObjectIdentity) hydrated = mergeNetworkScanIdentity(hydrated, niObjectIdentity);
+        }
+
+        // Then ask the same Network Inventory stored procedures used by the IP detail view.
+        // This covers cases where the selected IP has InventoryID/ComputerName but not direct root id.
+        if (parseNetworkInt(hydrated.objectRootIdn, 0) <= 0 || !normalizeNetworkValue(hydrated.objectDeviceID)) {
+            const subnetIdentity = await lookupNetworkScanIdentityFromSubnetProcedures(pool, ip);
+            if (subnetIdentity) hydrated = mergeNetworkScanIdentity(hydrated, subnetIdentity);
+        }
+
+        // Final fallback: scan current NI list rows and match the selected IP.
+        if (parseNetworkInt(hydrated.objectRootIdn, 0) <= 0 || !normalizeNetworkValue(hydrated.objectDeviceID)) {
+            const listIdentity = await lookupNetworkScanIdentityFromInventoryLists(pool, ip);
+            if (listIdentity) hydrated = mergeNetworkScanIdentity(hydrated, listIdentity);
+        }
+
+        // If the NI row only produced a computer/device name, use it to resolve TS_OBJECT_ROOT.
+        if (parseNetworkInt(hydrated.objectRootIdn, 0) <= 0 && normalizeNetworkValue(hydrated.objectDeviceID)) {
+            const hintIdentity = await lookupNetworkScanIdentityFromObjectRootByDeviceHint(pool, ip, hydrated.objectDeviceID);
+            if (hintIdentity) hydrated = mergeNetworkScanIdentity(hydrated, hintIdentity);
+        }
+
+        hydratedTargets.push(hydrated);
+    }
+
+    return dedupeNetworkScanTargets(hydratedTargets);
+}
+
+
+// OPTION 2 COMPATIBILITY FIX:
+// The React Network Inventory page sends ipAddress/ips only. The old Java flow
+// received a prepared target array, so Node must build the target identity here.
+// This maps IP -> dbo.TS_Object_Root.Object_Root_Idn/Object_DeviceID before
+// TS_JOB_HISTORY is inserted and before the preview response is returned.
+async function lookupNetworkScanTargetFromTsObjectRootStrict(pool, targetOrIp) {
+    const normalized = normalizeNetworkScanTarget(targetOrIp) || (
+        targetOrIp !== undefined && targetOrIp !== null
+            ? { ip: normalizeNetworkValue(targetOrIp), objectRootIdn: 0, objectDeviceID: "" }
+            : null
+    );
+
+    if (!normalized || !normalizeNetworkValue(normalized.ip)) return null;
+
+    const ip = normalizeNetworkValue(normalized.ip);
+    const existingRootId = parseNetworkInt(normalized.objectRootIdn, 0);
+    const existingDeviceId = normalizeNetworkValue(normalized.objectDeviceID);
+
+    if (existingRootId > 0 && existingDeviceId) {
+        return {
+            ip,
+            objectRootIdn: existingRootId,
+            objectDeviceID: existingDeviceId
+        };
+    }
+
+    const tableCandidates = ["dbo.TS_Object_Root", "dbo.TS_OBJECT_ROOT"];
+
+    for (const tableName of tableCandidates) {
+        try {
+            const result = await pool.request()
+                .input("IP", sql.VarChar(255), ip)
+                .query(`
+                    SELECT TOP 1
+                        r.Object_Root_Idn,
+                        r.Object_DeviceID,
+                        r.IP,
+                        r.RealIP
+                    FROM ${tableName} r WITH (NOLOCK)
+                    WHERE ISNULL(r.Object_Root_Idn, 0) > 0
+                      AND (
+                            LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.IP), ''))) = @IP
+                         OR LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.RealIP), ''))) = @IP
+                         OR REPLACE(LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.IP), ''))), ' ', '') = REPLACE(@IP, ' ', '')
+                         OR REPLACE(LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.RealIP), ''))), ' ', '') = REPLACE(@IP, ' ', '')
+                      )
+                    ORDER BY
+                        CASE
+                            WHEN LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.IP), ''))) = @IP THEN 0
+                            WHEN LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.RealIP), ''))) = @IP THEN 1
+                            ELSE 2
+                        END,
+                        ISNULL(r.ConnectionStatus, 0) DESC,
+                        ISNULL(r.ConnectionTime, '19000101') DESC,
+                        ISNULL(r.Object_Root_Idn, 0) DESC;
+                `);
+
+            const row = result.recordset?.[0];
+            if (row) {
+                return {
+                    ip,
+                    objectRootIdn: existingRootId > 0 ? existingRootId : parseNetworkInt(row.Object_Root_Idn, 0),
+                    objectDeviceID: existingDeviceId || normalizeNetworkValue(row.Object_DeviceID)
+                };
+            }
+        } catch (err) {
+            const message = String(err?.message || err || "");
+            if (!/invalid object name|invalid column name/i.test(message)) {
+                console.warn("[network-scan] TS_Object_Root strict lookup failed:", message);
+            }
+        }
+    }
+
+    return {
+        ip,
+        objectRootIdn: existingRootId,
+        objectDeviceID: existingDeviceId
+    };
+}
+
+async function resolveNetworkScanTargetsWithTsObjectRootStrict(pool, targets = []) {
+    const normalizedTargets = dedupeNetworkScanTargets(targets);
+    const resolvedTargets = [];
+
+    for (const target of normalizedTargets) {
+        const resolved = await lookupNetworkScanTargetFromTsObjectRootStrict(pool, target);
+        if (resolved) resolvedTargets.push(resolved);
+    }
+
+    return dedupeNetworkScanTargets(resolvedTargets);
 }
 
 async function resolveNetworkScanTargets(pool, payload = {}) {
@@ -36275,19 +40169,6 @@ async function resolveNetworkScanTargets(pool, payload = {}) {
         payload.targetMode,
         payload.targetType
     ));
-
-    const explicitTargets = dedupeNetworkScanTargets([
-        ...normalizeNetworkScanArray(firstNetworkScanDefined(
-            payload.targets,
-            payload.target,
-            payload.selectedTargets
-        )),
-        ...normalizeNetworkScanArray(firstNetworkScanDefined(
-            payload.ips,
-            payload.ipList,
-            payload.ipAddresses
-        )).map(ip => ({ ip }))
-    ]);
 
     const ipAddress = normalizeNetworkValue(firstNetworkScanDefined(
         payload.ip,
@@ -36305,12 +40186,26 @@ async function resolveNetworkScanTargets(pool, payload = {}) {
         payload.branch
     ));
 
+    const explicitTargets = dedupeNetworkScanTargets([
+        ...normalizeNetworkScanArray(firstNetworkScanDefined(
+            payload.targets,
+            payload.target,
+            payload.selectedTargets
+        )),
+        ...normalizeNetworkScanArray(firstNetworkScanDefined(
+            payload.ips,
+            payload.ipList,
+            payload.ipAddresses
+        )).map(ip => ({ ip })),
+        ...(ipAddress ? [{ ip: ipAddress }] : [])
+    ]);
+
     if (explicitTargets.length > 0) {
         return {
             mode,
             subnet,
             requestedIp: ipAddress,
-            targets: explicitTargets
+            targets: await resolveNetworkScanTargetsWithTsObjectRootStrict(pool, explicitTargets)
         };
     }
 
@@ -36319,7 +40214,7 @@ async function resolveNetworkScanTargets(pool, payload = {}) {
             mode,
             subnet,
             requestedIp: ipAddress,
-            targets: [{ ip: ipAddress, objectRootIdn: 0, objectDeviceID: "" }]
+            targets: await resolveNetworkScanTargetsWithTsObjectRootStrict(pool, [{ ip: ipAddress }])
         };
     }
 
@@ -36347,7 +40242,7 @@ async function resolveNetworkScanTargets(pool, payload = {}) {
         mode,
         subnet,
         requestedIp: ipAddress,
-        targets: dedupeNetworkScanTargets(targets)
+        targets: await resolveNetworkScanTargetsWithTsObjectRootStrict(pool, targets)
     };
 }
 
@@ -36383,7 +40278,7 @@ async function createNetworkInventoryScanJob(req, res) {
         const resolved = await resolveNetworkScanTargets(pool, body);
         const mode = resolved.mode;
         const modeCode = getNetworkScanModeCode(mode);
-        const targets = resolved.targets || [];
+        let targets = await resolveNetworkScanTargetsWithTsObjectRootStrict(pool, resolved.targets || []);
 
         if (targets.length === 0) {
             return res.status(400).json({
@@ -36444,6 +40339,18 @@ async function createNetworkInventoryScanJob(req, res) {
             throw new Error("spUpdateJob did not return Job_Idn for network inventory scan.");
         }
 
+        const statusResult = await new sql.Request(transaction)
+            .input("Job_Idn", sql.Int, jobIdn)
+            .query(`
+                SELECT TOP 1 Job_Status
+                FROM TS_JOB WITH (NOLOCK)
+                WHERE Job_Idn = @Job_Idn;
+            `);
+        const actualJobStatus = parseNetworkInt(
+            statusResult.recordset?.[0]?.Job_Status,
+            NETWORK_SCAN_INITIAL_STATUS
+        );
+
         const destRequest = new sql.Request(transaction);
         await destRequest
             .input("Job_Idn", sql.Int, jobIdn)
@@ -36484,7 +40391,7 @@ async function createNetworkInventoryScanJob(req, res) {
             await historyRequest
                 .input("Job_Idn", sql.Int, jobIdn)
                 .input("Object_Root_Idn", sql.Int, parseNetworkInt(target.objectRootIdn, 0))
-                .input("Job_Status", sql.Int, NETWORK_SCAN_INITIAL_STATUS)
+                .input("Job_Status", sql.Int, actualJobStatus)
                 .input("LastChangedTime", sql.VarChar(50), formatNetworkScanDate())
                 .input("Object_DeviceID", sql.VarChar(255), normalizeNetworkValue(target.objectDeviceID))
                 .input("IP", sql.VarChar(50), normalizeNetworkValue(target.ip))
@@ -36498,20 +40405,109 @@ async function createNetworkInventoryScanJob(req, res) {
                         Object_DeviceID,
                         IP
                     )
-                    VALUES
-                    (
+                    SELECT
                         @Job_Idn,
-                        @Object_Root_Idn,
+                        ISNULL(NULLIF(@Object_Root_Idn, 0), ISNULL(root.Object_Root_Idn, 0)),
                         @Job_Status,
                         @LastChangedTime,
-                        @Object_DeviceID,
+                        ISNULL(NULLIF(@Object_DeviceID, ''), ISNULL(root.Object_DeviceID, '')),
                         @IP
-                    );
+                    FROM (SELECT 1 AS seed) s
+                    OUTER APPLY (
+                        SELECT TOP 1
+                            r.Object_Root_Idn,
+                            r.Object_DeviceID
+                        FROM [dbo].[TS_Object_Root] r WITH (NOLOCK)
+                        WHERE ISNULL(r.Object_Root_Idn, 0) > 0
+                          AND (
+                                LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.IP), ''))) = @IP
+                             OR LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.RealIP), ''))) = @IP
+                             OR REPLACE(LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.IP), ''))), ' ', '') = REPLACE(@IP, ' ', '')
+                             OR REPLACE(LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.RealIP), ''))), ' ', '') = REPLACE(@IP, ' ', '')
+                          )
+                        ORDER BY
+                            CASE
+                                WHEN LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.IP), ''))) = @IP THEN 0
+                                WHEN LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.RealIP), ''))) = @IP THEN 1
+                                ELSE 2
+                            END,
+                            ISNULL(r.ConnectionStatus, 0) DESC,
+                            ISNULL(r.ConnectionTime, '19000101') DESC,
+                            ISNULL(r.Object_Root_Idn, 0) DESC
+                    ) root;
                 `);
         }
 
+        await new sql.Request(transaction)
+            .input("Job_Idn", sql.Int, jobIdn)
+            .query(`
+                UPDATE h
+                SET h.Job_Status = j.Job_Status,
+                    h.LastChangedTime = GETDATE()
+                FROM TS_JOB_HISTORY h
+                INNER JOIN TS_JOB j
+                    ON j.Job_Idn = h.Job_Idn
+                WHERE h.Job_Idn = @Job_Idn
+                  AND ISNULL(h.Job_Status, -1) <> ISNULL(j.Job_Status, -1);
+            `);
+
         await transaction.commit();
         transaction = null;
+
+        let finalJobStatus = actualJobStatus;
+        try {
+            const finalStatusResult = await pool.request()
+                .input("Job_Idn", sql.Int, jobIdn)
+                .query(`
+                    DECLARE @FinalJobStatus int;
+
+                    SELECT TOP 1 @FinalJobStatus = Job_Status
+                    FROM TS_JOB WITH (NOLOCK)
+                    WHERE Job_Idn = @Job_Idn;
+
+                    UPDATE h
+                    SET h.Job_Status = @FinalJobStatus,
+                        h.LastChangedTime = GETDATE()
+                    FROM TS_JOB_HISTORY h
+                    WHERE h.Job_Idn = @Job_Idn
+                      AND @FinalJobStatus IS NOT NULL
+                      AND ISNULL(h.Job_Status, -1) <> ISNULL(@FinalJobStatus, -1);
+
+                    SELECT @FinalJobStatus AS Job_Status;
+                `);
+
+            finalJobStatus = parseNetworkInt(
+                finalStatusResult.recordset?.[0]?.Job_Status,
+                actualJobStatus
+            );
+        } catch (syncErr) {
+            console.warn("Network scan history status post-commit sync skipped:", syncErr.message || syncErr);
+        }
+
+        let responseTargets = targets;
+        try {
+            const historyTargetsResult = await pool.request()
+                .input("Job_Idn", sql.Int, jobIdn)
+                .query(`
+                    SELECT
+                        IP,
+                        Object_Root_Idn,
+                        Object_DeviceID
+                    FROM TS_JOB_HISTORY WITH (NOLOCK)
+                    WHERE Job_Idn = @Job_Idn
+                    ORDER BY IP, Object_Root_Idn;
+                `);
+
+            const historyTargets = (historyTargetsResult.recordset || []).map(row => ({
+                ip: normalizeNetworkValue(row.IP),
+                objectRootIdn: parseNetworkInt(row.Object_Root_Idn, 0),
+                objectDeviceID: normalizeNetworkValue(row.Object_DeviceID)
+            })).filter(row => row.ip);
+
+            if (historyTargets.length > 0) responseTargets = historyTargets;
+        } catch (historyReadErr) {
+            console.warn("Network scan history target readback skipped:", historyReadErr.message || historyReadErr);
+        }
 
         return res.json({
             success: true,
@@ -36520,14 +40516,14 @@ async function createNetworkInventoryScanJob(req, res) {
                 Job_Idn: jobIdn,
                 Job_Type: NETWORK_SCAN_JOB_TYPE,
                 Job_Command: NETWORK_SCAN_JOB_COMMAND,
-                Job_Status: NETWORK_SCAN_INITIAL_STATUS,
+                Job_Status: finalJobStatus,
                 Job_Style: jobStyle,
                 scanMode: mode,
                 scanModeCode: modeCode,
-                targetCount: targets.length,
+                targetCount: responseTargets.length,
                 subnet: resolved.subnet || "",
                 ipAddress: resolved.requestedIp || "",
-                targets
+                targets: responseTargets
             }
         });
     } catch (err) {
@@ -37939,19 +41935,108 @@ function getHwCategory(categoryKey) {
     return match || HW_CATEGORY_MAP[categoryKey];
 }
 
+function getHardwareStatisticRawValue(row = {}) {
+    const explicitValue =
+        row.rawValue ??
+        row.RawValue ??
+        row.item ??
+        row.Item ??
+        row.Items ??
+        row.Value ??
+        row.Category_Inventory ??
+        row.category_inventory ??
+        row[""];
+
+    if (explicitValue !== undefined && explicitValue !== null && String(explicitValue).trim() !== "") {
+        return explicitValue;
+    }
+
+    const ignoredKeys = new Set([
+        "ccount", "count", "cnt", "total", "totalcount", "devicecount",
+        "percentage", "percent", "rate", "ratio"
+    ]);
+
+    const fallbackEntry = Object.entries(row).find(([key, value]) => {
+        const normalizedKey = String(key).replace(/[\s_\-()/.]+/g, "").toLowerCase();
+        return !ignoredKeys.has(normalizedKey) && value !== undefined && value !== null && String(value).trim() !== "";
+    });
+
+    return fallbackEntry ? fallbackEntry[1] : "";
+}
+
+function formatHardwareStatisticDisplayValue(value, category) {
+    const text = String(value ?? "").trim();
+    if (!text) return "";
+
+    if (category?.code === 4) {
+        const memoryMb = Number(text.replace(/,/g, ""));
+        if (Number.isFinite(memoryMb) && memoryMb > 0) {
+            const memoryGb = memoryMb / 1024;
+            const roundedGb = Math.abs(memoryGb - Math.round(memoryGb)) < 0.05
+                ? String(Math.round(memoryGb))
+                : memoryGb.toFixed(1);
+            return `${roundedGb} GB`;
+        }
+    }
+
+    return text;
+}
+
+function normalizeHardwareStatisticRows(rows = [], category) {
+    const normalizedRows = (Array.isArray(rows) ? rows : [])
+        .map(row => {
+            const source = row && typeof row === "object" ? row : {};
+            const rawValue = getHardwareStatisticRawValue(source);
+            const countValue =
+                source.count ??
+                source.CCount ??
+                source.Count ??
+                source.Cnt ??
+                source.DeviceCount ??
+                source.TotalCount ??
+                0;
+            const count = Number(String(countValue ?? 0).replace(/,/g, ""));
+            const rawText = String(rawValue ?? "").trim();
+
+            if (!rawText || !Number.isFinite(count) || count <= 0) return null;
+
+            return {
+                item: formatHardwareStatisticDisplayValue(rawText, category),
+                displayValue: formatHardwareStatisticDisplayValue(rawText, category),
+                rawValue: rawText,
+                count,
+                CCount: count
+            };
+        })
+        .filter(Boolean);
+
+    const totalDevices = normalizedRows.reduce((sum, row) => sum + row.count, 0);
+    const data = normalizedRows.map(row => ({
+        ...row,
+        percentage: totalDevices > 0
+            ? Number(((row.count / totalDevices) * 100).toFixed(1))
+            : 0
+    }));
+
+    return { data, totalDevices };
+}
+
 async function getAllHardwareStatistics(pool, relationID) {
     const entries = await Promise.all(
         HW_CATEGORY_LIST.map(async category => {
-            const rows = await executeStoredProcedure(pool, "spGetHWAllStat2", {
+            const rawRows = await executeStoredProcedure(pool, "spGetHWStat2", {
                 nRelationID: { type: sql.Int, value: relationID },
                 Catg: { type: sql.Int, value: category.code }
             });
+            const normalized = normalizeHardwareStatisticRows(rawRows, category);
 
             return [category.key, {
                 category: category.key,
                 label: category.label,
                 code: category.code,
-                data: rows
+                totalRecords: normalized.data.length,
+                totalDevices: normalized.totalDevices,
+                data: normalized.data
             }];
         })
     );
@@ -38093,18 +42178,20 @@ app.get("/api/hardware-statistics/:relationID/category/:categoryKey", authentica
         }
 
         const pool = await sql.connect(dbConfig);
-        const data = await executeStoredProcedure(pool, "spGetHWAllStat2", {
+        const rawRows = await executeStoredProcedure(pool, "spGetHWStat2", {
             nRelationID: { type: sql.Int, value: relationID },
             Catg: { type: sql.Int, value: category.code }
         });
+        const normalized = normalizeHardwareStatisticRows(rawRows, category);
 
         return res.json({
             success: true,
             category: category.key,
             label: category.label,
             code: category.code,
-            totalRecords: data.length,
-            data
+            totalRecords: normalized.data.length,
+            totalDevices: normalized.totalDevices,
+            data: normalized.data
         });
     } catch (err) {
         console.error(err);
@@ -38118,7 +42205,7 @@ app.get("/api/hardware-statistics/:relationID/category/:categoryKey/list", authe
         const relationID = parseInt(req.params.relationID, 10);
         const category = getHwCategory(req.params.categoryKey);
         const categoryInventory = String(req.query.value || req.query.category_inventory || "");
-        const mode = String(req.query.mode || "1") === "2" ? "2" : "1";
+        const mode = String(req.query.mode || "2") === "1" ? "1" : "2";
 
         if (Number.isNaN(relationID) || !category || !categoryInventory) {
             return res.status(400).json({ success: false, message: "Invalid relationID, category, or value" });
@@ -38296,6 +42383,7 @@ app.get("/api/hardware-reports/:relationID/:reportKey", authenticateToken, async
         return res.status(500).json({ success: false, message: "Failed to retrieve hardware report" });
     }
 });
+
 
 
 /*

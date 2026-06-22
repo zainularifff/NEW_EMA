@@ -229,6 +229,40 @@ type HardwareSummary = {
   endpointRows: HardwareEndpointRow[];
 };
 
+type SoftwareLifecycleItem = {
+  name: string;
+  vendor?: string;
+  productKey?: string;
+  installs: number;
+  uniqueTitles: number;
+  lifecycleStatus: string;
+  supportStatus?: string;
+  latestCycle?: string;
+  eolDate?: string;
+  eosDate?: string;
+  daysToEol?: number | null;
+  source?: string;
+};
+
+type SoftwareInventoryRow = {
+  softwareName: string;
+  category: string;
+  classification: string;
+  productGroup: string;
+  deviceId?: string;
+  deviceName?: string;
+  branch?: string;
+  version?: string;
+  publisher?: string;
+  lastScan?: string;
+  lifecycleStatus?: string;
+  supportStatus?: string;
+  eolDate?: string;
+  eosDate?: string;
+  riskLevel?: string;
+  recommendation?: string;
+};
+
 type SoftwareSummary = {
   totalInstallations: number;
   uniqueSoftware: number;
@@ -236,6 +270,17 @@ type SoftwareSummary = {
   unclassifiedSoftware: number;
   latestScan: string;
   topCategories: BreakdownItem[];
+  classificationBreakdown: BreakdownItem[];
+  lifecycleWatch: SoftwareLifecycleItem[];
+  softwareRows: SoftwareInventoryRow[];
+  businessSoftware: number;
+  remoteControlSoftware: number;
+  antivirusSoftware: number;
+  browserSoftware: number;
+  gamingSoftware: number;
+  eolApplications: number;
+  eosApplications: number;
+  unsupportedApplications: number;
 };
 
 type NetworkSummary = {
@@ -379,6 +424,17 @@ const EMPTY_SOFTWARE_SUMMARY: SoftwareSummary = {
   unclassifiedSoftware: 0,
   latestScan: '-',
   topCategories: [],
+  classificationBreakdown: [],
+  lifecycleWatch: [],
+  softwareRows: [],
+  businessSoftware: 0,
+  remoteControlSoftware: 0,
+  antivirusSoftware: 0,
+  browserSoftware: 0,
+  gamingSoftware: 0,
+  eolApplications: 0,
+  eosApplications: 0,
+  unsupportedApplications: 0,
 };
 
 const EMPTY_NETWORK_SUMMARY: NetworkSummary = {
@@ -868,6 +924,9 @@ function normalizeDashboardData(raw: Partial<ItOpsDashboardData> | null | undefi
       ...EMPTY_SOFTWARE_SUMMARY,
       ...(data.software || {}),
       topCategories: Array.isArray(data.software?.topCategories) ? data.software.topCategories : [],
+      classificationBreakdown: Array.isArray(data.software?.classificationBreakdown) ? data.software.classificationBreakdown : [],
+      lifecycleWatch: Array.isArray(data.software?.lifecycleWatch) ? data.software.lifecycleWatch : [],
+      softwareRows: Array.isArray(data.software?.softwareRows) ? data.software.softwareRows : [],
     },
     network: {
       ...EMPTY_NETWORK_SUMMARY,
@@ -1495,6 +1554,7 @@ export default function ITOperationsDashboard() {
   const [ticketDetailPage, setTicketDetailPage] = useState(1);
   const [securityUpdateDetailPage, setSecurityUpdateDetailPage] = useState(1);
   const [riskDetailPage, setRiskDetailPage] = useState(1);
+  const [softwareDetailPage, setSoftwareDetailPage] = useState(1);
 
   const openDrilldownView = useCallback((nextView: string) => {
     setActiveView((currentView) => {
@@ -1575,6 +1635,7 @@ export default function ITOperationsDashboard() {
     setTicketDetailPage(1);
     setSecurityUpdateDetailPage(1);
     setRiskDetailPage(1);
+    setSoftwareDetailPage(1);
   }, [activeView]);
 
   useEffect(() => {
@@ -1800,15 +1861,15 @@ export default function ITOperationsDashboard() {
       view: 'patch',
     },
     {
-      id: 'tasks',
-      label: 'Automation Jobs',
-      value: formatNumber(tasks.runningTasks),
-      note: `${formatNumber(tasks.failedTasks)} failed/cancelled • ${tasks.latestTaskTime || '-'}`,
-      icon: Wrench,
+      id: 'software',
+      label: 'Software',
+      value: formatNumber(software.uniqueSoftware),
+      note: `${formatNumber(software.unclassifiedSoftware)} unclassified • ${formatNumber(software.totalInstallations)} installs`,
+      icon: Database,
       tone: 'amber',
-      progress: taskCompletionPercent,
-      status: riskStatus(tasks.failedTasks, 1, 3),
-      view: 'tasks',
+      progress: softwareMappingPercent,
+      status: healthStatus(softwareMappingPercent),
+      view: 'software',
     },
     {
       id: 'risk',
@@ -1821,7 +1882,7 @@ export default function ITOperationsDashboard() {
       status: riskStatus(deviceRiskCount, 1, 6),
       view: 'risk',
     },
-  ], [endpointOnlinePercent, geolocation.staleLocations, geolocation.trackedDevices, geolocation.unknownLocations, risk.missingGeoDevices, hardware.onlineDevices, hardware.staleSync, hardware.totalDevices, locationFreshPercent, patchComplianceAverage, deviceRiskCount, deviceRiskCriticalCount, deviceRiskHighCount, deviceRiskScore, hasSecurityUpdateScore, securityNeedUpdateDevices, securityUpdateScore, securityUpdateTotalDevices, securityUpdatedDevices, security.criticalVulnerabilities, serviceDesk.overdueTickets, serviceDesk.pendingTickets, serviceDesk.slaAchievement, taskCompletionPercent, tasks.failedTasks, tasks.latestTaskTime, tasks.runningTasks]);
+  ], [endpointOnlinePercent, geolocation.staleLocations, geolocation.trackedDevices, geolocation.unknownLocations, risk.missingGeoDevices, hardware.onlineDevices, hardware.staleSync, hardware.totalDevices, locationFreshPercent, patchComplianceAverage, deviceRiskCount, deviceRiskCriticalCount, deviceRiskHighCount, deviceRiskScore, hasSecurityUpdateScore, securityNeedUpdateDevices, securityUpdateScore, securityUpdateTotalDevices, securityUpdatedDevices, security.criticalVulnerabilities, serviceDesk.overdueTickets, serviceDesk.pendingTickets, serviceDesk.slaAchievement, softwareMappingPercent, software.totalInstallations, software.uniqueSoftware, software.unclassifiedSoftware]);
 
 
   const overviewHealthRows = useMemo<BreakdownItem[]>(() => [
@@ -1829,9 +1890,9 @@ export default function ITOperationsDashboard() {
     { name: 'Updates Done', value: hasSecurityUpdateScore ? securityUpdateScore : 0, percent: hasSecurityUpdateScore ? securityUpdateScore : 0 },
     { name: 'Tickets On Track', value: onTrackTicketPercent, percent: onTrackTicketPercent },
     { name: 'Location Ready', value: locationFreshPercent, percent: locationFreshPercent },
-    { name: 'Jobs Completed', value: taskCompletionPercent, percent: taskCompletionPercent },
+    { name: 'Software Mapped', value: softwareMappingPercent, percent: softwareMappingPercent },
     { name: 'Network Mapped', value: networkRegistrationPercent, percent: networkRegistrationPercent },
-  ], [endpointOnlinePercent, hasSecurityUpdateScore, locationFreshPercent, networkRegistrationPercent, onTrackTicketPercent, securityUpdateScore, taskCompletionPercent]);
+  ], [endpointOnlinePercent, hasSecurityUpdateScore, locationFreshPercent, networkRegistrationPercent, onTrackTicketPercent, securityUpdateScore, softwareMappingPercent]);
 
 
 
@@ -1951,16 +2012,16 @@ export default function ITOperationsDashboard() {
       item: 'Not Mapped',
     },
     {
-      id: 'failed-jobs',
-      label: 'Failed Jobs',
-      value: tasks.failedTasks,
-      note: tasks.failedTasks > 0 ? 'Check automation job result' : 'No failed job found',
-      tone: tasks.failedTasks > 0 ? 'amber' : 'green',
-      icon: Wrench,
-      view: 'tasks',
-      item: 'Failed',
+      id: 'software-review',
+      label: 'Software Review',
+      value: software.unclassifiedSoftware,
+      note: software.unclassifiedSoftware > 0 ? 'Classify software inventory items' : 'Software inventory looks classified',
+      tone: software.unclassifiedSoftware > 0 ? 'amber' : 'green',
+      icon: Database,
+      view: 'software',
+      item: 'Unclassified',
     },
-  ], [deviceRiskCount, deviceRiskCriticalCount, deviceRiskHighCount, hasSecurityUpdateScore, overdueTicketCount, risk.missingGeoDevices, securityNeedUpdateDevices, tasks.failedTasks]);
+  ], [deviceRiskCount, deviceRiskCriticalCount, deviceRiskHighCount, hasSecurityUpdateScore, overdueTicketCount, risk.missingGeoDevices, securityNeedUpdateDevices, software.unclassifiedSoftware]);
 
   const riskCategoryRows = useMemo<BreakdownItem[]>(() => {
     const apiCategoryRows = Array.isArray(risk.categoryBreakdown)
@@ -2425,8 +2486,8 @@ export default function ITOperationsDashboard() {
             <button type="button" className="itops-main-decision-card amber" onClick={() => openLevel2('serviceDesk')}>
               <span>Open Tickets</span><strong>{formatNumber(openTicketCount)}</strong><small>{formatNumber(overdueTicketCount)} overdue</small>
             </button>
-            <button type="button" className="itops-main-decision-card green" onClick={() => openLevel2('tasks')}>
-              <span>Job Completion</span><strong>{formatPercent(taskCompletionPercent, 0)}</strong><small>{formatNumber(tasks.failedTasks)} failed jobs</small>
+            <button type="button" className="itops-main-decision-card green" onClick={() => openLevel2('software')}>
+              <span>Software Mapped</span><strong>{formatPercent(softwareMappingPercent, 0)}</strong><small>{formatNumber(software.uniqueSoftware)} software • {formatNumber(software.unclassifiedSoftware)} unclassified</small>
             </button>
           </div>
         </Panel>
@@ -2449,6 +2510,134 @@ export default function ITOperationsDashboard() {
             onClick={() => openLevel3(view, item.name)}
           />
         ))}
+      </div>
+    );
+  };
+
+  const getSoftwareLifecycleTone = (item: SoftwareLifecycleItem): CardTone => {
+    const text = `${item.lifecycleStatus || ''} ${item.supportStatus || ''}`.toLowerCase();
+    const days = item.daysToEol;
+    if (text.includes('eol') || text.includes('eos') || text.includes('expired') || text.includes('unsupported')) return 'red';
+    if (typeof days === 'number' && days >= 0 && days <= 365) return 'amber';
+    if (text.includes('near') || text.includes('review')) return 'amber';
+    if (text.includes('supported') || text.includes('active')) return 'green';
+    return 'slate';
+  };
+
+  const getSoftwareRiskTone = (risk?: string): StatusTone => {
+    const text = String(risk || '').toLowerCase();
+    if (text.includes('critical') || text.includes('high')) return 'danger';
+    if (text.includes('medium') || text.includes('review') || text.includes('near')) return 'warning';
+    if (text.includes('low') || text.includes('supported') || text.includes('approved')) return 'success';
+    return 'neutral';
+  };
+
+  const renderSoftwareLifecycleCards = () => {
+    const rows = Array.isArray(software.lifecycleWatch) ? software.lifecycleWatch : [];
+
+    if (!rows.length) {
+      return <EmptyState label="No application lifecycle records returned by backend yet." />;
+    }
+
+    return (
+      <div className="itops-pro-drill-grid compact">
+        {rows.map((row) => {
+          const dateText = row.eolDate || row.eosDate || '-';
+          const daysText = typeof row.daysToEol === 'number'
+            ? row.daysToEol < 0
+              ? `${Math.abs(row.daysToEol)} days past`
+              : `${row.daysToEol} days left`
+            : 'Lifecycle date pending';
+
+          return (
+            <DrillCard
+              key={row.productKey || row.name}
+              icon={CalendarDays}
+              label={row.name}
+              value={formatNumber(row.installs)}
+              note={`${row.lifecycleStatus || 'Lifecycle'} • ${dateText} • ${daysText}`}
+              tone={getSoftwareLifecycleTone(row)}
+              onClick={() => openLevel3('software', row.name)}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
+  const resolveSoftwareEvidenceRows = (item = '') => {
+    const selected = String(item || '').trim().toLowerCase();
+    const rows = Array.isArray(software.softwareRows) ? software.softwareRows : [];
+
+    if (!selected || selected.includes('install') || selected.includes('unique software')) return rows;
+
+    return rows.filter((row) => {
+      const values = [
+        row.softwareName,
+        row.category,
+        row.classification,
+        row.productGroup,
+        row.deviceName,
+        row.branch,
+        row.lifecycleStatus,
+        row.supportStatus,
+        row.riskLevel,
+      ].map((value) => String(value || '').toLowerCase());
+
+      if (selected.includes('unclassified')) return values.some((value) => value.includes('unclassified'));
+      if (selected.includes('business')) return values.some((value) => value.includes('business'));
+      if (selected.includes('remote')) return values.some((value) => value.includes('remote'));
+      if (selected.includes('antivirus') || selected.includes('anti-virus')) return values.some((value) => value.includes('antivirus') || value.includes('anti-virus') || value.includes('endpoint protection'));
+      if (selected.includes('browser') || selected.includes('web')) return values.some((value) => value.includes('browser') || value.includes('chrome') || value.includes('firefox') || value.includes('edge'));
+      if (selected.includes('gaming') || selected.includes('games')) return values.some((value) => value.includes('game') || value.includes('gaming'));
+      if (selected.includes('eol') || selected.includes('eos') || selected.includes('unsupported')) {
+        return values.some((value) => value.includes('eol') || value.includes('eos') || value.includes('unsupported') || value.includes('expired'));
+      }
+
+      return values.some((value) => value === selected || value.includes(selected));
+    });
+  };
+
+  const renderSoftwareInventoryTable = (item = '') => {
+    const rows = resolveSoftwareEvidenceRows(item);
+    const totalRows = rows.length;
+    const pageSize = DRILLDOWN_TABLE_PAGE_SIZE;
+    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+    const safePage = Math.min(Math.max(softwareDetailPage, 1), totalPages);
+    const visibleRows = rows.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+    return (
+      <div className="itops-pro-table-wrap">
+        <table className="itops-pro-table">
+          <thead>
+            <tr>
+              <th>Software</th>
+              <th>Category</th>
+              <th>Device</th>
+              <th>Branch</th>
+              <th>Lifecycle</th>
+              <th>EOL/EOS</th>
+              <th>Risk</th>
+              <th>Recommendation</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleRows.map((row, index) => (
+              <tr key={`${row.softwareName}-${row.deviceId || row.deviceName || index}-${index}`}>
+                <td><strong>{row.softwareName || '-'}</strong><small>{row.version || row.publisher || ''}</small></td>
+                <td>{row.classification || row.category || '-'}</td>
+                <td>{row.deviceName || row.deviceId || '-'}</td>
+                <td>{row.branch || '-'}</td>
+                <td><ToneBadge tone={getSoftwareRiskTone(row.lifecycleStatus)}>{row.lifecycleStatus || '-'}</ToneBadge></td>
+                <td>{row.eolDate || row.eosDate || '-'}</td>
+                <td><ToneBadge tone={getSoftwareRiskTone(row.riskLevel)}>{row.riskLevel || 'Review'}</ToneBadge></td>
+                <td>{row.recommendation || 'Review software classification and lifecycle evidence.'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!rows.length && <EmptyState label="No software records matched this selection." />}
+        <DrilldownTablePagination page={safePage} totalCount={totalRows} pageSize={pageSize} onPageChange={setSoftwareDetailPage} />
       </div>
     );
   };
@@ -3868,13 +4057,34 @@ export default function ITOperationsDashboard() {
     if (view === 'software') {
       return (
         <div className="itops-pro-drawer-stack">
-          <div className="itops-pro-story-panel"><strong>Software Estate Breakdown</strong><p>Review inventory coverage and classification issues before escalation.</p></div>
+          <DrilldownTrace domain="Software" stage="breakdown" />
+          <div className="itops-pro-story-panel">
+            <strong>Software Estate & Application Lifecycle</strong>
+            <p>Review installed software, classification exposure, remote tools, business applications and major application EOL/EOS signals before escalation.</p>
+          </div>
+
           <div className="itops-pro-drill-grid">
             <DrillCard icon={Database} label="Installations" value={formatNumber(software.totalInstallations)} note="Total software records" tone="purple" onClick={() => openLevel3('software', 'Installations')} />
             <DrillCard icon={Database} label="Unique Software" value={formatNumber(software.uniqueSoftware)} note="Unique titles" tone="blue" onClick={() => openLevel3('software', 'Unique Software')} />
             <DrillCard icon={AlertTriangle} label="Unclassified" value={formatNumber(software.unclassifiedSoftware)} note="Needs cleanup/classification" tone="amber" onClick={() => openLevel3('software', 'Unclassified')} />
+            <DrillCard icon={Layers3} label="Business Software" value={formatNumber(software.businessSoftware)} note="Microsoft, Adobe and business tools" tone="green" onClick={() => openLevel3('software', 'Business Software')} />
+            <DrillCard icon={Wrench} label="Remote Control" value={formatNumber(software.remoteControlSoftware)} note="Remote access tools detected" tone="red" onClick={() => openLevel3('software', 'Remote Control')} />
+            <DrillCard icon={ShieldCheck} label="Antivirus" value={formatNumber(software.antivirusSoftware)} note="Endpoint protection tools" tone="cyan" onClick={() => openLevel3('software', 'Antivirus')} />
+            <DrillCard icon={Network} label="Web Browsers" value={formatNumber(software.browserSoftware)} note="Chrome, Edge, Firefox and browser tools" tone="blue" onClick={() => openLevel3('software', 'Web Browsers')} />
+            <DrillCard icon={AlertTriangle} label="Gaming Software" value={formatNumber(software.gamingSoftware)} note="Non-business game software" tone="amber" onClick={() => openLevel3('software', 'Gaming Software')} />
           </div>
-          <Panel title="Software Categories" subtitle="Click a category for details." icon={Database}>{renderBreakdownDrillCards(software.topCategories, 'software', 'No software category data yet.')}</Panel>
+
+          <Panel title="Major Application EOL / EOS Watch" subtitle="Lifecycle view for Microsoft Office, Microsoft 365, Adobe, Google Chrome and Firefox from the backend lifecycle lookup." icon={CalendarDays}>
+            {renderSoftwareLifecycleCards()}
+          </Panel>
+
+          <Panel title="Software Classification Statistics" subtitle="Click a statistic to open the matching software list." icon={BarChart3}>
+            {renderBreakdownDrillCards(software.classificationBreakdown, 'software', 'No software classification statistics returned yet.')}
+          </Panel>
+
+          <Panel title="Software Categories" subtitle="Click a category for details." icon={Database}>
+            {renderBreakdownDrillCards(software.topCategories, 'software', 'No software category data yet.')}
+          </Panel>
         </div>
       );
     }
@@ -4115,16 +4325,39 @@ export default function ITOperationsDashboard() {
     }
 
     if (view === 'software') {
+      const selectedRows = resolveSoftwareEvidenceRows(item);
+      const selectedLifecycle = software.lifecycleWatch.find((row) => String(row.name || '').toLowerCase() === String(item || '').toLowerCase());
+
       return (
         <div className="itops-pro-drawer-stack">
-          <div className="itops-pro-story-panel level3"><strong>Software Inventory Detail</strong><p>Selected: {selectedLabel}. Validate inventory coverage, unclassified software and scan freshness.</p></div>
-          <div className="itops-pro-summary-row four">
+          <DrilldownTrace domain="Software" stage="evidence" selected={selectedLabel} />
+          <div className="itops-pro-story-panel level3">
+            <strong>Software Inventory Evidence</strong>
+            <p>Selected: {selectedLabel}. This list shows software records behind the selected statistic, including classification and application lifecycle signals where available.</p>
+          </div>
+          <div className="itops-pro-summary-row five">
+            <MiniMetric label="Matched Rows" value={formatNumber(selectedRows.length)} tone="blue" />
             <MiniMetric label="Installations" value={formatNumber(software.totalInstallations)} tone="purple" />
             <MiniMetric label="Unique" value={formatNumber(software.uniqueSoftware)} tone="blue" />
-            <MiniMetric label="Devices Covered" value={formatNumber(software.devicesWithSoftware)} tone="green" />
             <MiniMetric label="Unclassified" value={formatNumber(software.unclassifiedSoftware)} tone="amber" />
+            <MiniMetric label="EOL/EOS Watch" value={formatNumber(software.eolApplications + software.eosApplications)} tone="red" />
           </div>
-          <Panel title="Software Category Overview" icon={Database}><BarList items={software.topCategories} /></Panel>
+          {selectedLifecycle && (
+            <Panel title={`${selectedLifecycle.name} Lifecycle`} subtitle="Application lifecycle signal from backend lookup." icon={CalendarDays}>
+              <div className="itops-pro-summary-row four">
+                <MiniMetric label="Installs" value={formatNumber(selectedLifecycle.installs)} tone="purple" />
+                <MiniMetric label="Unique Titles" value={formatNumber(selectedLifecycle.uniqueTitles)} tone="blue" />
+                <MiniMetric label="Status" value={selectedLifecycle.lifecycleStatus || '-'} tone={getSoftwareLifecycleTone(selectedLifecycle)} />
+                <MiniMetric label="EOL/EOS Date" value={selectedLifecycle.eolDate || selectedLifecycle.eosDate || '-'} tone="amber" />
+              </div>
+            </Panel>
+          )}
+          <Panel title="Software Records" subtitle="Click another software statistic from Level 2 to filter this table." icon={Database}>
+            {renderSoftwareInventoryTable(item)}
+          </Panel>
+          <Panel title="Classification Overview" icon={BarChart3}>
+            <BarList items={software.classificationBreakdown.length ? software.classificationBreakdown : software.topCategories} />
+          </Panel>
         </div>
       );
     }

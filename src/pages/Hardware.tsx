@@ -100,6 +100,10 @@ type ApiEnvelope<T> = {
   errorMessage?: string;
   data: T;
   totalRecords?: number;
+  totalDevices?: number;
+  category?: string;
+  label?: string;
+  code?: number;
   summary?: {
     total?: number;
     SuccessCount?: number;
@@ -179,6 +183,14 @@ type StatisticApiState = {
   description: string;
   rows: HardwareApiRow[];
   columns: string[];
+  totalDevices?: number;
+};
+
+type StatisticDetailState = {
+  title: string;
+  value: string;
+  rows: HardwareApiRow[];
+  columns: string[];
 };
 
 type HardwareScanMode = "all" | "folder" | "device";
@@ -245,7 +257,13 @@ type ApiAsset = {
   PlatformType?: string;
   Model?: string;
   ConnectionTime?: string;
-  ConnectionStatus?: string;
+  ConnectionStatus?: string | number | boolean;
+  RawConnectionStatus?: string | number | boolean;
+  IsOnline?: string | number | boolean;
+  isOnline?: string | number | boolean;
+  MDM_ConnectionStatus?: string | number | boolean;
+  MDMConnectionStatus?: string | number | boolean;
+  MDM_IsOnline?: string | number | boolean;
   IP?: string;
   Latitude?: string;
   Longitude?: string;
@@ -401,9 +419,16 @@ type DepartmentPath = {
 
 const PAGE_SIZE = 10;
 function resolveApiBaseUrl() {
-  const envUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
+  const envUrl = (
+    (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
+    (import.meta.env.VITE_API_URL as string | undefined) ||
+    ""
+  ).trim();
+
   if (envUrl) return envUrl.replace(/\/$/, "");
 
+  // Match the Software page behavior: when no API base URL is configured,
+  // keep requests relative so the app can use the existing Vite/proxy setup.
   return "";
 }
 
@@ -541,35 +566,54 @@ function normalizeHardwareStatRow(row: unknown): HardwareApiRow {
   }
 
   const record = asRecord(row) || {};
+  const normalized: HardwareApiRow = { ...record };
   const emptyKeyValue = record[""];
 
+  // Restore the original Connection Statistics array handling. Some legacy
+  // procedures return the full statistic row under an unnamed array column.
+  // Expanding it back into column1, column2, etc. keeps the previous
+  // Connection Statistics, Connection List and Client Version behaviour.
   if (Array.isArray(emptyKeyValue)) {
-    return emptyKeyValue.reduce<HardwareApiRow>((normalized, value, index) => {
-      normalized[`column${index + 1}`] = value;
-      return normalized;
+    return emptyKeyValue.reduce<HardwareApiRow>((expanded, value, index) => {
+      expanded[`column${index + 1}`] = value;
+      return expanded;
     }, { ...record, __rawArray: emptyKeyValue } as HardwareApiRow);
   }
 
-  if (emptyKeyValue !== undefined && emptyKeyValue !== null && String(emptyKeyValue).trim() !== "") {
-    const normalized: HardwareApiRow = { ...record };
-    const nonEmptyKeys = Object.keys(record).filter((key) => key !== "" && record[key] !== undefined && record[key] !== null && String(record[key]).trim() !== "");
-    const numericValue = Number(String(emptyKeyValue).replace(/,/g, ""));
+  const explicitCount = findHardwareRecordValue(record, ["count", "CCount", "Count", "Cnt", "DeviceCount", "TotalCount"]);
 
-    // Some statistic records return the label in a named column such as TCAVersion/OS
-    // and the count under an empty column name. Normalize that empty field as
-    // the count so all statistic tables can read it consistently.
-    if (Number.isFinite(numericValue)) {
-      normalized.Count = emptyKeyValue;
-      normalized.Cnt = emptyKeyValue;
-      normalized.column2 = emptyKeyValue;
-    } else if (nonEmptyKeys.length === 0) {
-      normalized.column1 = emptyKeyValue;
+  // spGetHWStat2 returns the hardware value under an unnamed SQL column and
+  // the number of matching devices under CCount. Keep the unnamed value as
+  // the item/rawValue, never as the count.
+  if (emptyKeyValue !== undefined && emptyKeyValue !== null && String(emptyKeyValue).trim() !== "") {
+    if (explicitCount !== undefined) {
+      normalized.item = normalized.item ?? emptyKeyValue;
+      normalized.rawValue = normalized.rawValue ?? emptyKeyValue;
+      normalized.column1 = normalized.column1 ?? emptyKeyValue;
+      normalized.count = normalized.count ?? explicitCount;
+      return normalized;
     }
 
-    return normalized;
+    const nonEmptyKeys = Object.keys(record).filter(
+      (key) => key !== "" && record[key] !== undefined && record[key] !== null && String(record[key]).trim() !== "",
+    );
+    const numericValue = Number(String(emptyKeyValue).replace(/,/g, ""));
+
+    // Preserve support for older procedures where a named column is the label
+    // and the unnamed numeric column is the count.
+    if (Number.isFinite(numericValue) && nonEmptyKeys.length > 0) {
+      normalized.Count = normalized.Count ?? emptyKeyValue;
+      normalized.Cnt = normalized.Cnt ?? emptyKeyValue;
+      normalized.column2 = normalized.column2 ?? emptyKeyValue;
+    } else {
+      normalized.item = normalized.item ?? emptyKeyValue;
+      normalized.rawValue = normalized.rawValue ?? emptyKeyValue;
+      normalized.column1 = normalized.column1 ?? emptyKeyValue;
+    }
   }
 
-  return record as HardwareApiRow;
+  if (normalized.count === undefined && explicitCount !== undefined) normalized.count = explicitCount;
+  return normalized;
 }
 
 function normalizeHardwareRows(value: unknown): HardwareApiRow[] {
@@ -591,6 +635,11 @@ function normalizeHardwareRows(value: unknown): HardwareApiRow[] {
 
 function getColumnsFromHardwareRows(rows: HardwareApiRow[]) {
   const preferred = [
+    "displayValue",
+    "item",
+    "rawValue",
+    "count",
+    "percentage",
     "Items",
     "Item",
     "Name",
@@ -694,6 +743,9 @@ function readHardwareNumber(row: HardwareApiRow, keys: string[], fallback = 0) {
 
 function getStatisticItemLabel(row: HardwareApiRow) {
   return readHardwareText(row, [
+    "displayValue",
+    "item",
+    "rawValue",
     "Items",
     "Item",
     "Name",
@@ -732,17 +784,53 @@ function getStatisticItemLabel(row: HardwareApiRow) {
 }
 
 function getStatisticCount(row: HardwareApiRow) {
-  return readHardwareNumber(row, ["Count", "Cnt", "CCount", "TotalCount", "DeviceCount", "No", "", "column2", "column3", "column4", "Total Device", "TotalDevice"], 0);
+  return readHardwareNumber(row, ["count", "CCount", "Count", "Cnt", "TotalCount", "DeviceCount", "No", "column2", "column3", "column4", "Total Device", "TotalDevice"], 0);
 }
 
 function getStatisticTotal(row: HardwareApiRow, fallback = 0) {
-  return readHardwareNumber(row, ["Total", "GrandTotal", "TotalDevices", "TotalDeviceCount"], fallback);
+  return readHardwareNumber(row, ["totalDevices", "Total", "GrandTotal", "TotalDevices", "TotalDeviceCount"], fallback);
 }
 
 function getStatisticPercentage(row: HardwareApiRow, count: number, total: number) {
-  const reportedPercentage = readHardwareNumber(row, ["Percentage", "Percent", "Rate", "Ratio"], NaN);
+  const reportedPercentage = readHardwareNumber(row, ["percentage", "Percentage", "Percent", "Rate", "Ratio"], NaN);
   if (Number.isFinite(reportedPercentage)) return reportedPercentage;
   return total > 0 ? (count / total) * 100 : 0;
+}
+
+function getStatisticRawValue(row: HardwareApiRow) {
+  const value = findHardwareRecordValue(row, [
+    "rawValue",
+    "RawValue",
+    "category_inventory",
+    "Category_Inventory",
+    "Value",
+    "item",
+    "Item",
+    "Items",
+    "column1",
+  ]);
+  return value === undefined || value === null ? "" : String(value).trim();
+}
+
+function formatStatisticDisplayItem(row: HardwareApiRow, selectedStatistic: string) {
+  const explicitDisplay = findHardwareRecordValue(row, ["displayValue"]);
+  if (explicitDisplay !== undefined && explicitDisplay !== null && String(explicitDisplay).trim() !== "") {
+    return String(explicitDisplay).trim();
+  }
+
+  const rawValue = getStatisticRawValue(row);
+  if (selectedStatistic === "stat-memory") {
+    const memoryMb = Number(rawValue.replace(/,/g, ""));
+    if (Number.isFinite(memoryMb) && memoryMb > 0) {
+      const memoryGb = memoryMb / 1024;
+      const roundedGb = Math.abs(memoryGb - Math.round(memoryGb)) < 0.05
+        ? String(Math.round(memoryGb))
+        : memoryGb.toFixed(1);
+      return `${roundedGb} GB`;
+    }
+  }
+
+  return getStatisticItemLabel(row);
 }
 
 function getRawHardwareArray(row: HardwareApiRow): unknown[] {
@@ -1003,11 +1091,11 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<A
   try {
     payload = rawBody ? JSON.parse(rawBody) : ({ success: response.ok, data: undefined as T } as ApiEnvelope<T>);
   } catch {
-    throw new Error("Unable to read the latest result.");
+    throw new Error("Unable to read server response.");
   }
 
   if (!response.ok || payload.success === false) {
-    throw new Error(payload.errorMessage || payload.message || `Action could not be completed. Status: ${response.status}`);
+    throw new Error(payload.errorMessage || payload.message || `Request failed: ${response.status}`);
   }
 
   return payload;
@@ -1169,15 +1257,64 @@ function getGeoDateParts(value?: string) {
   return { dayDate: fallback, time: "-" };
 }
 
-function mapApiStatus(status?: string, asset?: ApiAsset): StatusType {
-  if (asset && deriveApiLockState(asset) === "locked") return "Locked";
+function isOnlineFlag(value: unknown) {
+  if (value === true) return true;
+  if (typeof value === "number") return value === 1;
 
-  const value = String(status || "").toLowerCase();
-  if (value.includes("unlock")) return "Online";
-  if (value.includes("lock")) return "Locked";
-  if (value.includes("online") || value === "1" || value === "connected") return "Online";
-  if (value.includes("offline") || value === "0" || value === "disconnected") return "Offline";
-  if (value.includes("stale") || value.includes("sync")) return "Stale Sync";
+  const text = String(value ?? "").trim().toLowerCase();
+  return ["1", "true", "yes", "y", "online", "connected"].includes(text);
+}
+
+function normalizeStatusText(value: unknown) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function mapApiStatus(status?: unknown, asset?: ApiAsset | Record<string, unknown> | null): StatusType {
+  const assetRecord = asRecord(asset);
+
+  if (assetRecord && deriveApiLockState(assetRecord as ApiAsset) === "locked") return "Locked";
+
+  const onlineFlags = [
+    assetRecord?.IsOnline,
+    assetRecord?.isOnline,
+    assetRecord?.MDM_IsOnline,
+    assetRecord?.mdmIsOnline,
+    assetRecord?.Online,
+    assetRecord?.online,
+  ];
+
+  if (onlineFlags.some(isOnlineFlag)) return "Online";
+
+  const candidates = [
+    status,
+    assetRecord?.ConnectionStatus,
+    assetRecord?.RawConnectionStatus,
+    assetRecord?.rawConnectionStatus,
+    assetRecord?.MDM_ConnectionStatus,
+    assetRecord?.MDMConnectionStatus,
+    assetRecord?.mdmConnectionStatus,
+    assetRecord?.MDMStatus,
+    assetRecord?.Status,
+    assetRecord?.status,
+  ];
+
+  let sawStale = false;
+  let sawOffline = false;
+
+  for (const candidate of candidates) {
+    const value = normalizeStatusText(candidate);
+    if (!value) continue;
+
+    if (value.includes("unlock")) return "Online";
+    if (value.includes("lost mode") || value.includes("locked") || value === "lock") return "Locked";
+    if (value.includes("online") || value === "1" || value === "connected" || value === "true" || value === "yes") return "Online";
+
+    if (value.includes("stale") || value.includes("sync")) sawStale = true;
+    if (value.includes("offline") || value === "0" || value === "disconnected" || value === "false" || value === "no") sawOffline = true;
+  }
+
+  if (sawStale) return "Stale Sync";
+  if (sawOffline) return "Offline";
   return "Offline";
 }
 
@@ -1242,8 +1379,9 @@ function enrichDeviceWithDetails(device: Device, payload: unknown): Device {
   if (!root) return { ...device, rawApi: payload };
 
   const mdm = asRecord(root.MDM);
-  const hwMainInfo =
-    firstRecord(root.HWMainInfo) || firstRecord(root.hwMainInfo) || firstRecord(root.MainInfo) || firstRecord(mdm?.HWMainInfo);
+  const rootHwMainInfo = firstRecord(root.HWMainInfo) || firstRecord(root.hwMainInfo) || firstRecord(root.MainInfo) || firstRecord(root.HWMain);
+  const mdmHwMainInfo = firstRecord(mdm?.HWMainInfo) || firstRecord(mdm?.hwMainInfo) || firstRecord(mdm?.HWMain) || firstRecord(mdm?.data);
+  const hwMainInfo = rootHwMainInfo || mdmHwMainInfo;
 
   const processor = pickValue(hwMainInfo, ["Processor", "CPU", "CPUName", "ProcessorName", "ProcessorType"]);
   const memory = pickValue(hwMainInfo, ["Memory", "RAM", "PhysicalMemory", "TotalPhysicalMemory", "TotalMemory"]);
@@ -1253,9 +1391,32 @@ function enrichDeviceWithDetails(device: Device, payload: unknown): Device {
   const computerName = pickValue(hwMainInfo, ["ComputerName", "DeviceName", "HostName"]);
   const ip = pickValue(hwMainInfo, ["IP", "IPAddress", "DeviceIPAddress", "DeviceLocalIPAddress"]);
   const latitude = pickValue(hwMainInfo, ["Latitude", "GPSLatitude", "Lat"]);
-  const longitude = pickValue(hwMainInfo, ["Longitude", "GPSLongitude", "Long", "Lng"]);
+  const longitude = pickValue(hwMainInfo, ["Longitude", "GPSLongitude", "Long", "Lng", "Longitute"]);
   const accuracy = pickValue(hwMainInfo, ["Accuracy", "GPSAccuracy", "LocationAccuracy"]);
-  const lastUpdate = pickValue(hwMainInfo, ["LastUpdate", "LastUpdated", "UpdateTime", "LocationTime"]);
+  const lastUpdate = pickValue(hwMainInfo, ["LastUpdate", "LastUpdated", "UpdateTime", "LocationTime", "LocationtimeStamp"]);
+  const connectionTime =
+    pickValue(mdmHwMainInfo, ["ConnectionTime", "LastTimeStamp", "DeviceTimeStamp", "LastUpdate"]) ||
+    pickValue(rootHwMainInfo, ["ConnectionTime", "LastTimeStamp", "DeviceTimeStamp", "LastUpdate"]);
+
+  // Detail API can contain mapped MDM data even when the list row is EM.
+  // Prefer MDM status as a fallback, because TS_OBJECT_ROOT may still be 0 while TSMDM_ASSET is Online.
+  const mdmStatus =
+    pickValue(mdmHwMainInfo, ["ConnectionStatus", "RawConnectionStatus", "Status"]) ||
+    findFirstDeepValue(mdm, ["ConnectionStatus", "RawConnectionStatus", "Status"]);
+  const mdmIsOnline =
+    pickValue(mdmHwMainInfo, ["IsOnline", "isOnline", "Online"]) ||
+    findFirstDeepValue(mdm, ["IsOnline", "isOnline", "Online"]);
+  const rootStatus =
+    pickValue(rootHwMainInfo, ["ConnectionStatus", "RawConnectionStatus", "Status"]) ||
+    pickValue(root, ["ConnectionStatus", "RawConnectionStatus", "Status"]);
+  const detailStatus = mapApiStatus(mdmStatus || rootStatus || device.status, {
+    ...(asRecord(device.rawApi) || {}),
+    ...(rootHwMainInfo || {}),
+    ConnectionStatus: rootStatus || mdmStatus || device.status,
+    MDM_ConnectionStatus: mdmStatus,
+    MDM_IsOnline: mdmIsOnline,
+  });
+
   const storage = buildStorageLabel(root);
   const previous = splitPlatformModel(device.platformModel);
 
@@ -1269,9 +1430,11 @@ function enrichDeviceWithDetails(device: Device, payload: unknown): Device {
     storage: storage || device.storage,
     platformModel: `${os || previous.platform} / ${model || previous.model}`,
     ip: ip || device.ip,
+    status: device.status === "Locked" ? "Locked" : detailStatus,
     latitude: latitude || device.latitude,
     longitude: longitude || device.longitude,
     accuracy: accuracy || device.accuracy,
+    lastConnected: connectionTime ? formatApiDate(connectionTime) : device.lastConnected,
     lastUpdate: lastUpdate ? formatApiDate(lastUpdate) : device.lastUpdate,
     rawApi: payload,
   };
@@ -1847,52 +2010,67 @@ function DeviceDetailsDrawer({ device, isOpen, onClose }: { device: Device; isOp
 
           {activeTab === "storage" && (
             <div className="hardware-detail-section-grid">
-              <div className="hardware-detail-card hardware-detail-card-wide">
+              <div className="hardware-detail-card">
                 <h3>Storage Utilisation</h3>
+                <DetailItem label="Primary Storage" value={device.storage} />
+                <DetailItem label="Storage Usage" value={storageUsage === null ? "-" : `${storageUsage}%`} />
+                <DetailItem label="Platform" value={platform} />
+                <DetailItem label="Last Update" value={device.lastUpdate} />
+              </div>
+              <div className="hardware-detail-card">
+                <h3>Capacity Reference</h3>
                 <div className="hardware-storage-hero">
                   <div>
-                    <span>Primary Storage</span>
-                    <strong>{device.storage}</strong>
+                    <span>Used Capacity</span>
+                    <strong>{storageUsage === null ? "-" : `${storageUsage}%`}</strong>
                   </div>
                   <div className="hardware-storage-percent">{storageUsage === null ? "-" : `${storageUsage}%`}</div>
                 </div>
-                {storageUsage !== null && (
-                  <div className="hardware-storage-bar">
-                    <div style={{ width: `${storageUsage}%` }} />
-                  </div>
-                )}
-                <div className="hardware-storage-grid">
-                  <DetailItem label="Storage" value={device.storage} />
-                  <DetailItem label="Storage Usage" value={storageUsage === null ? "-" : `${storageUsage}%`} />
+                <div className="hardware-storage-bar">
+                  <div style={{ width: `${storageUsage === null ? 0 : storageUsage}%` }} />
                 </div>
+                <DetailItem label="Device Name" value={device.name} />
+                <DetailItem label="Asset ID" value={device.assetId || "-"} mono />
               </div>
             </div>
           )}
 
           {activeTab === "timeline" && (
-            <div className="hardware-detail-timeline">
-              <div className="hardware-timeline-item is-current">
-                <span />
-                <div>
-                  <strong>Last connected</strong>
-                  <p>{device.lastConnected}</p>
-                  <small>Device record</small>
-                </div>
+            <div className="hardware-detail-section-grid">
+              <div className="hardware-detail-card">
+                <h3>Lifecycle Timeline</h3>
+                <DetailItem label="Last Connected" value={device.lastConnected} />
+                <DetailItem label="Last Update" value={device.lastUpdate} />
+                <DetailItem label="Current Status" value={device.status} />
+                <DetailItem label="Device Record" value={device.deviceIdentifier || device.id} mono />
               </div>
-              <div className="hardware-timeline-item">
-                <span />
-                <div>
-                  <strong>Last update</strong>
-                  <p>{device.lastUpdate}</p>
-                  <small>Device record</small>
-                </div>
-              </div>
-              <div className="hardware-timeline-item">
-                <span />
-                <div>
-                  <strong>Current status</strong>
-                  <p>{device.status}</p>
-                  <small>Device record</small>
+              <div className="hardware-detail-card">
+                <h3>Activity Reference</h3>
+                <div className="hardware-detail-clean-timeline">
+                  <div className="hardware-timeline-item is-current">
+                    <span />
+                    <div>
+                      <strong>Last connected</strong>
+                      <p>{device.lastConnected}</p>
+                      <small>Device record</small>
+                    </div>
+                  </div>
+                  <div className="hardware-timeline-item">
+                    <span />
+                    <div>
+                      <strong>Last update</strong>
+                      <p>{device.lastUpdate}</p>
+                      <small>Device record</small>
+                    </div>
+                  </div>
+                  <div className="hardware-timeline-item">
+                    <span />
+                    <div>
+                      <strong>Current status</strong>
+                      <p>{device.status}</p>
+                      <small>Device record</small>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2071,6 +2249,7 @@ export default function HardwareInventory() {
   const [lockActionLoading, setLockActionLoading] = useState(false);
   const [note, setNote] = useState("Device action ready.");
   const hardwareQuickPanelRef = useRef<HTMLDivElement | null>(null);
+  const hardwareRegistryToolbarRef = useRef<HTMLDivElement | null>(null);
 
   const statisticTree = useMemo(() => generateStatisticTree(), []);
   const [expandedStatisticGroups, setExpandedStatisticGroups] = useState<Record<string, boolean>>({
@@ -2083,6 +2262,9 @@ export default function HardwareInventory() {
   const [statisticLoading, setStatisticLoading] = useState(false);
   const [statisticError, setStatisticError] = useState("");
   const [statisticApiData, setStatisticApiData] = useState<StatisticApiState | null>(null);
+  const [statisticDetail, setStatisticDetail] = useState<StatisticDetailState | null>(null);
+  const [statisticDetailLoading, setStatisticDetailLoading] = useState(false);
+  const [statisticDetailError, setStatisticDetailError] = useState("");
   const [hardwareScanLoading, setHardwareScanLoading] = useState(false);
 
   const showToast = useCallback((type: ToastType, title: string, message: string) => {
@@ -2114,37 +2296,14 @@ export default function HardwareInventory() {
       const departmentsResponse = await apiRequest<ApiDepartment[]>("/api/departments");
       const departmentTree = mapDepartmentTree(departmentsResponse.data || []);
       const departmentPaths = collectDepartmentPaths(departmentTree);
-      const deviceChunks = new Map<number, Device[]>();
 
       setDepartmentOptions(departmentPaths);
       setTreeNodes(departmentTree);
-      setApiDevices([]);
-      setSelectedDeviceId("NO-DEVICE");
-      setShowDeviceDetails(false);
-      setDetailDeviceId("NO-DEVICE");
-      setActiveModal(null);
-      setNote("Loading device records...");
-
-      const publishDevices = () => {
-        const partialDevices = Array.from(deviceChunks.values())
-          .flat()
-          .map(applyPersistentLockState)
-          .sort((a, b) => a.name.localeCompare(b.name));
-
-        setApiDevices(partialDevices);
-        return partialDevices;
-      };
 
       const assetResults = await Promise.allSettled(
         departmentPaths.map(async (department) => {
-          const response = await apiRequest<ApiAsset[]>(`/api/assets/${department.relationID}`);
-          const mappedDevices = (response.data || []).map((asset) => mapApiAssetToDevice(asset, department));
-
-          deviceChunks.set(department.relationID, mappedDevices);
-          const partialDevices = publishDevices();
-          setNote(`Loading device records... ${partialDevices.length} loaded`);
-
-          return mappedDevices;
+          const response = await apiRequest<ApiAsset[]>(`/api/assets/${department.relationID}?refresh=1&_=${Date.now()}`);
+          return (response.data || []).map((asset) => mapApiAssetToDevice(asset, department));
         })
       );
 
@@ -2155,6 +2314,9 @@ export default function HardwareInventory() {
 
       setApiDevices(nextDevices);
       setSelectedDeviceId((current) => (nextDevices.some((device) => device.id === current) ? current : "NO-DEVICE"));
+      setShowDeviceDetails(false);
+      setDetailDeviceId("NO-DEVICE");
+      setActiveModal(null);
       setNote(`Loaded ${nextDevices.length} devices. Select a device row to view available actions.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load hardware inventory.";
@@ -2172,7 +2334,7 @@ export default function HardwareInventory() {
 
     try {
       setNote(`Loading live details for ${device.name}...`);
-      const response = await apiRequest<unknown>(`/api/asset/${device.objectAgent}/${device.assetId}`);
+      const response = await apiRequest<unknown>(`/api/asset/${device.objectAgent}/${device.assetId}?refresh=1&_=${Date.now()}`);
       const enrichedDevice = enrichDeviceWithDetails(device, response.data);
       setApiDevices((current) => current.map((item) => (item.id === device.id ? enrichedDevice : item)));
       setNote(`${device.name} live details loaded.`);
@@ -2271,10 +2433,12 @@ export default function HardwareInventory() {
 
     const handleOutsidePointerDown = (event: PointerEvent) => {
       const panel = hardwareQuickPanelRef.current;
+      const toolbar = hardwareRegistryToolbarRef.current;
       const target = event.target;
 
       if (!panel || !(target instanceof Node)) return;
       if (panel.contains(target)) return;
+      if (toolbar?.contains(target)) return;
 
       setSelectedDeviceId("NO-DEVICE");
       setNote("Advanced action panel closed.");
@@ -2535,7 +2699,10 @@ export default function HardwareInventory() {
 
     try {
       let rows: HardwareApiRow[] = [];
+      let totalDevices: number | undefined;
       let description = descriptionPrefix;
+      setStatisticDetail(null);
+      setStatisticDetailError("");
 
       if (selectedStatistic === "conn-summary") {
         const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-statistics/${relationID}/connection-summary`);
@@ -2561,6 +2728,7 @@ export default function HardwareInventory() {
         const categoryKey = STATISTIC_CATEGORY_KEY_MAP[selectedStatistic];
         const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-statistics/${relationID}/category/${categoryKey}`);
         rows = normalizeHardwareRows(response);
+        totalDevices = Number(response.totalDevices || 0) || undefined;
         description = `${title} distribution`;
       } else if (selectedStatistic === "report-inventory") {
         const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-reports/${relationID}/client-list`);
@@ -2578,6 +2746,7 @@ export default function HardwareInventory() {
         description,
         rows,
         columns: getColumnsFromHardwareRows(rows),
+        totalDevices,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load hardware statistic data.";
@@ -2588,6 +2757,39 @@ export default function HardwareInventory() {
       setStatisticLoading(false);
     }
   }, [getSelectedRelationID, selectedFolderLabel, selectedStatistic, showToast]);
+
+  const loadHardwareStatisticDetail = useCallback(async (row: HardwareApiRow) => {
+    if (!selectedStatistic.startsWith("stat-")) return;
+
+    const categoryKey = STATISTIC_CATEGORY_KEY_MAP[selectedStatistic];
+    const rawValue = getStatisticRawValue(row);
+    if (!categoryKey || !rawValue) return;
+
+    const relationID = getSelectedRelationID();
+    const displayValue = formatStatisticDisplayItem(row, selectedStatistic);
+    setStatisticDetailLoading(true);
+    setStatisticDetailError("");
+    setStatisticDetail(null);
+
+    try {
+      const response = await apiRequest<HardwareApiRow[]>(
+        `/api/hardware-statistics/${relationID}/category/${categoryKey}/list?value=${encodeURIComponent(rawValue)}&mode=2`,
+      );
+      const detailRows = normalizeHardwareRows(response);
+      setStatisticDetail({
+        title: `${STATISTIC_TITLE_MAP[selectedStatistic] || "Hardware"}: ${displayValue}`,
+        value: rawValue,
+        rows: detailRows,
+        columns: getColumnsFromHardwareRows(detailRows),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load matching devices.";
+      setStatisticDetailError(message);
+      showToast("error", "Statistic detail failed", message);
+    } finally {
+      setStatisticDetailLoading(false);
+    }
+  }, [getSelectedRelationID, selectedStatistic, showToast]);
 
   useEffect(() => {
     if (activeTab !== "statistics") return;
@@ -2606,6 +2808,8 @@ export default function HardwareInventory() {
 
     setSelectedStatistic(node.id);
     setStatisticApiData(null);
+    setStatisticDetail(null);
+    setStatisticDetailError("");
     setStatisticError("");
     setPage(1);
     setNote(`Loading ${node.name} statistic data.`);
@@ -3550,14 +3754,33 @@ export default function HardwareInventory() {
       }
 
       if (selectedStatistic.startsWith("stat-")) {
-        const summedCount = rows.reduce((sum, row) => sum + getStatisticCount(row), 0);
+        const distributionRows = rows
+          .map((row, index) => ({
+            row,
+            index,
+            item: formatStatisticDisplayItem(row, selectedStatistic),
+            rawValue: getStatisticRawValue(row),
+            count: getStatisticCount(row),
+          }))
+          .filter(({ item, rawValue, count }) => item !== "-" && Boolean(rawValue) && count > 0)
+          .sort((a, b) => b.count - a.count);
+
+        if (distributionRows.length === 0) {
+          return emptyState(
+            "No hardware statistics available",
+            "The selected category did not return any named hardware values.",
+          );
+        }
+
+        const summedCount = distributionRows.reduce((sum, entry) => sum + entry.count, 0);
         const reportedTotal = rows.reduce((max, row) => Math.max(max, getStatisticTotal(row, 0)), 0);
-        const totalCount = reportedTotal || summedCount || rows.length;
+        const totalCount = statisticApiData?.totalDevices || reportedTotal || summedCount;
+
         return (
           <div>
             <div className="mb-3">
               <h4 className="text-xs font-bold text-slate-900 uppercase tracking-tight">Distribution</h4>
-              <p className="text-[9px] text-slate-500 mt-0.5">Showing grouped hardware values by device count</p>
+              <p className="text-[9px] text-slate-500 mt-0.5">Showing hardware values by device count. Click a row to view matching devices.</p>
             </div>
             <table className="w-full text-xs text-left">
               <thead>
@@ -3568,28 +3791,96 @@ export default function HardwareInventory() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {rows
-                  .map((row, index) => ({ row, index, item: getStatisticItemLabel(row), count: getStatisticCount(row) }))
-                  .sort((a, b) => b.count - a.count)
-                  .map(({ row, index, item, count }) => {
-                    const rawPercentage = getStatisticPercentage(row, count, totalCount);
-                    const percentage = Number.isFinite(rawPercentage) ? rawPercentage.toFixed(1) : "0.0";
-                    const barWidth = `${Math.max(0, Math.min(100, Number(percentage) || 0))}%`;
-                    return (
-                      <tr key={`${item}-${index}`} className="hover:bg-blue-50/30 transition-colors">
-                        <td className="px-3 py-2 text-[10px] font-medium text-slate-900">{item === "-" ? getStatisticItemLabel(row) : item}</td>
-                        <td className="px-3 py-2"><span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">{count}</span></td>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full" style={{ width: barWidth }} /></div>
-                            <span className="text-[10px] font-bold text-slate-600 w-10">{percentage}%</span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                {distributionRows.map(({ row, index, item, rawValue, count }) => {
+                  const rawPercentage = getStatisticPercentage(row, count, totalCount);
+                  const percentage = Number.isFinite(rawPercentage) ? rawPercentage.toFixed(1) : "0.0";
+                  const barWidth = `${Math.max(0, Math.min(100, Number(percentage) || 0))}%`;
+                  return (
+                    <tr
+                      key={`${rawValue}-${index}`}
+                      className="hover:bg-blue-50/50 transition-colors cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => void loadHardwareStatisticDetail(row)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          void loadHardwareStatisticDetail(row);
+                        }
+                      }}
+                    >
+                      <td className="px-3 py-2 text-[10px] font-medium text-slate-900">{item}</td>
+                      <td className="px-3 py-2"><span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">{count}</span></td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full" style={{ width: barWidth }} /></div>
+                          <span className="text-[10px] font-bold text-slate-600 w-10">{percentage}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
+
+            {statisticDetailLoading && (
+              <div className="mt-4 border-t border-slate-100 pt-4 text-center text-[10px] font-bold text-slate-500">
+                <RefreshCw className="w-4 h-4 inline-block mr-2 animate-spin text-blue-500" />
+                Loading matching devices...
+              </div>
+            )}
+
+            {statisticDetailError && (
+              <div className="mt-4 border-t border-slate-100 pt-4 text-[10px] font-medium text-rose-600">
+                <AlertCircle className="w-4 h-4 inline-block mr-2" />
+                {statisticDetailError}
+              </div>
+            )}
+
+            {statisticDetail && !statisticDetailLoading && (
+              <div className="mt-4 border-t border-slate-100 pt-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div>
+                    <h5 className="text-[10px] font-black text-slate-900 uppercase tracking-wider">{statisticDetail.title}</h5>
+                    <p className="text-[9px] text-slate-500 mt-0.5">{statisticDetail.rows.length} matching device record(s)</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="text-[9px] font-bold text-slate-500 hover:text-slate-800"
+                    onClick={() => setStatisticDetail(null)}
+                  >
+                    Close details
+                  </button>
+                </div>
+
+                {statisticDetail.rows.length === 0 ? (
+                  <div className="py-5 text-center text-[10px] text-slate-400">No matching device records were returned.</div>
+                ) : (
+                  <div className="overflow-x-auto border border-slate-100 rounded-lg">
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 border-b border-slate-100">
+                          {statisticDetail.columns.map((column) => (
+                            <th key={column} className="px-3 py-2 whitespace-nowrap">{formatHardwareLabel(column)}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {statisticDetail.rows.map((detailRow, detailIndex) => (
+                          <tr key={`stat-detail-${detailIndex}`} className="hover:bg-blue-50/30">
+                            {statisticDetail.columns.map((column) => (
+                              <td key={`${detailIndex}-${column}`} className="px-3 py-2 text-[10px] text-slate-600 whitespace-nowrap">
+                                {formatHardwareValue(detailRow[column])}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         );
       }
@@ -3683,6 +3974,429 @@ export default function HardwareInventory() {
   return (
     <main className={`settings-module-root hardware-module-root ema-settings-pro container-fluid p-3 p-xl-4 ${hasSelectedDevice ? "has-selected-device" : "no-selected-device"}`} data-section={activeTab}>
       <style>{`
+
+
+
+        /* Consistent Hardware detail drawer layout: all tabs keep the same clean form size. */
+        .hardware-module-root .hardware-detail-form-overlay,
+        .hardware-module-root .hardware-detail-drawer-overlay {
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 9999 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-end !important;
+          padding: 72px 22px 22px 260px !important;
+          background: rgba(15, 23, 42, 0.38) !important;
+          backdrop-filter: blur(3px) !important;
+          overflow: hidden !important;
+        }
+
+        .hardware-module-root .hardware-detail-form-modal,
+        .hardware-module-root .hardware-detail-drawer {
+          position: relative !important;
+          inset: auto !important;
+          width: min(1000px, calc(100vw - 322px)) !important;
+          height: min(78vh, 740px) !important;
+          min-height: 620px !important;
+          max-height: calc(100vh - 104px) !important;
+          margin: 0 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          overflow: hidden !important;
+          border: 1px solid rgba(203, 213, 225, 0.98) !important;
+          border-radius: 22px !important;
+          background: #ffffff !important;
+          box-shadow: 0 28px 80px rgba(15, 23, 42, 0.24) !important;
+          transform: none !important;
+        }
+
+        .hardware-module-root .hardware-detail-drawer-header {
+          flex: 0 0 auto !important;
+          min-height: 122px !important;
+          padding: 22px 26px 18px !important;
+          display: flex !important;
+          align-items: flex-start !important;
+          justify-content: space-between !important;
+          gap: 18px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.96) !important;
+          background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+        }
+
+        .hardware-module-root .hardware-detail-title-wrap {
+          min-width: 0 !important;
+          display: flex !important;
+          align-items: flex-start !important;
+          gap: 14px !important;
+        }
+
+        .hardware-module-root .hardware-detail-title-wrap h2 {
+          margin: 0 !important;
+          color: #0a2554 !important;
+          font-size: clamp(1.55rem, 2.2vw, 2.05rem) !important;
+          line-height: 1.04 !important;
+          font-weight: 950 !important;
+          letter-spacing: -0.045em !important;
+        }
+
+        .hardware-module-root .hardware-detail-title-wrap p {
+          margin: 6px 0 0 !important;
+          max-width: 620px !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+          color: #64748b !important;
+          font-size: 0.78rem !important;
+          font-weight: 800 !important;
+        }
+
+        .hardware-module-root .hardware-detail-eyebrow {
+          color: #1858ff !important;
+          font-size: 0.68rem !important;
+          font-weight: 950 !important;
+          letter-spacing: 0.13em !important;
+          text-transform: uppercase !important;
+        }
+
+        .hardware-module-root .hardware-detail-device-icon {
+          width: 42px !important;
+          height: 42px !important;
+          flex: 0 0 42px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          border: 1px solid #dbe7ff !important;
+          border-radius: 15px !important;
+          color: #1f63ff !important;
+          background: #eef4ff !important;
+        }
+
+        .hardware-module-root .hardware-detail-header-actions {
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 10px !important;
+          flex: 0 0 auto !important;
+        }
+
+        .hardware-module-root .hardware-detail-close {
+          width: 38px !important;
+          height: 38px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          border: 1px solid #d5e0ef !important;
+          border-radius: 14px !important;
+          background: #f8fbff !important;
+          color: #64748b !important;
+        }
+
+        .hardware-module-root .hardware-detail-summary-grid {
+          flex: 0 0 auto !important;
+          display: grid !important;
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          gap: 10px !important;
+          padding: 12px 26px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
+          background: #ffffff !important;
+        }
+
+        .hardware-module-root .hardware-detail-summary-card {
+          min-width: 0 !important;
+          height: 76px !important;
+          padding: 14px 16px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: flex-start !important;
+          gap: 6px !important;
+          border: 1px solid #e1e8f2 !important;
+          border-radius: 16px !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+        }
+
+        .hardware-module-root .hardware-detail-summary-card span {
+          min-width: 0 !important;
+          color: #334155 !important;
+          font-size: 0.75rem !important;
+          font-weight: 700 !important;
+          line-height: 1.15 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        .hardware-module-root .hardware-detail-summary-card strong {
+          min-width: 0 !important;
+          color: #0a2554 !important;
+          font-size: 0.9rem !important;
+          line-height: 1.15 !important;
+          font-weight: 950 !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          display: -webkit-box !important;
+          -webkit-line-clamp: 2 !important;
+          -webkit-box-orient: vertical !important;
+        }
+
+        .hardware-module-root .hardware-detail-tabs {
+          flex: 0 0 auto !important;
+          display: flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          padding: 12px 26px 10px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
+          background: #ffffff !important;
+          overflow-x: auto !important;
+          scrollbar-width: none !important;
+        }
+
+        .hardware-module-root .hardware-detail-tabs::-webkit-scrollbar {
+          display: none !important;
+        }
+
+        .hardware-module-root .hardware-detail-tabs button {
+          height: 35px !important;
+          min-width: 74px !important;
+          padding: 0 14px !important;
+          border: 1px solid #dbe5f1 !important;
+          border-radius: 999px !important;
+          background: #ffffff !important;
+          color: #5b6b83 !important;
+          font-size: 0.72rem !important;
+          font-weight: 900 !important;
+          white-space: nowrap !important;
+          box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04) !important;
+        }
+
+        .hardware-module-root .hardware-detail-tabs button.is-active {
+          border-color: #1f63ff !important;
+          background: linear-gradient(135deg, #1f63ff 0%, #3457e8 100%) !important;
+          color: #ffffff !important;
+          box-shadow: 0 10px 22px rgba(31, 99, 255, 0.22) !important;
+        }
+
+        .hardware-module-root .hardware-detail-body {
+          flex: 1 1 auto !important;
+          min-height: 0 !important;
+          padding: 14px 26px 22px !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          background: #ffffff !important;
+          scrollbar-gutter: stable !important;
+        }
+
+        .hardware-module-root .hardware-detail-section-grid {
+          min-height: 100% !important;
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 14px !important;
+          align-items: start !important;
+        }
+
+        .hardware-module-root .hardware-detail-card,
+        .hardware-module-root .hardware-detail-card.hardware-detail-card-wide {
+          min-width: 0 !important;
+          grid-column: auto !important;
+          min-height: 330px !important;
+          height: auto !important;
+          padding: 0 !important;
+          overflow: hidden !important;
+          border: 1px solid #e1e8f2 !important;
+          border-radius: 16px !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+        }
+
+        .hardware-module-root .hardware-detail-card h3 {
+          margin: 0 !important;
+          padding: 14px 16px 10px !important;
+          color: #0a2554 !important;
+          font-size: clamp(1.02rem, 1.5vw, 1.28rem) !important;
+          line-height: 1.1 !important;
+          font-weight: 950 !important;
+          letter-spacing: -0.035em !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.72) !important;
+        }
+
+        .hardware-module-root .hardware-detail-item {
+          min-height: 60px !important;
+          padding: 12px 16px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
+          gap: 5px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.82) !important;
+          background: #ffffff !important;
+        }
+
+        .hardware-module-root .hardware-detail-item:last-child {
+          border-bottom: 0 !important;
+        }
+
+        .hardware-module-root .hardware-detail-item span {
+          color: #64748b !important;
+          font-size: 0.62rem !important;
+          font-weight: 950 !important;
+          letter-spacing: 0.08em !important;
+          line-height: 1.1 !important;
+          text-transform: uppercase !important;
+        }
+
+        .hardware-module-root .hardware-detail-item strong {
+          min-width: 0 !important;
+          color: #0a2554 !important;
+          font-size: 0.84rem !important;
+          font-weight: 950 !important;
+          line-height: 1.25 !important;
+          overflow-wrap: anywhere !important;
+        }
+
+        .hardware-module-root .hardware-storage-hero {
+          margin: 12px 16px !important;
+          padding: 12px !important;
+          min-height: 72px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 12px !important;
+          border: 1px solid #e1e8f2 !important;
+          border-radius: 14px !important;
+          background: #f8fbff !important;
+        }
+
+        .hardware-module-root .hardware-storage-hero span {
+          display: block !important;
+          color: #64748b !important;
+          font-size: 0.65rem !important;
+          font-weight: 900 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.08em !important;
+        }
+
+        .hardware-module-root .hardware-storage-hero strong,
+        .hardware-module-root .hardware-storage-percent {
+          color: #0a2554 !important;
+          font-size: 1rem !important;
+          font-weight: 950 !important;
+        }
+
+        .hardware-module-root .hardware-storage-bar {
+          height: 10px !important;
+          margin: 0 16px 12px !important;
+          border-radius: 999px !important;
+          background: #e8eef8 !important;
+          overflow: hidden !important;
+        }
+
+        .hardware-module-root .hardware-storage-bar > div {
+          height: 100% !important;
+          border-radius: inherit !important;
+          background: linear-gradient(90deg, #2563eb, #22c55e) !important;
+        }
+
+        .hardware-module-root .hardware-detail-clean-timeline {
+          padding: 10px 14px 14px !important;
+          display: grid !important;
+          gap: 10px !important;
+        }
+
+        .hardware-module-root .hardware-detail-timeline {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 14px !important;
+        }
+
+        .hardware-module-root .hardware-timeline-item {
+          min-height: 70px !important;
+          padding: 12px 12px !important;
+          display: grid !important;
+          grid-template-columns: 16px minmax(0, 1fr) !important;
+          gap: 10px !important;
+          border: 1px solid #e1e8f2 !important;
+          border-radius: 14px !important;
+          background: #f8fbff !important;
+        }
+
+        .hardware-module-root .hardware-timeline-item > span {
+          width: 10px !important;
+          height: 10px !important;
+          margin-top: 3px !important;
+          border-radius: 999px !important;
+          background: #cbd5e1 !important;
+          box-shadow: 0 0 0 4px #eef4ff !important;
+        }
+
+        .hardware-module-root .hardware-timeline-item.is-current > span {
+          background: #2563eb !important;
+        }
+
+        .hardware-module-root .hardware-timeline-item strong {
+          display: block !important;
+          color: #0a2554 !important;
+          font-size: 0.82rem !important;
+          font-weight: 950 !important;
+        }
+
+        .hardware-module-root .hardware-timeline-item p,
+        .hardware-module-root .hardware-timeline-item small {
+          margin: 4px 0 0 !important;
+          color: #334155 !important;
+          font-size: 0.78rem !important;
+          font-weight: 700 !important;
+        }
+
+        .hardware-module-root .hardware-timeline-item small {
+          color: #64748b !important;
+          font-size: 0.65rem !important;
+          font-weight: 900 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.06em !important;
+        }
+
+        .hardware-module-root .hardware-detail-form-footer {
+          display: none !important;
+        }
+
+        @media (max-width: 1180px) {
+          .hardware-module-root .hardware-detail-form-overlay,
+          .hardware-module-root .hardware-detail-drawer-overlay {
+            padding-left: 18px !important;
+          }
+
+          .hardware-module-root .hardware-detail-form-modal,
+          .hardware-module-root .hardware-detail-drawer {
+            width: min(920px, calc(100vw - 36px)) !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .hardware-module-root .hardware-detail-form-overlay,
+          .hardware-module-root .hardware-detail-drawer-overlay {
+            align-items: stretch !important;
+            padding: 12px !important;
+          }
+
+          .hardware-module-root .hardware-detail-form-modal,
+          .hardware-module-root .hardware-detail-drawer {
+            width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: calc(100vh - 24px) !important;
+          }
+
+          .hardware-module-root .hardware-detail-drawer-header,
+          .hardware-module-root .hardware-detail-summary-grid,
+          .hardware-module-root .hardware-detail-tabs,
+          .hardware-module-root .hardware-detail-body {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+          }
+
+          .hardware-module-root .hardware-detail-summary-grid,
+          .hardware-module-root .hardware-detail-section-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
 
 
         /* Hardware sidebar fix: wider panel + keep Branch/Statistics switcher compact. */
@@ -4389,7 +5103,7 @@ export default function HardwareInventory() {
         {activeTab === "statistics" ? renderStatisticsWorkbench() : (
           <>
 
-          <div className="hardware-registry-toolbar hardware-registry-toolbar-stacked">
+          <div ref={hardwareRegistryToolbarRef} className="hardware-registry-toolbar hardware-registry-toolbar-stacked">
             <div className="hardware-scan-command-row">
               {/* <button
                 type="button"

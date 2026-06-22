@@ -16,7 +16,6 @@ import {
   Folder,
   FolderOpen,
   Gauge,
-  Layers3,
   Package,
   Play,
   RefreshCw,
@@ -173,7 +172,7 @@ const METERING_ACTIVE_STORAGE_KEY = "ema-application-metering-active-scopes";
 
 const emptyNode: TreeNode = {
   id: "organization",
-  label: "All Branches",
+  label: "Organization",
   type: "folder",
   relationID: -1,
   count: 0,
@@ -562,9 +561,9 @@ function departmentPathFromNode(node: TreeNode): DepartmentPath {
   return {
     key: node.id,
     relationID: node.relationID ?? -1,
-    label: node.label || "All Branches",
+    label: node.label || "Organization",
     pathKeys: [node.id],
-    groupPath: node.subLabel || node.label || "All Branches",
+    groupPath: node.subLabel || node.label || "Organization",
   };
 }
 
@@ -977,6 +976,7 @@ function AppMeteringTree({
   return <div className="ema-sidebar-tree-level">{nodes.map((node) => renderNode(node))}</div>;
 }
 
+
 export default function AppMetering() {
   const [viewMode, setViewMode] = useState<ViewMode>("device");
   const [departmentTree, setDepartmentTree] = useState<TreeNode[]>([emptyNode]);
@@ -1059,7 +1059,7 @@ export default function AppMetering() {
       setScopeDeviceRows([]);
       setAssetCache({});
     } catch (err) {
-      setError("Branch view is not available right now.");
+      setError("Organization view is not available right now.");
       setAppMeteringDevices([]);
       setScopeDeviceRows([]);
     } finally {
@@ -1292,7 +1292,7 @@ export default function AppMetering() {
 
   const statusCounts = statusOrder.map((status) => ({ status, count: usageRows.filter((row) => row.status === status).length }));
   const kpiScopeType = selectedNode.type === "package" ? "Package" : selectedNode.type === "device" ? "Device" : "Scope";
-  const kpiScopeLabel = selectedNode.label || "All Branches";
+  const kpiScopeLabel = selectedNode.label || "Organization";
   const kpiPeriodLabel = oneYearMode ? `One year window${nextPageMode ? " · next page" : ""}` : `${startDate} to ${endDate}`;
   const kpiFilterLabel = `${filters.status === "all" ? "All status" : filters.status} · ${filters.license === "all" ? "All licenses" : filters.license}`;
 
@@ -1531,7 +1531,6 @@ export default function AppMetering() {
               </label>
 
               <div className="ema-sidebar-tree" role="tree" aria-label="Application metering target tree">
-
                 {loading.hierarchy || loading.packages ? (
                   <div className="ema-sidebar-empty">{viewMode === "device" ? "Preparing branch view..." : "Preparing package list..."}</div>
                 ) : activeTree.length > 0 ? (
@@ -1560,7 +1559,7 @@ export default function AppMetering() {
               </button>
               <button className="score-box text-start" type="button" onClick={loadUsage}>
                 <span>Usage Hours</span>
-                <strong>{summary.totalHours.toFixed(1)}h</strong>
+                <strong>{formatUsageDuration(summary.totalSeconds)}</strong>
                 <small>Selected date range</small>
               </button>
               <button className="score-box text-start" type="button" onClick={() => setFilters((prev) => ({ ...prev, status: "Review" }))}>
@@ -1716,7 +1715,7 @@ export default function AppMetering() {
                       <tr>
                         <th>Application</th>
                         <th>Executable</th>
-                        <th>Device / Name</th>
+                        <th>Device / User</th>
                         <th>Usage</th>
                         <th>Launch</th>
                         <th>Last Used</th>
@@ -1732,10 +1731,10 @@ export default function AppMetering() {
                         <tr><td colSpan={9}><div className="settings-helper-card"><strong>No records found</strong><span>No application metering records found for current filter.</span></div></td></tr>
                       ) : pagedRows.map((row) => (
                         <tr key={`${row.id}-${row.application}-${row.device}`} className={cx(row.id === selectedRow.id && "table-active")} onClick={() => setSelectedRowId(row.id)}>
-                          <td><button type="button" className="btn btn-link p-0 text-decoration-none fw-bold" onClick={(event) => { event.stopPropagation(); setDrawerRow(row); }}>{row.application}</button><small className="d-block text-muted">{row.publisher} · {row.licenseType}</small></td>
-                          <td><span className="font-monospace">{row.fileName}</span><small className="d-block text-muted">{row.version}</small></td>
-                          <td><strong>{row.device}</strong><small className="d-block text-muted">Name: {row.user || "-"}</small></td>
-                          <td><strong>{row.usedTimeHours.toFixed(1)}h</strong></td>
+                          <td><button type="button" className="btn btn-link p-0 text-decoration-none fw-bold" onClick={(event) => { event.stopPropagation(); setDrawerRow(row); }}>{row.application}</button><small className="d-block text-muted">{row.version !== "-" ? `Version ${row.version}` : row.originalFileName}</small></td>
+                          <td><span className="font-monospace">{row.originalFileName || row.fileName}</span><small className="d-block text-muted text-truncate" title={row.filePath}>{row.filePath !== "-" ? row.filePath : row.fileName}</small></td>
+                          <td><strong>{row.device}</strong><small className="d-block text-muted">{row.user !== "-" ? row.user : row.site}{row.ip !== "-" ? ` · ${row.ip}` : ""}</small></td>
+                          <td><strong>{formatUsageDuration(row.usedTimeSeconds)}</strong></td>
                           <td>{row.launchCount}</td>
                           <td>{row.lastUsed}</td>
                           <td><span className={getUsageStatusPillClass(row.status)}>{row.status}</span></td>
@@ -1775,13 +1774,13 @@ export default function AppMetering() {
               <div>
                 <span className="section-tag">APPLICATION USAGE DETAIL</span>
                 <h3>{drawerRow.application}</h3>
-                <p>{drawerRow.publisher} · {drawerRow.fileName}</p>
+                <p>{drawerRow.fileName} · {drawerRow.device}</p>
               </div>
               <button type="button" className="modal-close" onClick={() => setDrawerRow(null)}><X size={16} /></button>
             </div>
 
             <div className="user-modal-body">
-              <div className="score-box"><span>Usage Hours</span><strong>{drawerRow.usedTimeHours.toFixed(1)}h</strong><small>Selected period</small></div>
+              <div className="score-box"><span>Usage Time</span><strong>{formatUsageDuration(drawerRow.usedTimeSeconds)}</strong><small>{drawerRow.usedTimeSeconds.toLocaleString()} seconds</small></div>
               <div className="score-box"><span>Launch Count</span><strong>{drawerRow.launchCount}</strong><small>Execution events</small></div>
               <div className="score-box"><span>Risk Level</span><strong>{drawerRow.risk}</strong><small>{drawerRow.status}</small></div>
               <div className="score-box"><span>License Type</span><strong>{drawerRow.licenseType}</strong><small>Metering classification</small></div>
@@ -1792,12 +1791,15 @@ export default function AppMetering() {
               <label className="form-field"><span>Version</span><input className="setting-input" value={drawerRow.version} readOnly /></label>
               <label className="form-field"><span>Executable</span><input className="setting-input font-monospace" value={drawerRow.fileName} readOnly /></label>
               <label className="form-field wide"><span>Original File</span><input className="setting-input font-monospace" value={drawerRow.originalFileName} readOnly /></label>
+              <label className="form-field wide"><span>File Path</span><input className="setting-input font-monospace" value={drawerRow.filePath} readOnly /></label>
 
               <div className="modal-section-title">Endpoint Context</div>
               <label className="form-field"><span>Device</span><input className="setting-input" value={drawerRow.device} readOnly /></label>
               <label className="form-field"><span>User</span><input className="setting-input" value={drawerRow.user} readOnly /></label>
               <label className="form-field"><span>Site</span><input className="setting-input" value={drawerRow.site} readOnly /></label>
-              <label className="form-field"><span>Last Used</span><input className="setting-input" value={drawerRow.lastUsed} readOnly /></label>
+              <label className="form-field"><span>IP Address</span><input className="setting-input" value={drawerRow.ip} readOnly /></label>
+              <label className="form-field"><span>Start Time</span><input className="setting-input" value={drawerRow.appStartTime} readOnly /></label>
+              <label className="form-field"><span>End Time / Last Used</span><input className="setting-input" value={drawerRow.appEndTime !== "-" ? drawerRow.appEndTime : drawerRow.lastUsed} readOnly /></label>
 
               <div className="modal-section-title">Package File Group</div>
               <div className="settings-helper-card wide">

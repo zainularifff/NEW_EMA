@@ -28,8 +28,12 @@ const TOKEN_KEYS = [
   "accessToken",
   "authToken",
   "emaToken",
+  "ema-token",
+  "ema_auth_token",
+  "ema-auth-token",
   "ema_access_token",
   "ema-access-token",
+  "jwt",
 ];
 
 const USER_KEYS = [
@@ -37,12 +41,14 @@ const USER_KEYS = [
   "authUser",
   "currentUser",
   "emaUser",
+  "ema-user",
   "loggedInUser",
   "userData",
   "auth",
   "authData",
   "emaAuth",
   "ema-auth",
+  "ema-current-user",
 ];
 
 function safeParseJson(value: string): any | null {
@@ -58,6 +64,37 @@ function getStorageValue(key: string): string {
   return localStorage.getItem(key) || sessionStorage.getItem(key) || "";
 }
 
+function removeStorageValue(key: string) {
+  localStorage.removeItem(key);
+  sessionStorage.removeItem(key);
+}
+
+function clearStoredAuth() {
+  [...TOKEN_KEYS, ...USER_KEYS].forEach(removeStorageValue);
+}
+
+function parseJwtPayload(token: string): Record<string, any> | null {
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return null;
+
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+    return JSON.parse(window.atob(padded));
+  } catch {
+    return null;
+  }
+}
+
+function isTokenExpired(token: string): boolean {
+  const payload = parseJwtPayload(token);
+  const exp = Number(payload?.exp);
+
+  if (!Number.isFinite(exp) || exp <= 0) return false;
+
+  return exp * 1000 <= Date.now() + 30_000;
+}
+
 function extractToken(payload: any): string {
   if (!payload || typeof payload !== "object") return "";
 
@@ -68,8 +105,13 @@ function extractToken(payload: any): string {
       payload.emaToken ||
       payload.data?.token ||
       payload.data?.accessToken ||
+      payload.data?.authToken ||
       payload.user?.token ||
+      payload.user?.accessToken ||
+      payload.user?.authToken ||
       payload.data?.user?.token ||
+      payload.data?.user?.accessToken ||
+      payload.data?.user?.authToken ||
       ""
   );
 }
@@ -96,31 +138,11 @@ function getStoredToken(): string {
   return "";
 }
 
-function LoadingAccess() {
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "grid",
-        placeItems: "center",
-        background: "#edf5ff",
-        color: "#14315f",
-        fontSize: 14,
-        fontWeight: 800,
-        fontFamily:
-          'Aptos, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-      }}
-    >
-      Loading access profile...
-    </div>
-  );
-}
-
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const location = useLocation();
   const token = useMemo(() => getStoredToken(), [location.pathname]);
   const [user, setUser] = useState<AccessUser | null>(() => getStoredAccessUser());
-  const [loading, setLoading] = useState(Boolean(token));
+  const [, setLoading] = useState(Boolean(token));
   const [authFailed, setAuthFailed] = useState(false);
   const path = cleanPath(location.pathname);
 
@@ -128,7 +150,19 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     let cancelled = false;
 
     async function loadCurrentUser() {
+      setAuthFailed(false);
+
       if (!token) {
+        clearStoredAuth();
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      if (isTokenExpired(token)) {
+        clearStoredAuth();
+        setUser(null);
+        setAuthFailed(true);
         setLoading(false);
         return;
       }
@@ -139,10 +173,15 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         const response = await fetch(`${API_BASE}/api/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
           credentials: "include",
+          cache: "no-store",
         });
 
         if (response.status === 401 || response.status === 403) {
-          if (!cancelled) setAuthFailed(true);
+          clearStoredAuth();
+          if (!cancelled) {
+            setUser(null);
+            setAuthFailed(true);
+          }
           return;
         }
 
@@ -173,10 +212,6 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (!token || authFailed) {
     return <Navigate to="/login" replace state={{ from: location }} />;
-  }
-
-  if (loading && !user) {
-    return <LoadingAccess />;
   }
 
   if (!canViewPath(user, path)) {

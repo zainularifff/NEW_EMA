@@ -4,7 +4,7 @@ import { AppShell } from "./components/layout/AppShell";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Hardware from "./pages/Hardware";
-import Settings from "./pages/Settings";
+import Settings from "./pages/SettingsWithNotifications";
 import ServiceDesk from "./pages/ServiceDesk";
 import TaskList from "./pages/TaskList";
 import Report from "./pages/ReportBoard";

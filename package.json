@@ -4,18 +4,21 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 0.0.0.0",
+    "dev:frontend": "vite --host 0.0.0.0",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:all": "concurrently -k -n FRONTEND,BACKEND \"npm run dev:frontend\" \"npm run dev:backend\"",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
+    "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
     "@types/node": "^25.6.0",
-    "@types/react-router-dom": "^5.3.3",
     "axios": "^1.15.2",
     "bootstrap": "^5.3.8",
+    "express": "^5.2.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.344.0",
@@ -26,6 +29,7 @@
     "react-router-dom": "^7.14.2",
     "recharts": "^3.8.1",
     "speakeasy": "^2.0.0",
+    "twilio": "^6.0.2",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -34,6 +38,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.5.0",
+    "concurrently": "^9.0.0",
     "eslint": "^9.9.1",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",

@@ -18,10 +18,14 @@ const REPORT_THEMES: Record<string, ReportTheme> = {
   "compliance-exposure": { primary: "#ef4444", accent: "#fca5a5", label: "Risk & Compliance Report Pack", surface: "#fff1f2" },
   "software-application-governance": { primary: "#f59e0b", accent: "#fbbf24", label: "Software Governance Report Pack", surface: "#fffbeb" },
   "software-inventory-summary": { primary: "#f59e0b", accent: "#fbbf24", label: "Software Governance Report Pack", surface: "#fffbeb" },
+  "software-metering-report": { primary: "#f97316", accent: "#fdba74", label: "Software Metering Report Pack", surface: "#fff7ed" },
+  "application-metering-report": { primary: "#06b6d4", accent: "#67e8f9", label: "Application Metering Report Pack", surface: "#ecfeff" },
+  "internet-metering-report": { primary: "#14b8a6", accent: "#5eead4", label: "Internet Metering Report Pack", surface: "#f0fdfa" },
+  "software-roi-report": { primary: "#16a34a", accent: "#86efac", label: "ROI Software Report Pack", surface: "#f0fdf4" },
   "dynamic-compliance-report": { primary: "#f59e0b", accent: "#fbbf24", label: "AI Compliance Report Pack", surface: "#fffbeb" },
   "dynamic-cost-saving-report": { primary: "#10b981", accent: "#6ee7b7", label: "AI Cost Saving Report Pack", surface: "#ecfdf5" },
   "dynamic-risk-management-report": { primary: "#ef4444", accent: "#fca5a5", label: "AI Risk Management Report Pack", surface: "#fff1f2" },
-  "report-pack-builder": { primary: "#1d4ed8", accent: "#60a5fa", label: "Management Combined Report Pack", surface: "#eff6ff" },
+  "report-pack-builder": { primary: "#334155", accent: "#94a3b8", label: "Management Combined Report Pack", surface: "#f8fafc" },
 };
 
 function escapeHtml(value: unknown) {
@@ -29,18 +33,20 @@ function escapeHtml(value: unknown) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
+    .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
 
 function themeFor(payload: any): ReportTheme {
-  const id = String(payload?.report?.id || "");
+  const id = String(payload?.report?.id || payload?.filters?.reportId || "");
   const type = String(payload?.report?.type || payload?.report?.category || "").toLowerCase();
   if (REPORT_THEMES[id]) return REPORT_THEMES[id];
+  if (type.includes("roi")) return REPORT_THEMES["software-roi-report"];
+  if (type.includes("metering")) return REPORT_THEMES["application-metering-report"];
   if (type.includes("risk")) return REPORT_THEMES["security-compliance-exposure"];
   if (type.includes("compliance")) return REPORT_THEMES["software-application-governance"];
   if (type.includes("dynamic")) return REPORT_THEMES["report-pack-builder"];
-  return REPORT_THEMES["ai-executive-summary"];
+  return REPORT_THEMES["report-pack-builder"];
 }
 
 function legacyCss(payload: any) {
@@ -111,37 +117,23 @@ function legacyCss(payload: any) {
       .pdf-evidence-card {
         border-color: color-mix(in srgb, var(--legacy-primary) 18%, #d6e3f5) !important;
       }
-      .pdf-section {
-        border-top: 5px solid var(--legacy-primary) !important;
-      }
+      .pdf-section { border-top: 5px solid var(--legacy-primary) !important; }
       .pdf-summary-section {
         background:
           radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--legacy-accent) 16%, transparent), transparent 16rem),
           linear-gradient(180deg, #ffffff 0%, var(--legacy-surface) 100%) !important;
       }
-      .pdf-real-table th {
-        background: color-mix(in srgb, var(--legacy-primary) 10%, #f8fbff) !important;
-      }
-      .pdf-bars em,
-      .rnr-bars em,
-      .rnr-vbars em {
-        background: linear-gradient(90deg, var(--legacy-primary), var(--legacy-accent)) !important;
-      }
-      .pdf-focus-card,
-      .pdf-evidence-card {
-        box-shadow: inset 0 1.5mm 0 color-mix(in srgb, var(--legacy-primary) 10%, transparent), 0 2mm 8mm rgba(15,35,71,.06) !important;
-      }
-      .pdf-empty {
-        color: color-mix(in srgb, var(--legacy-primary) 54%, #52647e) !important;
-        background: color-mix(in srgb, var(--legacy-primary) 6%, #ffffff) !important;
-      }
+      .pdf-real-table th { background: color-mix(in srgb, var(--legacy-primary) 10%, #f8fbff) !important; }
+      .pdf-bars em, .rnr-bars em, .rnr-vbars em { background: linear-gradient(90deg, var(--legacy-primary), var(--legacy-accent)) !important; }
+      .pdf-focus-card, .pdf-evidence-card { box-shadow: inset 0 1.5mm 0 color-mix(in srgb, var(--legacy-primary) 10%, transparent), 0 2mm 8mm rgba(15,35,71,.06) !important; }
+      .pdf-empty { color: color-mix(in srgb, var(--legacy-primary) 54%, #52647e) !important; background: color-mix(in srgb, var(--legacy-primary) 6%, #ffffff) !important; }
     </style>
   `;
 }
 
-export function buildLegacyReportHtml(payload: any, filters: any, options: { autoPrint?: boolean; preview?: boolean } = {}) {
-  const html = buildRegeneratedReportHtml(payload, filters, options);
+export function buildLegacyReportHtml(payload: any, filters: any, _options: { autoPrint?: boolean; preview?: boolean } = {}) {
+  const html = buildRegeneratedReportHtml(payload, filters);
   const themedHtml = html.replace("</head>", `${legacyCss(payload)}</head>`);
-  const id = escapeHtml(payload?.report?.id || "report");
+  const id = escapeHtml(payload?.report?.id || payload?.filters?.reportId || "report");
   return themedHtml.replace("<body ", `<body data-report-id="${id}" `);
 }

@@ -1,0 +1,493 @@
+/* =========================================================
+   EMA System Shell Standard
+   ---------------------------------------------------------
+   Shared page shell spacing for module pages. Keep this layer
+   generic; compatibility selectors below only normalize existing
+   Settings / Notification DOM until those components are renamed.
+========================================================= */
+
+:root {
+  --ema-shell-page-pad: 14px;
+  --ema-shell-gap: 12px;
+  --ema-shell-host-pad: 14px;
+  --ema-shell-radius: 22px;
+  --ema-shell-inner-radius: 18px;
+  --ema-shell-border: #dbe7fb;
+  --ema-shell-canvas:
+    radial-gradient(circle at 8% 0%, rgba(37, 99, 235, 0.075), transparent 24rem),
+    radial-gradient(circle at 100% 6%, rgba(8, 126, 164, 0.055), transparent 24rem),
+    linear-gradient(135deg, #f6f8fb 0%, #edf2f7 54%, #e5ecf4 100%);
+  --ema-shell-surface: #ffffff;
+  --ema-shell-shadow: 0 14px 30px rgba(15, 23, 42, 0.045);
+}
+
+/* One Settings canvas for Settings Console, Management Control and Notification Channels. */
+.ema-page:has(> .settings-with-notifications) {
+  min-height: 0 !important;
+  height: calc(100dvh - 76px) !important;
+  max-height: calc(100dvh - 76px) !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  background: var(--ema-shell-canvas) !important;
+}
+
+.ema-page > .settings-with-notifications {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: var(--ema-shell-gap) !important;
+  padding: var(--ema-shell-page-pad) !important;
+  overflow: hidden !important;
+  background: var(--ema-shell-canvas) !important;
+}
+
+.ema-page > .settings-with-notifications .settings-notification-page-tabs {
+  flex: 0 0 auto !important;
+  min-height: 56px !important;
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  border: 1px solid var(--ema-shell-border) !important;
+  border-radius: var(--ema-shell-radius) !important;
+  background: var(--ema-shell-surface) !important;
+  box-shadow: var(--ema-shell-shadow) !important;
+}
+
+.ema-page > .settings-with-notifications .settings-view-host {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow: hidden !important;
+}
+
+/* Same outer light shell for all three Settings sub-pages. */
+.ema-page .settings-with-notifications.settings-view-settings .settings-view-host,
+.ema-page .settings-with-notifications.settings-view-management .settings-view-host,
+.ema-page .settings-with-notifications.settings-view-notifications .settings-view-host {
+  padding: var(--ema-shell-host-pad) !important;
+  border: 1px solid var(--ema-shell-border) !important;
+  border-radius: var(--ema-shell-radius) !important;
+  background: #eef6ff !important;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Existing Settings pages and Notification Channels share the same inner sizing now. */
+.ema-page .settings-with-notifications .settings-view-host > .settings-module-root,
+.ema-page .settings-with-notifications .management-control-wrapper,
+.ema-page .settings-with-notifications .management-control-wrapper > .settings-module-root,
+.ema-page .settings-with-notifications.settings-view-notifications .settings-notification-shell {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.ema-page .settings-with-notifications .settings-layout {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  gap: var(--ema-shell-gap) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.ema-page .settings-with-notifications.settings-view-notifications .settings-notification-shell {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  gap: var(--ema-shell-gap) !important;
+}
+
+.ema-page .settings-with-notifications .settings-content,
+.ema-page .settings-with-notifications.settings-view-notifications .notification-body {
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Hero/header spacing: same top, bottom, left and right rhythm. */
+.ema-page .settings-with-notifications .settings-hero,
+.ema-page .settings-with-notifications.settings-view-notifications .notification-topbar {
+  min-height: 78px !important;
+  padding: 14px 18px !important;
+  border: 1px solid var(--ema-shell-border) !important;
+  border-radius: var(--ema-shell-inner-radius) !important;
+  background: var(--ema-shell-surface) !important;
+  box-shadow: var(--ema-shell-shadow) !important;
+}
+
+.ema-page .settings-with-notifications.settings-view-notifications .notification-topbar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 14px !important;
+  overflow: hidden !important;
+  direction: ltr !important;
+  unicode-bidi: isolate !important;
+}
+
+.ema-page .settings-with-notifications.settings-view-notifications .notification-topbar > div:first-child {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  order: 1 !important;
+  justify-self: start !important;
+  text-align: left !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.ema-page .settings-with-notifications.settings-view-notifications .notification-topbar h2 {
+  margin: 0 !important;
+  font-size: clamp(1.45rem, 1.75vw, 2rem) !important;
+  line-height: 1.04 !important;
+  letter-spacing: -0.055em !important;
+}
+
+.ema-page .settings-with-notifications.settings-view-notifications .notification-topbar p {
+  margin: 0.2rem 0 0 !important;
+  font-size: 0.72rem !important;
+  line-height: 1.35 !important;
+}
+
+.ema-page .settings-with-notifications.settings-view-notifications .notification-tabs {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  order: 2 !important;
+  justify-self: end !important;
+  width: auto !important;
+  height: auto !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  direction: ltr !important;
+}
+
+.ema-page .settings-with-notifications.settings-view-notifications .notification-tabs::before {
+  content: none !important;
+  display: none !important;
+}
+
+/* Content shell spacing: notification body and normal Settings content use one density. */
+.ema-page .settings-with-notifications .content-shell,
+.ema-page .settings-with-notifications.settings-view-notifications .notification-body {
+  border: 1px solid var(--ema-shell-border) !important;
+  border-radius: var(--ema-shell-inner-radius) !important;
+  background: var(--ema-shell-surface) !important;
+  box-shadow: var(--ema-shell-shadow) !important;
+}
+
+.ema-page .settings-with-notifications.settings-view-notifications .notification-body {
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 16px 18px 42px !important;
+}
+
+.ema-page .settings-with-notifications .content-body,
+.ema-page .settings-with-notifications.settings-view-notifications .notification-body {
+  scrollbar-gutter: stable !important;
+  overscroll-behavior: contain !important;
+}
+
+.ema-page .settings-with-notifications .settings-menu,
+.ema-page .settings-with-notifications .content-shell,
+.ema-page .settings-with-notifications .notification-panel,
+.ema-page .settings-with-notifications .notification-card {
+  border-color: var(--ema-shell-border) !important;
+}
+
+/* Safety reset: prevents old Notification sidebar/layout rules from breaking the page. */
+.ema-page .settings-with-notifications.settings-view-notifications .settings-notification-shell,
+.ema-page .settings-with-notifications.settings-view-notifications .notification-topbar,
+.ema-page .settings-with-notifications.settings-view-notifications .notification-body {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  max-width: none !important;
+  transform: none !important;
+}
+
+.ema-page .settings-with-notifications.settings-view-notifications .notification-topbar,
+.ema-page .settings-with-notifications.settings-view-notifications .notification-tabs,
+.ema-page .settings-with-notifications.settings-view-notifications .notification-tab,
+.ema-page .settings-with-notifications.settings-view-notifications .notification-btn {
+  position: static !important;
+  inset: auto !important;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+}
+
+.ema-page .settings-with-notifications.settings-view-notifications .notification-tabs,
+.ema-page .settings-with-notifications.settings-view-notifications .notification-provider-tabs {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.ema-page .settings-with-notifications.settings-view-notifications .notification-tab,
+.ema-page .settings-with-notifications.settings-view-notifications .notification-btn {
+  width: auto !important;
+  max-width: none !important;
+}
+
+/* Hardware device detail must behave as a modal, not a side drawer. */
+.hardware-detail-drawer-overlay.hardware-detail-form-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483000 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: clamp(16px, 3vh, 34px) !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  background: rgba(15, 23, 42, 0.52) !important;
+  backdrop-filter: blur(9px) !important;
+}
+
+.hardware-detail-drawer.hardware-detail-form-modal {
+  position: relative !important;
+  inset: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+  margin: 0 auto !important;
+  width: min(1040px, calc(100vw - 68px)) !important;
+  max-width: min(1040px, calc(100vw - 68px)) !important;
+  height: auto !important;
+  max-height: calc(100dvh - 68px) !important;
+  display: grid !important;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto !important;
+  overflow: hidden !important;
+  border-radius: 22px !important;
+}
+
+.hardware-detail-drawer.hardware-detail-form-modal .hardware-detail-body {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.hardware-detail-drawer.hardware-detail-form-modal .hardware-detail-section-grid {
+  min-width: 0 !important;
+}
+
+.hardware-detail-drawer.hardware-detail-form-modal .hardware-detail-item,
+.hardware-detail-drawer.hardware-detail-form-modal .hardware-detail-summary-card,
+.hardware-detail-drawer.hardware-detail-form-modal .hardware-detail-card {
+  min-width: 0 !important;
+}
+
+.hardware-detail-drawer.hardware-detail-form-modal .hardware-detail-item strong,
+.hardware-detail-drawer.hardware-detail-form-modal .hardware-detail-summary-card strong,
+.hardware-detail-drawer.hardware-detail-form-modal .hardware-detail-card p,
+.hardware-detail-drawer.hardware-detail-form-modal .hardware-detail-card span,
+.hardware-detail-drawer.hardware-detail-form-modal .hardware-detail-card strong {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  text-overflow: clip !important;
+}
+
+/* Software statistic tables should use the available height and wrap long wording. */
+.software-inventory-module .software-registry-card.software-registry-card--full {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+}
+
+.software-inventory-module .software-device-table.software-standard-table {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  height: auto !important;
+  overflow: auto !important;
+}
+
+.software-inventory-module .software-device-table .software-dynamic-row {
+  align-items: stretch !important;
+  min-width: 100% !important;
+}
+
+.software-inventory-module .software-device-table .software-dynamic-row:not(.head) {
+  min-height: 72px !important;
+  height: auto !important;
+}
+
+.software-inventory-module .software-device-table .software-dynamic-row > .user-cell,
+.software-inventory-module .software-device-table .software-dynamic-row .software-text-cell,
+.software-inventory-module .software-device-table .software-dynamic-row .software-sort-btn,
+.software-inventory-module .software-device-table .software-dynamic-row .software-sort-btn span {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  line-height: 1.25 !important;
+}
+
+.software-inventory-module .software-device-table .software-dynamic-row > .user-cell {
+  display: flex !important;
+  align-items: center !important;
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+}
+
+.software-inventory-module .software-device-table .software-dynamic-row.head > .user-cell {
+  min-height: 54px !important;
+  align-items: center !important;
+}
+
+/* Notification receiver layout keeps readable rows and visible action buttons. */
+.ema-page .settings-with-notifications .notification-receiver-grid {
+  grid-template-columns: minmax(0, 1.7fr) minmax(340px, 0.72fr) !important;
+  gap: 14px !important;
+  align-items: start !important;
+}
+
+.ema-page .settings-with-notifications .notification-recipient-options {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.ema-page .settings-with-notifications .notification-recipient-options .notification-toggle {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  width: auto !important;
+  min-height: 30px !important;
+  white-space: nowrap !important;
+}
+
+.ema-page .settings-with-notifications .notification-recipient-list-panel {
+  overflow: hidden !important;
+}
+
+.ema-page .settings-with-notifications .notification-recipient-list {
+  display: grid !important;
+  gap: 10px !important;
+  padding: 14px !important;
+  max-height: min(50dvh, 440px) !important;
+  overflow-y: auto !important;
+}
+
+.ema-page .settings-with-notifications .notification-recipient-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 64px !important;
+  padding: 12px !important;
+  border: 1px solid var(--ema-shell-border) !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.045) !important;
+}
+
+.ema-page .settings-with-notifications .notification-recipient-row strong,
+.ema-page .settings-with-notifications .notification-recipient-row span,
+.ema-page .settings-with-notifications .notification-recipient-row small {
+  display: block !important;
+  max-width: 100% !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  color: #0f2746 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
+.ema-page .settings-with-notifications .notification-recipient-row span,
+.ema-page .settings-with-notifications .notification-recipient-row small {
+  color: #64748b !important;
+  font-weight: 750 !important;
+}
+
+.ema-page .settings-with-notifications .notification-recipient-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+
+.ema-page .settings-with-notifications .notification-alert.error {
+  color: #be123c !important;
+  background: #fff1f2 !important;
+  border-color: #fecaca !important;
+  font-weight: 850 !important;
+}
+
+@media (max-width: 1100px) {
+  .ema-page:has(> .settings-with-notifications) {
+    height: auto !important;
+    max-height: none !important;
+    overflow: auto !important;
+  }
+
+  .ema-page > .settings-with-notifications {
+    min-height: calc(100dvh - 76px) !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .ema-page .settings-with-notifications .settings-view-host,
+  .ema-page .settings-with-notifications .settings-layout,
+  .ema-page .settings-with-notifications .settings-content,
+  .ema-page .settings-with-notifications.settings-view-notifications .settings-notification-shell {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .ema-page .settings-with-notifications.settings-view-notifications .notification-topbar,
+  .ema-page .settings-with-notifications.settings-view-notifications .notification-grid,
+  .ema-page .settings-with-notifications .notification-receiver-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ema-page .settings-with-notifications.settings-view-notifications .notification-topbar > div:first-child,
+  .ema-page .settings-with-notifications.settings-view-notifications .notification-tabs {
+    grid-column: 1 !important;
+    justify-self: stretch !important;
+  }
+
+  .hardware-detail-drawer.hardware-detail-form-modal {
+    width: min(96vw, 1040px) !important;
+    max-width: 96vw !important;
+  }
+}

@@ -48,9 +48,11 @@ export const ROUTE_MODULE_MAP: Record<string, string[]> = {
 
   "/software-distribution": ["software_distribution"],
 
+  "/appmetering": ["app_metering", "application_metering"],
   "/app-metering": ["app_metering", "application_metering"],
   "/application-metering": ["app_metering", "application_metering"],
 
+  "/app-restriction": ["app_restriction", "application_restriction", "app_web_restriction"],
   "/app-web-restriction": ["app_web_restriction", "web_restriction", "application_web_restriction"],
   "/web-restriction": ["app_web_restriction", "web_restriction", "application_web_restriction"],
 
@@ -61,12 +63,17 @@ export const ROUTE_MODULE_MAP: Record<string, string[]> = {
   "/task-list": ["task_list", "tasklist", "tasks"],
   "/tasklist": ["task_list", "tasklist", "tasks"],
 
-  "/network": ["network", "network_management"],
-  "/network-management": ["network", "network_management"],
+  "/network": ["network", "network_management", "network_inventory"],
+  "/network-metering": ["network", "network_management", "network_inventory"],
+  "/network-inventory": ["network", "network_management", "network_inventory"],
+  "/network-management": ["network", "network_management", "network_inventory"],
 
   "/users": ["users", "user_management", "user_access_management"],
-  "/reports": ["reports", "reporting"],
+  "/report": ["reports", "reporting", "dynamic_reporting"],
+  "/reports": ["reports", "reporting", "dynamic_reporting"],
 
+  "/management-dashboard": ["dashboard", "management_dashboard", "management"],
+  "/internet-metering": ["internet_metering", "web_metering", "internet_usage"],
   "/geolocation": ["geolocation", "geo_location"],
 };
 
@@ -82,6 +89,16 @@ const USER_KEYS = [
   "emaAuth",
   "ema-auth",
 ];
+
+const PRIVILEGED_ROLE_KEYS = new Set([
+  "super_admin",
+  "superadmin",
+  "system_admin",
+  "sysadmin",
+  "administrator",
+  "admin",
+  "root",
+]);
 
 export function normalizeKey(value: unknown): string {
   return String(value || "")
@@ -126,6 +143,101 @@ function looksLikeUser(payload: any): boolean {
   );
 }
 
+function splitAccessText(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => splitAccessText(item));
+  }
+
+  return String(value || "")
+    .split(/[,|;]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function truthyAccessValue(value: any): boolean {
+  if (value === true) return true;
+  if (value === false || value == null) return false;
+
+  if (typeof value === "number") return value > 0;
+
+  if (typeof value === "string") {
+    const normalized = normalizeKey(value);
+    return ["1", "true", "yes", "y", "view", "read", "allow", "allowed", "enabled", "active", "full", "manage"].includes(normalized);
+  }
+
+  if (typeof value === "object") {
+    return Boolean(
+      value.view ??
+        value.read ??
+        value.allow ??
+        value.allowed ??
+        value.enabled ??
+        value.active ??
+        value.access ??
+        value.canView ??
+        value.visible ??
+        value.manage
+    );
+  }
+
+  return false;
+}
+
+function getUserRoleKeys(user: AccessUser | null): string[] {
+  return [
+    ...splitAccessText(user?.roles),
+    ...splitAccessText(user?.roleName),
+    ...splitAccessText(user?.role),
+  ].map(normalizeKey);
+}
+
+function isPrivilegedUser(user: AccessUser | null): boolean {
+  if (!user) return false;
+  if (user.isSuperAdmin || user.isSystemAdmin) return true;
+  return getUserRoleKeys(user).some((role) => PRIVILEGED_ROLE_KEYS.has(role));
+}
+
+function routeMatches(allowedRoute: string, pathname: string): boolean {
+  const allowed = cleanPath(allowedRoute);
+  const current = cleanPath(pathname);
+
+  if (!allowed || allowed === "*" || allowed === "/*") return true;
+  return current === allowed || current.startsWith(`${allowed}/`);
+}
+
+export function getRouteModuleKeys(pathname: string): string[] {
+  const current = cleanPath(pathname);
+  const matched = Object.entries(ROUTE_MODULE_MAP)
+    .filter(([route]) => current === route || current.startsWith(`${route}/`))
+    .sort((a, b) => b[0].length - a[0].length)[0];
+
+  return (matched?.[1] || []).map(normalizeKey).filter(Boolean);
+}
+
+function collectModuleKeys(user: AccessUser | null): Set<string> {
+  const keys = new Set<string>();
+  if (!user) return keys;
+
+  splitAccessText(user.allowedModules).forEach((moduleKey) => keys.add(normalizeKey(moduleKey)));
+
+  const moduleAccess = user.moduleAccess || user.permissions?.modules || {};
+  Object.entries(moduleAccess).forEach(([moduleKey, accessValue]) => {
+    if (truthyAccessValue(accessValue)) keys.add(normalizeKey(moduleKey));
+  });
+
+  return keys;
+}
+
+function hasExplicitAccessConfig(user: AccessUser | null): boolean {
+  if (!user) return false;
+  return Boolean(
+    splitAccessText(user.allowedModules).length ||
+      splitAccessText(user.allowedRoutes).length ||
+      Object.keys(user.moduleAccess || {}).length ||
+      Object.keys(user.permissions?.modules || {}).length
+  );
+}
+
 export function extractUser(payload: any): AccessUser | null {
   if (!payload || typeof payload !== "object") return null;
 
@@ -159,120 +271,26 @@ export function saveAccessUser(user: AccessUser) {
   }
 }
 
-export function getRoles(user: AccessUser | null): string[] {
-  if (!user) return [];
-
-  return [
-    ...(Array.isArray(user.roles) ? user.roles : []),
-    user.role || "",
-    user.roleName || "",
-  ]
-    .map((role) => String(role || "").trim())
-    .filter(Boolean);
-}
-
-export function isSuperAdmin(user: AccessUser | null): boolean {
-  if (!user) return false;
-
-  const roles = getRoles(user).map(normalizeKey);
-  const username = normalizeKey(user.username || user.userID || user.email || user.name);
-  const allowedModules = Array.isArray(user.allowedModules) ? user.allowedModules : [];
-  const allowedRoutes = Array.isArray(user.allowedRoutes) ? user.allowedRoutes : [];
-
-  return (
-    Boolean(user.isSuperAdmin) ||
-    Boolean(user.isSystemAdmin) ||
-    allowedModules.includes("*") ||
-    allowedRoutes.includes("*") ||
-    Boolean(user.moduleAccess?.["*"]?.view) ||
-    Boolean(user.permissions?.modules?.["*"]?.view) ||
-    username === "superadmin" ||
-    roles.includes("super_admin") ||
-    roles.includes("superadmin") ||
-    roles.includes("system_administrator") ||
-    roles.includes("system_admin") ||
-    roles.includes("system_manager") ||
-    roles.includes("administrator") ||
-    roles.includes("admin")
-  );
-}
-
-export function getRouteModuleKeys(pathname: string): string[] {
+export function canViewPath(inputUser: AccessUser | null | undefined, pathname: string): boolean {
   const path = cleanPath(pathname);
+  const user = extractUser(inputUser) || inputUser || getStoredAccessUser();
 
-  if (LANDING_PATHS.has(path)) {
-    return [];
-  }
+  if (PUBLIC_AUTH_PATHS.some((publicPath) => routeMatches(publicPath, path))) return true;
+  if (LANDING_PATHS.has(path)) return true;
+  if (isPrivilegedUser(user)) return true;
 
-  if (ROUTE_MODULE_MAP[path]) {
-    return ROUTE_MODULE_MAP[path].map(normalizeKey);
-  }
+  const allowedRoutes = splitAccessText(user?.allowedRoutes);
+  if (allowedRoutes.some((allowedRoute) => routeMatches(allowedRoute, path))) return true;
 
-  const matchedRoute = Object.keys(ROUTE_MODULE_MAP)
-    .filter((route) => route !== "/" && path.startsWith(`${route}/`))
-    .sort((a, b) => b.length - a.length)[0];
+  const routeModules = getRouteModuleKeys(path);
+  if (!routeModules.length) return true;
 
-  if (matchedRoute) {
-    return ROUTE_MODULE_MAP[matchedRoute].map(normalizeKey);
-  }
+  const allowedModules = collectModuleKeys(user);
+  if (routeModules.some((moduleKey) => allowedModules.has(moduleKey))) return true;
 
-  const firstSegment = path.split("/").filter(Boolean)[0];
-  return firstSegment ? [normalizeKey(firstSegment)] : [];
+  // Older API payloads do not always include module ACL fields. Do not lock the UI
+  // unless the backend has actually supplied an explicit access config.
+  return !hasExplicitAccessConfig(user);
 }
 
-function routeMatchesAllowedRoute(pathname: string, allowedRoutes: string[]) {
-  const path = cleanPath(pathname).toLowerCase();
-
-  return allowedRoutes.some((route) => {
-    const allowed = String(route || "").trim().toLowerCase().replace(/\/+$/, "") || "/";
-    if (!allowed || allowed === "*") return true;
-    return path === allowed || path.startsWith(`${allowed}/`);
-  });
-}
-
-export function canViewPath(user: AccessUser | null, pathname: string): boolean {
-  const path = cleanPath(pathname);
-
-  if (LANDING_PATHS.has(path)) {
-    return true;
-  }
-
-  if (!user) {
-    return false;
-  }
-
-  if (isSuperAdmin(user)) {
-    return true;
-  }
-
-  const moduleKeys = getRouteModuleKeys(path);
-  if (moduleKeys.length === 0) {
-    return true;
-  }
-
-  const allowedModules = Array.isArray(user.allowedModules)
-    ? user.allowedModules.map(normalizeKey)
-    : [];
-
-  const allowedRoutes = Array.isArray(user.allowedRoutes)
-    ? user.allowedRoutes.map((route) => String(route || "").trim())
-    : [];
-
-  const moduleAccess = user.moduleAccess || user.permissions?.modules || {};
-
-  if (allowedModules.includes("*") || allowedRoutes.includes("*")) {
-    return true;
-  }
-
-  if (routeMatchesAllowedRoute(path, allowedRoutes)) {
-    return true;
-  }
-
-  return moduleKeys.some((key) => {
-    return (
-      allowedModules.includes(key) ||
-      Boolean(moduleAccess?.[key]?.view) ||
-      moduleAccess?.[key] === true
-    );
-  });
-}
+export const canAccessPath = canViewPath;

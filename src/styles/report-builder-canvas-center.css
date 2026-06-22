@@ -1,0 +1,21 @@
+.canvas-wrap {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  padding-left: 32px !important;
+  padding-right: 32px !important;
+}
+
+.canvas-head,
+.canvas {
+  width: min(100%, 840px) !important;
+  max-width: 840px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.canvas {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
