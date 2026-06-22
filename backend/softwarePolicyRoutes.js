@@ -7,6 +7,17 @@ function toInt(value, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function toNumberOrNull(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toDateOrNull(value) {
+  const text = toText(value);
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
+}
+
 function toBit(value, fallback = true) {
   if (value === undefined || value === null || value === '') return fallback;
   if (typeof value === 'boolean') return value;
@@ -42,11 +53,32 @@ async function ensureSoftwarePolicyTables(pool) {
         Version NVARCHAR(255) NULL,
         ComplianceStatus NVARCHAR(40) NOT NULL CONSTRAINT DF_EMA_SoftwarePolicyItem_Compliance DEFAULT ('Legal'),
         PurchaseStatus NVARCHAR(40) NOT NULL CONSTRAINT DF_EMA_SoftwarePolicyItem_Purchase DEFAULT ('Unknown'),
+        WorkingStartTime NVARCHAR(5) NULL,
+        WorkingEndTime NVARCHAR(5) NULL,
+        UtilizedHours DECIMAL(8,2) NULL,
+        UnderUtilizedHours DECIMAL(8,2) NULL,
+        NotUsedHours DECIMAL(8,2) NULL,
+        OpenCountThreshold INT NULL,
+        LicenseKey NVARCHAR(500) NULL,
+        LicenseCount INT NULL,
+        LicenseStartDate DATE NULL,
+        LicenseEndDate DATE NULL,
         Notes NVARCHAR(1000) NULL,
         CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_EMA_SoftwarePolicyItem_CreatedAt DEFAULT SYSUTCDATETIME(),
         UpdatedAt DATETIME2 NULL
       );
     END;
+
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'WorkingStartTime') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD WorkingStartTime NVARCHAR(5) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'WorkingEndTime') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD WorkingEndTime NVARCHAR(5) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'UtilizedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD UtilizedHours DECIMAL(8,2) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'UnderUtilizedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD UnderUtilizedHours DECIMAL(8,2) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'NotUsedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD NotUsedHours DECIMAL(8,2) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'OpenCountThreshold') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD OpenCountThreshold INT NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseKey') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseKey NVARCHAR(500) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseCount') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseCount INT NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseStartDate') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseStartDate DATE NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseEndDate') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseEndDate DATE NULL;
   `);
 }
 
@@ -130,7 +162,8 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
           p.UpdatedAt,
           COUNT(i.PolicyItemID) AS TotalItems,
           SUM(CASE WHEN i.ComplianceStatus = 'Legal' THEN 1 ELSE 0 END) AS LegalCount,
-          SUM(CASE WHEN i.ComplianceStatus = 'Restricted' THEN 1 ELSE 0 END) AS RestrictedCount
+          SUM(CASE WHEN i.ComplianceStatus IN ('Illegal', 'Restricted') THEN 1 ELSE 0 END) AS IllegalCount,
+          SUM(ISNULL(i.LicenseCount, 0)) AS LicenseTotal
         FROM dbo.EMA_SoftwarePolicy p
         LEFT JOIN dbo.EMA_SoftwarePolicyItem i ON i.PolicyID = p.PolicyID
         WHERE p.IsActive = 1
@@ -208,7 +241,12 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
       pool = await sql.connect(dbConfig);
       await ensureSoftwarePolicyTables(pool);
       const result = await pool.request().input('PolicyID', sql.Int, policyId).query(`
-        SELECT PolicyItemID, PolicyID, SoftwareName, CategoryName, Publisher, Version, ComplianceStatus, PurchaseStatus, Notes, CreatedAt, UpdatedAt
+        SELECT
+          PolicyItemID, PolicyID, SoftwareName, CategoryName, Publisher, Version,
+          ComplianceStatus, PurchaseStatus, WorkingStartTime, WorkingEndTime,
+          UtilizedHours, UnderUtilizedHours, NotUsedHours, OpenCountThreshold,
+          LicenseKey, LicenseCount, LicenseStartDate, LicenseEndDate, Notes,
+          CreatedAt, UpdatedAt
         FROM dbo.EMA_SoftwarePolicyItem
         WHERE PolicyID = @PolicyID
         ORDER BY SoftwareName ASC
@@ -244,6 +282,17 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
             .input('Version', sql.NVarChar(255), toText(item.Version || item.version))
             .input('ComplianceStatus', sql.NVarChar(40), toText(item.ComplianceStatus || item.complianceStatus) || 'Legal')
             .input('PurchaseStatus', sql.NVarChar(40), toText(item.PurchaseStatus || item.purchaseStatus) || 'Unknown')
+            .input('WorkingStartTime', sql.NVarChar(5), toText(item.WorkingStartTime || item.workingStartTime || '09:00'))
+            .input('WorkingEndTime', sql.NVarChar(5), toText(item.WorkingEndTime || item.workingEndTime || '18:00'))
+            .input('UtilizedHours', sql.Decimal(8, 2), toNumberOrNull(item.UtilizedHours ?? item.utilizedHours) ?? 4)
+            .input('UnderUtilizedHours', sql.Decimal(8, 2), toNumberOrNull(item.UnderUtilizedHours ?? item.underUtilizedHours) ?? 1)
+            .input('NotUsedHours', sql.Decimal(8, 2), toNumberOrNull(item.NotUsedHours ?? item.notUsedHours) ?? 0)
+            .input('OpenCountThreshold', sql.Int, toInt(item.OpenCountThreshold ?? item.openCountThreshold, 1))
+            .input('LicenseKey', sql.NVarChar(500), toText(item.LicenseKey || item.licenseKey))
+            .input('LicenseCount', sql.Int, toInt(item.LicenseCount ?? item.licenseCount, 0))
+            .input('LicenseStartDate', sql.Date, toDateOrNull(item.LicenseStartDate || item.licenseStartDate))
+            .input('LicenseEndDate', sql.Date, toDateOrNull(item.LicenseEndDate || item.licenseEndDate))
+            .input('Notes', sql.NVarChar(1000), toText(item.Notes || item.notes))
             .query(`
               MERGE dbo.EMA_SoftwarePolicyItem AS target
               USING (SELECT @PolicyID AS PolicyID, @SoftwareName AS SoftwareName, ISNULL(@Publisher, '') AS Publisher, ISNULL(@Version, '') AS Version) AS source
@@ -252,10 +301,35 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
                 AND ISNULL(target.Publisher, '') = source.Publisher
                 AND ISNULL(target.Version, '') = source.Version
               WHEN MATCHED THEN
-                UPDATE SET CategoryName = NULLIF(@CategoryName, ''), ComplianceStatus = @ComplianceStatus, PurchaseStatus = @PurchaseStatus, UpdatedAt = SYSUTCDATETIME()
+                UPDATE SET
+                  CategoryName = NULLIF(@CategoryName, ''),
+                  ComplianceStatus = @ComplianceStatus,
+                  PurchaseStatus = @PurchaseStatus,
+                  WorkingStartTime = NULLIF(@WorkingStartTime, ''),
+                  WorkingEndTime = NULLIF(@WorkingEndTime, ''),
+                  UtilizedHours = @UtilizedHours,
+                  UnderUtilizedHours = @UnderUtilizedHours,
+                  NotUsedHours = @NotUsedHours,
+                  OpenCountThreshold = @OpenCountThreshold,
+                  LicenseKey = NULLIF(@LicenseKey, ''),
+                  LicenseCount = @LicenseCount,
+                  LicenseStartDate = @LicenseStartDate,
+                  LicenseEndDate = @LicenseEndDate,
+                  Notes = NULLIF(@Notes, ''),
+                  UpdatedAt = SYSUTCDATETIME()
               WHEN NOT MATCHED THEN
-                INSERT (PolicyID, SoftwareName, CategoryName, Publisher, Version, ComplianceStatus, PurchaseStatus)
-                VALUES (@PolicyID, @SoftwareName, NULLIF(@CategoryName, ''), NULLIF(@Publisher, ''), NULLIF(@Version, ''), @ComplianceStatus, @PurchaseStatus);
+                INSERT (
+                  PolicyID, SoftwareName, CategoryName, Publisher, Version,
+                  ComplianceStatus, PurchaseStatus, WorkingStartTime, WorkingEndTime,
+                  UtilizedHours, UnderUtilizedHours, NotUsedHours, OpenCountThreshold,
+                  LicenseKey, LicenseCount, LicenseStartDate, LicenseEndDate, Notes
+                )
+                VALUES (
+                  @PolicyID, @SoftwareName, NULLIF(@CategoryName, ''), NULLIF(@Publisher, ''), NULLIF(@Version, ''),
+                  @ComplianceStatus, @PurchaseStatus, NULLIF(@WorkingStartTime, ''), NULLIF(@WorkingEndTime, ''),
+                  @UtilizedHours, @UnderUtilizedHours, @NotUsedHours, @OpenCountThreshold,
+                  NULLIF(@LicenseKey, ''), @LicenseCount, @LicenseStartDate, @LicenseEndDate, NULLIF(@Notes, '')
+                );
             `);
         }
         await new sql.Request(transaction)
@@ -283,12 +357,32 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
         .input('PolicyItemID', sql.Int, itemId)
         .input('ComplianceStatus', sql.NVarChar(40), toText(req.body.ComplianceStatus || req.body.complianceStatus))
         .input('PurchaseStatus', sql.NVarChar(40), toText(req.body.PurchaseStatus || req.body.purchaseStatus))
+        .input('WorkingStartTime', sql.NVarChar(5), toText(req.body.WorkingStartTime || req.body.workingStartTime))
+        .input('WorkingEndTime', sql.NVarChar(5), toText(req.body.WorkingEndTime || req.body.workingEndTime))
+        .input('UtilizedHours', sql.Decimal(8, 2), toNumberOrNull(req.body.UtilizedHours ?? req.body.utilizedHours))
+        .input('UnderUtilizedHours', sql.Decimal(8, 2), toNumberOrNull(req.body.UnderUtilizedHours ?? req.body.underUtilizedHours))
+        .input('NotUsedHours', sql.Decimal(8, 2), toNumberOrNull(req.body.NotUsedHours ?? req.body.notUsedHours))
+        .input('OpenCountThreshold', sql.Int, toNumberOrNull(req.body.OpenCountThreshold ?? req.body.openCountThreshold))
+        .input('LicenseKey', sql.NVarChar(500), toText(req.body.LicenseKey || req.body.licenseKey))
+        .input('LicenseCount', sql.Int, toNumberOrNull(req.body.LicenseCount ?? req.body.licenseCount))
+        .input('LicenseStartDate', sql.Date, toDateOrNull(req.body.LicenseStartDate || req.body.licenseStartDate))
+        .input('LicenseEndDate', sql.Date, toDateOrNull(req.body.LicenseEndDate || req.body.licenseEndDate))
         .input('Notes', sql.NVarChar(1000), toText(req.body.Notes || req.body.notes))
         .query(`
           UPDATE dbo.EMA_SoftwarePolicyItem
           SET
             ComplianceStatus = COALESCE(NULLIF(@ComplianceStatus, ''), ComplianceStatus),
             PurchaseStatus = COALESCE(NULLIF(@PurchaseStatus, ''), PurchaseStatus),
+            WorkingStartTime = COALESCE(NULLIF(@WorkingStartTime, ''), WorkingStartTime),
+            WorkingEndTime = COALESCE(NULLIF(@WorkingEndTime, ''), WorkingEndTime),
+            UtilizedHours = COALESCE(@UtilizedHours, UtilizedHours),
+            UnderUtilizedHours = COALESCE(@UnderUtilizedHours, UnderUtilizedHours),
+            NotUsedHours = COALESCE(@NotUsedHours, NotUsedHours),
+            OpenCountThreshold = COALESCE(@OpenCountThreshold, OpenCountThreshold),
+            LicenseKey = COALESCE(NULLIF(@LicenseKey, ''), LicenseKey),
+            LicenseCount = COALESCE(@LicenseCount, LicenseCount),
+            LicenseStartDate = COALESCE(@LicenseStartDate, LicenseStartDate),
+            LicenseEndDate = COALESCE(@LicenseEndDate, LicenseEndDate),
             Notes = COALESCE(NULLIF(@Notes, ''), Notes),
             UpdatedAt = SYSUTCDATETIME()
           OUTPUT INSERTED.*
