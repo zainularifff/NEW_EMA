@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import LegacySettings from "./Settings";
 import NotificationChannelsSettings from "../components/settings/NotificationChannelsSettings";
+import SoftwarePolicyManagement from "../components/settings/SoftwarePolicyManagement";
 
 type SettingsView = "settings" | "management" | "notifications";
 type ManagementSection = "aging" | "pricing" | "policy";
@@ -60,7 +61,7 @@ export default function SettingsWithNotifications() {
   }, []);
 
   useEffect(() => {
-    if (view !== "management") return;
+    if (view !== "management" || managementSection === "policy") return;
     const timer = window.setTimeout(() => {
       const target = document.querySelector<HTMLButtonElement>(`.management-control-wrapper .setting-btn[data-section="${managementSection}"]`);
       target?.click();
@@ -89,7 +90,7 @@ export default function SettingsWithNotifications() {
           <NotificationChannelsSettings />
         ) : view === "management" ? (
           <div className="management-control-wrapper" data-management-section={managementSection}>
-            <LegacySettings key={`management-${managementSection}`} />
+            {managementSection === "policy" ? <SoftwarePolicyManagement /> : <LegacySettings key={`management-${managementSection}`} />}
           </div>
         ) : (
           <LegacySettings />
