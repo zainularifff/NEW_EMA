@@ -49,6 +49,108 @@ function toInt(value, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function registerFastSoftwareRegistryListRoute(app) {
+  if (app.__emaFastSoftwareRegistryListRouteRegistered) return;
+  app.__emaFastSoftwareRegistryListRouteRegistered = true;
+
+  app.get('/api/settings/software-policy/policies', notificationAuthenticateToken, async (_req, res) => {
+    try {
+      const pool = await sql.connect(dbConfig);
+
+      await pool.request().query(`
+        IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'UnitPrice') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD UnitPrice DECIMAL(18,2) NULL;
+        IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'Currency') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD Currency NVARCHAR(10) NULL;
+        IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'NotUsedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD NotUsedHours DECIMAL(8,2) NULL;
+        IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'IsActive') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD IsActive BIT NULL;
+
+        UPDATE dbo.EMA_SoftwarePolicy SET IsActive = 1 WHERE IsActive IS NULL;
+        UPDATE dbo.EMA_SoftwarePolicyItem SET Currency = 'RM' WHERE Currency IS NULL OR LTRIM(RTRIM(Currency)) = '';
+      `);
+
+      const result = await pool.request().query(`
+        SELECT
+          COALESCE(p.PolicyID, i.PolicyID) AS PolicyID,
+          COALESCE(NULLIF(p.PolicyName, ''), i.SoftwareName) AS PolicyName,
+          COALESCE(NULLIF(p.Description, ''), i.Notes, '') AS Description,
+          COALESCE(i.CategoryID, p.CategoryID) AS CategoryID,
+          COALESCE(NULLIF(i.CategoryName, ''), p.CategoryName) AS CategoryName,
+          COALESCE(NULLIF(i.WorkingStartTime, ''), p.WorkingStartTime, '09:00') AS WorkingStartTime,
+          COALESCE(NULLIF(i.WorkingEndTime, ''), p.WorkingEndTime, '17:00') AS WorkingEndTime,
+          COALESCE(NULLIF(i.WorkDays, ''), p.WorkDays, 'Mon-Fri') AS WorkDays,
+          COALESCE(i.UtilizedHours, p.UtilizedHours, 2.00) AS UtilizedHours,
+          COALESCE(i.UnderUtilizedHours, p.UnderUtilizedHours, 0.01) AS UnderUtilizedHours,
+          COALESCE(i.NotUsedHours, 0.00) AS NotUsedHours,
+          COALESCE(i.OpenCountThreshold, p.OpenCountThreshold, 1) AS OpenCountThreshold,
+          ISNULL(p.IsActive, 1) AS IsActive,
+          COALESCE(p.CreatedAt, i.CreatedAt) AS CreatedAt,
+          COALESCE(i.UpdatedAt, p.UpdatedAt, i.CreatedAt, p.CreatedAt) AS UpdatedAt,
+          i.PolicyItemID,
+          i.SoftwareName,
+          i.Publisher,
+          i.ComplianceStatus,
+          COALESCE(i.UnitPrice, 0.00) AS UnitPrice,
+          COALESCE(NULLIF(i.Currency, ''), 'RM') AS Currency,
+          CAST(1 AS INT) AS TotalItems,
+          CASE WHEN i.ComplianceStatus = 'Legal' THEN 1 ELSE 0 END AS LegalCount,
+          CASE WHEN i.ComplianceStatus = 'Illegal' THEN 1 ELSE 0 END AS IllegalCount,
+          ISNULL(i.LicenseCount, 0) AS LicenseTotal,
+          ISNULL(i.LicenseCount, 0) * ISNULL(i.UnitPrice, 0) AS TotalCost
+        FROM dbo.EMA_SoftwarePolicyItem i
+        LEFT JOIN dbo.EMA_SoftwarePolicy p
+          ON p.PolicyID = i.PolicyID
+        WHERE ISNULL(p.IsActive, 1) = 1
+
+        UNION ALL
+
+        SELECT
+          p.PolicyID,
+          p.PolicyName,
+          COALESCE(p.Description, '') AS Description,
+          p.CategoryID,
+          p.CategoryName,
+          COALESCE(NULLIF(p.WorkingStartTime, ''), '09:00') AS WorkingStartTime,
+          COALESCE(NULLIF(p.WorkingEndTime, ''), '17:00') AS WorkingEndTime,
+          COALESCE(NULLIF(p.WorkDays, ''), 'Mon-Fri') AS WorkDays,
+          COALESCE(p.UtilizedHours, 2.00) AS UtilizedHours,
+          COALESCE(p.UnderUtilizedHours, 0.01) AS UnderUtilizedHours,
+          CAST(0.00 AS DECIMAL(8,2)) AS NotUsedHours,
+          COALESCE(p.OpenCountThreshold, 1) AS OpenCountThreshold,
+          ISNULL(p.IsActive, 1) AS IsActive,
+          p.CreatedAt,
+          COALESCE(p.UpdatedAt, p.CreatedAt) AS UpdatedAt,
+          CAST(NULL AS INT) AS PolicyItemID,
+          CAST(NULL AS NVARCHAR(500)) AS SoftwareName,
+          CAST(NULL AS NVARCHAR(255)) AS Publisher,
+          CAST(NULL AS NVARCHAR(20)) AS ComplianceStatus,
+          CAST(0.00 AS DECIMAL(18,2)) AS UnitPrice,
+          CAST('RM' AS NVARCHAR(10)) AS Currency,
+          CAST(0 AS INT) AS TotalItems,
+          CAST(0 AS INT) AS LegalCount,
+          CAST(0 AS INT) AS IllegalCount,
+          CAST(0 AS INT) AS LicenseTotal,
+          CAST(0.00 AS DECIMAL(18,2)) AS TotalCost
+        FROM dbo.EMA_SoftwarePolicy p
+        WHERE ISNULL(p.IsActive, 1) = 1
+          AND NOT EXISTS (
+            SELECT 1
+            FROM dbo.EMA_SoftwarePolicyItem i
+            WHERE i.PolicyID = p.PolicyID
+          )
+        ORDER BY UpdatedAt DESC;
+      `);
+
+      return res.json({ success: true, data: result.recordset || [] });
+    } catch (error) {
+      console.error('Fast software registry list failed:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to load software registry list',
+        error: error.message
+      });
+    }
+  });
+}
+
 function registerFastSoftwareInventoryRoute(app) {
   if (app.__emaFastSoftwareInventoryRouteRegistered) return;
   app.__emaFastSoftwareInventoryRouteRegistered = true;
@@ -118,7 +220,9 @@ function wrappedExpress(...args) {
   const app = originalExpress(...args);
 
   // Register this before the legacy software policy routes, so Express resolves
-  // the faster inventory mapping endpoint before the older heavy join route.
+  // the item-first registry list and faster inventory mapping endpoints before
+  // the older policy-first/heavy join routes.
+  registerFastSoftwareRegistryListRoute(app);
   registerFastSoftwareInventoryRoute(app);
 
   if (!app.__emaNotificationRoutesRegistered) {
