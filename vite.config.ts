@@ -40,7 +40,7 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
     const policyLegalSoftware = rows.reduce((sum, row) => sum + numberOrFallback(row.LegalCount ?? row.legalCount), 0);
     const explicitIllegalSoftware = rows.reduce((sum, row) => sum + numberOrFallback(row.IllegalCount ?? row.illegalCount), 0);
     const policyTotalSoftware = rows.reduce((sum, row) => sum + numberOrFallback(row.TotalItems ?? row.totalItems), 0) || policyLegalSoftware + explicitIllegalSoftware;
-    const policyIllegalSoftware = Math.max(0, policyTotalSoftware - policyLegalSoftware);
+    const policyIllegalSoftware = explicitIllegalSoftware;
     const policyLicenseTotal = rows.reduce((sum, row) => sum + numberOrFallback(row.LicenseTotal ?? row.licenseTotal), 0);
 
     return {
@@ -77,11 +77,11 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
       next = next.split(oldDashboardDataReturn).join(newDashboardDataReturn);
 
       const policyExpectedCountAnchor = "    if (selected.includes('unclassified')) return numberOrFallback(software.unclassifiedSoftware);\n";
-      const policyExpectedCountPatch = "    if (selected.includes('unclassified')) return numberOrFallback(software.unclassifiedSoftware);\n    if (selected.includes('illegal')) return numberOrFallback((software as SoftwareSummary & Record<string, unknown>).policyIllegalSoftware, 0);\n    if (selected.includes('legal')) return numberOrFallback((software as SoftwareSummary & Record<string, unknown>).policyLegalSoftware, 0);\n";
+      const policyExpectedCountPatch = "    if (selected.includes('unclassified')) return numberOrFallback(software.unclassifiedSoftware);\n    if (selected.includes('illegal')) {\n      const softwarePolicy = software as SoftwareSummary & Record<string, unknown>;\n      const policyLegalSoftware = numberOrFallback(softwarePolicy.policyLegalSoftware ?? softwarePolicy.legalSoftware ?? softwarePolicy.LegalCount, 0);\n      const allSoftwareTotal = Math.max(numberOrFallback(software.uniqueSoftware), numberOrFallback(softwarePolicy.policyTotalSoftware ?? softwarePolicy.totalPolicySoftware, 0), policyLegalSoftware + numberOrFallback(softwarePolicy.policyIllegalSoftware ?? softwarePolicy.illegalSoftware ?? softwarePolicy.IllegalCount, 0));\n      return Math.max(0, allSoftwareTotal - policyLegalSoftware);\n    }\n    if (selected.includes('legal')) return numberOrFallback((software as SoftwareSummary & Record<string, unknown>).policyLegalSoftware, 0);\n";
       next = next.split(policyExpectedCountAnchor).join(policyExpectedCountPatch);
 
       const policyResolveAnchor = "    if (!selected || selected.includes('install')) return rows;\n    if (selected.includes('unique software')) return uniqueSoftwareRows(rows);\n\n";
-      const policyResolvePatch = "    if (!selected || selected.includes('install')) return rows;\n    if (selected.includes('unique software')) return uniqueSoftwareRows(rows);\n    if (selected.includes('illegal')) return rows.filter((row) => /(^|\\b)illegal(\\b|$)|blocked|restricted|unauthorized|unapproved/.test(getSoftwareRowSearchText(row)));\n    if (selected.includes('legal')) return rows.filter((row) => /(^|\\b)legal(\\b|$)|approved|allowed/.test(getSoftwareRowSearchText(row)) && !/(^|\\b)illegal(\\b|$)|blocked|restricted|unauthorized|unapproved/.test(getSoftwareRowSearchText(row)));\n\n";
+      const policyResolvePatch = "    if (!selected || selected.includes('install')) return rows;\n    if (selected.includes('unique software')) return uniqueSoftwareRows(rows);\n    if (selected.includes('illegal')) return uniqueSoftwareRows(rows);\n    if (selected.includes('legal')) return rows.filter((row) => /(^|\\b)legal(\\b|$)|approved|allowed/.test(getSoftwareRowSearchText(row)) && !/(^|\\b)illegal(\\b|$)|blocked|restricted|unauthorized|unapproved/.test(getSoftwareRowSearchText(row)));\n\n";
       next = next.split(policyResolveAnchor).join(policyResolvePatch);
 
       const policyDonutAnchor = "  const getSoftwareClassificationGraphRows = () => {";
@@ -97,12 +97,11 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
       return toneSolid(item.tone) + ' ' + start + 'deg ' + end + 'deg';
     }).join(', ');
     const illegalCount = numberOrFallback(items.find((item) => item.target === 'Illegal Software')?.value, 0);
-    const illegalShare = displayTotal > 0 ? (illegalCount / safeTotal) * 100 : 0;
 
     return (
       <div style={{ display: 'grid', gridTemplateColumns: '180px minmax(0, 1fr)', gap: 18, alignItems: 'center' }}>
         <button type="button" onClick={() => openLevel3('software', illegalCount > 0 ? 'Illegal Software' : 'Legal Software')} style={{ width: 170, height: 170, border: '1px solid #e2e8f0', borderRadius: '50%', background: 'conic-gradient(' + (gradientParts || '#e2e8f0 0deg 360deg') + ')', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: '0 18px 45px rgba(15,23,42,.10)' }}>
-          <span style={{ width: 104, height: 104, borderRadius: '50%', background: '#fff', display: 'grid', placeItems: 'center', textAlign: 'center', boxShadow: 'inset 0 0 0 1px #e2e8f0' }}><strong style={{ display: 'block', fontSize: 25, lineHeight: 1, fontWeight: 950, color: '#0f172a' }}>{formatNumber(displayTotal)}</strong><small style={{ color: '#64748b', fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.08em' }}>Policy</small></span>
+          <span style={{ width: 104, height: 104, borderRadius: '50%', background: '#fff', display: 'grid', placeItems: 'center', textAlign: 'center', boxShadow: 'inset 0 0 0 1px #e2e8f0' }}><strong style={{ display: 'block', fontSize: 25, lineHeight: 1, fontWeight: 950, color: '#0f172a' }}>{formatNumber(displayTotal)}</strong><small style={{ color: '#64748b', fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.08em' }}>All Software</small></span>
         </button>
         <div style={{ display: 'grid', gap: 9 }}>
           {items.map((item) => {
@@ -116,7 +115,7 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
             );
           })}
         </div>
-        <div style={{ gridColumn: '1 / -1', border: '1px solid #dbeafe', borderRadius: 14, background: '#eff6ff', color: '#1d4ed8', padding: '9px 12px', fontSize: 11, fontWeight: 850 }}>Only software classified as Legal is legal. All other policy software is treated as illegal.</div>
+        <div style={{ gridColumn: '1 / -1', border: '1px solid #dbeafe', borderRadius: 14, background: '#eff6ff', color: '#1d4ed8', padding: '9px 12px', fontSize: 11, fontWeight: 850 }}>Only software listed in Software Policy and classified as Legal is legal. All other discovered software is treated as illegal.</div>
       </div>
     );
   };
@@ -133,13 +132,16 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
       { label: 'Lifecycle Not Found', target: 'Lifecycle Not Found', note: 'No lifecycle mapping returned', tone: 'purple' as CardTone, value: rows.filter((row) => softwareLifecycleMatches(row, 'not found')).length },
     ];`;
       const newPolicyRows = `    const softwarePolicy = software as SoftwareSummary & Record<string, unknown>;
+    const uniqueInventorySoftware = uniqueSoftwareRows(rows).length;
+    const dashboardUniqueSoftware = numberOrFallback(software.uniqueSoftware, 0);
     const policyLegalSoftware = numberOrFallback(softwarePolicy.policyLegalSoftware ?? softwarePolicy.legalSoftware ?? softwarePolicy.LegalCount, 0);
     const explicitPolicyIllegalSoftware = numberOrFallback(softwarePolicy.policyIllegalSoftware ?? softwarePolicy.illegalSoftware ?? softwarePolicy.IllegalCount, 0);
-    const policyTotalSoftware = Math.max(numberOrFallback(softwarePolicy.policyTotalSoftware ?? softwarePolicy.totalPolicySoftware, 0), policyLegalSoftware + explicitPolicyIllegalSoftware);
+    const policyItemTotalSoftware = numberOrFallback(softwarePolicy.policyTotalSoftware ?? softwarePolicy.totalPolicySoftware, 0);
+    const policyTotalSoftware = Math.max(uniqueInventorySoftware, dashboardUniqueSoftware, policyItemTotalSoftware, policyLegalSoftware + explicitPolicyIllegalSoftware);
     const policyIllegalSoftware = Math.max(0, policyTotalSoftware - policyLegalSoftware);
     const policyRows = [
-      { label: 'Legal Software', target: 'Legal Software', note: 'Explicitly classified Legal by Software Policy', tone: 'green' as CardTone, value: policyLegalSoftware },
-      { label: 'Illegal Software', target: 'Illegal Software', note: 'Not classified Legal or marked Illegal', tone: 'red' as CardTone, value: policyIllegalSoftware },
+      { label: 'Legal Software', target: 'Legal Software', note: 'Exists in Software Policy and classified Legal', tone: 'green' as CardTone, value: policyLegalSoftware },
+      { label: 'Illegal Software', target: 'Illegal Software', note: 'Not in Software Policy as Legal', tone: 'red' as CardTone, value: policyIllegalSoftware },
     ];`;
       next = next.split(oldLifecycleRows).join(newPolicyRows);
 
@@ -153,7 +155,7 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
         </div>`;
 
       const newSoftwareLevelTwoGrid = `        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
-          <Panel title="Software Lifecycle and Policies" subtitle="Only software classified as Legal is counted as legal. All other policy software is illegal." icon={ShieldCheck}>{renderSoftwarePolicyDonut(policyRows, policyTotalSoftware)}</Panel>
+          <Panel title="Software Lifecycle and Policies" subtitle="Only software recorded in Software Policy as Legal is counted legal. All unlisted software is illegal." icon={ShieldCheck}>{renderSoftwarePolicyDonut(policyRows, policyTotalSoftware)}</Panel>
           <Panel title="Software Governance Balance" subtitle="Shows the relationship between classified inventory, cleanup backlog and lifecycle risk." icon={Gauge}>{renderSoftwareHorizontalBars(governanceRows, totalInstallations)}</Panel>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
