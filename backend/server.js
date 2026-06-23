@@ -45233,6 +45233,710 @@ app.post("/api/restrictions/:module/policy", authenticateToken, async (req, res)
 
 })();
 
+// ============================================================
+// SOFTWARE POLICY API - START
+// ============================================================
+
+function spText(value) {
+  return String(value ?? "").trim();
+}
+
+function spInt(value, fallback = 0) {
+  const parsed = parseInt(String(value ?? ""), 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function spNumber(value, fallback = null) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function spDate(value) {
+  const text = spText(value);
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
+}
+
+function spTime(value, fallback = "09:00") {
+  const text = spText(value || fallback);
+  return /^\d{2}:\d{2}$/.test(text) ? text : fallback;
+}
+
+function spClassification(value) {
+  const text = spText(value).toLowerCase();
+  return text === "illegal" ? "Illegal" : "Legal";
+}
+
+async function ensureSoftwarePolicyTables(pool) {
+  await pool.request().query(`
+    IF OBJECT_ID('dbo.EMA_SoftwarePolicy', 'U') IS NULL
+    BEGIN
+      CREATE TABLE dbo.EMA_SoftwarePolicy (
+        PolicyID INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        PolicyName NVARCHAR(200) NOT NULL,
+        Description NVARCHAR(1000) NULL,
+        CategoryID INT NULL,
+        CategoryName NVARCHAR(255) NULL,
+        WorkingStartTime NVARCHAR(5) NULL,
+        WorkingEndTime NVARCHAR(5) NULL,
+        WorkDays NVARCHAR(40) NULL,
+        UtilizedHours DECIMAL(8,2) NULL,
+        UnderUtilizedHours DECIMAL(8,2) NULL,
+        OpenCountThreshold INT NULL,
+        IsActive BIT NOT NULL CONSTRAINT DF_EMA_SoftwarePolicy_IsActive DEFAULT (1),
+        CreatedBy NVARCHAR(200) NULL,
+        CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_EMA_SoftwarePolicy_CreatedAt DEFAULT SYSUTCDATETIME(),
+        UpdatedAt DATETIME2 NULL
+      );
+    END;
+
+    IF OBJECT_ID('dbo.EMA_SoftwarePolicyItem', 'U') IS NULL
+    BEGIN
+      CREATE TABLE dbo.EMA_SoftwarePolicyItem (
+        PolicyItemID INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        PolicyID INT NOT NULL,
+        SWUNI_Idn INT NULL,
+        SoftwareName NVARCHAR(500) NOT NULL,
+        CategoryID INT NULL,
+        CategoryName NVARCHAR(255) NULL,
+        Publisher NVARCHAR(255) NULL,
+        Version NVARCHAR(255) NULL,
+        ComplianceStatus NVARCHAR(20) NULL,
+        WorkingStartTime NVARCHAR(5) NULL,
+        WorkingEndTime NVARCHAR(5) NULL,
+        WorkDays NVARCHAR(40) NULL,
+        UtilizedHours DECIMAL(8,2) NULL,
+        UnderUtilizedHours DECIMAL(8,2) NULL,
+        OpenCountThreshold INT NULL,
+        LicenseKey NVARCHAR(500) NULL,
+        LicenseCount INT NULL,
+        LicenseStartDate DATE NULL,
+        LicenseEndDate DATE NULL,
+        Notes NVARCHAR(1000) NULL,
+        CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_EMA_SoftwarePolicyItem_CreatedAt DEFAULT SYSUTCDATETIME(),
+        UpdatedAt DATETIME2 NULL
+      );
+    END;
+
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'WorkingStartTime') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD WorkingStartTime NVARCHAR(5) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'WorkingEndTime') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD WorkingEndTime NVARCHAR(5) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'WorkDays') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD WorkDays NVARCHAR(40) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'UtilizedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD UtilizedHours DECIMAL(8,2) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'UnderUtilizedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD UnderUtilizedHours DECIMAL(8,2) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'OpenCountThreshold') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD OpenCountThreshold INT NULL;
+
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'SWUNI_Idn') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD SWUNI_Idn INT NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'CategoryID') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD CategoryID INT NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'WorkingStartTime') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD WorkingStartTime NVARCHAR(5) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'WorkingEndTime') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD WorkingEndTime NVARCHAR(5) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'WorkDays') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD WorkDays NVARCHAR(40) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'UtilizedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD UtilizedHours DECIMAL(8,2) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'UnderUtilizedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD UnderUtilizedHours DECIMAL(8,2) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'OpenCountThreshold') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD OpenCountThreshold INT NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseKey') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseKey NVARCHAR(500) NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseCount') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseCount INT NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseStartDate') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseStartDate DATE NULL;
+    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseEndDate') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseEndDate DATE NULL;
+
+    UPDATE dbo.EMA_SoftwarePolicy
+    SET
+      WorkingStartTime = COALESCE(NULLIF(WorkingStartTime, ''), '09:00'),
+      WorkingEndTime = COALESCE(NULLIF(WorkingEndTime, ''), '17:00'),
+      WorkDays = COALESCE(NULLIF(WorkDays, ''), 'Mon-Fri'),
+      UtilizedHours = COALESCE(UtilizedHours, 2.00),
+      UnderUtilizedHours = COALESCE(UnderUtilizedHours, 0.01);
+
+    UPDATE dbo.EMA_SoftwarePolicyItem
+    SET
+      ComplianceStatus = CASE WHEN LOWER(ISNULL(ComplianceStatus, '')) = 'illegal' THEN 'Illegal' ELSE 'Legal' END,
+      WorkingStartTime = COALESCE(NULLIF(WorkingStartTime, ''), '09:00'),
+      WorkingEndTime = COALESCE(NULLIF(WorkingEndTime, ''), '17:00'),
+      WorkDays = COALESCE(NULLIF(WorkDays, ''), 'Mon-Fri'),
+      UtilizedHours = COALESCE(UtilizedHours, 2.00),
+      UnderUtilizedHours = COALESCE(UnderUtilizedHours, 0.01);
+  `);
+}
+
+// 1. Category list
+app.get("/api/settings/software-policy/categories", authenticateToken, async (req, res) => {
+  try {
+    const pool = await sql.connect(dbConfig);
+    const result = await pool.request().query(`
+      SELECT TOP (1000)
+        CategoryID,
+        CategoryName
+      FROM [TCO2].[dbo].[TS_SW_CATEGORY]
+      WHERE CategoryName IS NOT NULL
+        AND LTRIM(RTRIM(CategoryName)) <> ''
+      ORDER BY CategoryName ASC;
+    `);
+
+    return res.json({
+      success: true,
+      data: result.recordset || []
+    });
+  } catch (err) {
+    console.error("GET /api/settings/software-policy/categories error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load software categories",
+      error: err.message
+    });
+  }
+});
+
+// 2. Publisher list by category
+app.get("/api/settings/software-policy/publishers", authenticateToken, async (req, res) => {
+  try {
+    const categoryId = spInt(req.query.categoryId || req.query.CategoryID, 0);
+    const pool = await sql.connect(dbConfig);
+
+    const result = await pool.request()
+      .input("CategoryID", sql.Int, categoryId)
+      .query(`
+        SELECT
+          NULLIF(LTRIM(RTRIM(c.Publisher)), '') AS Publisher,
+          COUNT(DISTINCT d.SWUNI_Idn) AS SoftwareCount,
+          COUNT(DISTINCT a.Object_Root_Idn) AS InstalledCount
+        FROM [TCO2].[dbo].[TS_OBJECT_ROOT] a
+        INNER JOIN [TCO2].[dbo].[TSSI_SWUNI_ATTR] c
+          ON a.Object_Root_Idn = c.Object_Root_Idn
+        INNER JOIN [TCO2].[dbo].[TS_SWUNI_LIST] d
+          ON c.SWUNI_Idn = d.SWUNI_Idn
+        INNER JOIN [TCO2].[dbo].[TS_SW_CATEGORY] e
+          ON e.CategoryID = d.SWUNI_Catg
+        WHERE (@CategoryID <= 0 OR e.CategoryID = @CategoryID)
+          AND NULLIF(LTRIM(RTRIM(c.Publisher)), '') IS NOT NULL
+        GROUP BY NULLIF(LTRIM(RTRIM(c.Publisher)), '')
+        ORDER BY Publisher ASC;
+      `);
+
+    return res.json({
+      success: true,
+      data: result.recordset || []
+    });
+  } catch (err) {
+    console.error("GET /api/settings/software-policy/publishers error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load software publishers",
+      error: err.message
+    });
+  }
+});
+
+// 3. Software list by category
+app.get("/api/settings/software-policy/software", authenticateToken, async (req, res) => {
+  try {
+    const categoryId = spInt(req.query.categoryId || req.query.CategoryID, 0);
+    const publisher = spText(req.query.publisher || req.query.Publisher);
+    const search = spText(req.query.search);
+    const limit = Math.min(Math.max(spInt(req.query.limit, 500), 1), 1000);
+
+    const pool = await sql.connect(dbConfig);
+
+    const result = await pool.request()
+      .input("CategoryID", sql.Int, categoryId)
+      .input("Publisher", sql.NVarChar(255), publisher)
+      .input("Search", sql.NVarChar(255), search)
+      .input("Limit", sql.Int, limit)
+      .query(`
+        SELECT TOP (@Limit)
+          d.SWUNI_Idn,
+          CONVERT(NVARCHAR(50), d.SWUNI_Idn) AS SoftwareID,
+          d.SWUNI_Name AS SoftwareName,
+          e.CategoryID,
+          e.CategoryName,
+          NULLIF(LTRIM(RTRIM(c.Publisher)), '') AS Publisher,
+          CAST(NULL AS NVARCHAR(255)) AS Version,
+          COUNT(DISTINCT a.Object_Root_Idn) AS InstalledCount,
+          COUNT(DISTINCT a.Object_Root_Idn) AS InstalledDeviceCount
+        FROM [TCO2].[dbo].[TS_OBJECT_ROOT] a
+        INNER JOIN [TCO2].[dbo].[TSSI_SWUNI_ATTR] c
+          ON a.Object_Root_Idn = c.Object_Root_Idn
+        INNER JOIN [TCO2].[dbo].[TS_SWUNI_LIST] d
+          ON c.SWUNI_Idn = d.SWUNI_Idn
+        INNER JOIN [TCO2].[dbo].[TS_SW_CATEGORY] e
+          ON e.CategoryID = d.SWUNI_Catg
+        WHERE (@CategoryID <= 0 OR e.CategoryID = @CategoryID)
+          AND (@Publisher = '' OR c.Publisher = @Publisher)
+          AND (
+            @Search = ''
+            OR d.SWUNI_Name LIKE '%' + @Search + '%'
+            OR c.Publisher LIKE '%' + @Search + '%'
+          )
+        GROUP BY
+          d.SWUNI_Idn,
+          d.SWUNI_Name,
+          e.CategoryID,
+          e.CategoryName,
+          c.Publisher
+        ORDER BY d.SWUNI_Name ASC;
+      `);
+
+    return res.json({
+      success: true,
+      data: result.recordset || []
+    });
+  } catch (err) {
+    console.error("GET /api/settings/software-policy/software error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load software list",
+      error: err.message
+    });
+  }
+});
+
+// 4. Policy list
+app.get("/api/settings/software-policy/policies", authenticateToken, async (req, res) => {
+  try {
+    const pool = await sql.connect(dbConfig);
+    await ensureSoftwarePolicyTables(pool);
+
+    const result = await pool.request().query(`
+      SELECT
+        p.PolicyID,
+        p.PolicyName,
+        p.Description,
+        p.CategoryID,
+        p.CategoryName,
+        p.WorkingStartTime,
+        p.WorkingEndTime,
+        p.WorkDays,
+        p.UtilizedHours,
+        p.UnderUtilizedHours,
+        p.OpenCountThreshold,
+        p.IsActive,
+        p.CreatedAt,
+        p.UpdatedAt,
+        COUNT(i.PolicyItemID) AS TotalItems,
+        SUM(CASE WHEN i.ComplianceStatus = 'Legal' THEN 1 ELSE 0 END) AS LegalCount,
+        SUM(CASE WHEN i.ComplianceStatus = 'Illegal' THEN 1 ELSE 0 END) AS IllegalCount,
+        SUM(ISNULL(i.LicenseCount, 0)) AS LicenseTotal
+      FROM dbo.EMA_SoftwarePolicy p
+      LEFT JOIN dbo.EMA_SoftwarePolicyItem i
+        ON i.PolicyID = p.PolicyID
+      WHERE ISNULL(p.IsActive, 1) = 1
+      GROUP BY
+        p.PolicyID,
+        p.PolicyName,
+        p.Description,
+        p.CategoryID,
+        p.CategoryName,
+        p.WorkingStartTime,
+        p.WorkingEndTime,
+        p.WorkDays,
+        p.UtilizedHours,
+        p.UnderUtilizedHours,
+        p.OpenCountThreshold,
+        p.IsActive,
+        p.CreatedAt,
+        p.UpdatedAt
+      ORDER BY ISNULL(p.UpdatedAt, p.CreatedAt) DESC;
+    `);
+
+    return res.json({
+      success: true,
+      data: result.recordset || []
+    });
+  } catch (err) {
+    console.error("GET /api/settings/software-policy/policies error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load software policies",
+      error: err.message
+    });
+  }
+});
+
+// 5. Create policy
+app.post("/api/settings/software-policy/policies", authenticateToken, async (req, res) => {
+  try {
+    const policyName = spText(req.body.PolicyName || req.body.policyName || req.body.RuleName || req.body.ruleName);
+
+    if (!policyName) {
+      return res.status(400).json({
+        success: false,
+        message: "Policy name is required"
+      });
+    }
+
+    const pool = await sql.connect(dbConfig);
+    await ensureSoftwarePolicyTables(pool);
+
+    const result = await pool.request()
+      .input("PolicyName", sql.NVarChar(200), policyName)
+      .input("Description", sql.NVarChar(1000), spText(req.body.Description || req.body.description))
+      .input("CategoryID", sql.Int, spInt(req.body.CategoryID || req.body.categoryId, 0) || null)
+      .input("CategoryName", sql.NVarChar(255), spText(req.body.CategoryName || req.body.categoryName))
+      .input("WorkingStartTime", sql.NVarChar(5), spTime(req.body.WorkingStartTime || req.body.workingStartTime, "09:00"))
+      .input("WorkingEndTime", sql.NVarChar(5), spTime(req.body.WorkingEndTime || req.body.workingEndTime, "17:00"))
+      .input("WorkDays", sql.NVarChar(40), spText(req.body.WorkDays || req.body.workDays) || "Mon-Fri")
+      .input("UtilizedHours", sql.Decimal(8, 2), spNumber(req.body.UtilizedHours ?? req.body.utilizedHours, 2))
+      .input("UnderUtilizedHours", sql.Decimal(8, 2), spNumber(req.body.UnderUtilizedHours ?? req.body.underUtilizedHours, 0.01))
+      .input("OpenCountThreshold", sql.Int, spInt(req.body.OpenCountThreshold ?? req.body.openCountThreshold, 1))
+      .input("CreatedBy", sql.NVarChar(200), spText(req.user?.username || req.user?.email || req.user?.userID))
+      .query(`
+        INSERT INTO dbo.EMA_SoftwarePolicy
+        (
+          PolicyName,
+          Description,
+          CategoryID,
+          CategoryName,
+          WorkingStartTime,
+          WorkingEndTime,
+          WorkDays,
+          UtilizedHours,
+          UnderUtilizedHours,
+          OpenCountThreshold,
+          IsActive,
+          CreatedBy,
+          UpdatedAt
+        )
+        OUTPUT INSERTED.*
+        VALUES
+        (
+          @PolicyName,
+          NULLIF(@Description, ''),
+          @CategoryID,
+          NULLIF(@CategoryName, ''),
+          @WorkingStartTime,
+          @WorkingEndTime,
+          @WorkDays,
+          @UtilizedHours,
+          @UnderUtilizedHours,
+          @OpenCountThreshold,
+          1,
+          NULLIF(@CreatedBy, ''),
+          SYSUTCDATETIME()
+        );
+      `);
+
+    return res.status(201).json({
+      success: true,
+      data: result.recordset?.[0] || null
+    });
+  } catch (err) {
+    console.error("POST /api/settings/software-policy/policies error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create software policy",
+      error: err.message
+    });
+  }
+});
+
+// 6. Update policy
+app.put("/api/settings/software-policy/policies/:id", authenticateToken, async (req, res) => {
+  try {
+    const policyId = spInt(req.params.id, 0);
+
+    if (!policyId) {
+      return res.status(400).json({
+        success: false,
+        message: "Policy ID is required"
+      });
+    }
+
+    const pool = await sql.connect(dbConfig);
+    await ensureSoftwarePolicyTables(pool);
+
+    const result = await pool.request()
+      .input("PolicyID", sql.Int, policyId)
+      .input("PolicyName", sql.NVarChar(200), spText(req.body.PolicyName || req.body.policyName || req.body.RuleName || req.body.ruleName))
+      .input("Description", sql.NVarChar(1000), spText(req.body.Description || req.body.description))
+      .input("CategoryID", sql.Int, spInt(req.body.CategoryID || req.body.categoryId, 0) || null)
+      .input("CategoryName", sql.NVarChar(255), spText(req.body.CategoryName || req.body.categoryName))
+      .input("WorkingStartTime", sql.NVarChar(5), spTime(req.body.WorkingStartTime || req.body.workingStartTime, "09:00"))
+      .input("WorkingEndTime", sql.NVarChar(5), spTime(req.body.WorkingEndTime || req.body.workingEndTime, "17:00"))
+      .input("WorkDays", sql.NVarChar(40), spText(req.body.WorkDays || req.body.workDays) || "Mon-Fri")
+      .input("UtilizedHours", sql.Decimal(8, 2), spNumber(req.body.UtilizedHours ?? req.body.utilizedHours, 2))
+      .input("UnderUtilizedHours", sql.Decimal(8, 2), spNumber(req.body.UnderUtilizedHours ?? req.body.underUtilizedHours, 0.01))
+      .input("OpenCountThreshold", sql.Int, spInt(req.body.OpenCountThreshold ?? req.body.openCountThreshold, 1))
+      .query(`
+        UPDATE dbo.EMA_SoftwarePolicy
+        SET
+          PolicyName = COALESCE(NULLIF(@PolicyName, ''), PolicyName),
+          Description = COALESCE(NULLIF(@Description, ''), Description),
+          CategoryID = COALESCE(@CategoryID, CategoryID),
+          CategoryName = COALESCE(NULLIF(@CategoryName, ''), CategoryName),
+          WorkingStartTime = @WorkingStartTime,
+          WorkingEndTime = @WorkingEndTime,
+          WorkDays = @WorkDays,
+          UtilizedHours = @UtilizedHours,
+          UnderUtilizedHours = @UnderUtilizedHours,
+          OpenCountThreshold = @OpenCountThreshold,
+          UpdatedAt = SYSUTCDATETIME()
+        OUTPUT INSERTED.*
+        WHERE PolicyID = @PolicyID;
+      `);
+
+    return res.json({
+      success: true,
+      data: result.recordset?.[0] || null
+    });
+  } catch (err) {
+    console.error("PUT /api/settings/software-policy/policies/:id error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update software policy",
+      error: err.message
+    });
+  }
+});
+
+// 7. Policy item list
+app.get("/api/settings/software-policy/policies/:id/items", authenticateToken, async (req, res) => {
+  try {
+    const policyId = spInt(req.params.id, 0);
+
+    const pool = await sql.connect(dbConfig);
+    await ensureSoftwarePolicyTables(pool);
+
+    const result = await pool.request()
+      .input("PolicyID", sql.Int, policyId)
+      .query(`
+        SELECT
+          PolicyItemID,
+          PolicyID,
+          SWUNI_Idn,
+          SoftwareName,
+          CategoryID,
+          CategoryName,
+          Publisher,
+          Version,
+          ComplianceStatus AS Classification,
+          ComplianceStatus,
+          WorkingStartTime,
+          WorkingEndTime,
+          WorkDays,
+          UtilizedHours,
+          UnderUtilizedHours,
+          OpenCountThreshold,
+          LicenseKey,
+          LicenseCount,
+          LicenseStartDate,
+          LicenseEndDate,
+          Notes,
+          CreatedAt,
+          UpdatedAt
+        FROM dbo.EMA_SoftwarePolicyItem
+        WHERE PolicyID = @PolicyID
+        ORDER BY SoftwareName ASC;
+      `);
+
+    return res.json({
+      success: true,
+      data: result.recordset || []
+    });
+  } catch (err) {
+    console.error("GET /api/settings/software-policy/policies/:id/items error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load policy software",
+      error: err.message
+    });
+  }
+});
+
+// 8. Save selected software into policy
+app.post("/api/settings/software-policy/policies/:id/items", authenticateToken, async (req, res) => {
+  try {
+    const policyId = spInt(req.params.id, 0);
+    const items = Array.isArray(req.body.items) ? req.body.items : [];
+
+    if (!policyId) {
+      return res.status(400).json({
+        success: false,
+        message: "Policy ID is required"
+      });
+    }
+
+    if (items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one software item is required"
+      });
+    }
+
+    const pool = await sql.connect(dbConfig);
+    await ensureSoftwarePolicyTables(pool);
+
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    try {
+      for (const item of items) {
+        const softwareName = spText(item.SoftwareName || item.softwareName);
+        if (!softwareName) continue;
+
+        await new sql.Request(transaction)
+          .input("PolicyID", sql.Int, policyId)
+          .input("SWUNI_Idn", sql.Int, spInt(item.SWUNI_Idn || item.swuniId || item.SoftwareID, 0) || null)
+          .input("SoftwareName", sql.NVarChar(500), softwareName)
+          .input("CategoryID", sql.Int, spInt(item.CategoryID || item.categoryId, 0) || null)
+          .input("CategoryName", sql.NVarChar(255), spText(item.CategoryName || item.categoryName))
+          .input("Publisher", sql.NVarChar(255), spText(item.Publisher || item.publisher))
+          .input("Version", sql.NVarChar(255), spText(item.Version || item.version))
+          .input("ComplianceStatus", sql.NVarChar(20), spClassification(item.Classification || item.ComplianceStatus))
+          .input("WorkingStartTime", sql.NVarChar(5), spTime(item.WorkingStartTime || item.workingStartTime, "09:00"))
+          .input("WorkingEndTime", sql.NVarChar(5), spTime(item.WorkingEndTime || item.workingEndTime, "17:00"))
+          .input("WorkDays", sql.NVarChar(40), spText(item.WorkDays || item.workDays) || "Mon-Fri")
+          .input("UtilizedHours", sql.Decimal(8, 2), spNumber(item.UtilizedHours ?? item.utilizedHours, 2))
+          .input("UnderUtilizedHours", sql.Decimal(8, 2), spNumber(item.UnderUtilizedHours ?? item.underUtilizedHours, 0.01))
+          .input("OpenCountThreshold", sql.Int, spInt(item.OpenCountThreshold ?? item.openCountThreshold, 1))
+          .input("LicenseKey", sql.NVarChar(500), spText(item.LicenseKey || item.licenseKey))
+          .input("LicenseCount", sql.Int, spInt(item.LicenseCount ?? item.licenseCount, 0) || null)
+          .input("LicenseStartDate", sql.Date, spDate(item.LicenseStartDate || item.licenseStartDate))
+          .input("LicenseEndDate", sql.Date, spDate(item.LicenseEndDate || item.licenseEndDate))
+          .input("Notes", sql.NVarChar(1000), spText(item.Notes || item.notes))
+          .query(`
+            IF EXISTS (
+              SELECT 1
+              FROM dbo.EMA_SoftwarePolicyItem
+              WHERE PolicyID = @PolicyID
+                AND SoftwareName = @SoftwareName
+                AND ISNULL(Publisher, '') = ISNULL(@Publisher, '')
+                AND ISNULL(Version, '') = ISNULL(@Version, '')
+            )
+            BEGIN
+              UPDATE dbo.EMA_SoftwarePolicyItem
+              SET
+                SWUNI_Idn = COALESCE(@SWUNI_Idn, SWUNI_Idn),
+                CategoryID = COALESCE(@CategoryID, CategoryID),
+                CategoryName = NULLIF(@CategoryName, ''),
+                ComplianceStatus = @ComplianceStatus,
+                WorkingStartTime = @WorkingStartTime,
+                WorkingEndTime = @WorkingEndTime,
+                WorkDays = @WorkDays,
+                UtilizedHours = @UtilizedHours,
+                UnderUtilizedHours = @UnderUtilizedHours,
+                OpenCountThreshold = @OpenCountThreshold,
+                LicenseKey = NULLIF(@LicenseKey, ''),
+                LicenseCount = @LicenseCount,
+                LicenseStartDate = @LicenseStartDate,
+                LicenseEndDate = @LicenseEndDate,
+                Notes = NULLIF(@Notes, ''),
+                UpdatedAt = SYSUTCDATETIME()
+              WHERE PolicyID = @PolicyID
+                AND SoftwareName = @SoftwareName
+                AND ISNULL(Publisher, '') = ISNULL(@Publisher, '')
+                AND ISNULL(Version, '') = ISNULL(@Version, '');
+            END
+            ELSE
+            BEGIN
+              INSERT INTO dbo.EMA_SoftwarePolicyItem
+              (
+                PolicyID,
+                SWUNI_Idn,
+                SoftwareName,
+                CategoryID,
+                CategoryName,
+                Publisher,
+                Version,
+                ComplianceStatus,
+                WorkingStartTime,
+                WorkingEndTime,
+                WorkDays,
+                UtilizedHours,
+                UnderUtilizedHours,
+                OpenCountThreshold,
+                LicenseKey,
+                LicenseCount,
+                LicenseStartDate,
+                LicenseEndDate,
+                Notes
+              )
+              VALUES
+              (
+                @PolicyID,
+                @SWUNI_Idn,
+                @SoftwareName,
+                @CategoryID,
+                NULLIF(@CategoryName, ''),
+                NULLIF(@Publisher, ''),
+                NULLIF(@Version, ''),
+                @ComplianceStatus,
+                @WorkingStartTime,
+                @WorkingEndTime,
+                @WorkDays,
+                @UtilizedHours,
+                @UnderUtilizedHours,
+                @OpenCountThreshold,
+                NULLIF(@LicenseKey, ''),
+                @LicenseCount,
+                @LicenseStartDate,
+                @LicenseEndDate,
+                NULLIF(@Notes, '')
+              );
+            END;
+          `);
+      }
+
+      await new sql.Request(transaction)
+        .input("PolicyID", sql.Int, policyId)
+        .query(`
+          UPDATE dbo.EMA_SoftwarePolicy
+          SET UpdatedAt = SYSUTCDATETIME()
+          WHERE PolicyID = @PolicyID;
+        `);
+
+      await transaction.commit();
+
+      return res.json({
+        success: true,
+        message: "Software policy items saved"
+      });
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  } catch (err) {
+    console.error("POST /api/settings/software-policy/policies/:id/items error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to save selected software",
+      error: err.message
+    });
+  }
+});
+
+// 9. Delete software from policy
+app.delete("/api/settings/software-policy/items/:itemId", authenticateToken, async (req, res) => {
+  try {
+    const itemId = spInt(req.params.itemId, 0);
+
+    const pool = await sql.connect(dbConfig);
+    await ensureSoftwarePolicyTables(pool);
+
+    await pool.request()
+      .input("PolicyItemID", sql.Int, itemId)
+      .query(`
+        DELETE FROM dbo.EMA_SoftwarePolicyItem
+        WHERE PolicyItemID = @PolicyItemID;
+      `);
+
+    return res.json({
+      success: true,
+      message: "Software removed from policy"
+    });
+  } catch (err) {
+    console.error("DELETE /api/settings/software-policy/items/:itemId error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to remove software",
+      error: err.message
+    });
+  }
+});
+
+console.log("Software Policy API registered");
+// ============================================================
+// SOFTWARE POLICY API - END
+// ============================================================
+
+
 /*
 |--------------------------------------------------------------------------
 | START SERVER
