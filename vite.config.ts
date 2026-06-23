@@ -152,35 +152,64 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
     const displayTotal = Math.max(0, total || items.reduce((sum, item) => sum + numberOrFallback(item.value), 0));
     const safeTotal = Math.max(1, displayTotal);
     const legalCount = numberOrFallback(items.find((item) => item.target === 'Legal Software')?.value, 0);
-    const complianceRate = displayTotal > 0 ? (legalCount / safeTotal) * 100 : 0;
-    let cursor = 0;
-    const gradientParts = items.map((item) => {
-      const value = numberOrFallback(item.value);
-      const start = cursor;
-      const end = cursor + ((value / safeTotal) * 360);
-      cursor = end;
-      return toneSolid(item.tone) + ' ' + start + 'deg ' + end + 'deg';
-    }).join(', ');
     const illegalCount = numberOrFallback(items.find((item) => item.target === 'Illegal Software')?.value, 0);
+    const complianceRate = displayTotal > 0 ? (legalCount / safeTotal) * 100 : 0;
+    const legalShare = clampPercent(complianceRate);
+    const illegalShare = clampPercent(100 - legalShare);
+    const ringLength = 339.292;
+    const legalArc = (legalShare / 100) * ringLength;
+    const statusText = legalShare >= 90 ? 'Compliant' : legalShare >= 70 ? 'Review' : 'High Risk';
+    const statusColor = legalShare >= 90 ? '#059669' : legalShare >= 70 ? '#d97706' : '#dc2626';
 
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '180px minmax(0, 1fr)', gap: 18, alignItems: 'center' }}>
-        <button type="button" onClick={() => openLevel3('software', illegalCount > 0 ? 'Illegal Software' : 'Legal Software')} style={{ width: 170, height: 170, border: '1px solid #e2e8f0', borderRadius: '50%', background: 'conic-gradient(' + (gradientParts || '#e2e8f0 0deg 360deg') + ')', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: '0 18px 45px rgba(15,23,42,.10)' }}>
-          <span style={{ width: 104, height: 104, borderRadius: '50%', background: '#fff', display: 'grid', placeItems: 'center', textAlign: 'center', boxShadow: 'inset 0 0 0 1px #e2e8f0' }}><span><strong style={{ display: 'block', fontSize: 24, lineHeight: 1, fontWeight: 950, color: '#0f172a' }}>{formatPercent(complianceRate, 0)}</strong><small style={{ display: 'block', marginTop: 7, color: '#64748b', fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.05em' }}>Legal</small></span></span>
+      <div style={{ display: 'grid', gridTemplateColumns: '230px minmax(0, 1fr)', gap: 20, alignItems: 'center' }}>
+        <button type="button" onClick={() => openLevel3('software', illegalCount > 0 ? 'Illegal Software' : 'Legal Software')} style={{ position: 'relative', width: 220, minHeight: 220, border: '1px solid #dbeafe', borderRadius: 30, background: 'radial-gradient(circle at 50% 44%, #ffffff 0%, #ffffff 38%, #f8fafc 39%, #eef6ff 100%)', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: '0 22px 50px rgba(15,23,42,.10)', overflow: 'hidden' }}>
+          <span style={{ position: 'absolute', inset: 14, borderRadius: 26, background: 'linear-gradient(135deg, rgba(34,197,94,.10), rgba(239,68,68,.08))' }} />
+          <svg viewBox="0 0 220 220" width="190" height="190" style={{ position: 'relative', zIndex: 1, transform: 'rotate(-90deg)' }} aria-hidden="true">
+            <defs>
+              <linearGradient id="softwareComplianceLegal" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#14b8a6" />
+                <stop offset="100%" stopColor="#22c55e" />
+              </linearGradient>
+              <linearGradient id="softwareComplianceTrack" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#fee2e2" />
+                <stop offset="100%" stopColor="#fb7185" />
+              </linearGradient>
+            </defs>
+            <circle cx="110" cy="110" r="76" fill="none" stroke="#e2e8f0" strokeWidth="4" />
+            <circle cx="110" cy="110" r="54" fill="none" stroke="url(#softwareComplianceTrack)" strokeWidth="20" strokeLinecap="round" strokeDasharray="339.292 339.292" />
+            <circle cx="110" cy="110" r="54" fill="none" stroke="url(#softwareComplianceLegal)" strokeWidth="20" strokeLinecap="round" strokeDasharray={String(legalArc) + ' 339.292'} />
+            <circle cx="110" cy="110" r="34" fill="#ffffff" stroke="#e2e8f0" strokeWidth="1" />
+          </svg>
+          <span style={{ position: 'absolute', zIndex: 2, width: 106, height: 106, borderRadius: 999, display: 'grid', placeItems: 'center', textAlign: 'center', background: 'rgba(255,255,255,.92)', boxShadow: '0 16px 32px rgba(15,23,42,.12)' }}>
+            <span>
+              <small style={{ display: 'block', color: '#64748b', fontSize: 9, fontWeight: 950, textTransform: 'uppercase', letterSpacing: '.08em' }}>Compliance</small>
+              <strong style={{ display: 'block', marginTop: 5, fontSize: 27, lineHeight: 1, fontWeight: 950, color: '#0f172a' }}>{formatPercent(complianceRate, 0)}</strong>
+              <small style={{ display: 'block', marginTop: 6, color: statusColor, fontSize: 9, fontWeight: 950, textTransform: 'uppercase', letterSpacing: '.06em' }}>{statusText}</small>
+            </span>
+          </span>
+          <span style={{ position: 'absolute', left: 16, bottom: 15, zIndex: 2, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 10px', borderRadius: 999, background: '#ffffff', color: '#334155', fontSize: 10, fontWeight: 900, boxShadow: '0 10px 22px rgba(15,23,42,.10)' }}><i style={{ width: 8, height: 8, borderRadius: 999, background: '#22c55e' }} />{formatNumber(legalCount)} legal</span>
+          <span style={{ position: 'absolute', right: 16, bottom: 15, zIndex: 2, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 10px', borderRadius: 999, background: '#ffffff', color: '#334155', fontSize: 10, fontWeight: 900, boxShadow: '0 10px 22px rgba(15,23,42,.10)' }}><i style={{ width: 8, height: 8, borderRadius: 999, background: '#ef4444' }} />{formatNumber(illegalCount)} illegal</span>
         </button>
-        <div style={{ display: 'grid', gap: 9 }}>
-          {items.map((item) => {
-            const value = numberOrFallback(item.value);
-            const share = displayTotal > 0 ? (value / safeTotal) * 100 : 0;
-            return (
-              <button key={item.label} type="button" onClick={() => openLevel3('software', item.target)} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center', border: '1px solid #e2e8f0', borderRadius: 14, background: '#fff', padding: '10px 12px', cursor: 'pointer', color: '#0f172a', textAlign: 'left' }}>
-                <span style={{ minWidth: 0 }}><strong style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 950 }}><i style={{ width: 9, height: 9, borderRadius: 999, background: toneSolid(item.tone) }} />{item.label}</strong><small style={{ display: 'block', marginTop: 3, color: '#64748b', fontSize: 10, fontWeight: 800 }}>{item.note} · {formatPercent(share, 1)}</small></span>
-                <strong style={{ fontSize: 18, fontWeight: 950 }}>{formatNumber(value)}</strong>
-              </button>
-            );
-          })}
+
+        <div style={{ display: 'grid', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+            <button type="button" onClick={() => openLevel3('software', 'Legal Software')} style={{ minHeight: 98, border: '1px solid #bbf7d0', borderRadius: 18, background: 'linear-gradient(135deg, #f0fdf4, #ffffff)', padding: 14, textAlign: 'left', cursor: 'pointer', color: '#064e3b' }}>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}><b style={{ fontSize: 12, fontWeight: 950 }}>Legal Software</b><strong style={{ fontSize: 24, fontWeight: 950 }}>{formatNumber(legalCount)}</strong></span>
+              <small style={{ display: 'block', marginTop: 4, color: '#047857', fontSize: 10, fontWeight: 850 }}>{formatPercent(legalShare, 1)} compliant asset</small>
+              <em style={{ display: 'block', height: 7, marginTop: 12, borderRadius: 999, overflow: 'hidden', background: '#dcfce7' }}><i style={{ display: 'block', height: '100%', width: String(Math.max(3, legalShare)) + '%', borderRadius: 999, background: 'linear-gradient(90deg, #14b8a6, #22c55e)' }} /></em>
+            </button>
+            <button type="button" onClick={() => openLevel3('software', 'Illegal Software')} style={{ minHeight: 98, border: '1px solid #fecaca', borderRadius: 18, background: 'linear-gradient(135deg, #fff1f2, #ffffff)', padding: 14, textAlign: 'left', cursor: 'pointer', color: '#7f1d1d' }}>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}><b style={{ fontSize: 12, fontWeight: 950 }}>Illegal Software</b><strong style={{ fontSize: 24, fontWeight: 950 }}>{formatNumber(illegalCount)}</strong></span>
+              <small style={{ display: 'block', marginTop: 4, color: '#b91c1c', fontSize: 10, fontWeight: 850 }}>{formatPercent(illegalShare, 1)} requires action</small>
+              <em style={{ display: 'block', height: 7, marginTop: 12, borderRadius: 999, overflow: 'hidden', background: '#fee2e2' }}><i style={{ display: 'block', height: '100%', width: String(Math.max(3, illegalShare)) + '%', borderRadius: 999, background: 'linear-gradient(90deg, #f97316, #ef4444)' }} /></em>
+            </button>
+          </div>
+          <div style={{ border: '1px solid #dbeafe', borderRadius: 18, background: 'linear-gradient(135deg, #eff6ff, #ffffff)', padding: '12px 14px', display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'center' }}>
+            <div><strong style={{ display: 'block', color: '#1e3a8a', fontSize: 12, fontWeight: 950 }}>Compliance formula</strong><small style={{ display: 'block', marginTop: 3, color: '#475569', fontSize: 11, fontWeight: 800 }}>Legal Software / Total Software Asset. Unlisted software is treated as illegal.</small></div>
+            <strong style={{ color: statusColor, fontSize: 20, fontWeight: 950 }}>{formatPercent(complianceRate, 0)}</strong>
+          </div>
         </div>
-        <div style={{ gridColumn: '1 / -1', border: '1px solid #dbeafe', borderRadius: 14, background: '#eff6ff', color: '#1d4ed8', padding: '9px 12px', fontSize: 11, fontWeight: 850 }}>Compliance rate = Legal Software / Total Software Asset. Only software listed in Software Policy and classified as Legal is counted legal.</div>
       </div>
     );
   };
