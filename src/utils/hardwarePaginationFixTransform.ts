@@ -150,12 +150,60 @@ const HARDWARE_PAGINATION_FIX = String.raw`        .hardware-module-root .hardwa
           }
         }`;
 
+function patchSoftwareRegistrySettings(code: string) {
+  let next = code;
+
+  // Do not auto-open the first registry row while the user is still on the list screen.
+  // Auto-open caused the list page to immediately call items, publishers and software inventory APIs.
+  next = next.replace(
+    '    setActivePolicyId((current) => current ?? rows[0]?.PolicyID ?? null);',
+    '    setActivePolicyId((current) => (rows.some((row) => row.PolicyID === current) ? current : null));'
+  );
+
+  // Keep initial load to one base request. The modal detail requests are opened only after Add/View/Edit.
+  next = next.replace(
+    '  useEffect(() => { void loadBase(); }, [loadBase]);',
+    '  useEffect(() => {\n    void loadBase();\n  }, [loadBase]);'
+  );
+
+  // Policy items and publisher/software setup are only needed inside the modal/form.
+  next = next.replace(
+    '  useEffect(() => {\n    if (!activePolicy) return;',
+    '  useEffect(() => {\n    if (policyUiMode !== "form" || !activePolicy) return;'
+  );
+
+  next = next.replace(
+    '  }, [activePolicy, loadPolicyItems, loadPublishers]);',
+    '  }, [policyUiMode, activePolicy, loadPolicyItems, loadPublishers]);'
+  );
+
+  // Software inventory can be heavy. Load it only when the modal is open and a real category is selected.
+  next = next.replace(
+    '    if (!ruleForm.categoryId) {\n      setSoftwareRows([]);\n      return;\n    }',
+    '    if (policyUiMode !== "form" || !ruleForm.categoryId || ruleForm.categoryId === "__other__") {\n      setSoftwareRows([]);\n      return;\n    }'
+  );
+
+  next = next.replace(
+    '  }, [ruleForm.categoryId, ruleForm.publisher, softwareSearch]);',
+    '  }, [policyUiMode, ruleForm.categoryId, ruleForm.publisher, softwareSearch]);'
+  );
+
+  return next;
+}
+
 export function hardwarePaginationFixTransform(): Plugin {
   return {
     name: 'hardware-pagination-fix-transform',
     enforce: 'pre',
     transform(code, id) {
-      if (!id.replace(/\\/g, '/').endsWith('/src/pages/Hardware.tsx')) return null;
+      const normalizedId = id.replace(/\\/g, '/');
+
+      if (normalizedId.endsWith('/src/pages/SettingsWithNotifications.tsx')) {
+        const next = patchSoftwareRegistrySettings(code);
+        return next === code ? null : { code: next, map: null };
+      }
+
+      if (!normalizedId.endsWith('/src/pages/Hardware.tsx')) return null;
 
       let next = code;
 
