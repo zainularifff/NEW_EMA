@@ -45902,6 +45902,57 @@ app.post("/api/settings/software-policy/policies/:id/items", authenticateToken, 
   }
 });
 
+// 9. Delete software registry
+app.delete("/api/settings/software-policy/policies/:id", authenticateToken, async (req, res) => {
+  try {
+    const policyId = spInt(req.params.id, 0);
+
+    if (!policyId) {
+      return res.status(400).json({
+        success: false,
+        message: "Registry ID is required"
+      });
+    }
+
+    const pool = await sql.connect(dbConfig);
+    await ensureSoftwarePolicyTables(pool);
+
+    const result = await pool.request()
+      .input("PolicyID", sql.Int, policyId)
+      .query(`
+        UPDATE dbo.EMA_SoftwarePolicy
+        SET
+          IsActive = 0,
+          UpdatedAt = SYSUTCDATETIME()
+        WHERE PolicyID = @PolicyID
+          AND ISNULL(IsActive, 1) = 1;
+
+        SELECT @@ROWCOUNT AS AffectedRows;
+      `);
+
+    const affectedRows = result.recordset?.[0]?.AffectedRows || 0;
+
+    if (affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Software registry not found"
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Software registry deleted"
+    });
+  } catch (err) {
+    console.error("DELETE /api/settings/software-policy/policies/:id error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete software registry",
+      error: err.message
+    });
+  }
+});
+
 // 9. Delete software from policy
 app.delete("/api/settings/software-policy/items/:itemId", authenticateToken, async (req, res) => {
   try {
