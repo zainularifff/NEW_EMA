@@ -140,12 +140,12 @@ function softwarePolicyListFirstPatch() {
 
       next = next.replace(
         '.sp-empty{min-height:150px;display:grid;place-items:center;color:#64748b;font-size:.8rem;font-weight:800;text-align:center;padding:18px}@media',
-        '.sp-empty{min-height:150px;display:grid;place-items:center;color:#64748b;font-size:.8rem;font-weight:800;text-align:center;padding:18px}.sp-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}.sp-policy-table-screen{min-height:0;overflow:auto}.sp-policy-table-card{height:100%;min-height:0}.sp-policy-table-wrap{display:grid;gap:10px;overflow:auto;padding-bottom:4px}.sp-policy-table-row{width:100%;min-width:980px;min-height:68px;display:grid;grid-template-columns:minmax(220px,1.45fr) minmax(150px,.85fr) 96px 88px 88px 110px 150px 96px;gap:12px;align-items:center;padding:12px 14px;border:1px solid #e5edf8;border-radius:15px;background:#fff;color:#0f2746;text-align:left}.sp-policy-table-row.head{min-height:42px;background:#f3f7fc;color:#64748b;font-size:.62rem;font-weight:900;text-transform:uppercase}.sp-policy-table-row strong,.sp-policy-table-row small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sp-policy-table-row small{margin-top:3px;color:#64748b;font-size:.66rem;font-weight:750}.sp-policy-table-row:not(.head):hover{border-color:#bfdbfe;background:#f8fbff}.sp-policy-table-actions{display:flex;justify-content:flex-end}.sp-layout{grid-template-columns:1fr!important;overflow:auto!important}.sp-layout>aside.sp-panel{display:none!important}.sp-work{height:auto!important;overflow:visible!important;padding-right:0!important}.sp-setup{grid-template-columns:1fr!important}.sp-software-area{grid-template-columns:1fr!important;min-height:0!important}.sp-software-area>.sp-section,.sp-setup>.sp-section{width:100%!important}.sp-table{max-height:520px}.software-policy-module{overflow:auto!important}@media'
+        '.sp-empty{min-height:150px;display:grid;place-items:center;color:#64748b;font-size:.8rem;font-weight:800;text-align:center;padding:18px}.sp-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}.sp-policy-table-screen{min-height:0;overflow:auto}.sp-policy-table-card{height:100%;min-height:0}.sp-policy-table-wrap{display:grid;gap:10px;overflow:auto;padding-bottom:4px}.sp-policy-table-row{width:100%;min-width:980px;min-height:68px;display:grid;grid-template-columns:minmax(220px,1.45fr) minmax(150px,.85fr) 96px 88px 88px 110px 150px 96px;gap:12px;align-items:center;padding:12px 14px;border:1px solid #e5edf8;border-radius:15px;background:#fff;color:#0f2746;text-align:left}.sp-policy-table-row.head{min-height:42px;background:#f3f7fc;color:#64748b;font-size:.62rem;font-weight:900;text-transform:uppercase}.sp-policy-table-row strong,.sp-policy-table-row small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sp-policy-table-row small{margin-top:3px;color:#64748b;font-size:.66rem;font-weight:750}.sp-policy-table-row:not(.head):hover{border-color:#bfdbfe;background:#f8fbff}.sp-policy-table-actions{display:flex;justify-content:flex-end}.sp-policy-modal-backdrop{position:fixed;inset:0;z-index:3000;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.46);backdrop-filter:blur(6px)}.sp-policy-modal{width:min(1180px,calc(100vw - 56px));height:min(86vh,860px);display:grid;grid-template-rows:auto minmax(0,1fr);border:1px solid #dbe7fb;border-radius:24px;background:#f8fbff;box-shadow:0 30px 80px rgba(15,23,42,.32);overflow:hidden}.sp-policy-modal-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 18px;border-bottom:1px solid #dbe7fb;background:#fff}.sp-policy-modal-head strong{display:block;color:#0f2746;font-size:1rem;font-weight:950}.sp-policy-modal-head small{display:block;margin-top:3px;color:#64748b;font-size:.72rem;font-weight:750}.sp-policy-modal-body{min-height:0;overflow:auto;padding:16px}.sp-policy-modal .sp-layout{grid-template-columns:1fr!important;overflow:visible!important}.sp-policy-modal .sp-layout>aside.sp-panel{display:none!important}.sp-policy-modal .sp-work{height:auto!important;overflow:visible!important;padding-right:0!important}.sp-policy-modal .sp-setup{grid-template-columns:1fr!important}.sp-policy-modal .sp-software-area{grid-template-columns:1fr!important;min-height:0!important}.sp-policy-modal .sp-software-area>.sp-section,.sp-policy-modal .sp-setup>.sp-section{width:100%!important}.sp-policy-modal .sp-table{max-height:420px}@media'
       );
 
       next = next.replace(
         '        <button className="sp-btn primary" type="button" onClick={startNewRule}><Plus size={16} /> Create New Rule</button>',
-        '        {policyUiMode === "form" ? <div className="sp-top-actions"><button className="sp-btn secondary" type="button" onClick={() => setPolicyUiMode("list")}>Back to List</button><button className="sp-btn primary" type="button" onClick={savePolicy} disabled={saving}><Save size={15} /> Save Policy</button></div> : <button className="sp-btn primary" type="button" onClick={startNewRule}><Plus size={16} /> Add New</button>}'
+        '        {policyUiMode === "list" ? <button className="sp-btn primary" type="button" onClick={() => { startNewRule(); setPolicyUiMode("form"); }}><Plus size={16} /> Add New</button> : null}'
       );
 
       next = next.replace(
@@ -196,10 +196,17 @@ function softwarePolicyListFirstPatch() {
           </section>
         </div>
       ) : (
+        <div className="sp-policy-modal-backdrop">
+          <div className="sp-policy-modal">
+            <div className="sp-policy-modal-head">
+              <div><strong>{activePolicy ? "Edit Software Policy" : "Add New Software Policy"}</strong><small>Configure rule, select software, then save once.</small></div>
+              <div className="sp-top-actions"><button className="sp-btn secondary" type="button" onClick={() => setPolicyUiMode("list")}>Back to List</button><button className="sp-btn primary" type="button" onClick={savePolicy} disabled={saving}><Save size={15} /> Save Policy</button></div>
+            </div>
+            <div className="sp-policy-modal-body">
 `;
 
       next = next.replace(openMarker, listView + openMarker);
-      next = next.replace(closePattern, '        </main>\n      </div>\n      )}\n    </section>');
+      next = next.replace(closePattern, '        </main>\n      </div>\n            </div>\n          </div>\n        </div>\n      )}\n    </section>');
 
       return next === code ? null : { code: next, map: null };
     },
