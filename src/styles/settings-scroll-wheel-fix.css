@@ -1,0 +1,58 @@
+/* =========================================================
+   Settings scroll fix
+   ---------------------------------------------------------
+   Module Control by Role should scroll from anywhere inside
+   the card, not only when the user drags the scrollbar.
+========================================================= */
+
+body.ema-settings-page-active .ema-page {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: auto !important;
+  scrollbar-gutter: stable !important;
+}
+
+body.ema-settings-page-active .settings-view-settings,
+body.ema-settings-page-active .settings-view-settings .settings-view-host,
+body.ema-settings-page-active .settings-view-settings .settings-module-root,
+body.ema-settings-page-active .settings-view-settings .settings-layout,
+body.ema-settings-page-active .settings-view-settings .settings-content {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+body.ema-settings-page-active .settings-view-settings .settings-layout {
+  align-items: stretch !important;
+}
+
+body.ema-settings-page-active .settings-view-settings .settings-menu {
+  align-self: stretch !important;
+}
+
+body.ema-settings-page-active .settings-view-settings .content-shell,
+body.ema-settings-page-active .settings-view-settings .content-body,
+body.ema-settings-page-active .settings-view-settings .modules-content-shell,
+body.ema-settings-page-active .settings-view-settings .modules-content-shell .content-body,
+body.ema-settings-page-active .settings-view-settings .module-control-panel {
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+body.ema-settings-page-active .settings-view-settings .module-control-table {
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  overscroll-behavior: auto !important;
+  scrollbar-gutter: stable !important;
+  padding-bottom: 0.25rem !important;
+}
+
+body.ema-settings-page-active .settings-view-settings .module-control-table .module-control-row,
+body.ema-settings-page-active .settings-view-settings .module-control-table .module-control-group-row {
+  min-width: max-content !important;
+}
