@@ -38,8 +38,9 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
 
     const rows = Array.isArray(payload?.data) ? payload.data as Record<string, unknown>[] : [];
     const policyLegalSoftware = rows.reduce((sum, row) => sum + numberOrFallback(row.LegalCount ?? row.legalCount), 0);
-    const policyIllegalSoftware = rows.reduce((sum, row) => sum + numberOrFallback(row.IllegalCount ?? row.illegalCount), 0);
-    const policyTotalSoftware = rows.reduce((sum, row) => sum + numberOrFallback(row.TotalItems ?? row.totalItems), 0) || policyLegalSoftware + policyIllegalSoftware;
+    const explicitIllegalSoftware = rows.reduce((sum, row) => sum + numberOrFallback(row.IllegalCount ?? row.illegalCount), 0);
+    const policyTotalSoftware = rows.reduce((sum, row) => sum + numberOrFallback(row.TotalItems ?? row.totalItems), 0) || policyLegalSoftware + explicitIllegalSoftware;
+    const policyIllegalSoftware = Math.max(0, policyTotalSoftware - policyLegalSoftware);
     const policyLicenseTotal = rows.reduce((sum, row) => sum + numberOrFallback(row.LicenseTotal ?? row.licenseTotal), 0);
 
     return {
@@ -85,7 +86,8 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
 
       const policyDonutAnchor = "  const getSoftwareClassificationGraphRows = () => {";
       const policyDonutHelper = `  const renderSoftwarePolicyDonut = (items: { label: string; value: number; target: string; note: string; tone: CardTone }[], total: number) => {
-    const safeTotal = Math.max(1, total || items.reduce((sum, item) => sum + numberOrFallback(item.value), 0));
+    const displayTotal = Math.max(0, total || items.reduce((sum, item) => sum + numberOrFallback(item.value), 0));
+    const safeTotal = Math.max(1, displayTotal);
     let cursor = 0;
     const gradientParts = items.map((item) => {
       const value = numberOrFallback(item.value);
@@ -95,17 +97,17 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
       return toneSolid(item.tone) + ' ' + start + 'deg ' + end + 'deg';
     }).join(', ');
     const illegalCount = numberOrFallback(items.find((item) => item.target === 'Illegal Software')?.value, 0);
-    const illegalShare = (illegalCount / safeTotal) * 100;
+    const illegalShare = displayTotal > 0 ? (illegalCount / safeTotal) * 100 : 0;
 
     return (
       <div style={{ display: 'grid', gridTemplateColumns: '180px minmax(0, 1fr)', gap: 18, alignItems: 'center' }}>
         <button type="button" onClick={() => openLevel3('software', illegalCount > 0 ? 'Illegal Software' : 'Legal Software')} style={{ width: 170, height: 170, border: '1px solid #e2e8f0', borderRadius: '50%', background: 'conic-gradient(' + (gradientParts || '#e2e8f0 0deg 360deg') + ')', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: '0 18px 45px rgba(15,23,42,.10)' }}>
-          <span style={{ width: 104, height: 104, borderRadius: '50%', background: '#fff', display: 'grid', placeItems: 'center', textAlign: 'center', boxShadow: 'inset 0 0 0 1px #e2e8f0' }}><strong style={{ display: 'block', fontSize: 25, lineHeight: 1, fontWeight: 950, color: '#0f172a' }}>{formatNumber(safeTotal)}</strong><small style={{ color: '#64748b', fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.08em' }}>Policy</small></span>
+          <span style={{ width: 104, height: 104, borderRadius: '50%', background: '#fff', display: 'grid', placeItems: 'center', textAlign: 'center', boxShadow: 'inset 0 0 0 1px #e2e8f0' }}><strong style={{ display: 'block', fontSize: 25, lineHeight: 1, fontWeight: 950, color: '#0f172a' }}>{formatNumber(displayTotal)}</strong><small style={{ color: '#64748b', fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.08em' }}>Policy</small></span>
         </button>
         <div style={{ display: 'grid', gap: 9 }}>
           {items.map((item) => {
             const value = numberOrFallback(item.value);
-            const share = (value / safeTotal) * 100;
+            const share = displayTotal > 0 ? (value / safeTotal) * 100 : 0;
             return (
               <button key={item.label} type="button" onClick={() => openLevel3('software', item.target)} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center', border: '1px solid #e2e8f0', borderRadius: 14, background: '#fff', padding: '10px 12px', cursor: 'pointer', color: '#0f172a', textAlign: 'left' }}>
                 <span style={{ minWidth: 0 }}><strong style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 950 }}><i style={{ width: 9, height: 9, borderRadius: 999, background: toneSolid(item.tone) }} />{item.label}</strong><small style={{ display: 'block', marginTop: 3, color: '#64748b', fontSize: 10, fontWeight: 800 }}>{item.note} · {formatPercent(share, 1)}</small></span>
@@ -114,7 +116,7 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
             );
           })}
         </div>
-        <div style={{ gridColumn: '1 / -1', border: '1px solid #dbeafe', borderRadius: 14, background: '#eff6ff', color: '#1d4ed8', padding: '9px 12px', fontSize: 11, fontWeight: 850 }}>Illegal share: {formatPercent(illegalShare, 1)} based on Software Policy rules.</div>
+        <div style={{ gridColumn: '1 / -1', border: '1px solid #dbeafe', borderRadius: 14, background: '#eff6ff', color: '#1d4ed8', padding: '9px 12px', fontSize: 11, fontWeight: 850 }}>Only software classified as Legal is legal. All other policy software is treated as illegal.</div>
       </div>
     );
   };
@@ -132,11 +134,12 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
     ];`;
       const newPolicyRows = `    const softwarePolicy = software as SoftwareSummary & Record<string, unknown>;
     const policyLegalSoftware = numberOrFallback(softwarePolicy.policyLegalSoftware ?? softwarePolicy.legalSoftware ?? softwarePolicy.LegalCount, 0);
-    const policyIllegalSoftware = numberOrFallback(softwarePolicy.policyIllegalSoftware ?? softwarePolicy.illegalSoftware ?? softwarePolicy.IllegalCount, 0);
-    const policyTotalSoftware = Math.max(policyLegalSoftware + policyIllegalSoftware, numberOrFallback(softwarePolicy.policyTotalSoftware ?? softwarePolicy.totalPolicySoftware, 0), 1);
+    const explicitPolicyIllegalSoftware = numberOrFallback(softwarePolicy.policyIllegalSoftware ?? softwarePolicy.illegalSoftware ?? softwarePolicy.IllegalCount, 0);
+    const policyTotalSoftware = Math.max(numberOrFallback(softwarePolicy.policyTotalSoftware ?? softwarePolicy.totalPolicySoftware, 0), policyLegalSoftware + explicitPolicyIllegalSoftware);
+    const policyIllegalSoftware = Math.max(0, policyTotalSoftware - policyLegalSoftware);
     const policyRows = [
-      { label: 'Legal Software', target: 'Legal Software', note: 'Allowed by Software Policy', tone: 'green' as CardTone, value: policyLegalSoftware },
-      { label: 'Illegal Software', target: 'Illegal Software', note: 'Blocked or not allowed by Software Policy', tone: 'red' as CardTone, value: policyIllegalSoftware },
+      { label: 'Legal Software', target: 'Legal Software', note: 'Explicitly classified Legal by Software Policy', tone: 'green' as CardTone, value: policyLegalSoftware },
+      { label: 'Illegal Software', target: 'Illegal Software', note: 'Not classified Legal or marked Illegal', tone: 'red' as CardTone, value: policyIllegalSoftware },
     ];`;
       next = next.split(oldLifecycleRows).join(newPolicyRows);
 
@@ -150,7 +153,7 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
         </div>`;
 
       const newSoftwareLevelTwoGrid = `        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
-          <Panel title="Software Lifecycle and Policies" subtitle="Legal and illegal software totals are read from Software Policy rules." icon={ShieldCheck}>{renderSoftwarePolicyDonut(policyRows, policyTotalSoftware)}</Panel>
+          <Panel title="Software Lifecycle and Policies" subtitle="Only software classified as Legal is counted as legal. All other policy software is illegal." icon={ShieldCheck}>{renderSoftwarePolicyDonut(policyRows, policyTotalSoftware)}</Panel>
           <Panel title="Software Governance Balance" subtitle="Shows the relationship between classified inventory, cleanup backlog and lifecycle risk." icon={Gauge}>{renderSoftwareHorizontalBars(governanceRows, totalInstallations)}</Panel>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
