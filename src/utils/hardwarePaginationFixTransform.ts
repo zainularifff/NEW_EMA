@@ -150,6 +150,21 @@ const HARDWARE_PAGINATION_FIX = String.raw`        .hardware-module-root .hardwa
           }
         }`;
 
+const usageRuleFields = `                  <label className="sp-field"><span>Work start</span><input type="time" value={ruleForm.workingStartTime} onChange={(e) => setRuleForm((c) => ({ ...c, workingStartTime: e.target.value }))} /></label>
+                  <label className="sp-field"><span>Work end</span><input type="time" value={ruleForm.workingEndTime} onChange={(e) => setRuleForm((c) => ({ ...c, workingEndTime: e.target.value }))} /></label>
+                  <label className="sp-field"><span>Utilized if at least hour/day</span><input type="number" min="0" step="0.25" value={ruleForm.utilizedHours} onChange={(e) => setRuleForm((c) => ({ ...c, utilizedHours: e.target.value }))} /></label>
+                  <label className="sp-field"><span>Open count/day</span><input type="number" min="0" value={ruleForm.openCountThreshold} onChange={(e) => setRuleForm((c) => ({ ...c, openCountThreshold: e.target.value }))} /></label>
+                  <label className="sp-field full"><span>Note</span><textarea value={ruleForm.description} onChange={(e) => setRuleForm((c) => ({ ...c, description: e.target.value }))} placeholder="Optional note" /></label>`;
+
+function removeUsageRuleFieldsFromSetup(code: string) {
+  return code
+    .replace(/\s*<label className="sp-field"><span>Work start<\/span>[\s\S]*?<\/label>/g, '')
+    .replace(/\s*<label className="sp-field"><span>Work end<\/span>[\s\S]*?<\/label>/g, '')
+    .replace(/\s*<label className="sp-field"><span>Utilized if at least hour\/day<\/span>[\s\S]*?<\/label>/g, '')
+    .replace(/\s*<label className="sp-field"><span>Open count\/day<\/span>[\s\S]*?<\/label>/g, '')
+    .replace(/\s*<label className="sp-field full"><span>Note<\/span>[\s\S]*?<\/label>/g, '');
+}
+
 function patchSoftwareRegistrySettings(code: string) {
   let next = code;
 
@@ -209,23 +224,24 @@ function patchSoftwareRegistrySettings(code: string) {
     '<div className="sp-selected-box">{selectedRows.length ? "1 software selected" : "No software selected"}</div>'
   );
 
-  const workRuleFields = `                  <label className="sp-field"><span>Work start</span><input type="time" value={ruleForm.workingStartTime} onChange={(e) => setRuleForm((c) => ({ ...c, workingStartTime: e.target.value }))} /></label>
-                  <label className="sp-field"><span>Work end</span><input type="time" value={ruleForm.workingEndTime} onChange={(e) => setRuleForm((c) => ({ ...c, workingEndTime: e.target.value }))} /></label>
-                  <label className="sp-field"><span>Utilized if at least hour/day</span><input type="number" min="0" step="0.25" value={ruleForm.utilizedHours} onChange={(e) => setRuleForm((c) => ({ ...c, utilizedHours: e.target.value }))} /></label>
-                  <label className="sp-field"><span>Open count/day</span><input type="number" min="0" value={ruleForm.openCountThreshold} onChange={(e) => setRuleForm((c) => ({ ...c, openCountThreshold: e.target.value }))} /></label>
-                  <label className="sp-field full"><span>Note</span><textarea value={ruleForm.description} onChange={(e) => setRuleForm((c) => ({ ...c, description: e.target.value }))} placeholder="Optional note" /></label>`;
+  const hadUsageFields = /<span>Work start<\/span>|<span>Work end<\/span>|<span>Utilized if at least hour\/day<\/span>|<span>Open count\/day<\/span>|<span>Note<\/span>/.test(next);
+  next = removeUsageRuleFieldsFromSetup(next);
 
-  if (next.includes(workRuleFields)) {
-    next = next.replace(workRuleFields, '');
+  if (hadUsageFields && !next.includes('<span>Utilized if at least hour/day</span>')) {
     next = next.replace(
-      '                  <label className="sp-field"><span>End date</span><input type="date" value={softwareForm.licenseEndDate} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseEndDate: e.target.value }))} /></label>\n                </div>',
-      '                  <label className="sp-field"><span>End date</span><input type="date" value={softwareForm.licenseEndDate} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseEndDate: e.target.value }))} /></label>\n' + workRuleFields + '\n                </div>'
+      /(<label className="sp-field"><span>End date<\/span>[\s\S]*?<\/label>)/,
+      '$1\n' + usageRuleFields
+    );
+  } else if (hadUsageFields && !next.includes('Legal status, license expiry and utilization rule.')) {
+    next = next.replace(
+      /(<label className="sp-field"><span>End date<\/span>[\s\S]*?<\/label>)/,
+      '$1\n' + usageRuleFields
     );
   }
 
   next = next.replace(
-    '                  <span className="sp-help">Monday to Friday. ≥ {ruleForm.utilizedHours || 2} hour/day = utilized, below that = underutilized, no activity = not used.</span>',
-    '                  <span className="sp-help">Select one inventory software, then complete classification, license and usage rules below.</span>'
+    '<span className="sp-help">Monday to Friday. ≥ {ruleForm.utilizedHours || 2} hour/day = utilized, below that = underutilized, no activity = not used.</span>',
+    '<span className="sp-help">Select one inventory software, then complete classification, license and usage rules below.</span>'
   );
 
   next = next.replace(
@@ -233,39 +249,19 @@ function patchSoftwareRegistrySettings(code: string) {
     '.sp-software-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,320px) auto;'
   );
 
-  next = next.replace(
-    '<div className="sp-section-title"><strong>2. Classification & license</strong><small>Apply this to selected software.</small></div>',
-    '<div className="sp-section-title"><strong>2. Classification, license & usage rules</strong><small>Legal status, license expiry and utilization rule.</small></div>'
+  next = next.replace(/<strong>\d+\.\s*Classification(?: & license|, license & usage rules)<\/strong><small>[\s\S]*?<\/small>/g,
+    '<strong>2. Classification, license & usage rules</strong><small>Legal status, license expiry and utilization rule.</small>'
   );
 
-  next = next.replace(
-    '<div className="sp-section-title"><strong>3. Classification & license</strong><small>Apply legal status and license details after selecting mapped software.</small></div>',
-    '<div className="sp-section-title"><strong>2. Classification, license & usage rules</strong><small>Legal status, license expiry and utilization rule.</small></div>'
+  next = next.replace(/<strong>\d+\.\s*(?:Select software|Map with inventory software)<\/strong><small>[\s\S]*?<\/small>/g,
+    '<strong>Inventory software mapping</strong><small>Select exactly one inventory software under the selected category.</small>'
   );
 
-  next = next.replace(
-    '<div className="sp-section-title"><strong>3. Classification, license & usage rules</strong><small>Legal status, license expiry and utilization rule.</small></div>',
-    '<div className="sp-section-title"><strong>2. Classification, license & usage rules</strong><small>Legal status, license expiry and utilization rule.</small></div>'
-  );
-
-  next = next.replace(
-    '<div className="sp-section-title"><strong>2. Map with inventory software</strong><small>Choose existing software from the selected category. If the category is Other, save custom registry details first.</small></div>',
-    '<div className="sp-section-title"><strong>Inventory software mapping</strong><small>Select exactly one inventory software under the selected category.</small></div>'
-  );
-
-  next = next.replace(
-    /\s*<section className="sp-section">\s*<div className="sp-section-title"><strong>4\. Saved mapped software<\/strong><small>Software already assigned to this registry\.<\/small><\/div>[\s\S]*?<\/section>/,
-    ''
-  );
-
-  next = next.replace(
-    /\s*<section className="sp-section">\s*<div className="sp-section-title"><strong>Saved software<\/strong><small>Software already assigned to this rule\.<\/small><\/div>[\s\S]*?<\/section>/,
-    ''
-  );
+  next = next.replace(/\s*<section className="sp-section">\s*<div className="sp-section-title"><strong>(?:4\. Saved mapped software|Saved software)<\/strong><small>[\s\S]*?<\/small><\/div>[\s\S]*?<\/section>/g, '');
 
   next = next.replace(
     '<style>{INLINE_CSS}</style>',
-    '<style>{INLINE_CSS}{`\nbody.ema-settings-page-active .software-policy-module .sp-policy-modal .sp-software-area > .sp-section:last-child{display:none!important;}\nbody.ema-settings-page-active .software-policy-module .sp-policy-modal .sp-software-area{grid-template-columns:minmax(0,1fr)!important;}\nbody.ema-settings-page-active .software-policy-module .sp-policy-modal .sp-setup{grid-template-columns:minmax(0,1fr)!important;}\n`}</style>'
+    '<style>{INLINE_CSS}{`\nbody.ema-settings-page-active .software-policy-module .sp-policy-modal .sp-software-area > .sp-section:last-child:has(.sp-saved){display:none!important;}\nbody.ema-settings-page-active .software-policy-module .sp-policy-modal .sp-software-area{grid-template-columns:minmax(0,1fr)!important;}\nbody.ema-settings-page-active .software-policy-module .sp-policy-modal .sp-setup{grid-template-columns:minmax(0,1fr)!important;}\n`}</style>'
   );
 
   return next;
