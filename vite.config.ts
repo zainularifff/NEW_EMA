@@ -151,6 +151,8 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
       const policyDonutHelper = `  const renderSoftwarePolicyDonut = (items: { label: string; value: number; target: string; note: string; tone: CardTone }[], total: number) => {
     const displayTotal = Math.max(0, total || items.reduce((sum, item) => sum + numberOrFallback(item.value), 0));
     const safeTotal = Math.max(1, displayTotal);
+    const legalCount = numberOrFallback(items.find((item) => item.target === 'Legal Software')?.value, 0);
+    const complianceRate = displayTotal > 0 ? (legalCount / safeTotal) * 100 : 0;
     let cursor = 0;
     const gradientParts = items.map((item) => {
       const value = numberOrFallback(item.value);
@@ -164,7 +166,7 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
     return (
       <div style={{ display: 'grid', gridTemplateColumns: '180px minmax(0, 1fr)', gap: 18, alignItems: 'center' }}>
         <button type="button" onClick={() => openLevel3('software', illegalCount > 0 ? 'Illegal Software' : 'Legal Software')} style={{ width: 170, height: 170, border: '1px solid #e2e8f0', borderRadius: '50%', background: 'conic-gradient(' + (gradientParts || '#e2e8f0 0deg 360deg') + ')', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: '0 18px 45px rgba(15,23,42,.10)' }}>
-          <span style={{ width: 104, height: 104, borderRadius: '50%', background: '#fff', display: 'grid', placeItems: 'center', textAlign: 'center', boxShadow: 'inset 0 0 0 1px #e2e8f0' }}><span><strong style={{ display: 'block', fontSize: 24, lineHeight: 1, fontWeight: 950, color: '#0f172a' }}>{formatNumber(displayTotal)}</strong><small style={{ display: 'block', marginTop: 7, color: '#64748b', fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.05em' }}>Total</small></span></span>
+          <span style={{ width: 104, height: 104, borderRadius: '50%', background: '#fff', display: 'grid', placeItems: 'center', textAlign: 'center', boxShadow: 'inset 0 0 0 1px #e2e8f0' }}><span><strong style={{ display: 'block', fontSize: 24, lineHeight: 1, fontWeight: 950, color: '#0f172a' }}>{formatPercent(complianceRate, 0)}</strong><small style={{ display: 'block', marginTop: 7, color: '#64748b', fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.05em' }}>Legal</small></span></span>
         </button>
         <div style={{ display: 'grid', gap: 9 }}>
           {items.map((item) => {
@@ -178,7 +180,7 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
             );
           })}
         </div>
-        <div style={{ gridColumn: '1 / -1', border: '1px solid #dbeafe', borderRadius: 14, background: '#eff6ff', color: '#1d4ed8', padding: '9px 12px', fontSize: 11, fontWeight: 850 }}>Only software listed in Software Policy and classified as Legal is legal. All other discovered software is treated as illegal.</div>
+        <div style={{ gridColumn: '1 / -1', border: '1px solid #dbeafe', borderRadius: 14, background: '#eff6ff', color: '#1d4ed8', padding: '9px 12px', fontSize: 11, fontWeight: 850 }}>Compliance rate = Legal Software / Total Software Asset. Only software listed in Software Policy and classified as Legal is counted legal.</div>
       </div>
     );
   };
@@ -218,7 +220,7 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
         </div>`;
 
       const newSoftwareLevelTwoGrid = `        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
-          <Panel title="Software Lifecycle and Policies" subtitle="Only software recorded in Software Policy as Legal is counted legal. All unlisted software is illegal." icon={ShieldCheck}>{renderSoftwarePolicyDonut(policyRows, policyTotalSoftware)}</Panel>
+          <Panel title="Software Compliance Rate (%)" subtitle="Peratusan perisian legal berdasarkan Software Policy. Contoh: 92% Legal." icon={ShieldCheck}>{renderSoftwarePolicyDonut(policyRows, policyTotalSoftware)}</Panel>
           <Panel title="Software Governance Balance" subtitle="Shows the relationship between classified inventory, cleanup backlog and lifecycle risk." icon={Gauge}>{renderSoftwareHorizontalBars(governanceRows, totalInstallations)}</Panel>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
