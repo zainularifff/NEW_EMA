@@ -156,13 +156,20 @@ const usageRuleFields = `                  <label className="sp-field"><span>Wor
                   <label className="sp-field"><span>Open count/day</span><input type="number" min="0" value={ruleForm.openCountThreshold} onChange={(e) => setRuleForm((c) => ({ ...c, openCountThreshold: e.target.value }))} /></label>
                   <label className="sp-field full"><span>Note</span><textarea value={ruleForm.description} onChange={(e) => setRuleForm((c) => ({ ...c, description: e.target.value }))} placeholder="Optional note" /></label>`;
 
-function removeUsageRuleFieldsFromSetup(code: string) {
+function removeUsageRuleFields(code: string) {
   return code
     .replace(/\s*<label className="sp-field"><span>Work start<\/span>[\s\S]*?<\/label>/g, '')
     .replace(/\s*<label className="sp-field"><span>Work end<\/span>[\s\S]*?<\/label>/g, '')
     .replace(/\s*<label className="sp-field"><span>Utilized if at least hour\/day<\/span>[\s\S]*?<\/label>/g, '')
     .replace(/\s*<label className="sp-field"><span>Open count\/day<\/span>[\s\S]*?<\/label>/g, '')
     .replace(/\s*<label className="sp-field full"><span>Note<\/span>[\s\S]*?<\/label>/g, '');
+}
+
+function removeSavedMappedSoftwareSection(code: string) {
+  return code.replace(
+    /\s*<section className="sp-section">\s*<div className="sp-section-title"><strong>(?:4\. Saved mapped software|Saved software)<\/strong><small>[\s\S]*?<\/small><\/div>[\s\S]*?<\/section>/g,
+    ''
+  );
 }
 
 function patchSoftwareRegistrySettings(code: string) {
@@ -224,15 +231,9 @@ function patchSoftwareRegistrySettings(code: string) {
     '<div className="sp-selected-box">{selectedRows.length ? "1 software selected" : "No software selected"}</div>'
   );
 
-  const hadUsageFields = /<span>Work start<\/span>|<span>Work end<\/span>|<span>Utilized if at least hour\/day<\/span>|<span>Open count\/day<\/span>|<span>Note<\/span>/.test(next);
-  next = removeUsageRuleFieldsFromSetup(next);
+  next = removeUsageRuleFields(next);
 
-  if (hadUsageFields && !next.includes('<span>Utilized if at least hour/day</span>')) {
-    next = next.replace(
-      /(<label className="sp-field"><span>End date<\/span>[\s\S]*?<\/label>)/,
-      '$1\n' + usageRuleFields
-    );
-  } else if (hadUsageFields && !next.includes('Legal status, license expiry and utilization rule.')) {
+  if (!next.includes('<span>Utilized if at least hour/day</span>')) {
     next = next.replace(
       /(<label className="sp-field"><span>End date<\/span>[\s\S]*?<\/label>)/,
       '$1\n' + usageRuleFields
@@ -242,6 +243,11 @@ function patchSoftwareRegistrySettings(code: string) {
   next = next.replace(
     '<span className="sp-help">Monday to Friday. ≥ {ruleForm.utilizedHours || 2} hour/day = utilized, below that = underutilized, no activity = not used.</span>',
     '<span className="sp-help">Select one inventory software, then complete classification, license and usage rules below.</span>'
+  );
+
+  next = next.replace(
+    '<span className="sp-help">Use the Save Registry button at the top to save registry details and selected software.</span>',
+    '<span className="sp-help">Choose a category, map one software, then complete classification and license details below.</span>'
   );
 
   next = next.replace(
@@ -257,7 +263,7 @@ function patchSoftwareRegistrySettings(code: string) {
     '<strong>Inventory software mapping</strong><small>Select exactly one inventory software under the selected category.</small>'
   );
 
-  next = next.replace(/\s*<section className="sp-section">\s*<div className="sp-section-title"><strong>(?:4\. Saved mapped software|Saved software)<\/strong><small>[\s\S]*?<\/small><\/div>[\s\S]*?<\/section>/g, '');
+  next = removeSavedMappedSoftwareSection(next);
 
   next = next.replace(
     '<style>{INLINE_CSS}</style>',
@@ -271,14 +277,14 @@ export function hardwarePaginationFixTransform(): Plugin {
   return {
     name: 'hardware-pagination-fix-transform',
     transform(code, id) {
-      const normalizedId = id.replace(/\\/g, '/');
+      const normalizedId = id.replace(/\\/g, '/').split('?')[0];
 
-      if (normalizedId.endsWith('/src/pages/SettingsWithNotifications.tsx')) {
+      if (normalizedId.includes('/src/pages/SettingsWithNotifications.tsx')) {
         const next = patchSoftwareRegistrySettings(code);
         return next === code ? null : { code: next, map: null };
       }
 
-      if (!normalizedId.endsWith('/src/pages/Hardware.tsx')) return null;
+      if (!normalizedId.includes('/src/pages/Hardware.tsx')) return null;
 
       let next = code;
 
