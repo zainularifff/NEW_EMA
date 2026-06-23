@@ -150,90 +150,12 @@ const HARDWARE_PAGINATION_FIX = String.raw`        .hardware-module-root .hardwa
           }
         }`;
 
-const SOFTWARE_REGISTRY_FLOW_CSS = String.raw`
-body.ema-settings-page-active .software-policy-module .sp-map-field{display:none!important;}
-body.ema-settings-page-active .software-policy-module .sp-map-block{display:block!important;margin-top:10px!important;border-radius:14px!important;}
-body.ema-settings-page-active .software-policy-module .sp-map-block .sp-section-title{padding:10px 12px!important;background:#f8fbff!important;}
-body.ema-settings-page-active .software-policy-module .sp-map-block .sp-section-body{padding:12px!important;}
-body.ema-settings-page-active .software-policy-module .sp-map-block .sp-table{min-height:170px!important;max-height:235px!important;}
-body.ema-settings-page-active .software-policy-module .sp-map-block .sp-row{min-height:48px!important;}
-body.ema-settings-page-active .software-policy-module .sp-map-block .sp-empty{min-height:120px!important;}
-body.ema-settings-page-active .software-policy-module .sp-policy-modal{height:min(92vh,940px)!important;}
-`;
-
-function patchSoftwareRegistryFlow(code: string) {
-  let next = code;
-  if (!next.includes('function SoftwareRegistryManagement()')) return code;
-
-  next = next.replace(
-    '    if (uiMode !== "form" || !ruleForm.categoryId || ruleForm.categoryId === "__other__") {',
-    '    if (uiMode !== "form" || !ruleForm.categoryId || ruleForm.categoryId === "__other__" || !ruleForm.publisher) {'
-  );
-
-  next = next.replace(
-    '<label className="sp-field"><span>Publisher</span><select value={ruleForm.publisher} onChange={(e) => setRuleForm((c) => ({ ...c, publisher: e.target.value }))} disabled={!ruleForm.categoryId || ruleForm.categoryId === "__other__"}><option value="">Select publisher after category</option>{publishers.map((row) => <option key={row.Publisher} value={row.Publisher}>{row.Publisher}</option>)}</select></label>',
-    '<label className="sp-field"><span>Publisher</span><select value={ruleForm.publisher} onChange={(e) => { setRuleForm((c) => ({ ...c, publisher: e.target.value })); setSelectedKeys(new Set()); setSoftwareRows([]); }} disabled={!ruleForm.categoryId || ruleForm.categoryId === "__other__"}><option value="">Select publisher after category</option>{publishers.map((row) => <option key={row.Publisher} value={row.Publisher}>{row.Publisher}</option>)}</select></label>'
-  );
-
-  next = next.replace(
-    `    if (selectedRows.length === 0) {
-      await loadPolicies();
-      setUiMode("list");
-      return;
-    }`,
-    `    if (selectedRows.length === 0) {
-      setMessage({ type: "error", text: "Select one inventory software before saving this registry." });
-      return;
-    }`
-  );
-
-  next = next.replace(
-    '<div className="sp-selected-box">{selectedRows.length ? "1 software selected" : "No software selected"}</div>',
-    '<div className="sp-selected-box">{selectedRows.length ? `Selected: ${selectedRows[0]?.SoftwareName || "1 software"}` : "No software selected"}</div>'
-  );
-
-  next = next.replace(
-    '<small>Choose category, select publisher, map one inventory software, then complete license and usage rules.</small>',
-    '<small>Create one software registry, map one inventory software, then enter license and usage rules.</small>'
-  );
-
-  next = next.replace(
-    '<div className="sp-section-title"><strong>Inventory software mapping</strong><small>Select exactly one software from inventory after choosing category and publisher.</small></div>',
-    '<div className="sp-section-title"><strong>Inventory software list</strong><small>After category and publisher are selected, choose one software only.</small></div>'
-  );
-
-  next = next.replace(
-    '<span className="sp-help">Select one inventory software that matches this registry.</span>',
-    '<span className="sp-help">Choose one software from this list. One registry cannot map more than one software.</span>'
-  );
-
-  next = next.replace(
-    '<div className="sp-empty">Select category and publisher to display software list.</div>',
-    '<div className="sp-empty">Select category and publisher first. Software list will appear here.</div>'
-  );
-
-  if (!next.includes(SOFTWARE_REGISTRY_FLOW_CSS.trim())) {
-    next = next.replace(
-      '<style>{INLINE_CSS}</style>',
-      '<style>{INLINE_CSS}{`\n' + SOFTWARE_REGISTRY_FLOW_CSS.replace(/`/g, '\\`') + '\n`}</style>'
-    );
-  }
-
-  return next;
-}
-
 export function hardwarePaginationFixTransform(): Plugin {
   return {
     name: 'hardware-pagination-fix-transform',
     enforce: 'pre',
     transform(code, id) {
       const normalizedId = id.replace(/\\/g, '/').split('?')[0];
-
-      if (normalizedId.endsWith('/src/pages/SettingsWithNotifications.tsx')) {
-        const next = patchSoftwareRegistryFlow(code);
-        return next === code ? null : { code: next, map: null };
-      }
-
       if (!normalizedId.endsWith('/src/pages/Hardware.tsx')) return null;
 
       let next = code;
