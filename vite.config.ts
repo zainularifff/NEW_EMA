@@ -124,6 +124,11 @@ function softwarePolicyListFirstPatch() {
       );
 
       next = next.replace(
+        '  useEffect(() => { void loadBase(); }, [loadBase]);',
+        '  useEffect(() => { void loadBase(); }, [loadBase]);\n\n  useEffect(() => {\n    if (policyUiMode === "list") void loadPolicies();\n  }, [policyUiMode, loadPolicies]);'
+      );
+
+      next = next.replace(
         '    setMessage({ type: "info", text: "Create a rule, choose category, then select software." });\n  };',
         '    setPolicyUiMode("form");\n    setMessage({ type: "info", text: "Create a rule, choose category, then select software." });\n  };'
       );
@@ -169,12 +174,12 @@ function softwarePolicyListFirstPatch() {
             </div>
             <div className="sp-section-body">
               <div className="sp-action-row" style={{ marginTop: 0, marginBottom: 12, justifyContent: "space-between" }}>
-                <span className="sp-help">{policies.length} rule(s) configured</span>
+                <span className="sp-help">{loading ? "Loading rules..." : policies.length + " rule(s) configured"}</span>
                 <button className="sp-icon" type="button" onClick={loadBase} disabled={loading} title="Refresh"><RefreshCw size={15} /></button>
               </div>
               <div className="sp-policy-table-wrap">
                 <div className="sp-policy-table-row head"><span>Rule</span><span>Category</span><span>Software</span><span>Legal</span><span>Illegal</span><span>License</span><span>Work hours</span><span>Action</span></div>
-                {policies.length === 0 ? <div className="sp-empty">No software policy yet. Click Add New to create the first rule.</div> : policies.map((policy) => (
+                {loading ? <div className="sp-empty">Loading software policy rules...</div> : policies.length === 0 ? <div className="sp-empty">No software policy returned from API. Click refresh or check backend /api/settings/software-policy/policies.</div> : policies.map((policy) => (
                   <div key={policy.PolicyID} className="sp-policy-table-row">
                     <span><strong>{policy.PolicyName}</strong><small>{policy.Description || "No note"}</small></span>
                     <span>{policy.CategoryName || "No category"}</span>
