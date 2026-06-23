@@ -4,45 +4,23 @@ import { itopsSoftwareDrilldownTransform } from './src/utils/itopsSoftwareDrilld
 import { hardwarePaginationFixTransform } from './src/utils/hardwarePaginationFixTransform';
 import { dashboardFocusCardColorPatch, dashboardFocusCardOrderPatch, dashboardUiPatch } from './src/utils/dashboardUiPatches';
 
-function softwareLevel2PanelOrderPatch() {
+const isDashboardFile = (id: string) => id.replace(/\\/g, '/').endsWith('/src/pages/Dashboard.tsx');
+
+function softwareTrendRowsSafePatch() {
   return {
-    name: 'software-level-2-panel-order-patch',
+    name: 'software-trend-rows-safe-patch',
     enforce: 'pre' as const,
     transform(code: string, id: string) {
-      if (!id.replace(/\\/g, '/').endsWith('/src/pages/Dashboard.tsx')) return null;
+      if (!isDashboardFile(id)) return null;
 
-      const currentLayouts = [
-        `        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
-          <Panel title="Software Compliance Rate (%)" subtitle="Percentage of legal software based on Software Policy. Example: 92% Legal." icon={ShieldCheck}>{renderSoftwarePolicyDonut(policyRows, policyTotalSoftware)}</Panel>
-          <Panel title="Classification & Distribution" subtitle="Software Category Distribution and Top 5 Most Installed Software." icon={Layers3}>{renderSoftwareClassificationDistributionPanel(classificationRows.length ? classificationRows : software.topCategories.map((row) => ({ label: row.name, value: row.value, target: row.name, note: 'Software category', tone: 'blue' as CardTone })), totalInstallations, topInstalledRows)}</Panel>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
-          <Panel title="Security & Compliance" subtitle="Software Lifecycle Status and EOL/EOS breakdown." icon={ShieldAlert}>{renderSecurityCompliancePanel(lifecycleStatusRows)}</Panel>
-          <Panel title="Major Application EOL/EOS Watch" subtitle="Microsoft Office, Microsoft 365, Adobe, Google Chrome and Firefox coverage with click-through detail." icon={CalendarDays}>{renderSoftwareHorizontalBars(majorRows, totalInstallations)}</Panel>
-        </div>`,
-        `        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
-          <Panel title="Software Compliance Rate (%)" subtitle="Peratusan perisian legal berdasarkan Software Policy. Contoh: 92% Legal." icon={ShieldCheck}>{renderSoftwarePolicyDonut(policyRows, policyTotalSoftware)}</Panel>
-          <Panel title="Classification & Distribution" subtitle="Software Category Distribution dan Top 5 Most Installed Software." icon={Layers3}>{renderSoftwareClassificationDistributionPanel(classificationRows.length ? classificationRows : software.topCategories.map((row) => ({ label: row.name, value: row.value, target: row.name, note: 'Software category', tone: 'blue' as CardTone })), totalInstallations, topInstalledRows)}</Panel>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
-          <Panel title="Security & Compliance" subtitle="Software Lifecycle Status dan EOL/EOS breakdown." icon={ShieldAlert}>{renderSecurityCompliancePanel(lifecycleStatusRows)}</Panel>
-          <Panel title="Major Application EOL/EOS Watch" subtitle="Microsoft Office, Microsoft 365, Adobe, Google Chrome and Firefox coverage with click-through detail." icon={CalendarDays}>{renderSoftwareHorizontalBars(majorRows, totalInstallations)}</Panel>
-        </div>`,
-      ];
-
-      const requestedLayout = `        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
-          <Panel title="Software Compliance Rate (%)" subtitle="Percentage of legal software based on Software Policy. Example: 92% Legal." icon={ShieldCheck}>{renderSoftwarePolicyDonut(policyRows, policyTotalSoftware)}</Panel>
-          <Panel title="Security & Compliance" subtitle="Software Lifecycle Status and EOL/EOS breakdown." icon={ShieldAlert}>{renderSecurityCompliancePanel(lifecycleStatusRows)}</Panel>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
-          <Panel title="Classification & Distribution" subtitle="Software Category Distribution and Top 5 Most Installed Software." icon={Layers3}>{renderSoftwareClassificationDistributionPanel(classificationRows.length ? classificationRows : software.topCategories.map((row) => ({ label: row.name, value: row.value, target: row.name, note: 'Software category', tone: 'blue' as CardTone })), totalInstallations, topInstalledRows)}</Panel>
-          <Panel title="Major Application EOL/EOS Watch" subtitle="Microsoft Office, Microsoft 365, Adobe, Google Chrome and Firefox coverage with click-through detail." icon={CalendarDays}>{renderSoftwareHorizontalBars(majorRows, totalInstallations)}</Panel>
-        </div>`;
-
-      let next = code;
-      currentLayouts.forEach((layout) => {
-        next = next.split(layout).join(requestedLayout);
-      });
+      const from = `  const renderSoftwareTrendUtilizationPanel = () => {
+    const trendMap`;
+      const to = `  const renderSoftwareTrendUtilizationPanel = () => {
+    const rows = getSoftwareEvidenceRows();
+    const trendMap`;
+      const next = code.includes(from) && !code.includes('const rows = getSoftwareEvidenceRows();\n    const trendMap')
+        ? code.split(from).join(to)
+        : code;
 
       return next === code ? null : { code: next, map: null };
     },
@@ -54,7 +32,7 @@ function softwareComplianceDialUiPatch() {
     name: 'software-compliance-dial-ui-patch',
     enforce: 'pre' as const,
     transform(code: string, id: string) {
-      if (!id.replace(/\\/g, '/').endsWith('/src/pages/Dashboard.tsx')) return null;
+      if (!isDashboardFile(id)) return null;
 
       const start = code.indexOf('  const renderSoftwarePolicyDonut = (items: { label: string; value: number; target: string; note: string; tone: CardTone }[], total: number) => {');
       const end = start > -1 ? code.indexOf('\n\n  const renderSecurityCompliancePanel =', start) : -1;
@@ -105,81 +83,12 @@ function softwareComplianceDialUiPatch() {
   };
 }
 
-function softwareClassificationDistributionUiPatch() {
-  return {
-    name: 'software-classification-distribution-ui-patch',
-    enforce: 'pre' as const,
-    transform(code: string, id: string) {
-      if (!id.replace(/\\/g, '/').endsWith('/src/pages/Dashboard.tsx')) return null;
-
-      const start = code.indexOf('  const renderSoftwareClassificationDistributionPanel = (categoryItems:');
-      const end = start > -1 ? code.indexOf('\n\n  const getSoftwareClassificationGraphRows = () => {', start) : -1;
-      if (start < 0 || end < 0) return null;
-
-      const replacement = `  const renderSoftwareClassificationDistributionPanel = (categoryItems: { label: string; value: number; target: string; note: string; tone: CardTone }[], total: number, topInstalledItems: { label: string; value: number; target: string; note: string; tone: CardTone }[]) => {
-    const categoryTotal = Math.max(1, total || categoryItems.reduce((sum, item) => sum + numberOrFallback(item.value), 0));
-    const visibleCategories = categoryItems.slice(0, 6);
-    const topCategory = visibleCategories[0];
-    const topInstallMax = Math.max(1, ...topInstalledItems.map((item) => numberOrFallback(item.value)));
-    let categoryCursor = 0;
-    const categoryGradient = visibleCategories.length
-      ? visibleCategories.map((item) => {
-          const value = numberOrFallback(item.value);
-          const startDeg = categoryCursor;
-          const endDeg = categoryCursor + ((value / categoryTotal) * 360);
-          categoryCursor = endDeg;
-          return toneSolid(item.tone || 'blue') + ' ' + startDeg + 'deg ' + endDeg + 'deg';
-        }).join(', ')
-      : '#e2e8f0 0deg 360deg';
-
-    return (
-      <div style={{ display: 'grid', gap: 16 }}>
-        <section style={{ border: '1px solid #dbeafe', borderRadius: 22, padding: 16, background: 'linear-gradient(180deg, #ffffff, #f8fafc)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14 }}><div><strong style={{ display: 'block', color: '#0f172a', fontSize: 13, fontWeight: 950 }}>Software Category Distribution</strong><small style={{ display: 'block', marginTop: 3, color: '#64748b', fontWeight: 800 }}>Installation volume by category, such as Web Browser, Remote Control and Developer Tools.</small></div><span style={{ flex: '0 0 auto', borderRadius: 999, padding: '6px 10px', background: '#eff6ff', color: '#1d4ed8', fontSize: 10, fontWeight: 900 }}>{formatNumber(categoryTotal)} installs</span></div>
-          {visibleCategories.length ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '138px minmax(0, 1fr)', gap: 16, alignItems: 'center' }}>
-              <button type="button" onClick={() => openLevel3('software', topCategory?.target || topCategory?.label || '')} style={{ width: 136, height: 136, border: '1px solid #e2e8f0', borderRadius: '50%', background: 'conic-gradient(' + categoryGradient + ')', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: '0 14px 34px rgba(15,23,42,.10)' }}>
-                <span style={{ width: 82, height: 82, borderRadius: '50%', background: '#ffffff', display: 'grid', placeItems: 'center', textAlign: 'center', boxShadow: 'inset 0 0 0 1px #e2e8f0' }}><span><strong style={{ display: 'block', color: '#0f172a', fontSize: 20, fontWeight: 950 }}>{formatNumber(visibleCategories.length)}</strong><small style={{ display: 'block', marginTop: 4, color: '#64748b', fontSize: 9, fontWeight: 900, textTransform: 'uppercase' }}>Category</small></span></span>
-              </button>
-              <div style={{ display: 'grid', gap: 9 }}>
-                {visibleCategories.map((item) => {
-                  const value = numberOrFallback(item.value);
-                  const percent = (value / categoryTotal) * 100;
-                  return <button key={item.label} type="button" onClick={() => openLevel3('software', item.target || item.label)} style={{ border: '1px solid #e2e8f0', borderRadius: 14, background: '#ffffff', padding: '9px 11px', cursor: 'pointer', textAlign: 'left', color: '#0f172a' }}><span style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: 10 }}><strong style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, fontWeight: 950 }}><i style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 999, marginRight: 7, background: toneSolid(item.tone || 'blue') }} />{item.label}</strong><b style={{ fontSize: 12, fontWeight: 950 }}>{formatNumber(value)}</b></span><em style={{ display: 'block', height: 6, marginTop: 7, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden' }}><i style={{ display: 'block', height: '100%', width: String(Math.max(4, percent)) + '%', borderRadius: 999, background: toneSolid(item.tone || 'blue') }} /></em></button>;
-                })}
-              </div>
-            </div>
-          ) : <EmptyState label="No software category distribution yet." />}
-        </section>
-
-        <section style={{ border: '1px solid #e2e8f0', borderRadius: 22, padding: 16, background: 'linear-gradient(180deg, #ffffff, #f8fafc)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14 }}><div><strong style={{ display: 'block', color: '#0f172a', fontSize: 13, fontWeight: 950 }}>Top 5 Most Installed Software</strong><small style={{ display: 'block', marginTop: 3, color: '#64748b', fontWeight: 800 }}>Most common software titles installed across the environment.</small></div><span style={{ flex: '0 0 auto', borderRadius: 999, padding: '6px 10px', background: '#f8fafc', color: '#475569', fontSize: 10, fontWeight: 900 }}>Top 5</span></div>
-          {topInstalledItems.length ? (
-            <div style={{ display: 'grid', gap: 9 }}>
-              {topInstalledItems.slice(0, 5).map((item, index) => {
-                const value = numberOrFallback(item.value);
-                const percent = (value / topInstallMax) * 100;
-                return <button key={item.label} type="button" onClick={() => openLevel3('software', item.target || item.label)} style={{ display: 'grid', gridTemplateColumns: '34px minmax(0, 1fr) auto', alignItems: 'center', gap: 11, border: '1px solid #e2e8f0', borderRadius: 15, background: '#ffffff', padding: '10px 12px', cursor: 'pointer', color: '#0f172a', textAlign: 'left' }}><span style={{ width: 28, height: 28, borderRadius: 10, background: '#eff6ff', color: '#1d4ed8', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 950 }}>#{index + 1}</span><span style={{ minWidth: 0 }}><strong style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, fontWeight: 950 }}>{item.label}</strong><em style={{ display: 'block', height: 7, marginTop: 8, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden' }}><i style={{ display: 'block', height: '100%', width: String(Math.max(5, percent)) + '%', borderRadius: 999, background: 'linear-gradient(90deg, #2563eb, #06b6d4)' }} /></em></span><strong style={{ color: '#0f172a', fontSize: 15, fontWeight: 950 }}>{formatNumber(value)}</strong></button>;
-              })}
-            </div>
-          ) : <EmptyState label="No installed software ranking yet." />}
-        </section>
-      </div>
-    );
-  };`;
-
-      const next = code.slice(0, start) + replacement + code.slice(end);
-      return next === code ? null : { code: next, map: null };
-    },
-  };
-}
-
 function dashboardEnglishWordingPatch() {
   return {
     name: 'dashboard-english-wording-patch',
     enforce: 'pre' as const,
     transform(code: string, id: string) {
-      if (!id.replace(/\\/g, '/').endsWith('/src/pages/Dashboard.tsx')) return null;
+      if (!isDashboardFile(id)) return null;
 
       let next = code;
       const replacements: Array<[string, string]> = [
@@ -201,7 +110,17 @@ function dashboardEnglishWordingPatch() {
 }
 
 export default defineConfig({
-  plugins: [itopsSoftwareDrilldownTransform(), hardwarePaginationFixTransform(), dashboardUiPatch(), softwareComplianceDialUiPatch(), softwareClassificationDistributionUiPatch(), dashboardEnglishWordingPatch(), softwareLevel2PanelOrderPatch(), dashboardFocusCardOrderPatch(), dashboardFocusCardColorPatch(), react()],
+  plugins: [
+    itopsSoftwareDrilldownTransform(),
+    hardwarePaginationFixTransform(),
+    dashboardUiPatch(),
+    softwareTrendRowsSafePatch(),
+    softwareComplianceDialUiPatch(),
+    dashboardEnglishWordingPatch(),
+    dashboardFocusCardOrderPatch(),
+    dashboardFocusCardColorPatch(),
+    react(),
+  ],
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
