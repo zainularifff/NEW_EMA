@@ -140,7 +140,7 @@ function softwarePolicyListFirstPatch() {
 
       const openMarker = '      <div className="sp-layout">';
       const closePattern = /        <\/main>\r?\n      <\/div>\r?\n    <\/section>/;
-      if (!next.includes(openMarker) || !closePattern.test(next) || next.includes('sp-policy-table-screen')) {
+      if (!next.includes(openMarker) || !closePattern.test(next) || code.includes('<div className="sp-policy-table-screen">')) {
         return next === code ? null : { code: next, map: null };
       }
 
