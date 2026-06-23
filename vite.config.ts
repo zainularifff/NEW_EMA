@@ -245,6 +245,41 @@ function softwareRegistryWordingPatch() {
   };
 }
 
+function softwareRegistryActionIconsPatch() {
+  return {
+    name: 'software-registry-action-icons-patch',
+    enforce: 'pre' as const,
+    transform(code: string, id: string) {
+      if (!id.replace(/\\/g, '/').endsWith('/src/pages/SettingsWithNotifications.tsx')) return null;
+      let next = code;
+
+      next = next.replace(
+        'import { CheckCircle2, Gauge, Plus, RefreshCw, Save, Search, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";',
+        'import { CheckCircle2, Eye, Gauge, Pencil, Plus, RefreshCw, Save, Search, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";'
+      );
+
+      next = next.replace(
+        '  const removePolicyItem = async (item: PolicyItem) => {',
+        '  const deleteRegistryPolicy = async (policy: PolicyRow) => {\n    if (!window.confirm(`Delete ${policy.PolicyName}?`)) return;\n    try {\n      await api.delete(`${API_ROOT}/policies/${policy.PolicyID}`);\n      if (activePolicyId === policy.PolicyID) setActivePolicyId(null);\n      await loadPolicies();\n      setPolicyUiMode("list");\n      setMessage({ type: "success", text: "Software registry deleted." });\n    } catch (error) {\n      setMessage({ type: "error", text: pickErrorMessage(error, "Failed to delete software registry.") });\n    }\n  };\n\n  const removePolicyItem = async (item: PolicyItem) => {'
+      );
+
+      next = next.split('grid-template-columns:minmax(220px,1.45fr) minmax(150px,.85fr) 96px 88px 88px 110px 150px 96px')
+        .join('grid-template-columns:minmax(220px,1.45fr) minmax(150px,.85fr) 96px 88px 88px 110px 150px 124px');
+      next = next.split('.sp-policy-table-row{width:100%;min-width:980px;')
+        .join('.sp-policy-table-row{width:100%;min-width:1040px;');
+      next = next.split('.sp-policy-table-actions{display:flex;justify-content:flex-end}')
+        .join('.sp-policy-table-actions{display:flex;justify-content:flex-end;gap:6px}.sp-policy-table-actions .sp-icon,.sp-policy-table-actions .sp-danger{width:34px;min-height:34px;border-radius:10px}');
+
+      next = next.replace(
+        '<span className="sp-policy-table-actions"><button className="sp-btn secondary" type="button" onClick={() => { setActivePolicyId(policy.PolicyID); setPolicyUiMode("form"); }}>Open</button></span>',
+        '<span className="sp-policy-table-actions"><button className="sp-icon" type="button" title="View" aria-label="View registry" onClick={() => { setActivePolicyId(policy.PolicyID); setPolicyUiMode("form"); }}><Eye size={14} /></button><button className="sp-icon" type="button" title="Edit" aria-label="Edit registry" onClick={() => { setActivePolicyId(policy.PolicyID); setPolicyUiMode("form"); }}><Pencil size={14} /></button><button className="sp-danger" type="button" title="Delete" aria-label="Delete registry" onClick={() => deleteRegistryPolicy(policy)}><Trash2 size={14} /></button></span>'
+      );
+
+      return next === code ? null : { code: next, map: null };
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     itopsSoftwareDrilldownTransform(),
@@ -255,6 +290,7 @@ export default defineConfig({
     dashboardEnglishWordingPatch(),
     softwarePolicyListFirstPatch(),
     softwareRegistryWordingPatch(),
+    softwareRegistryActionIconsPatch(),
     dashboardFocusCardOrderPatch(),
     dashboardFocusCardColorPatch(),
     react(),
