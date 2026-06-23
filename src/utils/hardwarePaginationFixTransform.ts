@@ -153,20 +153,16 @@ const HARDWARE_PAGINATION_FIX = String.raw`        .hardware-module-root .hardwa
 function patchSoftwareRegistrySettings(code: string) {
   let next = code;
 
-  // Do not auto-open the first registry row while the user is still on the list screen.
-  // Auto-open caused the list page to immediately call items, publishers and software inventory APIs.
   next = next.replace(
     '    setActivePolicyId((current) => current ?? rows[0]?.PolicyID ?? null);',
     '    setActivePolicyId((current) => (rows.some((row) => row.PolicyID === current) ? current : null));'
   );
 
-  // Keep initial load to one base request. The modal detail requests are opened only after Add/View/Edit.
   next = next.replace(
     '  useEffect(() => { void loadBase(); }, [loadBase]);',
     '  useEffect(() => {\n    void loadBase();\n  }, [loadBase]);'
   );
 
-  // Policy items and publisher/software setup are only needed inside the modal/form.
   next = next.replace(
     '  useEffect(() => {\n    if (!activePolicy) return;',
     '  useEffect(() => {\n    if (policyUiMode !== "form" || !activePolicy) return;'
@@ -177,7 +173,6 @@ function patchSoftwareRegistrySettings(code: string) {
     '  }, [policyUiMode, activePolicy, loadPolicyItems, loadPublishers]);'
   );
 
-  // Software inventory can be heavy. Load it only when the modal is open and a real category is selected.
   next = next.replace(
     '    if (!ruleForm.categoryId) {\n      setSoftwareRows([]);\n      return;\n    }',
     '    if (policyUiMode !== "form" || !ruleForm.categoryId || ruleForm.categoryId === "__other__") {\n      setSoftwareRows([]);\n      return;\n    }'
@@ -188,8 +183,32 @@ function patchSoftwareRegistrySettings(code: string) {
     '  }, [policyUiMode, ruleForm.categoryId, ruleForm.publisher, softwareSearch]);'
   );
 
-  // Keep the top registry setup focused only on software identity. Move usage-rule fields into the
-  // Classification & license section so the flow is: details -> map inventory -> classification/license/rules.
+  next = next.replace(
+    `  const toggleSoftware = (row: SoftwareRow) => {
+    const key = getSoftwareKey(row);
+    setSelectedKeys((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };`,
+    `  const toggleSoftware = (row: SoftwareRow) => {
+    const key = getSoftwareKey(row);
+    setSelectedKeys((current) => (current.has(key) ? new Set() : new Set([key])));
+  };`
+  );
+
+  next = next.replace(
+    '<input type="checkbox" checked={selected} onChange={() => toggleSoftware(row)} />',
+    '<input type="radio" name="software-registry-map" checked={selected} onChange={() => toggleSoftware(row)} />'
+  );
+
+  next = next.replace(
+    '<div className="sp-selected-box">{selectedRows.length} software selected</div>',
+    '<div className="sp-selected-box">{selectedRows.length ? "1 software selected" : "No software selected"}</div>'
+  );
+
   const workRuleFields = `                  <label className="sp-field"><span>Work start</span><input type="time" value={ruleForm.workingStartTime} onChange={(e) => setRuleForm((c) => ({ ...c, workingStartTime: e.target.value }))} /></label>
                   <label className="sp-field"><span>Work end</span><input type="time" value={ruleForm.workingEndTime} onChange={(e) => setRuleForm((c) => ({ ...c, workingEndTime: e.target.value }))} /></label>
                   <label className="sp-field"><span>Utilized if at least hour/day</span><input type="number" min="0" step="0.25" value={ruleForm.utilizedHours} onChange={(e) => setRuleForm((c) => ({ ...c, utilizedHours: e.target.value }))} /></label>
@@ -200,17 +219,15 @@ function patchSoftwareRegistrySettings(code: string) {
     next = next.replace(workRuleFields, '');
     next = next.replace(
       '                  <label className="sp-field"><span>End date</span><input type="date" value={softwareForm.licenseEndDate} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseEndDate: e.target.value }))} /></label>\n                </div>',
-      '                  <label className="sp-field"><span>End date</span><input type="date" value={softwareForm.licenseEndDate} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseEndDate: e.target.value }))} /></label>\n                  ' + workRuleFields.trimStart() + '\n                </div>'
+      '                  <label className="sp-field"><span>End date</span><input type="date" value={softwareForm.licenseEndDate} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseEndDate: e.target.value }))} /></label>\n' + workRuleFields + '\n                </div>'
     );
   }
 
   next = next.replace(
     '                  <span className="sp-help">Monday to Friday. ≥ {ruleForm.utilizedHours || 2} hour/day = utilized, below that = underutilized, no activity = not used.</span>',
-    '                  <span className="sp-help">Complete software details above, then map inventory records below.</span>'
+    '                  <span className="sp-help">Select one inventory software, then complete classification, license and usage rules below.</span>'
   );
 
-  // The publisher field is moved to the setup section by the registry flow patch. Keep the map toolbar in
-  // one clean row: helper text, search input, search button.
   next = next.replace(
     '.sp-software-toolbar{display:grid;grid-template-columns:220px minmax(0,1fr) auto;',
     '.sp-software-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,320px) auto;'
@@ -221,11 +238,34 @@ function patchSoftwareRegistrySettings(code: string) {
     '<div className="sp-section-title"><strong>2. Classification, license & usage rules</strong><small>Legal status, license expiry and utilization rule.</small></div>'
   );
 
-  // Do not show the separate "Saved mapped software" panel. It reads like a final step and breaks the form story.
-  // Existing saved items are already reflected in the registry table after saving.
+  next = next.replace(
+    '<div className="sp-section-title"><strong>3. Classification & license</strong><small>Apply legal status and license details after selecting mapped software.</small></div>',
+    '<div className="sp-section-title"><strong>2. Classification, license & usage rules</strong><small>Legal status, license expiry and utilization rule.</small></div>'
+  );
+
+  next = next.replace(
+    '<div className="sp-section-title"><strong>3. Classification, license & usage rules</strong><small>Legal status, license expiry and utilization rule.</small></div>',
+    '<div className="sp-section-title"><strong>2. Classification, license & usage rules</strong><small>Legal status, license expiry and utilization rule.</small></div>'
+  );
+
+  next = next.replace(
+    '<div className="sp-section-title"><strong>2. Map with inventory software</strong><small>Choose existing software from the selected category. If the category is Other, save custom registry details first.</small></div>',
+    '<div className="sp-section-title"><strong>Inventory software mapping</strong><small>Select exactly one inventory software under the selected category.</small></div>'
+  );
+
+  next = next.replace(
+    /\s*<section className="sp-section">\s*<div className="sp-section-title"><strong>4\. Saved mapped software<\/strong><small>Software already assigned to this registry\.<\/small><\/div>[\s\S]*?<\/section>/,
+    ''
+  );
+
+  next = next.replace(
+    /\s*<section className="sp-section">\s*<div className="sp-section-title"><strong>Saved software<\/strong><small>Software already assigned to this rule\.<\/small><\/div>[\s\S]*?<\/section>/,
+    ''
+  );
+
   next = next.replace(
     '<style>{INLINE_CSS}</style>',
-    '<style>{INLINE_CSS}{`\nbody.ema-settings-page-active .software-policy-module .sp-policy-modal .sp-software-area > .sp-section:last-child{display:none!important;}\nbody.ema-settings-page-active .software-policy-module .sp-policy-modal .sp-software-area{grid-template-columns:minmax(0,1fr)!important;}\n`}</style>'
+    '<style>{INLINE_CSS}{`\nbody.ema-settings-page-active .software-policy-module .sp-policy-modal .sp-software-area > .sp-section:last-child{display:none!important;}\nbody.ema-settings-page-active .software-policy-module .sp-policy-modal .sp-software-area{grid-template-columns:minmax(0,1fr)!important;}\nbody.ema-settings-page-active .software-policy-module .sp-policy-modal .sp-setup{grid-template-columns:minmax(0,1fr)!important;}\n`}</style>'
   );
 
   return next;
@@ -234,7 +274,6 @@ function patchSoftwareRegistrySettings(code: string) {
 export function hardwarePaginationFixTransform(): Plugin {
   return {
     name: 'hardware-pagination-fix-transform',
-    enforce: 'pre',
     transform(code, id) {
       const normalizedId = id.replace(/\\/g, '/');
 
@@ -247,17 +286,14 @@ export function hardwarePaginationFixTransform(): Plugin {
 
       let next = code;
 
-      // Keep Hardware pagination isolated from the global User Access Management pagination CSS.
       next = next
         .replace('className="uam-pagination global-style hardware-pagination"', 'className="hardware-pagination"')
         .replace('className="uam-pagination-controls global-style hardware-pagination-actions"', 'className="hardware-pagination-actions"')
         .replaceAll('className="uam-page-icon"', 'className="hardware-page-icon"')
         .replace('className="uam-page-current hardware-pagination-current"', 'className="hardware-page-current"');
 
-      // Do not let fixed-position toast notifications cover the geolocation modal/right panel.
       next = next.replace('{toast && (\n        <div className={`hardware-toast hardware-toast-${toast.type}`} role="status">', '{toast && !activeModal && (\n        <div className={`hardware-toast hardware-toast-${toast.type}`} role="status">');
 
-      // When the filtered result shrinks, keep users on the last valid page instead of jumping to page 1.
       next = next.replace('  useEffect(() => {\n    if (page > pageCount) setPage(1);\n  }, [page, pageCount]);', '  useEffect(() => {\n    setPage((current) => Math.min(Math.max(1, current), pageCount));\n  }, [pageCount]);');
 
       const standaloneMarker = `        .hardware-module-root .hardware-pagination {
