@@ -287,6 +287,21 @@ body.ema-settings-page-active .software-inventory-module .software-hero-kpi-grid
   line-height: 1.15 !important;
 }
 
+/* Software Level 2 Security & Compliance should not repeat the same legal/illegal graph
+   already shown in Software Compliance Rate. Keep this panel focused on lifecycle status. */
+body.itops-dashboard-page-active .itops-pro-panel > div[style*="250px"] {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+body.itops-dashboard-page-active .itops-pro-panel > div[style*="250px"] > section:first-child {
+  display: none !important;
+}
+
+body.itops-dashboard-page-active .itops-pro-panel > div[style*="250px"] > section:nth-child(2) {
+  width: 100% !important;
+  min-height: 100% !important;
+}
+
 @media (max-width: 1100px) {
   body.ema-settings-page-active .ema-shell {
     grid-template-columns: 280px minmax(0, 1fr) !important;
