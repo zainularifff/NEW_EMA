@@ -138,6 +138,12 @@ function softwarePolicyListFirstPatch() {
         '        {policyUiMode === "form" ? <button className="sp-btn secondary" type="button" onClick={() => setPolicyUiMode("list")}>Back to List</button> : <button className="sp-btn primary" type="button" onClick={startNewRule}><Plus size={16} /> Add New</button>}'
       );
 
+      const openMarker = '      <div className="sp-layout">';
+      const closePattern = /        <\/main>\r?\n      <\/div>\r?\n    <\/section>/;
+      if (!next.includes(openMarker) || !closePattern.test(next) || next.includes('sp-policy-table-screen')) {
+        return next === code ? null : { code: next, map: null };
+      }
+
       const listView = `      {policyUiMode === "list" ? (
         <div className="sp-policy-table-screen">
           {message && <div className={"sp-alert " + message.type}>{message.text}</div>}
@@ -172,8 +178,8 @@ function softwarePolicyListFirstPatch() {
       ) : (
 `;
 
-      next = next.replace('      <div className="sp-layout">', listView + '      <div className="sp-layout">');
-      next = next.replace('        </main>\n      </div>\n    </section>', '        </main>\n      </div>\n      )}\n    </section>');
+      next = next.replace(openMarker, listView + openMarker);
+      next = next.replace(closePattern, '        </main>\n      </div>\n      )}\n    </section>');
 
       return next === code ? null : { code: next, map: null };
     },
