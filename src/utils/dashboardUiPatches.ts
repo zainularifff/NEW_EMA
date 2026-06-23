@@ -165,7 +165,6 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
           <span style={{ position: 'absolute', left: 16, bottom: 15, zIndex: 2, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 10px', borderRadius: 999, background: '#ffffff', color: '#334155', fontSize: 10, fontWeight: 900, boxShadow: '0 10px 22px rgba(15,23,42,.10)' }}><i style={{ width: 8, height: 8, borderRadius: 999, background: '#22c55e' }} />{formatNumber(legalCount)} legal</span>
           <span style={{ position: 'absolute', right: 16, bottom: 15, zIndex: 2, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 10px', borderRadius: 999, background: '#ffffff', color: '#334155', fontSize: 10, fontWeight: 900, boxShadow: '0 10px 22px rgba(15,23,42,.10)' }}><i style={{ width: 8, height: 8, borderRadius: 999, background: '#ef4444' }} />{formatNumber(illegalCount)} illegal</span>
         </button>
-
         <div style={{ display: 'grid', gap: 12 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
             <button type="button" onClick={() => openLevel3('software', 'Legal Software')} style={{ minHeight: 98, border: '1px solid #bbf7d0', borderRadius: 18, background: 'linear-gradient(135deg, #f0fdf4, #ffffff)', padding: 14, textAlign: 'left', cursor: 'pointer', color: '#064e3b' }}><span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}><b style={{ fontSize: 12, fontWeight: 950 }}>Legal Software</b><strong style={{ fontSize: 24, fontWeight: 950 }}>{formatNumber(legalCount)}</strong></span><small style={{ display: 'block', marginTop: 4, color: '#047857', fontSize: 10, fontWeight: 850 }}>{formatPercent(complianceRate, 1)} compliant asset</small><em style={{ display: 'block', height: 7, marginTop: 12, borderRadius: 999, overflow: 'hidden', background: '#dcfce7' }}><i style={{ display: 'block', height: '100%', width: String(Math.max(3, complianceRate)) + '%', borderRadius: 999, background: 'linear-gradient(90deg, #14b8a6, #22c55e)' }} /></em></button>
@@ -206,6 +205,81 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
       </section>
     </div>
   );
+
+  const renderSoftwareTrendUtilizationPanel = () => {
+    const trendMap = new Map<string, { label: string; legal: number; illegal: number; sortKey: number }>();
+    const getMetric = (row: unknown, keys: string[]) => {
+      const rowAny = row as Record<string, unknown>;
+      for (const key of keys) {
+        const value = numberOrFallback(rowAny[key], Number.NaN);
+        if (Number.isFinite(value)) return value;
+      }
+      return Number.NaN;
+    };
+    const paidPattern = /microsoft|office|365|adobe|autocad|visual studio|visio|project|license|licensed|paid|business|commercial/i;
+    const unusedPattern = /unused|not used|zero usage|no usage|0 hour|0h|unutilized|underutilized/i;
+
+    rows.forEach((row) => {
+      const rowAny = row as unknown as Record<string, unknown>;
+      const rawDate = rowAny.lastUsed ?? rowAny.LastUsed ?? rowAny.lastSeen ?? rowAny.LastSeen ?? rowAny.scanDate ?? rowAny.detectedAt ?? rowAny.updatedAt ?? rowAny.createdAt;
+      const parsed = Date.parse(String(rawDate || ''));
+      if (!Number.isFinite(parsed)) return;
+      const day = new Date(parsed);
+      day.setHours(0, 0, 0, 0);
+      const label = day.toLocaleDateString('en-MY', { day: '2-digit', month: 'short' });
+      const existing = trendMap.get(label) || { label, legal: 0, illegal: 0, sortKey: day.getTime() };
+      const text = getSoftwareRowSearchText(row);
+      const isLegal = (text.includes('legal') || text.includes('approved') || text.includes('allowed')) && !(text.includes('illegal') || text.includes('blocked') || text.includes('restricted') || text.includes('unauthorized'));
+      if (isLegal) existing.legal += 1;
+      else existing.illegal += 1;
+      trendMap.set(label, existing);
+    });
+
+    const trendRows = Array.from(trendMap.values()).sort((a, b) => a.sortKey - b.sortKey).slice(-7);
+    const trendMax = Math.max(1, ...trendRows.map((row) => row.legal + row.illegal));
+    const svgPoint = (value: number, index: number) => {
+      const x = trendRows.length <= 1 ? 20 : 20 + (index * 260) / Math.max(1, trendRows.length - 1);
+      const y = 100 - (Math.max(0, value) / trendMax) * 78;
+      return x + ',' + y;
+    };
+    const legalLine = trendRows.map((row, index) => svgPoint(row.legal, index)).join(' ');
+    const illegalLine = trendRows.map((row, index) => svgPoint(row.illegal, index)).join(' ');
+
+    const usageHours = rows.map((row) => getMetric(row, ['dailyUsageHours', 'usageHours', 'activeHours', 'ActiveHours', 'hoursUsed', 'usedHours'])).filter((value) => Number.isFinite(value) && value > 0);
+    const avgDailyUsage = usageHours.length ? usageHours.reduce((sum, value) => sum + value, 0) / usageHours.length : 0;
+    const paidRows = rows.filter((row) => paidPattern.test(getSoftwareRowSearchText(row)));
+    const paidUniqueRows = uniqueSoftwareRows(paidRows);
+    const unusedPaidRows = uniqueSoftwareRows(paidRows.filter((row) => {
+      const text = getSoftwareRowSearchText(row);
+      const usageHour = getMetric(row, ['dailyUsageHours', 'usageHours', 'activeHours', 'ActiveHours', 'hoursUsed', 'usedHours']);
+      return unusedPattern.test(text) || usageHour === 0;
+    }));
+    const paidUtilizationRate = paidUniqueRows.length ? ((paidUniqueRows.length - unusedPaidRows.length) / paidUniqueRows.length) * 100 : 0;
+
+    return (
+      <div style={{ display: 'grid', gap: 14 }}>
+        <section style={{ border: '1px solid #dbeafe', borderRadius: 22, padding: 15, background: 'linear-gradient(180deg, #ffffff, #f8fafc)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}><div><strong style={{ display: 'block', color: '#0f172a', fontSize: 13, fontWeight: 950 }}>Legal vs Illegal Usage Trend</strong><small style={{ display: 'block', marginTop: 3, color: '#64748b', fontWeight: 800 }}>Daily line chart from usage history when records include dates.</small></div><span style={{ borderRadius: 999, padding: '6px 10px', background: '#eff6ff', color: '#1d4ed8', fontSize: 10, fontWeight: 900 }}>{formatNumber(trendRows.length)} day(s)</span></div>
+          {trendRows.length >= 2 ? (
+            <div>
+              <svg viewBox="0 0 300 118" width="100%" height="134" role="img" aria-label="Legal versus illegal usage trend" style={{ display: 'block', overflow: 'visible' }}>
+                <line x1="20" y1="100" x2="280" y2="100" stroke="#e2e8f0" strokeWidth="2" />
+                <polyline points={illegalLine} fill="none" stroke="#ef4444" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                <polyline points={legalLine} fill="none" stroke="#22c55e" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                {trendRows.map((row, index) => <text key={row.label} x={20 + (index * 260) / Math.max(1, trendRows.length - 1)} y="116" textAnchor="middle" fill="#64748b" fontSize="9" fontWeight="800">{row.label}</text>)}
+              </svg>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}><span style={{ color: '#16a34a', fontSize: 11, fontWeight: 900 }}>● Legal usage</span><span style={{ color: '#ef4444', fontSize: 11, fontWeight: 900 }}>● Illegal usage</span></div>
+            </div>
+          ) : <EmptyState label="No dated software usage history returned yet." />}
+        </section>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+          <button type="button" onClick={() => openLevel3('software', 'Unused Paid Software')} style={{ minHeight: 92, border: '1px solid #fed7aa', borderRadius: 18, background: 'linear-gradient(135deg, #fff7ed, #ffffff)', padding: 13, textAlign: 'left', cursor: 'pointer', color: '#7c2d12' }}><span style={{ display: 'block', fontSize: 11, fontWeight: 950 }}>Unused Paid Software</span><strong style={{ display: 'block', marginTop: 8, fontSize: 23, fontWeight: 950 }}>{formatNumber(unusedPaidRows.length)}</strong><small style={{ color: '#9a3412', fontWeight: 850 }}>Zero usage / underutilized signal</small></button>
+          <button type="button" onClick={() => openLevel3('software', 'Paid Software')} style={{ minHeight: 92, border: '1px solid #bfdbfe', borderRadius: 18, background: 'linear-gradient(135deg, #eff6ff, #ffffff)', padding: 13, textAlign: 'left', cursor: 'pointer', color: '#1e3a8a' }}><span style={{ display: 'block', fontSize: 11, fontWeight: 950 }}>Paid Software Utilization</span><strong style={{ display: 'block', marginTop: 8, fontSize: 23, fontWeight: 950 }}>{formatPercent(paidUtilizationRate, 0)}</strong><small style={{ color: '#1d4ed8', fontWeight: 850 }}>Used paid titles / paid titles</small></button>
+          <button type="button" onClick={() => openLevel3('software', 'Average Daily Usage')} style={{ minHeight: 92, border: '1px solid #c4b5fd', borderRadius: 18, background: 'linear-gradient(135deg, #f5f3ff, #ffffff)', padding: 13, textAlign: 'left', cursor: 'pointer', color: '#4c1d95' }}><span style={{ display: 'block', fontSize: 11, fontWeight: 950 }}>Average Daily Usage</span><strong style={{ display: 'block', marginTop: 8, fontSize: 23, fontWeight: 950 }}>{avgDailyUsage.toFixed(1)}h</strong><small style={{ color: '#6d28d9', fontWeight: 850 }}>Average active hours</small></button>
+        </div>
+      </div>
+    );
+  };
 
 `;
       if (next.includes(policyDonutAnchor) && !next.includes('renderSoftwarePolicyDonut')) {
@@ -259,11 +333,11 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
 
       const newSoftwareLevelTwoGrid = `        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
           <Panel title="Software Compliance Rate (%)" subtitle="Peratusan perisian legal berdasarkan Software Policy. Contoh: 92% Legal." icon={ShieldCheck}>{renderSoftwarePolicyDonut(policyRows, policyTotalSoftware)}</Panel>
-          <Panel title="Classification & Distribution" subtitle="Software Category Distribution dan Top 5 Most Installed Software." icon={Layers3}>{renderSoftwareClassificationDistributionPanel(classificationRows.length ? classificationRows : software.topCategories.map((row) => ({ label: row.name, value: row.value, target: row.name, note: 'Software category', tone: 'blue' as CardTone })), totalInstallations, topInstalledRows)}</Panel>
+          <Panel title="Security & Compliance" subtitle="Software Lifecycle Status dan EOL/EOS breakdown." icon={ShieldAlert}>{renderSecurityCompliancePanel(lifecycleStatusRows)}</Panel>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
-          <Panel title="Security & Compliance" subtitle="Software Lifecycle Status dan EOL/EOS breakdown." icon={ShieldAlert}>{renderSecurityCompliancePanel(lifecycleStatusRows)}</Panel>
-          <Panel title="Major Application EOL/EOS Watch" subtitle="Microsoft Office, Microsoft 365, Adobe, Google Chrome and Firefox coverage with click-through detail." icon={CalendarDays}>{renderSoftwareHorizontalBars(majorRows, totalInstallations)}</Panel>
+          <Panel title="Classification & Distribution" subtitle="Software Category Distribution dan Top 5 Most Installed Software." icon={Layers3}>{renderSoftwareClassificationDistributionPanel(classificationRows.length ? classificationRows : software.topCategories.map((row) => ({ label: row.name, value: row.value, target: row.name, note: 'Software category', tone: 'blue' as CardTone })), totalInstallations, topInstalledRows)}</Panel>
+          <Panel title="Trending & Utilization" subtitle="Usage trend and cost optimization signals for software usage history." icon={CalendarDays}>{renderSoftwareTrendUtilizationPanel()}</Panel>
         </div>`;
 
       next = next.split(oldSoftwareLevelTwoGrid).join(newSoftwareLevelTwoGrid);
