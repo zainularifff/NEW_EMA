@@ -221,6 +221,13 @@ function patchSoftwareRegistrySettings(code: string) {
     '<div className="sp-section-title"><strong>2. Classification, license & usage rules</strong><small>Legal status, license expiry and utilization rule.</small></div>'
   );
 
+  // Do not show the separate "Saved mapped software" panel. It reads like a final step and breaks the form story.
+  // Existing saved items are already reflected in the registry table after saving.
+  next = next.replace(
+    '<style>{INLINE_CSS}</style>',
+    '<style>{INLINE_CSS}{`\nbody.ema-settings-page-active .software-policy-module .sp-policy-modal .sp-software-area > .sp-section:last-child{display:none!important;}\nbody.ema-settings-page-active .software-policy-module .sp-policy-modal .sp-software-area{grid-template-columns:minmax(0,1fr)!important;}\n`}</style>'
+  );
+
   return next;
 }
 
