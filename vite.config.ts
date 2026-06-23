@@ -109,6 +109,77 @@ function dashboardEnglishWordingPatch() {
   };
 }
 
+function softwarePolicyListFirstPatch() {
+  return {
+    name: 'software-policy-list-first-patch',
+    enforce: 'pre' as const,
+    transform(code: string, id: string) {
+      if (!id.replace(/\\/g, '/').endsWith('/src/pages/SettingsWithNotifications.tsx')) return null;
+
+      let next = code;
+
+      next = next.replace(
+        '  const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);',
+        '  const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);\n  const [policyUiMode, setPolicyUiMode] = useState<"list" | "form">("list");'
+      );
+
+      next = next.replace(
+        '    setMessage({ type: "info", text: "Create a rule, choose category, then select software." });\n  };',
+        '    setPolicyUiMode("form");\n    setMessage({ type: "info", text: "Create a rule, choose category, then select software." });\n  };'
+      );
+
+      next = next.replace(
+        '.sp-empty{min-height:150px;display:grid;place-items:center;color:#64748b;font-size:.8rem;font-weight:800;text-align:center;padding:18px}@media',
+        '.sp-empty{min-height:150px;display:grid;place-items:center;color:#64748b;font-size:.8rem;font-weight:800;text-align:center;padding:18px}.sp-policy-table-screen{min-height:0;overflow:auto}.sp-policy-table-card{height:100%;min-height:0}.sp-policy-table-wrap{display:grid;gap:10px;overflow:auto;padding-bottom:4px}.sp-policy-table-row{width:100%;min-width:980px;min-height:68px;display:grid;grid-template-columns:minmax(220px,1.45fr) minmax(150px,.85fr) 96px 88px 88px 110px 150px 96px;gap:12px;align-items:center;padding:12px 14px;border:1px solid #e5edf8;border-radius:15px;background:#fff;color:#0f2746;text-align:left}.sp-policy-table-row.head{min-height:42px;background:#f3f7fc;color:#64748b;font-size:.62rem;font-weight:900;text-transform:uppercase}.sp-policy-table-row strong,.sp-policy-table-row small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sp-policy-table-row small{margin-top:3px;color:#64748b;font-size:.66rem;font-weight:750}.sp-policy-table-row:not(.head):hover{border-color:#bfdbfe;background:#f8fbff}.sp-policy-table-actions{display:flex;justify-content:flex-end}@media'
+      );
+
+      next = next.replace(
+        '        <button className="sp-btn primary" type="button" onClick={startNewRule}><Plus size={16} /> Create New Rule</button>',
+        '        {policyUiMode === "form" ? <button className="sp-btn secondary" type="button" onClick={() => setPolicyUiMode("list")}>Back to List</button> : <button className="sp-btn primary" type="button" onClick={startNewRule}><Plus size={16} /> Add New</button>}'
+      );
+
+      const listView = `      {policyUiMode === "list" ? (
+        <div className="sp-policy-table-screen">
+          {message && <div className={"sp-alert " + message.type}>{message.text}</div>}
+          <section className="sp-section sp-policy-table-card">
+            <div className="sp-section-title">
+              <strong>Software Policy Rules</strong>
+              <small>Review existing policy rules first. Click Add New to create a new software policy.</small>
+            </div>
+            <div className="sp-section-body">
+              <div className="sp-action-row" style={{ marginTop: 0, marginBottom: 12, justifyContent: "space-between" }}>
+                <span className="sp-help">{policies.length} rule(s) configured</span>
+                <button className="sp-icon" type="button" onClick={loadBase} disabled={loading} title="Refresh"><RefreshCw size={15} /></button>
+              </div>
+              <div className="sp-policy-table-wrap">
+                <div className="sp-policy-table-row head"><span>Rule</span><span>Category</span><span>Software</span><span>Legal</span><span>Illegal</span><span>License</span><span>Work hours</span><span>Action</span></div>
+                {policies.length === 0 ? <div className="sp-empty">No software policy yet. Click Add New to create the first rule.</div> : policies.map((policy) => (
+                  <div key={policy.PolicyID} className="sp-policy-table-row">
+                    <span><strong>{policy.PolicyName}</strong><small>{policy.Description || "No note"}</small></span>
+                    <span>{policy.CategoryName || "No category"}</span>
+                    <span>{policy.TotalItems || 0}</span>
+                    <span><b className="sp-badge legal">{policy.LegalCount || 0}</b></span>
+                    <span><b className="sp-badge illegal">{policy.IllegalCount || 0}</b></span>
+                    <span>{policy.LicenseTotal || 0}</span>
+                    <span>{normalizeTime(policy.WorkingStartTime) || "09:00"} - {normalizeTime(policy.WorkingEndTime) || "17:00"}</span>
+                    <span className="sp-policy-table-actions"><button className="sp-btn secondary" type="button" onClick={() => { setActivePolicyId(policy.PolicyID); setPolicyUiMode("form"); }}>Open</button></span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : (
+`;
+
+      next = next.replace('      <div className="sp-layout">', listView + '      <div className="sp-layout">');
+      next = next.replace('        </main>\n      </div>\n    </section>', '        </main>\n      </div>\n      )}\n    </section>');
+
+      return next === code ? null : { code: next, map: null };
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     itopsSoftwareDrilldownTransform(),
@@ -117,6 +188,7 @@ export default defineConfig({
     softwareTrendRowsSafePatch(),
     softwareComplianceDialUiPatch(),
     dashboardEnglishWordingPatch(),
+    softwarePolicyListFirstPatch(),
     dashboardFocusCardOrderPatch(),
     dashboardFocusCardColorPatch(),
     react(),
