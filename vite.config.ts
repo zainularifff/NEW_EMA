@@ -33,6 +33,39 @@ function dashboardFocusCardOrderPatch() {
   };
 }
 
+function dashboardFocusCardColorPatch() {
+  return {
+    name: 'dashboard-focus-card-color-patch',
+    enforce: 'pre' as const,
+    transform(code: string, id: string) {
+      if (!id.replace(/\\/g, '/').endsWith('/src/pages/Dashboard.tsx')) return null;
+
+      let next = code;
+      const helperAnchor = '\nfunction KpiCard({ card, onOpen }: { card: FocusCard; onOpen: (view: string) => void }) {';
+      const helper = `
+function getFocusCardVisualStyle(view: string): CSSProperties {
+  if (view === 'hardware') return { background: 'linear-gradient(135deg, #1e3a8a 0%, #0369a1 58%, #22d3ee 100%)' };
+  if (view === 'software') return { background: 'linear-gradient(135deg, #581c87 0%, #7c3aed 56%, #c084fc 100%)' };
+  if (view === 'serviceDesk') return { background: 'linear-gradient(135deg, #7c2d12 0%, #ea580c 58%, #f59e0b 100%)' };
+  if (view === 'geolocation') return { background: 'linear-gradient(135deg, #134e4a 0%, #0f766e 56%, #2dd4bf 100%)' };
+  if (view === 'risk') return { background: 'linear-gradient(135deg, #7f1d1d 0%, #dc2626 56%, #fb7185 100%)' };
+  if (view === 'patch') return { background: 'linear-gradient(135deg, #14532d 0%, #16a34a 56%, #84cc16 100%)' };
+  return {};
+}
+`;
+
+      if (next.includes(helperAnchor) && !next.includes('getFocusCardVisualStyle')) {
+        next = next.replace(helperAnchor, `${helper}${helperAnchor}`);
+      }
+
+      next = next.split('className={`itops-pro-kpi itops-pro-kpi-${card.tone}`} onClick={() => onOpen(card.view)} aria-haspopup="dialog" data-drilldown-view={card.view}')
+        .join('className={`itops-pro-kpi itops-pro-kpi-${card.tone}`} style={getFocusCardVisualStyle(card.view)} onClick={() => onOpen(card.view)} aria-haspopup="dialog" data-drilldown-view={card.view}');
+
+      return next === code ? null : { code: next, map: null };
+    },
+  };
+}
+
 function dashboardUiPatch() {
   return {
     name: 'dashboard-ui-patch',
@@ -203,7 +236,7 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
 }
 
 export default defineConfig({
-  plugins: [itopsSoftwareDrilldownTransform(), hardwarePaginationFixTransform(), dashboardUiPatch(), dashboardFocusCardOrderPatch(), react()],
+  plugins: [itopsSoftwareDrilldownTransform(), hardwarePaginationFixTransform(), dashboardUiPatch(), dashboardFocusCardOrderPatch(), dashboardFocusCardColorPatch(), react()],
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
