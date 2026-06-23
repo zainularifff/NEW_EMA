@@ -3,6 +3,36 @@ import react from '@vitejs/plugin-react';
 import { itopsSoftwareDrilldownTransform } from './src/utils/itopsSoftwareDrilldownTransform';
 import { hardwarePaginationFixTransform } from './src/utils/hardwarePaginationFixTransform';
 
+function dashboardFocusCardOrderPatch() {
+  return {
+    name: 'dashboard-focus-card-order-patch',
+    enforce: 'pre' as const,
+    transform(code: string, id: string) {
+      if (!id.replace(/\\/g, '/').endsWith('/src/pages/Dashboard.tsx')) return null;
+
+      const next = code.replace(
+        /  const focusCards: FocusCard\[\] = useMemo\(\(\) => \[([\s\S]*?)\n  \], \[/,
+        (match, body: string) => {
+          const pick = (cardId: string) => {
+            const pattern = new RegExp("\\n    \\{[\\s\\S]*?id: '" + cardId + "',[\\s\\S]*?\\n    \\},", 'm');
+            const found = body.match(pattern);
+            return found ? found[0].trimStart() : '';
+          };
+
+          const ordered = ['devices', 'software', 'service', 'location', 'risk', 'patch']
+            .map(pick)
+            .filter(Boolean)
+            .join('\n');
+
+          return ordered ? `  const focusCards: FocusCard[] = useMemo(() => [\n${ordered}\n  ], [` : match;
+        }
+      );
+
+      return next === code ? null : { code: next, map: null };
+    },
+  };
+}
+
 function dashboardUiPatch() {
   return {
     name: 'dashboard-ui-patch',
@@ -173,7 +203,7 @@ async function fetchSoftwarePolicyDashboardSummary(headers: Headers) {
 }
 
 export default defineConfig({
-  plugins: [itopsSoftwareDrilldownTransform(), hardwarePaginationFixTransform(), dashboardUiPatch(), react()],
+  plugins: [itopsSoftwareDrilldownTransform(), hardwarePaginationFixTransform(), dashboardUiPatch(), dashboardFocusCardOrderPatch(), react()],
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
