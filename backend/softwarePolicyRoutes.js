@@ -174,25 +174,39 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
     try {
       const categoryId = toInt(req.query.categoryId || req.query.CategoryID, 0);
       const categoryName = toText(req.query.categoryName || req.query.CategoryName);
+
+      if (!categoryId && !categoryName) {
+        return res.json({ success: true, data: [] });
+      }
+
       const pool = await sql.connect(dbConfig);
       const request = pool.request();
+      request.timeout = 30000;
       request.input('categoryId', sql.Int, categoryId);
       request.input('categoryName', sql.NVarChar(255), categoryName);
+
       const result = await request.query(`
-        SELECT
+        ;WITH category_software AS (
+          SELECT d.SWUNI_Idn
+          FROM [TCO2].[dbo].[TS_SWUNI_LIST] d WITH (NOLOCK)
+          INNER JOIN [TCO2].[dbo].[TS_SW_CATEGORY] e WITH (NOLOCK)
+            ON e.CategoryID = d.SWUNI_Catg
+          WHERE (@categoryId <= 0 OR e.CategoryID = @categoryId)
+            AND (@categoryName = '' OR e.CategoryName = @categoryName)
+        )
+        SELECT TOP (500)
           NULLIF(LTRIM(RTRIM(c.Publisher)), '') AS Publisher,
-          COUNT(DISTINCT d.SWUNI_Idn) AS SoftwareCount,
-          COUNT(DISTINCT a.Object_Root_Idn) AS InstalledCount
-        FROM [TCO2].[dbo].[TS_OBJECT_ROOT] a
-        INNER JOIN [TCO2].[dbo].[TSSI_SWUNI_ATTR] c ON a.Object_Root_Idn = c.Object_Root_Idn
-        INNER JOIN [TCO2].[dbo].[TS_SWUNI_LIST] d ON c.SWUNI_Idn = d.SWUNI_Idn
-        INNER JOIN [TCO2].[dbo].[TS_SW_CATEGORY] e ON e.CategoryID = d.SWUNI_Catg
-        WHERE (@categoryId <= 0 OR e.CategoryID = @categoryId)
-          AND (@categoryName = '' OR e.CategoryName = @categoryName)
-          AND NULLIF(LTRIM(RTRIM(c.Publisher)), '') IS NOT NULL
+          COUNT_BIG(DISTINCT c.SWUNI_Idn) AS SoftwareCount,
+          CAST(0 AS BIGINT) AS InstalledCount
+        FROM [TCO2].[dbo].[TSSI_SWUNI_ATTR] c WITH (NOLOCK)
+        INNER JOIN category_software cs
+          ON cs.SWUNI_Idn = c.SWUNI_Idn
+        WHERE NULLIF(LTRIM(RTRIM(c.Publisher)), '') IS NOT NULL
         GROUP BY NULLIF(LTRIM(RTRIM(c.Publisher)), '')
         ORDER BY Publisher ASC
+        OPTION (RECOMPILE);
       `);
+
       res.json({ success: true, data: result.recordset || [] });
     } catch (error) {
       console.error('Software policy publishers failed:', error);
@@ -206,39 +220,53 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
       const categoryName = toText(req.query.categoryName || req.query.CategoryName);
       const publisher = toText(req.query.publisher || req.query.Publisher);
       const search = toText(req.query.search);
-      const limit = Math.min(Math.max(toInt(req.query.limit, 500), 1), 1000);
+      const limit = Math.min(Math.max(toInt(req.query.limit, 300), 1), 500);
       const pool = await sql.connect(dbConfig);
       const request = pool.request();
+      request.timeout = 30000;
       request.input('categoryId', sql.Int, categoryId);
       request.input('categoryName', sql.NVarChar(255), categoryName);
       request.input('publisher', sql.NVarChar(255), publisher);
       request.input('search', sql.NVarChar(255), search);
       request.input('limit', sql.Int, limit);
       const result = await request.query(`
-        SELECT TOP (@limit)
-          d.SWUNI_Idn,
-          CONVERT(NVARCHAR(50), d.SWUNI_Idn) AS SoftwareID,
-          d.SWUNI_Name AS SoftwareName,
-          e.CategoryID,
-          e.CategoryName,
-          NULLIF(LTRIM(RTRIM(c.Publisher)), '') AS Publisher,
+        ;WITH matched_software AS (
+          SELECT TOP (@limit)
+            d.SWUNI_Idn,
+            d.SWUNI_Name AS SoftwareName,
+            e.CategoryID,
+            e.CategoryName,
+            NULLIF(LTRIM(RTRIM(c.Publisher)), '') AS Publisher
+          FROM [TCO2].[dbo].[TS_SWUNI_LIST] d WITH (NOLOCK)
+          INNER JOIN [TCO2].[dbo].[TS_SW_CATEGORY] e WITH (NOLOCK)
+            ON e.CategoryID = d.SWUNI_Catg
+          INNER JOIN [TCO2].[dbo].[TSSI_SWUNI_ATTR] c WITH (NOLOCK)
+            ON c.SWUNI_Idn = d.SWUNI_Idn
+          WHERE (@categoryId <= 0 OR e.CategoryID = @categoryId)
+            AND (@categoryName = '' OR e.CategoryName = @categoryName)
+            AND (@publisher = '' OR c.Publisher = @publisher)
+            AND NULLIF(LTRIM(RTRIM(c.Publisher)), '') IS NOT NULL
+            AND (
+              @search = ''
+              OR d.SWUNI_Name LIKE '%' + @search + '%'
+              OR c.Publisher LIKE '%' + @search + '%'
+            )
+          GROUP BY d.SWUNI_Idn, d.SWUNI_Name, e.CategoryID, e.CategoryName, c.Publisher
+          ORDER BY d.SWUNI_Name ASC
+        )
+        SELECT
+          SWUNI_Idn,
+          CONVERT(NVARCHAR(50), SWUNI_Idn) AS SoftwareID,
+          SoftwareName,
+          CategoryID,
+          CategoryName,
+          Publisher,
           CAST(NULL AS NVARCHAR(255)) AS Version,
-          COUNT(DISTINCT a.Object_Root_Idn) AS InstalledCount,
-          COUNT(DISTINCT a.Object_Root_Idn) AS InstalledDeviceCount
-        FROM [TCO2].[dbo].[TS_OBJECT_ROOT] a
-        INNER JOIN [TCO2].[dbo].[TSSI_SWUNI_ATTR] c ON a.Object_Root_Idn = c.Object_Root_Idn
-        INNER JOIN [TCO2].[dbo].[TS_SWUNI_LIST] d ON c.SWUNI_Idn = d.SWUNI_Idn
-        INNER JOIN [TCO2].[dbo].[TS_SW_CATEGORY] e ON e.CategoryID = d.SWUNI_Catg
-        WHERE (@categoryId <= 0 OR e.CategoryID = @categoryId)
-          AND (@categoryName = '' OR e.CategoryName = @categoryName)
-          AND (@publisher = '' OR c.Publisher = @publisher)
-          AND (
-            @search = ''
-            OR d.SWUNI_Name LIKE '%' + @search + '%'
-            OR c.Publisher LIKE '%' + @search + '%'
-          )
-        GROUP BY d.SWUNI_Idn, d.SWUNI_Name, e.CategoryID, e.CategoryName, c.Publisher
-        ORDER BY d.SWUNI_Name ASC
+          CAST(0 AS BIGINT) AS InstalledCount,
+          CAST(0 AS BIGINT) AS InstalledDeviceCount
+        FROM matched_software
+        ORDER BY SoftwareName ASC
+        OPTION (RECOMPILE);
       `);
       res.json({ success: true, data: result.recordset || [] });
     } catch (error) {
@@ -296,7 +324,6 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
           WHERE pi.PolicyID = p.PolicyID
           ORDER BY ISNULL(pi.UpdatedAt, pi.CreatedAt) DESC, pi.PolicyItemID DESC
         ) primaryItem
-        WHERE ISNULL(p.IsActive, 1) = 1
         GROUP BY
           p.PolicyID, p.PolicyName, p.Description, p.CategoryID, p.CategoryName, p.WorkingStartTime,
           p.WorkingEndTime, p.WorkDays, p.UtilizedHours, p.UnderUtilizedHours, p.OpenCountThreshold,
@@ -380,7 +407,6 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
             UtilizedHours = COALESCE(@UtilizedHours, UtilizedHours),
             UnderUtilizedHours = COALESCE(@UnderUtilizedHours, UnderUtilizedHours),
             OpenCountThreshold = COALESCE(@OpenCountThreshold, OpenCountThreshold),
-            IsActive = COALESCE(IsActive, 1),
             UpdatedAt = SYSUTCDATETIME()
           OUTPUT INSERTED.*
           WHERE PolicyID = @PolicyID
@@ -489,7 +515,7 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
         }
         await new sql.Request(transaction)
           .input('PolicyID', sql.Int, policyId)
-          .query('UPDATE dbo.EMA_SoftwarePolicy SET IsActive = COALESCE(IsActive, 1), UpdatedAt = SYSUTCDATETIME() WHERE PolicyID = @PolicyID');
+          .query('UPDATE dbo.EMA_SoftwarePolicy SET UpdatedAt = SYSUTCDATETIME() WHERE PolicyID = @PolicyID');
         await transaction.commit();
       } catch (error) {
         await transaction.rollback();
