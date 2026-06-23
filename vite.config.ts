@@ -13,11 +13,11 @@ function dashboardFocusCardOrderPatch() {
       const next = code.replace(
         /  const focusCards: FocusCard\[\] = useMemo\(\(\) => \[([\s\S]*?)\n  \], \[/,
         (match, body: string) => {
-          const pick = (cardId: string) => {
-            const pattern = new RegExp("\\n    \\{[\\s\\S]*?id: '" + cardId + "',[\\s\\S]*?\\n    \\},", 'm');
-            const found = body.match(pattern);
-            return found ? found[0].trimStart() : '';
-          };
+          const cardBlocks = body
+            .split('\n    {')
+            .slice(1)
+            .map((block) => `\n    {${block.split('\n    },')[0]}\n    },`);
+          const pick = (cardId: string) => cardBlocks.find((block) => block.includes(`id: '${cardId}',`))?.trimStart() || '';
 
           const ordered = ['devices', 'software', 'service', 'location', 'risk', 'patch']
             .map(pick)
