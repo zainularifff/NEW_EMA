@@ -151,10 +151,14 @@ const HARDWARE_PAGINATION_FIX = String.raw`        .hardware-module-root .hardwa
         }`;
 
 const SOFTWARE_REGISTRY_FLOW_CSS = String.raw`
-body.ema-settings-page-active .software-policy-module .sp-map-block{display:none!important;}
-body.ema-settings-page-active .software-policy-module .sp-map-field small{display:block;margin-top:6px;color:#64748b;font-size:.68rem;font-weight:750;line-height:1.35;text-transform:none;}
-body.ema-settings-page-active .software-policy-module .sp-map-field select{min-height:44px!important;background:#fff!important;}
-body.ema-settings-page-active .software-policy-module .sp-policy-modal{height:min(88vh,900px)!important;}
+body.ema-settings-page-active .software-policy-module .sp-map-field{display:none!important;}
+body.ema-settings-page-active .software-policy-module .sp-map-block{display:block!important;margin-top:10px!important;border-radius:14px!important;}
+body.ema-settings-page-active .software-policy-module .sp-map-block .sp-section-title{padding:10px 12px!important;background:#f8fbff!important;}
+body.ema-settings-page-active .software-policy-module .sp-map-block .sp-section-body{padding:12px!important;}
+body.ema-settings-page-active .software-policy-module .sp-map-block .sp-table{min-height:170px!important;max-height:235px!important;}
+body.ema-settings-page-active .software-policy-module .sp-map-block .sp-row{min-height:48px!important;}
+body.ema-settings-page-active .software-policy-module .sp-map-block .sp-empty{min-height:120px!important;}
+body.ema-settings-page-active .software-policy-module .sp-policy-modal{height:min(92vh,940px)!important;}
 `;
 
 function patchSoftwareRegistryFlow(code: string) {
@@ -168,7 +172,7 @@ function patchSoftwareRegistryFlow(code: string) {
 
   next = next.replace(
     '<label className="sp-field"><span>Publisher</span><select value={ruleForm.publisher} onChange={(e) => setRuleForm((c) => ({ ...c, publisher: e.target.value }))} disabled={!ruleForm.categoryId || ruleForm.categoryId === "__other__"}><option value="">Select publisher after category</option>{publishers.map((row) => <option key={row.Publisher} value={row.Publisher}>{row.Publisher}</option>)}</select></label>',
-    '<label className="sp-field"><span>Publisher</span><select value={ruleForm.publisher} onChange={(e) => { setRuleForm((c) => ({ ...c, publisher: e.target.value })); setSelectedKeys(new Set()); setSoftwareRows([]); }} disabled={!ruleForm.categoryId || ruleForm.categoryId === "__other__"}><option value="">Select publisher after category</option>{publishers.map((row) => <option key={row.Publisher} value={row.Publisher}>{row.Publisher}</option>)}</select></label><label className="sp-field full sp-map-field"><span>Inventory software</span><select value={Array.from(selectedKeys)[0] || ""} onChange={(e) => setSelectedKeys(e.target.value ? new Set([e.target.value]) : new Set())} disabled={!ruleForm.categoryId || ruleForm.categoryId === "__other__" || !ruleForm.publisher || softwareLoading}><option value="">{softwareLoading ? "Loading software..." : !ruleForm.categoryId || ruleForm.categoryId === "__other__" ? "Select category first" : !ruleForm.publisher ? "Select publisher first" : softwareRows.length === 0 ? "No software found" : "Select one inventory software"}</option>{softwareRows.map((row) => { const key = getSoftwareKey(row); return <option key={key} value={key}>{row.SoftwareName}{row.Version ? ` (${row.Version})` : ""} — {row.Publisher || "Unknown"} · {row.InstalledCount ?? row.InstalledDeviceCount ?? 0} installed</option>; })}</select><small>One software registry can map to one inventory software only.</small></label>'
+    '<label className="sp-field"><span>Publisher</span><select value={ruleForm.publisher} onChange={(e) => { setRuleForm((c) => ({ ...c, publisher: e.target.value })); setSelectedKeys(new Set()); setSoftwareRows([]); }} disabled={!ruleForm.categoryId || ruleForm.categoryId === "__other__"}><option value="">Select publisher after category</option>{publishers.map((row) => <option key={row.Publisher} value={row.Publisher}>{row.Publisher}</option>)}</select></label>'
   );
 
   next = next.replace(
@@ -191,6 +195,21 @@ function patchSoftwareRegistryFlow(code: string) {
   next = next.replace(
     '<small>Choose category, select publisher, map one inventory software, then complete license and usage rules.</small>',
     '<small>Create one software registry, map one inventory software, then enter license and usage rules.</small>'
+  );
+
+  next = next.replace(
+    '<div className="sp-section-title"><strong>Inventory software mapping</strong><small>Select exactly one software from inventory after choosing category and publisher.</small></div>',
+    '<div className="sp-section-title"><strong>Inventory software list</strong><small>After category and publisher are selected, choose one software only.</small></div>'
+  );
+
+  next = next.replace(
+    '<span className="sp-help">Select one inventory software that matches this registry.</span>',
+    '<span className="sp-help">Choose one software from this list. One registry cannot map more than one software.</span>'
+  );
+
+  next = next.replace(
+    '<div className="sp-empty">Select category and publisher to display software list.</div>',
+    '<div className="sp-empty">Select category and publisher first. Software list will appear here.</div>'
   );
 
   if (!next.includes(SOFTWARE_REGISTRY_FLOW_CSS.trim())) {
