@@ -69,74 +69,93 @@ function registerFastSoftwareRegistryListRoute(app) {
 
       const result = await pool.request().query(`
         SELECT
-          COALESCE(p.PolicyID, i.PolicyID) AS PolicyID,
-          COALESCE(NULLIF(p.PolicyName, ''), i.SoftwareName) AS PolicyName,
-          COALESCE(NULLIF(p.Description, ''), i.Notes, '') AS Description,
-          COALESCE(i.CategoryID, p.CategoryID) AS CategoryID,
-          COALESCE(NULLIF(i.CategoryName, ''), p.CategoryName) AS CategoryName,
-          COALESCE(NULLIF(i.WorkingStartTime, ''), p.WorkingStartTime, '09:00') AS WorkingStartTime,
-          COALESCE(NULLIF(i.WorkingEndTime, ''), p.WorkingEndTime, '17:00') AS WorkingEndTime,
-          COALESCE(NULLIF(i.WorkDays, ''), p.WorkDays, 'Mon-Fri') AS WorkDays,
-          COALESCE(i.UtilizedHours, p.UtilizedHours, 2.00) AS UtilizedHours,
-          COALESCE(i.UnderUtilizedHours, p.UnderUtilizedHours, 0.01) AS UnderUtilizedHours,
-          COALESCE(i.NotUsedHours, 0.00) AS NotUsedHours,
-          COALESCE(i.OpenCountThreshold, p.OpenCountThreshold, 1) AS OpenCountThreshold,
-          ISNULL(p.IsActive, 1) AS IsActive,
-          COALESCE(p.CreatedAt, i.CreatedAt) AS CreatedAt,
-          COALESCE(i.UpdatedAt, p.UpdatedAt, i.CreatedAt, p.CreatedAt) AS UpdatedAt,
-          i.PolicyItemID,
-          i.SoftwareName,
-          i.Publisher,
-          i.ComplianceStatus,
-          COALESCE(i.UnitPrice, 0.00) AS UnitPrice,
-          COALESCE(NULLIF(i.Currency, ''), 'RM') AS Currency,
-          CAST(1 AS INT) AS TotalItems,
-          CASE WHEN i.ComplianceStatus = 'Legal' THEN 1 ELSE 0 END AS LegalCount,
-          CASE WHEN i.ComplianceStatus = 'Illegal' THEN 1 ELSE 0 END AS IllegalCount,
-          ISNULL(i.LicenseCount, 0) AS LicenseTotal,
-          ISNULL(i.LicenseCount, 0) * ISNULL(i.UnitPrice, 0) AS TotalCost
-        FROM dbo.EMA_SoftwarePolicyItem i
-        LEFT JOIN dbo.EMA_SoftwarePolicy p
-          ON p.PolicyID = i.PolicyID
-        WHERE ISNULL(p.IsActive, 1) = 1
-
-        UNION ALL
-
-        SELECT
           p.PolicyID,
           p.PolicyName,
-          COALESCE(p.Description, '') AS Description,
-          p.CategoryID,
-          p.CategoryName,
-          COALESCE(NULLIF(p.WorkingStartTime, ''), '09:00') AS WorkingStartTime,
-          COALESCE(NULLIF(p.WorkingEndTime, ''), '17:00') AS WorkingEndTime,
-          COALESCE(NULLIF(p.WorkDays, ''), 'Mon-Fri') AS WorkDays,
-          COALESCE(p.UtilizedHours, 2.00) AS UtilizedHours,
-          COALESCE(p.UnderUtilizedHours, 0.01) AS UnderUtilizedHours,
-          CAST(0.00 AS DECIMAL(8,2)) AS NotUsedHours,
-          COALESCE(p.OpenCountThreshold, 1) AS OpenCountThreshold,
+          COALESCE(NULLIF(p.Description, ''), primaryItem.Notes, '') AS Description,
+          COALESCE(primaryItem.CategoryID, p.CategoryID) AS CategoryID,
+          COALESCE(NULLIF(primaryItem.CategoryName, ''), p.CategoryName) AS CategoryName,
+          COALESCE(NULLIF(p.WorkingStartTime, ''), primaryItem.WorkingStartTime, '09:00') AS WorkingStartTime,
+          COALESCE(NULLIF(p.WorkingEndTime, ''), primaryItem.WorkingEndTime, '17:00') AS WorkingEndTime,
+          COALESCE(NULLIF(p.WorkDays, ''), primaryItem.WorkDays, 'Mon-Fri') AS WorkDays,
+          COALESCE(p.UtilizedHours, primaryItem.UtilizedHours, 2.00) AS UtilizedHours,
+          COALESCE(p.UnderUtilizedHours, primaryItem.UnderUtilizedHours, 0.01) AS UnderUtilizedHours,
+          COALESCE(primaryItem.NotUsedHours, 0.00) AS NotUsedHours,
+          COALESCE(p.OpenCountThreshold, primaryItem.OpenCountThreshold, 1) AS OpenCountThreshold,
           ISNULL(p.IsActive, 1) AS IsActive,
           p.CreatedAt,
-          COALESCE(p.UpdatedAt, p.CreatedAt) AS UpdatedAt,
-          CAST(NULL AS INT) AS PolicyItemID,
-          CAST(NULL AS NVARCHAR(500)) AS SoftwareName,
-          CAST(NULL AS NVARCHAR(255)) AS Publisher,
-          CAST(NULL AS NVARCHAR(20)) AS ComplianceStatus,
-          CAST(0.00 AS DECIMAL(18,2)) AS UnitPrice,
-          CAST('RM' AS NVARCHAR(10)) AS Currency,
-          CAST(0 AS INT) AS TotalItems,
-          CAST(0 AS INT) AS LegalCount,
-          CAST(0 AS INT) AS IllegalCount,
-          CAST(0 AS INT) AS LicenseTotal,
-          CAST(0.00 AS DECIMAL(18,2)) AS TotalCost
+          COALESCE(p.UpdatedAt, primaryItem.UpdatedAt, p.CreatedAt) AS UpdatedAt,
+          primaryItem.PolicyItemID,
+          primaryItem.SoftwareName,
+          primaryItem.Publisher,
+          primaryItem.ComplianceStatus,
+          COALESCE(primaryItem.UnitPrice, 0.00) AS UnitPrice,
+          COALESCE(NULLIF(primaryItem.Currency, ''), 'RM') AS Currency,
+          COUNT(i.PolicyItemID) AS TotalItems,
+          ISNULL(SUM(CASE WHEN i.ComplianceStatus = 'Legal' THEN 1 ELSE 0 END), 0) AS LegalCount,
+          ISNULL(SUM(CASE WHEN i.ComplianceStatus = 'Illegal' THEN 1 ELSE 0 END), 0) AS IllegalCount,
+          ISNULL(SUM(ISNULL(i.LicenseCount, 0)), 0) AS LicenseTotal,
+          ISNULL(SUM(ISNULL(i.LicenseCount, 0) * ISNULL(i.UnitPrice, 0)), 0) AS TotalCost
         FROM dbo.EMA_SoftwarePolicy p
+        LEFT JOIN dbo.EMA_SoftwarePolicyItem i
+          ON i.PolicyID = p.PolicyID
+        OUTER APPLY (
+          SELECT TOP (1)
+            pi.PolicyItemID,
+            pi.SoftwareName,
+            pi.CategoryID,
+            pi.CategoryName,
+            pi.Publisher,
+            pi.ComplianceStatus,
+            pi.WorkingStartTime,
+            pi.WorkingEndTime,
+            pi.WorkDays,
+            pi.UtilizedHours,
+            pi.UnderUtilizedHours,
+            pi.NotUsedHours,
+            pi.OpenCountThreshold,
+            pi.UnitPrice,
+            pi.Currency,
+            pi.Notes,
+            pi.CreatedAt,
+            pi.UpdatedAt
+          FROM dbo.EMA_SoftwarePolicyItem pi
+          WHERE pi.PolicyID = p.PolicyID
+          ORDER BY COALESCE(pi.UpdatedAt, pi.CreatedAt) DESC, pi.PolicyItemID DESC
+        ) primaryItem
         WHERE ISNULL(p.IsActive, 1) = 1
-          AND NOT EXISTS (
-            SELECT 1
-            FROM dbo.EMA_SoftwarePolicyItem i
-            WHERE i.PolicyID = p.PolicyID
-          )
-        ORDER BY UpdatedAt DESC;
+        GROUP BY
+          p.PolicyID,
+          p.PolicyName,
+          p.Description,
+          p.CategoryID,
+          p.CategoryName,
+          p.WorkingStartTime,
+          p.WorkingEndTime,
+          p.WorkDays,
+          p.UtilizedHours,
+          p.UnderUtilizedHours,
+          p.OpenCountThreshold,
+          p.IsActive,
+          p.CreatedAt,
+          p.UpdatedAt,
+          primaryItem.PolicyItemID,
+          primaryItem.SoftwareName,
+          primaryItem.CategoryID,
+          primaryItem.CategoryName,
+          primaryItem.Publisher,
+          primaryItem.ComplianceStatus,
+          primaryItem.WorkingStartTime,
+          primaryItem.WorkingEndTime,
+          primaryItem.WorkDays,
+          primaryItem.UtilizedHours,
+          primaryItem.UnderUtilizedHours,
+          primaryItem.NotUsedHours,
+          primaryItem.OpenCountThreshold,
+          primaryItem.UnitPrice,
+          primaryItem.Currency,
+          primaryItem.Notes,
+          primaryItem.UpdatedAt
+        ORDER BY COALESCE(p.UpdatedAt, primaryItem.UpdatedAt, p.CreatedAt) DESC;
       `);
 
       return res.json({ success: true, data: result.recordset || [] });
@@ -219,9 +238,8 @@ const originalExpress = require(expressPath);
 function wrappedExpress(...args) {
   const app = originalExpress(...args);
 
-  // Register this before the legacy software policy routes, so Express resolves
-  // the item-first registry list and faster inventory mapping endpoints before
-  // the older policy-first/heavy join routes.
+  // Register the policy-first registry list and fast inventory mapping endpoints
+  // before the legacy software policy routes so Express resolves the intended flow.
   registerFastSoftwareRegistryListRoute(app);
   registerFastSoftwareInventoryRoute(app);
 
