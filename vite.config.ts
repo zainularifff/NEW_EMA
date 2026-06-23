@@ -130,7 +130,7 @@ function softwarePolicyListFirstPatch() {
 
       next = next.replace(
         '    setMessage({ type: "info", text: "Create a rule, choose category, then select software." });\n  };',
-        '    setPolicyUiMode("form");\n    setMessage({ type: "info", text: "Create a rule, choose category, then select software." });\n  };'
+        '    setPolicyUiMode("form");\n    setMessage({ type: "info", text: "Create a registry entry, choose category, then select software." });\n  };'
       );
 
       next = next.replace(
@@ -150,12 +150,12 @@ function softwarePolicyListFirstPatch() {
 
       next = next.replace(
         '                  <button className="sp-btn primary" type="button" onClick={saveRule} disabled={saving}><Save size={15} /> Save Rule</button>',
-        '                  <span className="sp-help">Use the Save Policy button at the top to save rule and selected software.</span>'
+        '                  <span className="sp-help">Use the Save Registry button at the top to save registry details and selected software.</span>'
       );
 
       next = next.replace(
         '                <div className="sp-action-row"><button className="sp-btn primary" type="button" onClick={saveSelectedSoftware} disabled={saving || selectedRows.length === 0}><CheckCircle2 size={15} /> Save Selected Software</button></div>',
-        '                <div className="sp-action-row"><span className="sp-help">Select software and click Save Policy at the top.</span></div>'
+        '                <div className="sp-action-row"><span className="sp-help">Select software and click Save Registry at the top.</span></div>'
       );
 
       const openMarker = '      <div className="sp-layout">';
@@ -169,17 +169,17 @@ function softwarePolicyListFirstPatch() {
           {message && <div className={"sp-alert " + message.type}>{message.text}</div>}
           <section className="sp-section sp-policy-table-card">
             <div className="sp-section-title">
-              <strong>Software Policy Rules</strong>
-              <small>Review existing policy rules first. Click Add New to create a new software policy.</small>
+              <strong>Software Registry</strong>
+              <small>Register purchased or approved software and map it to inventory. Only registered Legal software is treated as legal.</small>
             </div>
             <div className="sp-section-body">
               <div className="sp-action-row" style={{ marginTop: 0, marginBottom: 12, justifyContent: "space-between" }}>
-                <span className="sp-help">{loading ? "Loading rules..." : policies.length + " rule(s) configured"}</span>
+                <span className="sp-help">{loading ? "Loading entries..." : policies.length + " registry entrie(s) configured"}</span>
                 <button className="sp-icon" type="button" onClick={loadBase} disabled={loading} title="Refresh"><RefreshCw size={15} /></button>
               </div>
               <div className="sp-policy-table-wrap">
-                <div className="sp-policy-table-row head"><span>Rule</span><span>Category</span><span>Software</span><span>Legal</span><span>Illegal</span><span>License</span><span>Work hours</span><span>Action</span></div>
-                {loading ? <div className="sp-empty">Loading software policy rules...</div> : policies.length === 0 ? <div className="sp-empty">No software policy returned from API. Click refresh or check backend /api/settings/software-policy/policies.</div> : policies.map((policy) => (
+                <div className="sp-policy-table-row head"><span>Registry Name</span><span>Category</span><span>Software</span><span>Legal</span><span>Illegal</span><span>License</span><span>Work hours</span><span>Action</span></div>
+                {loading ? <div className="sp-empty">Loading software registry...</div> : policies.length === 0 ? <div className="sp-empty">No software registry found. Click Add New to register approved software.</div> : policies.map((policy) => (
                   <div key={policy.PolicyID} className="sp-policy-table-row">
                     <span><strong>{policy.PolicyName}</strong><small>{policy.Description || "No note"}</small></span>
                     <span>{policy.CategoryName || "No category"}</span>
@@ -199,8 +199,8 @@ function softwarePolicyListFirstPatch() {
         <div className="sp-policy-modal-backdrop">
           <div className="sp-policy-modal">
             <div className="sp-policy-modal-head">
-              <div><strong>{activePolicy ? "Edit Software Policy" : "Add New Software Policy"}</strong><small>Configure rule, select software, then save once.</small></div>
-              <div className="sp-top-actions"><button className="sp-btn secondary" type="button" onClick={() => setPolicyUiMode("list")}>Back to List</button><button className="sp-btn primary" type="button" onClick={savePolicy} disabled={saving}><Save size={15} /> Save Policy</button></div>
+              <div><strong>{activePolicy ? "Edit Software Registry" : "Add New Software Registry"}</strong><small>Register approved software, map it with inventory, then save once.</small></div>
+              <div className="sp-top-actions"><button className="sp-btn secondary" type="button" onClick={() => setPolicyUiMode("list")}>Back to List</button><button className="sp-btn primary" type="button" onClick={savePolicy} disabled={saving}><Save size={15} /> Save Registry</button></div>
             </div>
             <div className="sp-policy-modal-body">
 `;
@@ -208,6 +208,38 @@ function softwarePolicyListFirstPatch() {
       next = next.replace(openMarker, listView + openMarker);
       next = next.replace(closePattern, '        </main>\n      </div>\n            </div>\n          </div>\n        </div>\n      )}\n    </section>');
 
+      return next === code ? null : { code: next, map: null };
+    },
+  };
+}
+
+function softwareRegistryWordingPatch() {
+  return {
+    name: 'software-registry-wording-patch',
+    enforce: 'pre' as const,
+    transform(code: string, id: string) {
+      if (!id.replace(/\\/g, '/').endsWith('/src/pages/SettingsWithNotifications.tsx')) return null;
+      let next = code;
+      const replacements: Array<[string, string]> = [
+        ['{ key: "softwarePolicy", title: "Software Policy" }', '{ key: "softwarePolicy", title: "Software Registry" }'],
+        ['<h2>Software Policy</h2>', '<h2>Software Registry</h2>'],
+        ['Define legal or illegal software, working hour usage rule, and license information.', 'Register purchased or approved software, map it with inventory, and classify legal status. Unregistered software is treated as illegal.'],
+        ['Software Policy Rules', 'Software Registry'],
+        ['Review existing policy rules first. Click Add New to create a new software policy.', 'Register purchased or approved software and map it to inventory. Only registered Legal software is treated as legal.'],
+        ['No software policy returned from API. Click refresh or check backend /api/settings/software-policy/policies.', 'No software registry found. Click Add New to register approved software.'],
+        ['Loading software policy rules...', 'Loading software registry...'],
+        ['Add New Software Policy', 'Add New Software Registry'],
+        ['Edit Software Policy', 'Edit Software Registry'],
+        ['Save Policy', 'Save Registry'],
+        ['Use the Save Policy button at the top to save rule and selected software.', 'Use the Save Registry button at the top to save registry details and selected software.'],
+        ['Select software and click Save Policy at the top.', 'Select software and click Save Registry at the top.'],
+        ['Create a rule, choose category, then select software.', 'Create a registry entry, choose category, then select software.'],
+        ['rule(s) configured', 'registry entrie(s) configured'],
+        ['Rule name', 'Registry name'],
+        ['1. Rule setup', '1. Registry setup'],
+        ['Category, office hours and utilization threshold.', 'Category, mapped software, office hours and utilization threshold.'],
+      ];
+      replacements.forEach(([from, to]) => { next = next.split(from).join(to); });
       return next === code ? null : { code: next, map: null };
     },
   };
@@ -222,6 +254,7 @@ export default defineConfig({
     softwareComplianceDialUiPatch(),
     dashboardEnglishWordingPatch(),
     softwarePolicyListFirstPatch(),
+    softwareRegistryWordingPatch(),
     dashboardFocusCardOrderPatch(),
     dashboardFocusCardColorPatch(),
     react(),
