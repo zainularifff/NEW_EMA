@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Gauge, Plus, RefreshCw, Save, Search, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
+import { Eye, Gauge, Pencil, Plus, RefreshCw, Save, Search, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
 
 import LegacySettings from "./Settings";
 import NotificationChannelsSettings from "../components/settings/NotificationChannelsSettings";
@@ -104,12 +104,12 @@ const MANAGEMENT_ITEMS: Array<{ key: ManagementSection; title: string }> = [
   { key: "pricing", title: "Device Pricing" },
   { key: "aging", title: "Aging PC Rule" },
   { key: "policy", title: "Management Policy" },
-  { key: "softwarePolicy", title: "Software Policy" },
+  { key: "softwarePolicy", title: "Software Registry" },
 ];
 
 const INLINE_CSS = `
 .management-control-wrapper.settings-management-shell{height:100%;min-height:0;display:grid!important;grid-template-columns:292px minmax(0,1fr)!important;gap:12px!important;overflow:hidden!important;padding:0!important;background:transparent!important;border:0!important}.management-control-sidebar{height:100%;display:flex;flex-direction:column;overflow:hidden;border:1px solid #dbe7fb;border-radius:20px;background:#fff}.management-control-sidebar-head{padding:16px 18px;border-bottom:1px solid #e5edf8}.management-control-sidebar-head span,.sp-chip{display:block;color:#2563eb;font-size:.64rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.management-control-sidebar-head strong{display:block;margin-top:6px;color:#0f2746;font-size:1.02rem;font-weight:900}.management-control-sidebar-head small{display:block;margin-top:4px;color:#64748b;font-size:.72rem;font-weight:700}.management-control-nav-list{flex:1;display:grid;align-content:start;gap:8px;overflow:auto;padding:14px 12px}.management-control-nav-btn{width:100%;min-height:56px;display:grid;grid-template-columns:38px minmax(0,1fr);align-items:center;gap:12px;padding:10px 13px;border:0;border-radius:16px;background:transparent;color:#0f2746;text-align:left;font-weight:900}.management-control-nav-btn.active{color:#fff;background:linear-gradient(135deg,#2563eb,#087ea4)}.management-control-nav-icon{width:38px;height:38px;display:grid;place-items:center;border-radius:13px;color:#2563eb;background:#eef4ff}.management-control-nav-btn.active .management-control-nav-icon{color:#fff;background:rgba(255,255,255,.2)}.management-control-content,.management-legacy-content{min-height:0;height:100%;overflow:hidden}.management-legacy-content>.settings-module-root{height:100%!important;max-height:100%!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}.management-legacy-content .settings-layout{height:100%!important;grid-template-columns:1fr!important;padding:0!important}.management-legacy-content .settings-menu{display:none!important}.management-legacy-content .settings-content{height:100%!important;min-height:0!important}
-.software-policy-module{height:100%;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);gap:12px;color:#0f2746;overflow:hidden}.software-policy-module *{box-sizing:border-box}.sp-top,.sp-panel{border:1px solid #dbe7fb;border-radius:20px;background:#fff;box-shadow:0 14px 30px rgba(15,23,42,.045)}.sp-top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 18px}.sp-top h2,.sp-panel h3{margin:3px 0;color:#0f2746;font-weight:900;letter-spacing:-.04em}.sp-top p,.sp-help{margin:0;color:#64748b;font-size:.74rem;font-weight:700;line-height:1.45}.sp-layout{min-height:0;display:grid;grid-template-columns:300px minmax(0,1fr);gap:12px;overflow:hidden}.sp-panel{min-height:0;display:flex;flex-direction:column;overflow:hidden}.sp-panel-head{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-bottom:1px solid #e5edf8}.sp-panel-body{min-height:0;overflow:auto;padding:14px 16px}.sp-rule-list{display:grid;gap:8px}.sp-rule-card{width:100%;display:grid;gap:3px;padding:12px;border:1px solid #dbe7fb;border-radius:15px;background:#f8fbff;color:#0f2746;text-align:left;cursor:pointer}.sp-rule-card.active{background:linear-gradient(135deg,#2563eb,#087ea4);color:#fff;border-color:transparent}.sp-rule-card strong,.sp-rule-card span,.sp-rule-card small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sp-rule-card small{color:#64748b;font-size:.68rem;font-weight:750}.sp-rule-card.active small{color:rgba(255,255,255,.82)}.sp-work{min-height:0;height:100%;display:block;overflow:auto;padding-right:4px}.sp-setup{display:grid;grid-template-columns:minmax(0,1.14fr) minmax(360px,.86fr);gap:12px;margin-bottom:12px}.sp-section{border:1px solid #e5edf8;border-radius:18px;background:#fff;overflow:hidden}.sp-section-title{padding:12px 14px;border-bottom:1px solid #eef3fb}.sp-section-title strong{display:block;color:#0f2746;font-size:.84rem;font-weight:900}.sp-section-title small{display:block;margin-top:2px;color:#64748b;font-size:.68rem;font-weight:700}.sp-section-body{padding:14px;min-height:0}.sp-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.sp-field{display:grid;gap:6px}.sp-field.full{grid-column:1/-1}.sp-field span{color:#64748b;font-size:.62rem;font-weight:900;text-transform:uppercase}.sp-field input,.sp-field select,.sp-field textarea,.sp-search input{width:100%;min-height:40px;border:1px solid #d7e3f5;border-radius:12px;background:#fff;color:#0f2746;padding:0 12px;font-size:.78rem;font-weight:750;outline:none}.sp-field textarea{min-height:78px;padding:10px;resize:vertical}.sp-btn,.sp-icon,.sp-danger{min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;font-size:.76rem;font-weight:900;cursor:pointer}.sp-btn.primary{border:0;color:#fff;background:linear-gradient(135deg,#2563eb,#087ea4);padding:0 16px}.sp-btn.secondary{border:1px solid #d7e3f5;background:#fff;color:#2563eb;padding:0 16px}.sp-icon{width:40px;border:1px solid #d7e3f5;background:#fff;color:#2563eb}.sp-danger{width:40px;border:1px solid #fecaca;background:#fff1f2;color:#dc2626}.sp-btn:disabled,.sp-icon:disabled{opacity:.55;cursor:not-allowed}.sp-action-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}.sp-alert{padding:10px 14px;border-radius:14px;font-size:.74rem;font-weight:850;margin-bottom:12px}.sp-alert.error{color:#991b1b;background:#fef2f2;border:1px solid #fecaca}.sp-alert.success{color:#166534;background:#f0fdf4;border:1px solid #bbf7d0}.sp-alert.info{color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe}.sp-software-area{min-height:520px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px;overflow:visible}.sp-software-toolbar{display:grid;grid-template-columns:220px minmax(0,1fr) auto;gap:10px;align-items:end;margin-bottom:12px}.sp-search{min-height:40px;display:flex;align-items:center;gap:8px;border:1px solid #d7e3f5;border-radius:12px;padding:0 11px;background:#fff;color:#64748b}.sp-search input{min-height:0;border:0;padding:0}.sp-table{min-height:300px;max-height:430px;overflow:auto;border:1px solid #e5edf8;border-radius:16px}.sp-row{min-height:56px;display:grid;grid-template-columns:42px minmax(240px,1.3fr) minmax(145px,.7fr) 86px;gap:12px;align-items:center;padding:0 14px;border-bottom:1px solid #edf2f7;font-size:.74rem;font-weight:740}.sp-row.head{position:sticky;top:0;z-index:2;min-height:42px;background:#f3f7fc;color:#64748b;font-size:.62rem;font-weight:900;text-transform:uppercase}.sp-row.selected{background:#eff6ff}.sp-row strong,.sp-row small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis}.sp-row strong{color:#0f2746}.sp-row small{color:#64748b;font-size:.64rem;white-space:nowrap}.sp-class-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.sp-class-btn{min-height:70px;padding:12px;border:1px solid #d7e3f5;border-radius:16px;background:#fff;color:#0f2746;text-align:left;font-weight:900}.sp-class-btn.active.legal{border-color:#bbf7d0;background:#f0fdf4;color:#166534}.sp-class-btn.active.illegal{border-color:#fecaca;background:#fef2f2;color:#991b1b}.sp-selected-box{margin:10px 0;padding:10px 12px;border:1px solid #bfdbfe;border-radius:15px;background:#eff6ff;color:#1d4ed8;font-size:.76rem;font-weight:850}.sp-saved{margin-top:12px;border-top:1px solid #e5edf8}.sp-saved-row{min-height:52px;display:grid;grid-template-columns:minmax(0,1fr) 70px 40px;gap:8px;align-items:center;border-bottom:1px solid #edf2f7}.sp-badge{display:inline-flex;justify-content:center;align-items:center;min-height:24px;border-radius:999px;padding:0 8px;font-size:.62rem;font-weight:900}.sp-badge.legal{color:#166534;background:#dcfce7}.sp-badge.illegal{color:#991b1b;background:#fee2e2}.sp-empty{min-height:150px;display:grid;place-items:center;color:#64748b;font-size:.8rem;font-weight:800;text-align:center;padding:18px}@media(max-width:1280px){.management-control-wrapper.settings-management-shell,.sp-layout,.sp-setup,.sp-software-area,.sp-software-toolbar,.sp-form-grid,.sp-class-grid{grid-template-columns:1fr!important}.sp-row{grid-template-columns:42px 1fr}.sp-row.head{display:none}}
+.software-policy-module{height:100%;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);gap:12px;color:#0f2746;overflow:hidden}.software-policy-module *{box-sizing:border-box}.sp-top,.sp-section{border:1px solid #dbe7fb;border-radius:20px;background:#fff;box-shadow:0 14px 30px rgba(15,23,42,.045)}.sp-top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 18px}.sp-top h2{margin:3px 0;color:#0f2746;font-weight:950;letter-spacing:-.04em}.sp-top p,.sp-help{margin:0;color:#64748b;font-size:.74rem;font-weight:700;line-height:1.45}.sp-btn,.sp-icon,.sp-danger{min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;font-size:.76rem;font-weight:900;cursor:pointer}.sp-btn.primary{border:0;color:#fff;background:linear-gradient(135deg,#2563eb,#087ea4);padding:0 16px}.sp-btn.secondary{border:1px solid #d7e3f5;background:#fff;color:#2563eb;padding:0 16px}.sp-icon{width:40px;border:1px solid #d7e3f5;background:#fff;color:#2563eb}.sp-danger{width:40px;border:1px solid #fecaca;background:#fff1f2;color:#dc2626}.sp-btn:disabled,.sp-icon:disabled{opacity:.55;cursor:not-allowed}.sp-work{min-height:0;overflow:auto}.sp-section{overflow:hidden}.sp-section-title{padding:12px 14px;border-bottom:1px solid #eef3fb}.sp-section-title strong{display:block;color:#0f2746;font-size:.84rem;font-weight:900}.sp-section-title small{display:block;margin-top:2px;color:#64748b;font-size:.68rem;font-weight:700}.sp-section-body{padding:14px;min-height:0}.sp-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.sp-field{display:grid;gap:6px}.sp-field.full{grid-column:1/-1}.sp-field span{color:#64748b;font-size:.62rem;font-weight:900;text-transform:uppercase}.sp-field input,.sp-field select,.sp-field textarea,.sp-search input{width:100%;min-height:40px;border:1px solid #d7e3f5;border-radius:12px;background:#fff;color:#0f2746;padding:0 12px;font-size:.78rem;font-weight:750;outline:none}.sp-field textarea{min-height:78px;padding:10px;resize:vertical}.sp-action-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}.sp-alert{padding:10px 14px;border-radius:14px;font-size:.74rem;font-weight:850;margin-bottom:12px}.sp-alert.error{color:#991b1b;background:#fef2f2;border:1px solid #fecaca}.sp-alert.success{color:#166534;background:#f0fdf4;border:1px solid #bbf7d0}.sp-alert.info{color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe}.sp-policy-table-screen{min-height:0;overflow:auto}.sp-policy-table-card{height:100%;min-height:0}.sp-policy-table-wrap{display:grid;gap:10px;overflow:auto;padding-bottom:4px}.sp-policy-table-row{width:100%;min-width:1040px;min-height:68px;display:grid;grid-template-columns:minmax(220px,1.45fr) minmax(150px,.85fr) 96px 88px 88px 110px 150px 124px;gap:12px;align-items:center;padding:12px 14px;border:1px solid #e5edf8;border-radius:15px;background:#fff;color:#0f2746;text-align:left}.sp-policy-table-row.head{min-height:42px;background:#f3f7fc;color:#64748b;font-size:.62rem;font-weight:900;text-transform:uppercase}.sp-policy-table-row strong,.sp-policy-table-row small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sp-policy-table-row small{margin-top:3px;color:#64748b;font-size:.66rem;font-weight:750}.sp-policy-table-row:not(.head):hover{border-color:#bfdbfe;background:#f8fbff}.sp-policy-table-actions{display:flex;justify-content:flex-end;gap:6px}.sp-policy-table-actions .sp-icon,.sp-policy-table-actions .sp-danger{width:34px;min-height:34px;border-radius:10px}.sp-badge{display:inline-flex;justify-content:center;align-items:center;min-height:24px;border-radius:999px;padding:0 8px;font-size:.62rem;font-weight:900}.sp-badge.legal{color:#166534;background:#dcfce7}.sp-badge.illegal{color:#991b1b;background:#fee2e2}.sp-empty{min-height:150px;display:grid;place-items:center;color:#64748b;font-size:.8rem;font-weight:800;text-align:center;padding:18px}.sp-policy-modal-backdrop{position:fixed;inset:0;z-index:3000;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.46);backdrop-filter:blur(6px)}.sp-policy-modal{width:min(1180px,calc(100vw - 56px));height:min(88vh,900px);display:grid;grid-template-rows:auto minmax(0,1fr);border:1px solid #dbe7fb;border-radius:24px;background:#f8fbff;box-shadow:0 30px 80px rgba(15,23,42,.32);overflow:hidden}.sp-policy-modal-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 18px;border-bottom:1px solid #dbe7fb;background:#fff}.sp-policy-modal-head strong{display:block;color:#0f2746;font-size:1rem;font-weight:950}.sp-policy-modal-head small{display:block;margin-top:3px;color:#64748b;font-size:.72rem;font-weight:750}.sp-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}.sp-policy-modal-body{min-height:0;overflow:auto;padding:16px;display:grid;gap:12px}.sp-map-block{margin-top:14px;border:1px solid #e5edf8;border-radius:16px;overflow:hidden}.sp-map-block .sp-section-title{background:#f8fbff}.sp-software-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,320px) auto;gap:10px;align-items:center;margin-bottom:12px}.sp-search{min-height:40px;display:flex;align-items:center;gap:8px;border:1px solid #d7e3f5;border-radius:12px;padding:0 11px;background:#fff;color:#64748b}.sp-search input{min-height:0;border:0;padding:0}.sp-table{min-height:300px;max-height:430px;overflow:auto;border:1px solid #e5edf8;border-radius:16px}.sp-row{min-height:56px;display:grid;grid-template-columns:42px minmax(240px,1.3fr) minmax(145px,.7fr) 86px;gap:12px;align-items:center;padding:0 14px;border-bottom:1px solid #edf2f7;font-size:.74rem;font-weight:740}.sp-row.head{position:sticky;top:0;z-index:2;min-height:42px;background:#f3f7fc;color:#64748b;font-size:.62rem;font-weight:900;text-transform:uppercase}.sp-row.selected{background:#eff6ff}.sp-row strong,.sp-row small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis}.sp-row strong{color:#0f2746}.sp-row small{color:#64748b;font-size:.64rem;white-space:nowrap}.sp-class-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.sp-class-btn{min-height:70px;padding:12px;border:1px solid #d7e3f5;border-radius:16px;background:#fff;color:#0f2746;text-align:left;font-weight:900}.sp-class-btn.active.legal{border-color:#bbf7d0;background:#f0fdf4;color:#166534}.sp-class-btn.active.illegal{border-color:#fecaca;background:#fef2f2;color:#991b1b}.sp-selected-box{margin:10px 0;padding:10px 12px;border:1px solid #bfdbfe;border-radius:15px;background:#eff6ff;color:#1d4ed8;font-size:.76rem;font-weight:850}@media(max-width:1280px){.management-control-wrapper.settings-management-shell,.sp-form-grid,.sp-software-toolbar{grid-template-columns:1fr!important}.sp-row{grid-template-columns:42px 1fr}.sp-row.head{display:none}}
 `;
 
 function readInitialView(): SettingsView {
@@ -125,14 +125,14 @@ function readInitialView(): SettingsView {
 function readManagementSection(): ManagementSection {
   if (typeof window === "undefined") return "aging";
   const text = `${new URLSearchParams(window.location.search).get("section") || ""} ${window.location.hash || ""}`.toLowerCase();
-  if (text.includes("software-policy") || text.includes("softwarepolicy")) return "softwarePolicy";
+  if (text.includes("software-registry") || text.includes("software-policy") || text.includes("softwarepolicy")) return "softwarePolicy";
   if (text.includes("pricing")) return "pricing";
   if (text.includes("policy")) return "policy";
   return "aging";
 }
 
 function getManagementHash(section: ManagementSection) {
-  return section === "softwarePolicy" ? "#management-control-software-policy" : `#management-control-${section}`;
+  return section === "softwarePolicy" ? "#management-control-software-registry" : `#management-control-${section}`;
 }
 
 function getCategoryName(categories: CategoryRow[], categoryId: string) {
@@ -147,19 +147,15 @@ function normalizeTime(value?: string) {
   return String(value || "").slice(0, 5) || "";
 }
 
-function dateOnly(value?: string) {
-  return value ? String(value).slice(0, 10) : "";
-}
-
 function getSoftwareKey(row: SoftwareRow) {
   return [row.SWUNI_Idn || row.SoftwareID || row.SoftwareName, row.Publisher || "", row.Version || ""].join("||");
 }
 
-function getPolicyClassification(item: PolicyItem): Classification {
-  return String(item.Classification || item.ComplianceStatus || "Legal").toLowerCase() === "illegal" ? "Illegal" : "Legal";
+function dateOnly(value?: string) {
+  return value ? String(value).slice(0, 10) : "";
 }
 
-function SoftwarePolicyManagement() {
+function SoftwareRegistryManagement() {
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [publishers, setPublishers] = useState<PublisherRow[]>([]);
   const [policies, setPolicies] = useState<PolicyRow[]>([]);
@@ -170,19 +166,22 @@ function SoftwarePolicyManagement() {
   const [softwareRows, setSoftwareRows] = useState<SoftwareRow[]>([]);
   const [policyItems, setPolicyItems] = useState<PolicyItem[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
+  const [uiMode, setUiMode] = useState<"list" | "form">("list");
+  const [customCategoryName, setCustomCategoryName] = useState("");
+  const [subSoftwareName, setSubSoftwareName] = useState("");
   const [loading, setLoading] = useState(false);
   const [softwareLoading, setSoftwareLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
 
   const activePolicy = useMemo(() => policies.find((policy) => policy.PolicyID === activePolicyId) || null, [activePolicyId, policies]);
-  const selectedRows = useMemo(() => softwareRows.filter((row) => selectedKeys.has(getSoftwareKey(row))), [selectedKeys, softwareRows]);
+  const selectedRows = useMemo(() => softwareRows.filter((row) => selectedKeys.has(getSoftwareKey(row))).slice(0, 1), [selectedKeys, softwareRows]);
 
   const loadPolicies = useCallback(async () => {
     const payload = await api.get(`${API_ROOT}/policies`, { forceRefresh: true });
     const rows = unwrapArray<PolicyRow>(payload).sort((a, b) => String(b.UpdatedAt || b.CreatedAt || "").localeCompare(String(a.UpdatedAt || a.CreatedAt || "")));
     setPolicies(rows);
-    setActivePolicyId((current) => current ?? rows[0]?.PolicyID ?? null);
+    setActivePolicyId((current) => (rows.some((row) => row.PolicyID === current) ? current : null));
   }, []);
 
   const loadBase = useCallback(async () => {
@@ -195,7 +194,7 @@ function SoftwarePolicyManagement() {
       ]);
       setCategories(unwrapArray<CategoryRow>(categoryPayload));
     } catch (error) {
-      setMessage({ type: "error", text: pickErrorMessage(error, "Failed to load software policy setup.") });
+      setMessage({ type: "error", text: pickErrorMessage(error, "Failed to load software registry setup.") });
     } finally {
       setLoading(false);
     }
@@ -203,11 +202,11 @@ function SoftwarePolicyManagement() {
 
   const loadPolicyItems = useCallback(async (policyId: number) => {
     const payload = await api.get(`${API_ROOT}/policies/${policyId}/items`, { forceRefresh: true });
-    setPolicyItems(unwrapArray<PolicyItem>(payload));
+    setPolicyItems(unwrapArray<PolicyItem>(payload).slice(0, 1));
   }, []);
 
   const loadPublishers = useCallback(async (categoryId: string) => {
-    if (!categoryId) {
+    if (!categoryId || categoryId === "__other__") {
       setPublishers([]);
       return;
     }
@@ -221,7 +220,7 @@ function SoftwarePolicyManagement() {
   }, []);
 
   const loadSoftwareRows = useCallback(async () => {
-    if (!ruleForm.categoryId) {
+    if (uiMode !== "form" || !ruleForm.categoryId || ruleForm.categoryId === "__other__") {
       setSoftwareRows([]);
       return;
     }
@@ -231,7 +230,7 @@ function SoftwarePolicyManagement() {
         categoryId: ruleForm.categoryId,
         publisher: ruleForm.publisher,
         search: softwareSearch,
-        limit: "500",
+        limit: "200",
       });
       const payload = await api.get(`${API_ROOT}/software?${query.toString()}`, { forceRefresh: true });
       setSoftwareRows(unwrapArray<SoftwareRow>(payload));
@@ -241,12 +240,12 @@ function SoftwarePolicyManagement() {
     } finally {
       setSoftwareLoading(false);
     }
-  }, [ruleForm.categoryId, ruleForm.publisher, softwareSearch]);
+  }, [uiMode, ruleForm.categoryId, ruleForm.publisher, softwareSearch]);
 
   useEffect(() => { void loadBase(); }, [loadBase]);
 
   useEffect(() => {
-    if (!activePolicy) return;
+    if (uiMode !== "form" || !activePolicy) return;
     const nextCategoryId = activePolicy.CategoryID ? String(activePolicy.CategoryID) : "";
     setRuleForm({
       policyName: activePolicy.PolicyName || "",
@@ -259,17 +258,19 @@ function SoftwarePolicyManagement() {
       underUtilizedHours: String(activePolicy.UnderUtilizedHours ?? 0.01),
       openCountThreshold: String(activePolicy.OpenCountThreshold ?? 1),
     });
+    setCustomCategoryName(activePolicy.CategoryID ? "" : activePolicy.CategoryName || "");
+    setSubSoftwareName("");
+    setSelectedKeys(new Set());
     void loadPublishers(nextCategoryId);
     void loadPolicyItems(activePolicy.PolicyID);
-    setSelectedKeys(new Set());
-  }, [activePolicy, loadPolicyItems, loadPublishers]);
+  }, [uiMode, activePolicy, loadPolicyItems, loadPublishers]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void loadSoftwareRows(); }, 250);
     return () => window.clearTimeout(timer);
   }, [loadSoftwareRows]);
 
-  const startNewRule = () => {
+  const startNewRegistry = () => {
     setActivePolicyId(null);
     setRuleForm(EMPTY_RULE);
     setSoftwareForm(EMPTY_SOFTWARE_FORM);
@@ -277,14 +278,22 @@ function SoftwarePolicyManagement() {
     setSelectedKeys(new Set());
     setSoftwareRows([]);
     setPublishers([]);
-    setMessage({ type: "info", text: "Create a rule, choose category, then select software." });
+    setCustomCategoryName("");
+    setSubSoftwareName("");
+    setUiMode("form");
+    setMessage({ type: "info", text: "Create software name, choose category, map one inventory software, then complete classification and license." });
+  };
+
+  const openRegistry = (policyId: number) => {
+    setActivePolicyId(policyId);
+    setUiMode("form");
   };
 
   const buildRulePayload = () => ({
     PolicyName: ruleForm.policyName.trim(),
-    Description: ruleForm.description,
-    CategoryID: Number(ruleForm.categoryId) || null,
-    CategoryName: getCategoryName(categories, ruleForm.categoryId),
+    Description: [ruleForm.description.trim(), subSoftwareName.trim() ? `Sub software: ${subSoftwareName.trim()}` : ""].filter(Boolean).join("\n"),
+    CategoryID: ruleForm.categoryId === "__other__" ? null : Number(ruleForm.categoryId) || null,
+    CategoryName: ruleForm.categoryId === "__other__" ? customCategoryName.trim() : getCategoryName(categories, ruleForm.categoryId),
     WorkingStartTime: ruleForm.workingStartTime || "09:00",
     WorkingEndTime: ruleForm.workingEndTime || "17:00",
     WorkDays: "Mon-Fri",
@@ -295,26 +304,35 @@ function SoftwarePolicyManagement() {
 
   const saveRule = async () => {
     if (!ruleForm.policyName.trim()) {
-      setMessage({ type: "error", text: "Rule name is required." });
+      setMessage({ type: "error", text: "Purchased software / registry name is required." });
       return null;
     }
+    if (!ruleForm.categoryId) {
+      setMessage({ type: "error", text: "Category is required." });
+      return null;
+    }
+    if (ruleForm.categoryId === "__other__" && !customCategoryName.trim()) {
+      setMessage({ type: "error", text: "Custom category name is required." });
+      return null;
+    }
+
     setSaving(true);
     try {
       const payload = buildRulePayload();
       if (activePolicy) {
-        const updated = await api.put(`${API_ROOT}/policies/${activePolicy.PolicyID}`, payload);
+        await api.put(`${API_ROOT}/policies/${activePolicy.PolicyID}`, payload);
         await loadPolicies();
-        setMessage({ type: "success", text: "Software policy rule saved." });
+        setMessage({ type: "success", text: "Software registry saved." });
         return activePolicy.PolicyID;
       }
       const createdPayload = await api.post(`${API_ROOT}/policies`, payload);
       const created = unwrapArray<PolicyRow>(createdPayload)[0] || (createdPayload as { data?: PolicyRow })?.data;
       await loadPolicies();
       if (created?.PolicyID) setActivePolicyId(created.PolicyID);
-      setMessage({ type: "success", text: "Software policy rule created." });
+      setMessage({ type: "success", text: "Software registry created." });
       return created?.PolicyID || null;
     } catch (error) {
-      setMessage({ type: "error", text: pickErrorMessage(error, "Failed to save rule.") });
+      setMessage({ type: "error", text: pickErrorMessage(error, "Failed to save software registry.") });
       return null;
     } finally {
       setSaving(false);
@@ -324,35 +342,38 @@ function SoftwarePolicyManagement() {
   const handleCategoryChange = (categoryId: string) => {
     setRuleForm((current) => ({ ...current, categoryId, publisher: "" }));
     setSelectedKeys(new Set());
+    setSoftwareRows([]);
+    if (categoryId === "__other__") {
+      setPublishers([]);
+      return;
+    }
     void loadPublishers(categoryId);
   };
 
   const toggleSoftware = (row: SoftwareRow) => {
     const key = getSoftwareKey(row);
-    setSelectedKeys((current) => {
-      const next = new Set(current);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+    setSelectedKeys((current) => (current.has(key) ? new Set() : new Set([key])));
   };
 
-  const saveSelectedSoftware = async () => {
-    if (selectedRows.length === 0) {
-      setMessage({ type: "error", text: "Select at least one software." });
-      return;
-    }
+  const saveRegistry = async () => {
     const policyId = activePolicy?.PolicyID || await saveRule();
     if (!policyId) return;
 
+    if (selectedRows.length === 0) {
+      await loadPolicies();
+      setUiMode("list");
+      return;
+    }
+
+    const row = selectedRows[0];
     setSaving(true);
     try {
       await api.post(`${API_ROOT}/policies/${policyId}/items`, {
-        items: selectedRows.map((row) => ({
+        items: [{
           SWUNI_Idn: row.SWUNI_Idn || Number(row.SoftwareID) || null,
           SoftwareName: row.SoftwareName,
-          CategoryID: row.CategoryID || Number(ruleForm.categoryId) || null,
-          CategoryName: row.CategoryName || getCategoryName(categories, ruleForm.categoryId),
+          CategoryID: row.CategoryID || (ruleForm.categoryId === "__other__" ? null : Number(ruleForm.categoryId) || null),
+          CategoryName: row.CategoryName || (ruleForm.categoryId === "__other__" ? customCategoryName.trim() : getCategoryName(categories, ruleForm.categoryId)),
           Publisher: row.Publisher || ruleForm.publisher,
           Version: row.Version,
           Classification: softwareForm.classification,
@@ -366,28 +387,30 @@ function SoftwarePolicyManagement() {
           LicenseKey: softwareForm.licenseKey,
           LicenseStartDate: softwareForm.licenseStartDate || null,
           LicenseEndDate: softwareForm.licenseEndDate || null,
-        })),
+        }],
       });
       setSelectedKeys(new Set());
-      setActivePolicyId(policyId);
       await loadPolicyItems(policyId);
       await loadPolicies();
-      setMessage({ type: "success", text: `${selectedRows.length} software saved into this rule.` });
+      setUiMode("list");
+      setMessage({ type: "success", text: "Software registry saved." });
     } catch (error) {
-      setMessage({ type: "error", text: pickErrorMessage(error, "Failed to save selected software.") });
+      setMessage({ type: "error", text: pickErrorMessage(error, "Failed to save mapped software.") });
     } finally {
       setSaving(false);
     }
   };
 
-  const removePolicyItem = async (item: PolicyItem) => {
+  const deleteRegistryPolicy = async (policy: PolicyRow) => {
+    if (!window.confirm(`Delete ${policy.PolicyName}?`)) return;
     try {
-      await api.delete(`${API_ROOT}/items/${item.PolicyItemID}`);
-      if (activePolicy) await loadPolicyItems(activePolicy.PolicyID);
+      await api.delete(`${API_ROOT}/policies/${policy.PolicyID}`);
+      if (activePolicyId === policy.PolicyID) setActivePolicyId(null);
       await loadPolicies();
-      setMessage({ type: "success", text: "Software removed from policy." });
+      setUiMode("list");
+      setMessage({ type: "success", text: "Software registry deleted." });
     } catch (error) {
-      setMessage({ type: "error", text: pickErrorMessage(error, "Failed to remove software.") });
+      setMessage({ type: "error", text: pickErrorMessage(error, "Failed to delete software registry.") });
     }
   };
 
@@ -396,101 +419,115 @@ function SoftwarePolicyManagement() {
       <header className="sp-top">
         <div>
           <span className="sp-chip">Settings</span>
-          <h2>Software Policy</h2>
-          <p>Define legal or illegal software, working hour usage rule, and license information.</p>
+          <h2>Software Registry</h2>
+          <p>Register purchased or approved software, map it with inventory, and classify legal status. Unregistered software is treated as illegal.</p>
         </div>
-        <button className="sp-btn primary" type="button" onClick={startNewRule}><Plus size={16} /> Create New Rule</button>
+        {uiMode === "list" ? <button className="sp-btn primary" type="button" onClick={startNewRegistry}><Plus size={16} /> Add New</button> : null}
       </header>
 
-      <div className="sp-layout">
-        <aside className="sp-panel">
-          <div className="sp-panel-head">
-            <div><h3>Rules</h3><p className="sp-help">Saved software policies</p></div>
-            <button className="sp-icon" type="button" onClick={loadBase} disabled={loading}><RefreshCw size={15} /></button>
+      <main className="sp-work">
+        {uiMode === "list" ? (
+          <div className="sp-policy-table-screen">
+            {message && <div className={`sp-alert ${message.type}`}>{message.text}</div>}
+            <section className="sp-section sp-policy-table-card">
+              <div className="sp-section-title">
+                <strong>Software Registry</strong>
+                <small>Register purchased or approved software and map it to inventory. Only registered Legal software is treated as legal.</small>
+              </div>
+              <div className="sp-section-body">
+                <div className="sp-action-row" style={{ marginTop: 0, marginBottom: 12, justifyContent: "space-between" }}>
+                  <span className="sp-help">{loading ? "Loading entries..." : `${policies.length} registry entrie(s) configured`}</span>
+                  <button className="sp-icon" type="button" onClick={loadBase} disabled={loading} title="Refresh"><RefreshCw size={15} /></button>
+                </div>
+                <div className="sp-policy-table-wrap">
+                  <div className="sp-policy-table-row head"><span>Registry Name</span><span>Category</span><span>Software</span><span>Legal</span><span>Illegal</span><span>License</span><span>Work hours</span><span>Action</span></div>
+                  {loading ? <div className="sp-empty">Loading software registry...</div> : policies.length === 0 ? <div className="sp-empty">No software registry found. Click Add New to register approved software.</div> : policies.map((policy) => (
+                    <div key={policy.PolicyID} className="sp-policy-table-row">
+                      <span><strong>{policy.PolicyName}</strong><small>{policy.Description || "No note"}</small></span>
+                      <span>{policy.CategoryName || "No category"}</span>
+                      <span>{policy.TotalItems || 0}</span>
+                      <span><b className="sp-badge legal">{policy.LegalCount || 0}</b></span>
+                      <span><b className="sp-badge illegal">{policy.IllegalCount || 0}</b></span>
+                      <span>{policy.LicenseTotal || 0}</span>
+                      <span>{normalizeTime(policy.WorkingStartTime) || "09:00"} - {normalizeTime(policy.WorkingEndTime) || "17:00"}</span>
+                      <span className="sp-policy-table-actions">
+                        <button className="sp-icon" type="button" title="View" aria-label="View registry" onClick={() => openRegistry(policy.PolicyID)}><Eye size={14} /></button>
+                        <button className="sp-icon" type="button" title="Edit" aria-label="Edit registry" onClick={() => openRegistry(policy.PolicyID)}><Pencil size={14} /></button>
+                        <button className="sp-danger" type="button" title="Delete" aria-label="Delete registry" onClick={() => deleteRegistryPolicy(policy)}><Trash2 size={14} /></button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
           </div>
-          <div className="sp-panel-body">
-            <div className="sp-rule-list">
-              {policies.length === 0 ? <div className="sp-empty">No software rule yet.</div> : policies.map((policy) => (
-                <button key={policy.PolicyID} type="button" className={`sp-rule-card ${policy.PolicyID === activePolicyId ? "active" : ""}`} onClick={() => setActivePolicyId(policy.PolicyID)}>
-                  <strong>{policy.PolicyName}</strong>
-                  <small>{policy.CategoryName || "No category"}</small>
-                  <small>{policy.TotalItems || 0} software • {policy.LegalCount || 0} legal • {policy.IllegalCount || 0} illegal</small>
-                </button>
-              ))}
+        ) : (
+          <div className="sp-policy-modal-backdrop">
+            <div className="sp-policy-modal">
+              <div className="sp-policy-modal-head">
+                <div><strong>{activePolicy ? "Edit Software Registry" : "Add New Software Registry"}</strong><small>Choose category, select publisher, map one inventory software, then complete license and usage rules.</small></div>
+                <div className="sp-top-actions"><button className="sp-btn secondary" type="button" onClick={() => setUiMode("list")}>Back to List</button><button className="sp-btn primary" type="button" onClick={saveRegistry} disabled={saving}><Save size={15} /> Save Registry</button></div>
+              </div>
+              <div className="sp-policy-modal-body">
+                {message && <div className={`sp-alert ${message.type}`}>{message.text}</div>}
+
+                <section className="sp-section">
+                  <div className="sp-section-title"><strong>1. Registry setup</strong><small>Start with purchased software name, category, optional sub software and publisher.</small></div>
+                  <div className="sp-section-body">
+                    <div className="sp-form-grid">
+                      <label className="sp-field full"><span>Purchased software / registry name</span><input value={ruleForm.policyName} onChange={(e) => setRuleForm((c) => ({ ...c, policyName: e.target.value }))} placeholder="Example: Microsoft Office" /></label>
+                      <label className="sp-field"><span>Category</span><select value={ruleForm.categoryId} onChange={(e) => handleCategoryChange(e.target.value)}><option value="">Select existing category</option>{categories.map((row) => <option key={row.CategoryID} value={row.CategoryID}>{row.CategoryName}</option>)}<option value="__other__">Other / create custom category</option></select></label>
+                      {ruleForm.categoryId === "__other__" && <label className="sp-field"><span>Custom category name</span><input value={customCategoryName} onChange={(e) => setCustomCategoryName(e.target.value)} placeholder="Example: Design Tool" /></label>}
+                      <label className="sp-field"><span>Sub software / edition</span><input value={subSoftwareName} onChange={(e) => setSubSoftwareName(e.target.value)} placeholder="Optional, example: Pro / Enterprise / Add-on" /></label>
+                      <label className="sp-field"><span>Publisher</span><select value={ruleForm.publisher} onChange={(e) => setRuleForm((c) => ({ ...c, publisher: e.target.value }))} disabled={!ruleForm.categoryId || ruleForm.categoryId === "__other__"}><option value="">Select publisher after category</option>{publishers.map((row) => <option key={row.Publisher} value={row.Publisher}>{row.Publisher}</option>)}</select></label>
+                    </div>
+
+                    <div className="sp-map-block">
+                      <div className="sp-section-title"><strong>Inventory software mapping</strong><small>Select exactly one software from inventory after choosing category and publisher.</small></div>
+                      <div className="sp-section-body" style={{ minHeight: 0, display: "flex", flexDirection: "column" }}>
+                        <div className="sp-software-toolbar">
+                          <span className="sp-help">Select one inventory software that matches this registry.</span>
+                          <label className="sp-search"><Search size={15} /><input value={softwareSearch} onChange={(e) => setSoftwareSearch(e.target.value)} placeholder="Search software..." /></label>
+                          <button className="sp-btn secondary" type="button" onClick={loadSoftwareRows} disabled={softwareLoading}>Search</button>
+                        </div>
+                        <div className="sp-table">
+                          <div className="sp-row head"><span></span><span>Software</span><span>Publisher</span><span>Installed</span></div>
+                          {softwareLoading ? <div className="sp-empty">Loading software...</div> : softwareRows.length === 0 ? <div className="sp-empty">Select category and publisher to display software list.</div> : softwareRows.map((row) => { const key = getSoftwareKey(row); const selected = selectedKeys.has(key); return (
+                            <label key={key} className={`sp-row ${selected ? "selected" : ""}`}><span><input type="radio" name="software-registry-map" checked={selected} onChange={() => toggleSoftware(row)} /></span><span><strong>{row.SoftwareName}</strong><small>{row.Version || "No version"}</small></span><span>{row.Publisher || "Unknown"}</span><span>{row.InstalledCount ?? row.InstalledDeviceCount ?? 0}</span></label>
+                          ); })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="sp-section">
+                  <div className="sp-section-title"><strong>2. Classification, license & usage rules</strong><small>Legal status, license expiry and utilization rule.</small></div>
+                  <div className="sp-section-body">
+                    <div className="sp-class-grid">
+                      <button type="button" className={`sp-class-btn ${softwareForm.classification === "Legal" ? "active legal" : ""}`} onClick={() => setSoftwareForm((c) => ({ ...c, classification: "Legal" }))}><ShieldCheck size={18} /> Legal</button>
+                      <button type="button" className={`sp-class-btn ${softwareForm.classification === "Illegal" ? "active illegal" : ""}`} onClick={() => setSoftwareForm((c) => ({ ...c, classification: "Illegal" }))}><ShieldAlert size={18} /> Illegal</button>
+                    </div>
+                    <div className="sp-selected-box">{selectedRows.length ? "1 software selected" : "No software selected"}</div>
+                    <div className="sp-form-grid">
+                      <label className="sp-field"><span>Total license</span><input type="number" min="0" value={softwareForm.licenseCount} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseCount: e.target.value }))} /></label>
+                      <label className="sp-field"><span>License key/ref</span><input value={softwareForm.licenseKey} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseKey: e.target.value }))} /></label>
+                      <label className="sp-field"><span>Start date</span><input type="date" value={softwareForm.licenseStartDate} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseStartDate: e.target.value }))} /></label>
+                      <label className="sp-field"><span>End date</span><input type="date" value={softwareForm.licenseEndDate} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseEndDate: e.target.value }))} /></label>
+                      <label className="sp-field"><span>Work start</span><input type="time" value={ruleForm.workingStartTime} onChange={(e) => setRuleForm((c) => ({ ...c, workingStartTime: e.target.value }))} /></label>
+                      <label className="sp-field"><span>Work end</span><input type="time" value={ruleForm.workingEndTime} onChange={(e) => setRuleForm((c) => ({ ...c, workingEndTime: e.target.value }))} /></label>
+                      <label className="sp-field"><span>Utilized if at least hour/day</span><input type="number" min="0" step="0.25" value={ruleForm.utilizedHours} onChange={(e) => setRuleForm((c) => ({ ...c, utilizedHours: e.target.value }))} /></label>
+                      <label className="sp-field"><span>Open count/day</span><input type="number" min="0" value={ruleForm.openCountThreshold} onChange={(e) => setRuleForm((c) => ({ ...c, openCountThreshold: e.target.value }))} /></label>
+                      <label className="sp-field full"><span>Note</span><textarea value={ruleForm.description} onChange={(e) => setRuleForm((c) => ({ ...c, description: e.target.value }))} placeholder="Optional note" /></label>
+                    </div>
+                    <div className="sp-action-row"><span className="sp-help">Monday to Friday. ≥ {ruleForm.utilizedHours || 2} hour/day = utilized, below that = underutilized, no activity = not used.</span></div>
+                  </div>
+                </section>
+              </div>
             </div>
           </div>
-        </aside>
-
-        <main className="sp-work">
-          {message && <div className={`sp-alert ${message.type}`}>{message.text}</div>}
-          <div className="sp-setup">
-            <section className="sp-section">
-              <div className="sp-section-title"><strong>1. Rule setup</strong><small>Category, office hours and utilization threshold.</small></div>
-              <div className="sp-section-body">
-                <div className="sp-form-grid">
-                  <label className="sp-field"><span>Rule name</span><input value={ruleForm.policyName} onChange={(e) => setRuleForm((c) => ({ ...c, policyName: e.target.value }))} placeholder="Example: Microsoft Office policy" /></label>
-                  <label className="sp-field"><span>Category</span><select value={ruleForm.categoryId} onChange={(e) => handleCategoryChange(e.target.value)}><option value="">Select category</option>{categories.map((row) => <option key={row.CategoryID} value={row.CategoryID}>{row.CategoryName}</option>)}</select></label>
-                  <label className="sp-field"><span>Work start</span><input type="time" value={ruleForm.workingStartTime} onChange={(e) => setRuleForm((c) => ({ ...c, workingStartTime: e.target.value }))} /></label>
-                  <label className="sp-field"><span>Work end</span><input type="time" value={ruleForm.workingEndTime} onChange={(e) => setRuleForm((c) => ({ ...c, workingEndTime: e.target.value }))} /></label>
-                  <label className="sp-field"><span>Utilized if at least hour/day</span><input type="number" min="0" step="0.25" value={ruleForm.utilizedHours} onChange={(e) => setRuleForm((c) => ({ ...c, utilizedHours: e.target.value }))} /></label>
-                  <label className="sp-field"><span>Open count/day</span><input type="number" min="0" value={ruleForm.openCountThreshold} onChange={(e) => setRuleForm((c) => ({ ...c, openCountThreshold: e.target.value }))} /></label>
-                  <label className="sp-field full"><span>Note</span><textarea value={ruleForm.description} onChange={(e) => setRuleForm((c) => ({ ...c, description: e.target.value }))} placeholder="Optional note" /></label>
-                </div>
-                <div className="sp-action-row">
-                  <button className="sp-btn primary" type="button" onClick={saveRule} disabled={saving}><Save size={15} /> Save Rule</button>
-                  <span className="sp-help">Monday to Friday. ≥ {ruleForm.utilizedHours || 2} hour/day = utilized, below that = underutilized, no activity = not used.</span>
-                </div>
-              </div>
-            </section>
-
-            <section className="sp-section">
-              <div className="sp-section-title"><strong>2. Classification & license</strong><small>Apply this to selected software.</small></div>
-              <div className="sp-section-body">
-                <div className="sp-class-grid">
-                  <button type="button" className={`sp-class-btn ${softwareForm.classification === "Legal" ? "active legal" : ""}`} onClick={() => setSoftwareForm((c) => ({ ...c, classification: "Legal" }))}><ShieldCheck size={18} /> Legal</button>
-                  <button type="button" className={`sp-class-btn ${softwareForm.classification === "Illegal" ? "active illegal" : ""}`} onClick={() => setSoftwareForm((c) => ({ ...c, classification: "Illegal" }))}><ShieldAlert size={18} /> Illegal</button>
-                </div>
-                <div className="sp-selected-box">{selectedRows.length} software selected</div>
-                <div className="sp-form-grid">
-                  <label className="sp-field"><span>Total license</span><input type="number" min="0" value={softwareForm.licenseCount} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseCount: e.target.value }))} /></label>
-                  <label className="sp-field"><span>License key/ref</span><input value={softwareForm.licenseKey} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseKey: e.target.value }))} /></label>
-                  <label className="sp-field"><span>Start date</span><input type="date" value={softwareForm.licenseStartDate} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseStartDate: e.target.value }))} /></label>
-                  <label className="sp-field"><span>End date</span><input type="date" value={softwareForm.licenseEndDate} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseEndDate: e.target.value }))} /></label>
-                </div>
-                <div className="sp-action-row"><button className="sp-btn primary" type="button" onClick={saveSelectedSoftware} disabled={saving || selectedRows.length === 0}><CheckCircle2 size={15} /> Save Selected Software</button></div>
-              </div>
-            </section>
-          </div>
-
-          <div className="sp-software-area">
-            <section className="sp-section">
-              <div className="sp-section-title"><strong>3. Select software</strong><small>Choose software under selected category.</small></div>
-              <div className="sp-section-body" style={{ minHeight: 0, display: "flex", flexDirection: "column" }}>
-                <div className="sp-software-toolbar">
-                  <label className="sp-field"><span>Publisher</span><select value={ruleForm.publisher} onChange={(e) => setRuleForm((c) => ({ ...c, publisher: e.target.value }))} disabled={!ruleForm.categoryId}><option value="">All publishers</option>{publishers.map((row) => <option key={row.Publisher} value={row.Publisher}>{row.Publisher}</option>)}</select></label>
-                  <label className="sp-search"><Search size={15} /><input value={softwareSearch} onChange={(e) => setSoftwareSearch(e.target.value)} placeholder="Search software..." /></label>
-                  <button className="sp-btn secondary" type="button" onClick={loadSoftwareRows} disabled={softwareLoading}>Search</button>
-                </div>
-                <div className="sp-table">
-                  <div className="sp-row head"><span></span><span>Software</span><span>Publisher</span><span>Installed</span></div>
-                  {softwareLoading ? <div className="sp-empty">Loading software...</div> : softwareRows.length === 0 ? <div className="sp-empty">Select category to display software list.</div> : softwareRows.map((row) => { const key = getSoftwareKey(row); const selected = selectedKeys.has(key); return (
-                    <label key={key} className={`sp-row ${selected ? "selected" : ""}`}><span><input type="checkbox" checked={selected} onChange={() => toggleSoftware(row)} /></span><span><strong>{row.SoftwareName}</strong><small>{row.Version || "No version"}</small></span><span>{row.Publisher || "Unknown"}</span><span>{row.InstalledCount ?? row.InstalledDeviceCount ?? 0}</span></label>
-                  ); })}
-                </div>
-              </div>
-            </section>
-
-            <section className="sp-section">
-              <div className="sp-section-title"><strong>Saved software</strong><small>Software already assigned to this rule.</small></div>
-              <div className="sp-section-body">
-                {policyItems.length === 0 ? <div className="sp-empty">No software saved yet.</div> : <div className="sp-saved">{policyItems.map((item) => { const classification = getPolicyClassification(item); return (
-                  <div key={item.PolicyItemID} className="sp-saved-row"><span><strong>{item.SoftwareName}</strong><small>{item.LicenseCount || 0} license • expires {dateOnly(item.LicenseEndDate) || "-"}</small></span><span className={`sp-badge ${classification.toLowerCase()}`}>{classification}</span><button className="sp-danger" type="button" onClick={() => removePolicyItem(item)}><Trash2 size={14} /></button></div>
-                ); })}</div>}
-              </div>
-            </section>
-          </div>
-        </main>
-      </div>
+        )}
+      </main>
     </section>
   );
 }
@@ -572,7 +609,7 @@ export default function SettingsWithNotifications() {
               </div>
             </aside>
             <main className="management-control-content">
-              {managementSection === "softwarePolicy" ? <SoftwarePolicyManagement /> : <div className="management-legacy-content"><LegacySettings key={`management-${managementSection}`} /></div>}
+              {managementSection === "softwarePolicy" ? <SoftwareRegistryManagement /> : <div className="management-legacy-content"><LegacySettings key={`management-${managementSection}`} /></div>}
             </main>
           </div>
         ) : (
