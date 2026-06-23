@@ -129,13 +129,28 @@ function softwarePolicyListFirstPatch() {
       );
 
       next = next.replace(
+        '  const removePolicyItem = async (item: PolicyItem) => {',
+        '  const savePolicy = async () => {\n    if (selectedRows.length > 0) {\n      await saveSelectedSoftware();\n      return;\n    }\n    await saveRule();\n  };\n\n  const removePolicyItem = async (item: PolicyItem) => {'
+      );
+
+      next = next.replace(
         '.sp-empty{min-height:150px;display:grid;place-items:center;color:#64748b;font-size:.8rem;font-weight:800;text-align:center;padding:18px}@media',
-        '.sp-empty{min-height:150px;display:grid;place-items:center;color:#64748b;font-size:.8rem;font-weight:800;text-align:center;padding:18px}.sp-policy-table-screen{min-height:0;overflow:auto}.sp-policy-table-card{height:100%;min-height:0}.sp-policy-table-wrap{display:grid;gap:10px;overflow:auto;padding-bottom:4px}.sp-policy-table-row{width:100%;min-width:980px;min-height:68px;display:grid;grid-template-columns:minmax(220px,1.45fr) minmax(150px,.85fr) 96px 88px 88px 110px 150px 96px;gap:12px;align-items:center;padding:12px 14px;border:1px solid #e5edf8;border-radius:15px;background:#fff;color:#0f2746;text-align:left}.sp-policy-table-row.head{min-height:42px;background:#f3f7fc;color:#64748b;font-size:.62rem;font-weight:900;text-transform:uppercase}.sp-policy-table-row strong,.sp-policy-table-row small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sp-policy-table-row small{margin-top:3px;color:#64748b;font-size:.66rem;font-weight:750}.sp-policy-table-row:not(.head):hover{border-color:#bfdbfe;background:#f8fbff}.sp-policy-table-actions{display:flex;justify-content:flex-end}.sp-layout{grid-template-columns:1fr!important;overflow:auto!important}.sp-layout>aside.sp-panel{display:none!important}.sp-work{height:auto!important;overflow:visible!important;padding-right:0!important}.sp-setup{grid-template-columns:1fr!important}.sp-software-area{grid-template-columns:1fr!important;min-height:0!important}.sp-software-area>.sp-section,.sp-setup>.sp-section{width:100%!important}.sp-table{max-height:520px}.software-policy-module{overflow:auto!important}@media'
+        '.sp-empty{min-height:150px;display:grid;place-items:center;color:#64748b;font-size:.8rem;font-weight:800;text-align:center;padding:18px}.sp-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}.sp-policy-table-screen{min-height:0;overflow:auto}.sp-policy-table-card{height:100%;min-height:0}.sp-policy-table-wrap{display:grid;gap:10px;overflow:auto;padding-bottom:4px}.sp-policy-table-row{width:100%;min-width:980px;min-height:68px;display:grid;grid-template-columns:minmax(220px,1.45fr) minmax(150px,.85fr) 96px 88px 88px 110px 150px 96px;gap:12px;align-items:center;padding:12px 14px;border:1px solid #e5edf8;border-radius:15px;background:#fff;color:#0f2746;text-align:left}.sp-policy-table-row.head{min-height:42px;background:#f3f7fc;color:#64748b;font-size:.62rem;font-weight:900;text-transform:uppercase}.sp-policy-table-row strong,.sp-policy-table-row small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sp-policy-table-row small{margin-top:3px;color:#64748b;font-size:.66rem;font-weight:750}.sp-policy-table-row:not(.head):hover{border-color:#bfdbfe;background:#f8fbff}.sp-policy-table-actions{display:flex;justify-content:flex-end}.sp-layout{grid-template-columns:1fr!important;overflow:auto!important}.sp-layout>aside.sp-panel{display:none!important}.sp-work{height:auto!important;overflow:visible!important;padding-right:0!important}.sp-setup{grid-template-columns:1fr!important}.sp-software-area{grid-template-columns:1fr!important;min-height:0!important}.sp-software-area>.sp-section,.sp-setup>.sp-section{width:100%!important}.sp-table{max-height:520px}.software-policy-module{overflow:auto!important}@media'
       );
 
       next = next.replace(
         '        <button className="sp-btn primary" type="button" onClick={startNewRule}><Plus size={16} /> Create New Rule</button>',
-        '        {policyUiMode === "form" ? <button className="sp-btn secondary" type="button" onClick={() => setPolicyUiMode("list")}>Back to List</button> : <button className="sp-btn primary" type="button" onClick={startNewRule}><Plus size={16} /> Add New</button>}'
+        '        {policyUiMode === "form" ? <div className="sp-top-actions"><button className="sp-btn secondary" type="button" onClick={() => setPolicyUiMode("list")}>Back to List</button><button className="sp-btn primary" type="button" onClick={savePolicy} disabled={saving}><Save size={15} /> Save Policy</button></div> : <button className="sp-btn primary" type="button" onClick={startNewRule}><Plus size={16} /> Add New</button>}'
+      );
+
+      next = next.replace(
+        '                  <button className="sp-btn primary" type="button" onClick={saveRule} disabled={saving}><Save size={15} /> Save Rule</button>',
+        '                  <span className="sp-help">Use the Save Policy button at the top to save rule and selected software.</span>'
+      );
+
+      next = next.replace(
+        '                <div className="sp-action-row"><button className="sp-btn primary" type="button" onClick={saveSelectedSoftware} disabled={saving || selectedRows.length === 0}><CheckCircle2 size={15} /> Save Selected Software</button></div>',
+        '                <div className="sp-action-row"><span className="sp-help">Select software and click Save Policy at the top.</span></div>'
       );
 
       const openMarker = '      <div className="sp-layout">';
