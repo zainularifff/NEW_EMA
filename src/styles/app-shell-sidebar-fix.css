@@ -206,6 +206,53 @@ body > .settings-toast-layer .settings-toast,
   pointer-events: auto !important;
 }
 
+/* IT Operations KPI color contract.
+   These six dashboard cards carry business meaning, so each card must keep
+   its own distinct color even if the component tone class changes. */
+body.itops-dashboard-page-active .itops-pro-kpi[data-drilldown-view="hardware"] {
+  background: linear-gradient(135deg, #1e3a8a 0%, #0369a1 55%, #38bdf8 100%) !important;
+}
+
+body.itops-dashboard-page-active .itops-pro-kpi[data-drilldown-view="software"] {
+  background: linear-gradient(135deg, #312e81 0%, #6d28d9 56%, #a78bfa 100%) !important;
+}
+
+body.itops-dashboard-page-active .itops-pro-kpi[data-drilldown-view="serviceDesk"] {
+  background: linear-gradient(135deg, #92400e 0%, #f97316 55%, #facc15 100%) !important;
+}
+
+body.itops-dashboard-page-active .itops-pro-kpi[data-drilldown-view="geolocation"] {
+  background: linear-gradient(135deg, #134e4a 0%, #0f766e 56%, #2dd4bf 100%) !important;
+}
+
+body.itops-dashboard-page-active .itops-pro-kpi[data-drilldown-view="risk"] {
+  background: linear-gradient(135deg, #7f1d1d 0%, #dc2626 56%, #fb7185 100%) !important;
+}
+
+body.itops-dashboard-page-active .itops-pro-kpi[data-drilldown-view="patch"] {
+  background: linear-gradient(135deg, #14532d 0%, #16a34a 56%, #84cc16 100%) !important;
+}
+
+body.itops-dashboard-page-active .itops-pro-kpi[data-drilldown-view] .itops-pro-kpi-label,
+body.itops-dashboard-page-active .itops-pro-kpi[data-drilldown-view] > strong,
+body.itops-dashboard-page-active .itops-pro-kpi[data-drilldown-view] > small {
+  color: #ffffff !important;
+}
+
+body.itops-dashboard-page-active .itops-pro-kpi[data-drilldown-view] .itops-pro-kpi-icon {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  color: #ffffff !important;
+}
+
+body.itops-dashboard-page-active .itops-pro-kpi[data-drilldown-view] .itops-pro-progress {
+  background: rgba(255, 255, 255, 0.24) !important;
+}
+
+body.itops-dashboard-page-active .itops-pro-kpi[data-drilldown-view] .itops-pro-progress i {
+  background: rgba(255, 255, 255, 0.92) !important;
+}
+
 @media (max-width: 1100px) {
   body.ema-settings-page-active .ema-shell {
     grid-template-columns: 280px minmax(0, 1fr) !important;
