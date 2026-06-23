@@ -188,6 +188,39 @@ function patchSoftwareRegistrySettings(code: string) {
     '  }, [policyUiMode, ruleForm.categoryId, ruleForm.publisher, softwareSearch]);'
   );
 
+  // Keep the top registry setup focused only on software identity. Move usage-rule fields into the
+  // Classification & license section so the flow is: details -> map inventory -> classification/license/rules.
+  const workRuleFields = `                  <label className="sp-field"><span>Work start</span><input type="time" value={ruleForm.workingStartTime} onChange={(e) => setRuleForm((c) => ({ ...c, workingStartTime: e.target.value }))} /></label>
+                  <label className="sp-field"><span>Work end</span><input type="time" value={ruleForm.workingEndTime} onChange={(e) => setRuleForm((c) => ({ ...c, workingEndTime: e.target.value }))} /></label>
+                  <label className="sp-field"><span>Utilized if at least hour/day</span><input type="number" min="0" step="0.25" value={ruleForm.utilizedHours} onChange={(e) => setRuleForm((c) => ({ ...c, utilizedHours: e.target.value }))} /></label>
+                  <label className="sp-field"><span>Open count/day</span><input type="number" min="0" value={ruleForm.openCountThreshold} onChange={(e) => setRuleForm((c) => ({ ...c, openCountThreshold: e.target.value }))} /></label>
+                  <label className="sp-field full"><span>Note</span><textarea value={ruleForm.description} onChange={(e) => setRuleForm((c) => ({ ...c, description: e.target.value }))} placeholder="Optional note" /></label>`;
+
+  if (next.includes(workRuleFields)) {
+    next = next.replace(workRuleFields, '');
+    next = next.replace(
+      '                  <label className="sp-field"><span>End date</span><input type="date" value={softwareForm.licenseEndDate} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseEndDate: e.target.value }))} /></label>\n                </div>',
+      '                  <label className="sp-field"><span>End date</span><input type="date" value={softwareForm.licenseEndDate} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseEndDate: e.target.value }))} /></label>\n                  ' + workRuleFields.trimStart() + '\n                </div>'
+    );
+  }
+
+  next = next.replace(
+    '                  <span className="sp-help">Monday to Friday. ≥ {ruleForm.utilizedHours || 2} hour/day = utilized, below that = underutilized, no activity = not used.</span>',
+    '                  <span className="sp-help">Complete software details above, then map inventory records below.</span>'
+  );
+
+  // The publisher field is moved to the setup section by the registry flow patch. Keep the map toolbar in
+  // one clean row: helper text, search input, search button.
+  next = next.replace(
+    '.sp-software-toolbar{display:grid;grid-template-columns:220px minmax(0,1fr) auto;',
+    '.sp-software-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,320px) auto;'
+  );
+
+  next = next.replace(
+    '<div className="sp-section-title"><strong>2. Classification & license</strong><small>Apply this to selected software.</small></div>',
+    '<div className="sp-section-title"><strong>2. Classification, license & usage rules</strong><small>Legal status, license expiry and utilization rule.</small></div>'
+  );
+
   return next;
 }
 
