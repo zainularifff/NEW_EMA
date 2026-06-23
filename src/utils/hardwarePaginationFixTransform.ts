@@ -151,44 +151,15 @@ const HARDWARE_PAGINATION_FIX = String.raw`        .hardware-module-root .hardwa
         }`;
 
 const SOFTWARE_REGISTRY_FLOW_CSS = String.raw`
-body.ema-settings-page-active .software-policy-module .sp-map-block {
-  margin-top: 12px !important;
-  overflow: visible !important;
-  border-radius: 16px !important;
-}
-body.ema-settings-page-active .software-policy-module .sp-map-block .sp-section-title {
-  padding: 10px 12px !important;
-  background: #f8fbff !important;
-}
-body.ema-settings-page-active .software-policy-module .sp-map-block .sp-section-body {
-  display: block !important;
-  min-height: 280px !important;
-  padding: 12px !important;
-  visibility: visible !important;
-}
-body.ema-settings-page-active .software-policy-module .sp-map-block .sp-table {
-  min-height: 190px !important;
-  max-height: 240px !important;
-  display: block !important;
-  visibility: visible !important;
-}
-body.ema-settings-page-active .software-policy-module .sp-map-block .sp-empty {
-  min-height: 145px !important;
-}
-body.ema-settings-page-active .software-policy-module .sp-software-toolbar {
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px) auto !important;
-  align-items: center !important;
-}
-body.ema-settings-page-active .software-policy-module .sp-policy-modal {
-  height: min(92vh, 940px) !important;
-}
+body.ema-settings-page-active .software-policy-module .sp-map-block{display:none!important;}
+body.ema-settings-page-active .software-policy-module .sp-map-field small{display:block;margin-top:6px;color:#64748b;font-size:.68rem;font-weight:750;line-height:1.35;text-transform:none;}
+body.ema-settings-page-active .software-policy-module .sp-map-field select{min-height:44px!important;background:#fff!important;}
+body.ema-settings-page-active .software-policy-module .sp-policy-modal{height:min(88vh,900px)!important;}
 `;
 
 function patchSoftwareRegistryFlow(code: string) {
   let next = code;
-  const normalized = code;
-
-  if (!normalized.includes('function SoftwarePolicyManagement()')) return code;
+  if (!next.includes('function SoftwareRegistryManagement()')) return code;
 
   next = next.replace(
     '    if (uiMode !== "form" || !ruleForm.categoryId || ruleForm.categoryId === "__other__") {',
@@ -196,13 +167,8 @@ function patchSoftwareRegistryFlow(code: string) {
   );
 
   next = next.replace(
-    'Select exactly one software from inventory after choosing category and publisher.',
-    'After selecting category and publisher, choose exactly one software from inventory.'
-  );
-
-  next = next.replace(
-    'Select category and publisher to display software list.',
-    'Select category and publisher to display software list.'
+    '<label className="sp-field"><span>Publisher</span><select value={ruleForm.publisher} onChange={(e) => setRuleForm((c) => ({ ...c, publisher: e.target.value }))} disabled={!ruleForm.categoryId || ruleForm.categoryId === "__other__"}><option value="">Select publisher after category</option>{publishers.map((row) => <option key={row.Publisher} value={row.Publisher}>{row.Publisher}</option>)}</select></label>',
+    '<label className="sp-field"><span>Publisher</span><select value={ruleForm.publisher} onChange={(e) => { setRuleForm((c) => ({ ...c, publisher: e.target.value })); setSelectedKeys(new Set()); setSoftwareRows([]); }} disabled={!ruleForm.categoryId || ruleForm.categoryId === "__other__"}><option value="">Select publisher after category</option>{publishers.map((row) => <option key={row.Publisher} value={row.Publisher}>{row.Publisher}</option>)}</select></label><label className="sp-field full sp-map-field"><span>Inventory software</span><select value={Array.from(selectedKeys)[0] || ""} onChange={(e) => setSelectedKeys(e.target.value ? new Set([e.target.value]) : new Set())} disabled={!ruleForm.categoryId || ruleForm.categoryId === "__other__" || !ruleForm.publisher || softwareLoading}><option value="">{softwareLoading ? "Loading software..." : !ruleForm.categoryId || ruleForm.categoryId === "__other__" ? "Select category first" : !ruleForm.publisher ? "Select publisher first" : softwareRows.length === 0 ? "No software found" : "Select one inventory software"}</option>{softwareRows.map((row) => { const key = getSoftwareKey(row); return <option key={key} value={key}>{row.SoftwareName}{row.Version ? ` (${row.Version})` : ""} — {row.Publisher || "Unknown"} · {row.InstalledCount ?? row.InstalledDeviceCount ?? 0} installed</option>; })}</select><small>One software registry can map to one inventory software only.</small></label>'
   );
 
   next = next.replace(
@@ -215,6 +181,16 @@ function patchSoftwareRegistryFlow(code: string) {
       setMessage({ type: "error", text: "Select one inventory software before saving this registry." });
       return;
     }`
+  );
+
+  next = next.replace(
+    '<div className="sp-selected-box">{selectedRows.length ? "1 software selected" : "No software selected"}</div>',
+    '<div className="sp-selected-box">{selectedRows.length ? `Selected: ${selectedRows[0]?.SoftwareName || "1 software"}` : "No software selected"}</div>'
+  );
+
+  next = next.replace(
+    '<small>Choose category, select publisher, map one inventory software, then complete license and usage rules.</small>',
+    '<small>Create one software registry, map one inventory software, then enter license and usage rules.</small>'
   );
 
   if (!next.includes(SOFTWARE_REGISTRY_FLOW_CSS.trim())) {
