@@ -150,12 +150,96 @@ const HARDWARE_PAGINATION_FIX = String.raw`        .hardware-module-root .hardwa
           }
         }`;
 
+const SOFTWARE_REGISTRY_FLOW_CSS = String.raw`
+body.ema-settings-page-active .software-policy-module .sp-map-block {
+  margin-top: 12px !important;
+  overflow: visible !important;
+  border-radius: 16px !important;
+}
+body.ema-settings-page-active .software-policy-module .sp-map-block .sp-section-title {
+  padding: 10px 12px !important;
+  background: #f8fbff !important;
+}
+body.ema-settings-page-active .software-policy-module .sp-map-block .sp-section-body {
+  display: block !important;
+  min-height: 280px !important;
+  padding: 12px !important;
+  visibility: visible !important;
+}
+body.ema-settings-page-active .software-policy-module .sp-map-block .sp-table {
+  min-height: 190px !important;
+  max-height: 240px !important;
+  display: block !important;
+  visibility: visible !important;
+}
+body.ema-settings-page-active .software-policy-module .sp-map-block .sp-empty {
+  min-height: 145px !important;
+}
+body.ema-settings-page-active .software-policy-module .sp-software-toolbar {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px) auto !important;
+  align-items: center !important;
+}
+body.ema-settings-page-active .software-policy-module .sp-policy-modal {
+  height: min(92vh, 940px) !important;
+}
+`;
+
+function patchSoftwareRegistryFlow(code: string) {
+  let next = code;
+  const normalized = code;
+
+  if (!normalized.includes('function SoftwarePolicyManagement()')) return code;
+
+  next = next.replace(
+    '    if (uiMode !== "form" || !ruleForm.categoryId || ruleForm.categoryId === "__other__") {',
+    '    if (uiMode !== "form" || !ruleForm.categoryId || ruleForm.categoryId === "__other__" || !ruleForm.publisher) {'
+  );
+
+  next = next.replace(
+    'Select exactly one software from inventory after choosing category and publisher.',
+    'After selecting category and publisher, choose exactly one software from inventory.'
+  );
+
+  next = next.replace(
+    'Select category and publisher to display software list.',
+    'Select category and publisher to display software list.'
+  );
+
+  next = next.replace(
+    `    if (selectedRows.length === 0) {
+      await loadPolicies();
+      setUiMode("list");
+      return;
+    }`,
+    `    if (selectedRows.length === 0) {
+      setMessage({ type: "error", text: "Select one inventory software before saving this registry." });
+      return;
+    }`
+  );
+
+  if (!next.includes(SOFTWARE_REGISTRY_FLOW_CSS.trim())) {
+    next = next.replace(
+      '<style>{INLINE_CSS}</style>',
+      '<style>{INLINE_CSS}{`\n' + SOFTWARE_REGISTRY_FLOW_CSS.replace(/`/g, '\\`') + '\n`}</style>'
+    );
+  }
+
+  return next;
+}
+
 export function hardwarePaginationFixTransform(): Plugin {
   return {
     name: 'hardware-pagination-fix-transform',
     enforce: 'pre',
     transform(code, id) {
-      if (!id.replace(/\\/g, '/').endsWith('/src/pages/Hardware.tsx')) return null;
+      const normalizedId = id.replace(/\\/g, '/').split('?')[0];
+
+      if (normalizedId.endsWith('/src/pages/SettingsWithNotifications.tsx')) {
+        const next = patchSoftwareRegistryFlow(code);
+        return next === code ? null : { code: next, map: null };
+      }
+
+      if (!normalizedId.endsWith('/src/pages/Hardware.tsx')) return null;
 
       let next = code;
 
