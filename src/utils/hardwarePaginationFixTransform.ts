@@ -150,12 +150,102 @@ const HARDWARE_PAGINATION_FIX = String.raw`        .hardware-module-root .hardwa
           }
         }`;
 
+function patchSoftwareRegistryPublisherFallback(code: string) {
+  let next = code;
+
+  next = next.replace(
+    `  const loadPublishers = useCallback(async (categoryId: string) => {
+    if (!categoryId || categoryId === "__other__") {
+      setPublishers([]);
+      return;
+    }
+    try {
+      const payload = await api.get(`${API_ROOT}/publishers?categoryId=${encodeURIComponent(categoryId)}`, { forceRefresh: true });
+      setPublishers(unwrapArray<PublisherRow>(payload));
+    } catch (error) {
+      setPublishers([]);
+      setMessage({ type: "error", text: pickErrorMessage(error, "Failed to load publisher list.") });
+    }
+  }, []);`,
+    `  const loadPublishers = useCallback(async (categoryId: string) => {
+    if (!categoryId || categoryId === "__other__") {
+      setPublishers([]);
+      return;
+    }
+
+    const categoryName = getCategoryName(categories, categoryId);
+    const cleanPublisherRows = (payload: unknown) => unwrapArray<PublisherRow>(payload)
+      .map((row) => ({ ...row, Publisher: String(row.Publisher || "").trim() }))
+      .filter((row) => row.Publisher);
+
+    try {
+      const query = new URLSearchParams({ categoryId, categoryName });
+      const payload = await api.get(`${API_ROOT}/publishers?${query.toString()}`, { forceRefresh: true });
+      let rows = cleanPublisherRows(payload);
+
+      if (rows.length === 0) {
+        const softwareQuery = new URLSearchParams({ categoryId, categoryName, limit: "500" });
+        const softwarePayload = await api.get(`${API_ROOT}/software?${softwareQuery.toString()}`, { forceRefresh: true });
+        const publisherMap = new Map<string, PublisherRow>();
+
+        unwrapArray<SoftwareRow>(softwarePayload).forEach((software) => {
+          const publisher = String(software.Publisher || "").trim();
+          if (!publisher) return;
+          const current = publisherMap.get(publisher) || { Publisher: publisher, SoftwareCount: 0, InstalledCount: 0 };
+          publisherMap.set(publisher, {
+            ...current,
+            SoftwareCount: Number(current.SoftwareCount || 0) + 1,
+            InstalledCount: Number(current.InstalledCount || 0) + Number(software.InstalledCount || software.InstalledDeviceCount || 0),
+          });
+        });
+
+        rows = Array.from(publisherMap.values()).sort((a, b) => a.Publisher.localeCompare(b.Publisher));
+      }
+
+      setPublishers(rows);
+    } catch (error) {
+      setPublishers([]);
+      setMessage({ type: "error", text: pickErrorMessage(error, "Failed to load publisher list.") });
+    }
+  }, [categories]);`
+  );
+
+  next = next.replace(
+    `      const query = new URLSearchParams({
+        categoryId: ruleForm.categoryId,
+        publisher: ruleForm.publisher,
+        search: softwareSearch,
+        limit: "200",
+      });`,
+    `      const query = new URLSearchParams({
+        categoryId: ruleForm.categoryId,
+        categoryName: getCategoryName(categories, ruleForm.categoryId),
+        publisher: ruleForm.publisher,
+        search: softwareSearch,
+        limit: "200",
+      });`
+  );
+
+  next = next.replace(
+    `  }, [uiMode, ruleForm.categoryId, ruleForm.publisher, softwareSearch]);`,
+    `  }, [uiMode, categories, ruleForm.categoryId, ruleForm.publisher, softwareSearch]);`
+  );
+
+  return next;
+}
+
 export function hardwarePaginationFixTransform(): Plugin {
   return {
     name: 'hardware-pagination-fix-transform',
     enforce: 'pre',
     transform(code, id) {
       const normalizedId = id.replace(/\\/g, '/').split('?')[0];
+
+      if (normalizedId.endsWith('/src/pages/SettingsWithNotifications.tsx')) {
+        const next = patchSoftwareRegistryPublisherFallback(code);
+        return next === code ? null : { code: next, map: null };
+      }
+
       if (!normalizedId.endsWith('/src/pages/Hardware.tsx')) return null;
 
       let next = code;
