@@ -26,6 +26,7 @@ import "./styles/ema-system-shell.css";
 import "./styles/module-ui-fixes.css";
 import "./styles/app-shell-sidebar-fix.css";
 import "./styles/settings-scroll-wheel-fix.css";
+import "./styles/software-policy-single-container.css";
 
 import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
