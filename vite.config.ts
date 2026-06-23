@@ -11,14 +11,24 @@ function softwareLevel2PanelOrderPatch() {
     transform(code: string, id: string) {
       if (!id.replace(/\\/g, '/').endsWith('/src/pages/Dashboard.tsx')) return null;
 
-      const currentLayout = `        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
+      const currentLayouts = [
+        `        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
           <Panel title="Software Compliance Rate (%)" subtitle="Percentage of legal software based on Software Policy. Example: 92% Legal." icon={ShieldCheck}>{renderSoftwarePolicyDonut(policyRows, policyTotalSoftware)}</Panel>
           <Panel title="Classification & Distribution" subtitle="Software Category Distribution and Top 5 Most Installed Software." icon={Layers3}>{renderSoftwareClassificationDistributionPanel(classificationRows.length ? classificationRows : software.topCategories.map((row) => ({ label: row.name, value: row.value, target: row.name, note: 'Software category', tone: 'blue' as CardTone })), totalInstallations, topInstalledRows)}</Panel>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
           <Panel title="Security & Compliance" subtitle="Software Lifecycle Status and EOL/EOS breakdown." icon={ShieldAlert}>{renderSecurityCompliancePanel(lifecycleStatusRows)}</Panel>
           <Panel title="Major Application EOL/EOS Watch" subtitle="Microsoft Office, Microsoft 365, Adobe, Google Chrome and Firefox coverage with click-through detail." icon={CalendarDays}>{renderSoftwareHorizontalBars(majorRows, totalInstallations)}</Panel>
-        </div>`;
+        </div>`,
+        `        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
+          <Panel title="Software Compliance Rate (%)" subtitle="Peratusan perisian legal berdasarkan Software Policy. Contoh: 92% Legal." icon={ShieldCheck}>{renderSoftwarePolicyDonut(policyRows, policyTotalSoftware)}</Panel>
+          <Panel title="Classification & Distribution" subtitle="Software Category Distribution dan Top 5 Most Installed Software." icon={Layers3}>{renderSoftwareClassificationDistributionPanel(classificationRows.length ? classificationRows : software.topCategories.map((row) => ({ label: row.name, value: row.value, target: row.name, note: 'Software category', tone: 'blue' as CardTone })), totalInstallations, topInstalledRows)}</Panel>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
+          <Panel title="Security & Compliance" subtitle="Software Lifecycle Status dan EOL/EOS breakdown." icon={ShieldAlert}>{renderSecurityCompliancePanel(lifecycleStatusRows)}</Panel>
+          <Panel title="Major Application EOL/EOS Watch" subtitle="Microsoft Office, Microsoft 365, Adobe, Google Chrome and Firefox coverage with click-through detail." icon={CalendarDays}>{renderSoftwareHorizontalBars(majorRows, totalInstallations)}</Panel>
+        </div>`,
+      ];
 
       const requestedLayout = `        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
           <Panel title="Software Compliance Rate (%)" subtitle="Percentage of legal software based on Software Policy. Example: 92% Legal." icon={ShieldCheck}>{renderSoftwarePolicyDonut(policyRows, policyTotalSoftware)}</Panel>
@@ -29,7 +39,11 @@ function softwareLevel2PanelOrderPatch() {
           <Panel title="Major Application EOL/EOS Watch" subtitle="Microsoft Office, Microsoft 365, Adobe, Google Chrome and Firefox coverage with click-through detail." icon={CalendarDays}>{renderSoftwareHorizontalBars(majorRows, totalInstallations)}</Panel>
         </div>`;
 
-      const next = code.split(currentLayout).join(requestedLayout);
+      let next = code;
+      currentLayouts.forEach((layout) => {
+        next = next.split(layout).join(requestedLayout);
+      });
+
       return next === code ? null : { code: next, map: null };
     },
   };
@@ -118,7 +132,7 @@ function dashboardEnglishWordingPatch() {
 }
 
 export default defineConfig({
-  plugins: [itopsSoftwareDrilldownTransform(), hardwarePaginationFixTransform(), dashboardUiPatch(), softwareLevel2PanelOrderPatch(), softwareComplianceDialUiPatch(), dashboardEnglishWordingPatch(), dashboardFocusCardOrderPatch(), dashboardFocusCardColorPatch(), react()],
+  plugins: [itopsSoftwareDrilldownTransform(), hardwarePaginationFixTransform(), dashboardUiPatch(), softwareComplianceDialUiPatch(), dashboardEnglishWordingPatch(), softwareLevel2PanelOrderPatch(), dashboardFocusCardOrderPatch(), dashboardFocusCardColorPatch(), react()],
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
