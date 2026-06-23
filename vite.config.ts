@@ -280,6 +280,82 @@ function softwareRegistryActionIconsPatch() {
   };
 }
 
+function softwareRegistryFlowPatch() {
+  return {
+    name: 'software-registry-flow-patch',
+    enforce: 'pre' as const,
+    transform(code: string, id: string) {
+      if (!id.replace(/\\/g, '/').endsWith('/src/pages/SettingsWithNotifications.tsx')) return null;
+      let next = code;
+
+      next = next.replace(
+        '  const [policyUiMode, setPolicyUiMode] = useState<"list" | "form">("list");',
+        '  const [policyUiMode, setPolicyUiMode] = useState<"list" | "form">("list");\n  const [customCategoryName, setCustomCategoryName] = useState("");\n  const [subSoftwareName, setSubSoftwareName] = useState("");'
+      );
+
+      next = next.replace(
+        '    setPublishers([]);\n    setPolicyUiMode("form");',
+        '    setPublishers([]);\n    setCustomCategoryName("");\n    setSubSoftwareName("");\n    setPolicyUiMode("form");'
+      );
+
+      next = next.replace(
+        '    void loadPublishers(nextCategoryId);\n    void loadPolicyItems(activePolicy.PolicyID);',
+        '    setCustomCategoryName(activePolicy.CategoryID ? "" : activePolicy.CategoryName || "");\n    setSubSoftwareName("");\n    void loadPublishers(nextCategoryId);\n    void loadPolicyItems(activePolicy.PolicyID);'
+      );
+
+      next = next.replace('    if (!ruleForm.categoryId) {', '    if (!ruleForm.categoryId || ruleForm.categoryId === "__other__") {');
+
+      next = next.replace(
+        '    Description: ruleForm.description,\n    CategoryID: Number(ruleForm.categoryId) || null,\n    CategoryName: getCategoryName(categories, ruleForm.categoryId),',
+        '    Description: [ruleForm.description, subSoftwareName.trim() ? "Sub software: " + subSoftwareName.trim() : ""].filter(Boolean).join("\\n"),\n    CategoryID: ruleForm.categoryId === "__other__" ? null : Number(ruleForm.categoryId) || null,\n    CategoryName: ruleForm.categoryId === "__other__" ? customCategoryName.trim() : getCategoryName(categories, ruleForm.categoryId),'
+      );
+
+      next = next.replace(
+        '  const handleCategoryChange = (categoryId: string) => {\n    setRuleForm((current) => ({ ...current, categoryId, publisher: "" }));\n    setSelectedKeys(new Set());\n    void loadPublishers(categoryId);\n  };',
+        '  const handleCategoryChange = (categoryId: string) => {\n    setRuleForm((current) => ({ ...current, categoryId, publisher: "" }));\n    setSelectedKeys(new Set());\n    setSoftwareRows([]);\n    if (categoryId === "__other__") {\n      setPublishers([]);\n      return;\n    }\n    void loadPublishers(categoryId);\n  };'
+      );
+
+      next = next.replace(
+        '<label className="sp-field"><span>Registry name</span><input value={ruleForm.policyName} onChange={(e) => setRuleForm((c) => ({ ...c, policyName: e.target.value }))} placeholder="Example: Microsoft Office policy" /></label>',
+        '<label className="sp-field full"><span>Purchased software / registry name</span><input value={ruleForm.policyName} onChange={(e) => setRuleForm((c) => ({ ...c, policyName: e.target.value }))} placeholder="Example: Microsoft Office" /></label>'
+      );
+
+      next = next.replace(
+        '<label className="sp-field"><span>Category</span><select value={ruleForm.categoryId} onChange={(e) => handleCategoryChange(e.target.value)}><option value="">Select category</option>{categories.map((row) => <option key={row.CategoryID} value={row.CategoryID}>{row.CategoryName}</option>)}</select></label>',
+        '<label className="sp-field"><span>Category</span><select value={ruleForm.categoryId} onChange={(e) => handleCategoryChange(e.target.value)}><option value="">Select existing category</option>{categories.map((row) => <option key={row.CategoryID} value={row.CategoryID}>{row.CategoryName}</option>)}<option value="__other__">Other / create custom category</option></select></label>{ruleForm.categoryId === "__other__" && <label className="sp-field"><span>Custom category name</span><input value={customCategoryName} onChange={(e) => setCustomCategoryName(e.target.value)} placeholder="Example: Design Tool" /></label>}<label className="sp-field"><span>Sub software / edition</span><input value={subSoftwareName} onChange={(e) => setSubSoftwareName(e.target.value)} placeholder="Optional, example: Pro / Enterprise / Add-on" /></label><label className="sp-field"><span>Publisher</span><select value={ruleForm.publisher} onChange={(e) => setRuleForm((c) => ({ ...c, publisher: e.target.value }))} disabled={!ruleForm.categoryId || ruleForm.categoryId === "__other__"}><option value="">Select publisher after category</option>{publishers.map((row) => <option key={row.Publisher} value={row.Publisher}>{row.Publisher}</option>)}</select></label>'
+      );
+
+      next = next.split('.sp-software-toolbar{display:grid;grid-template-columns:220px minmax(0,1fr) auto;')
+        .join('.sp-software-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;');
+      next = next.replace(
+        '<label className="sp-field"><span>Publisher</span><select value={ruleForm.publisher} onChange={(e) => setRuleForm((c) => ({ ...c, publisher: e.target.value }))} disabled={!ruleForm.categoryId}><option value="">All publishers</option>{publishers.map((row) => <option key={row.Publisher} value={row.Publisher}>{row.Publisher}</option>)}</select></label>',
+        '<span className="sp-help">Tick the software records below that match this registry.</span>'
+      );
+
+      const classStart = next.indexOf('            <section className="sp-section">\n              <div className="sp-section-title"><strong>2. Classification & license</strong>');
+      if (classStart > -1) {
+        const classEnd = next.indexOf('            </section>', classStart);
+        if (classEnd > -1) {
+          const blockEnd = classEnd + '            </section>'.length;
+          let classificationBlock = next.slice(classStart, blockEnd)
+            .replace('<strong>2. Classification & license</strong>', '<strong>3. Classification & license</strong>')
+            .replace('<small>Apply this to selected software.</small>', '<small>Apply legal status and license details after selecting mapped software.</small>');
+          next = next.slice(0, classStart) + next.slice(blockEnd);
+          const savedMarker = '            <section className="sp-section">\n              <div className="sp-section-title"><strong>Saved software</strong>';
+          if (next.includes(savedMarker)) next = next.replace(savedMarker, classificationBlock + '\n\n' + savedMarker);
+        }
+      }
+
+      next = next.replace('<strong>3. Select software</strong><small>Choose software under selected category.</small>', '<strong>2. Map with inventory software</strong><small>Choose existing software from the selected category. If the category is Other, save custom registry details first.</small>');
+      next = next.replace('<strong>Saved software</strong><small>Software already assigned to this rule.</small>', '<strong>4. Saved mapped software</strong><small>Software already assigned to this registry.</small>');
+      next = next.replace('Register approved software, map it with inventory, then save once.', 'Create software name, choose category, select publisher, map inventory software, then add license details.');
+      next = next.replace('Category, mapped software, office hours and utilization threshold.', 'Start with purchased software name, category, optional sub software, publisher and usage threshold.');
+
+      return next === code ? null : { code: next, map: null };
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     itopsSoftwareDrilldownTransform(),
@@ -291,6 +367,7 @@ export default defineConfig({
     softwarePolicyListFirstPatch(),
     softwareRegistryWordingPatch(),
     softwareRegistryActionIconsPatch(),
+    softwareRegistryFlowPatch(),
     dashboardFocusCardOrderPatch(),
     dashboardFocusCardColorPatch(),
     react(),
