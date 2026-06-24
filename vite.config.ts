@@ -2,10 +2,11 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { softwareComplianceSimpleDetailTransform } from './src/utils/softwareComplianceSimpleDetailTransform';
 import { softwareComplianceDashboardApiTransform } from './src/utils/softwareComplianceDashboardApiTransform';
+import { managementSoftwareRoiTransform } from './src/utils/managementSoftwareRoiTransform';
 import { hardwarePaginationFixTransform } from './src/utils/hardwarePaginationFixTransform';
 import { dashboardFocusCardColorPatch, dashboardFocusCardOrderPatch, dashboardUiPatch } from './src/utils/dashboardUiPatches';
 
-const isDashboardFile = (id: string) => id.replace(/\\/g, '/').endsWith('/src/pages/Dashboard.tsx');
+const isDashboardFile = (id: string) => id.replace(/\/g, '/').endsWith('/src/pages/Dashboard.tsx');
 
 function softwareTrendRowsSafePatch() {
   return {
@@ -50,6 +51,7 @@ function dashboardEnglishWordingPatch() {
 export default defineConfig({
   plugins: [
     softwareComplianceSimpleDetailTransform(),
+    managementSoftwareRoiTransform(),
     hardwarePaginationFixTransform(),
     dashboardUiPatch(),
     softwareComplianceDashboardApiTransform(),
