@@ -170,9 +170,7 @@ const ENHANCED_SOFTWARE_HELPERS = String.raw`
         <div style={{ display: 'flex', height: 34, overflow: 'hidden', borderRadius: 999, border: '1px solid #dbeafe', background: '#f8fafc', boxShadow: 'inset 0 1px 2px rgba(15,23,42,.06)' }}>
           {items.filter((item) => numberOrFallback(item.value) > 0).map((item) => {
             const share = Math.max(2, (numberOrFallback(item.value) / safeTotal) * 100);
-            return (
-              <button key={item.label} type="button" title={item.label + ' · ' + formatNumber(item.value)} onClick={() => openLevel3('software', item.target)} style={{ width: String(share) + '%', minWidth: 18, border: 0, borderRight: '1px solid rgba(255,255,255,.55)', background: toneGradient(item.tone), cursor: 'pointer' }} />
-            );
+            return <button key={item.label} type="button" title={item.label + ' · ' + formatNumber(item.value)} onClick={() => openLevel3('software', item.target)} style={{ width: String(share) + '%', minWidth: 18, border: 0, borderRight: '1px solid rgba(255,255,255,.55)', background: toneGradient(item.tone), cursor: 'pointer' }} />;
           })}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
@@ -213,39 +211,6 @@ const ENHANCED_SOFTWARE_HELPERS = String.raw`
     );
   };
 
-  const renderSoftwareLifecycleDonut = (items: { label: string; value: number; target: string; note: string; tone: CardTone }[], total: number) => {
-    const safeTotal = Math.max(1, total || items.reduce((sum, item) => sum + numberOrFallback(item.value), 0));
-    let cursor = 0;
-    const gradientParts = items.map((item) => {
-      const value = numberOrFallback(item.value);
-      const start = cursor;
-      const end = cursor + ((value / safeTotal) * 360);
-      cursor = end;
-      return toneSolid(item.tone) + ' ' + start + 'deg ' + end + 'deg';
-    }).join(', ');
-    const watchCount = items.filter((item) => item.target !== 'Supported').reduce((sum, item) => sum + numberOrFallback(item.value), 0);
-    const riskShare = (watchCount / safeTotal) * 100;
-
-    return (
-      <div style={{ display: 'grid', gridTemplateColumns: '180px minmax(0, 1fr)', gap: 18, alignItems: 'center' }}>
-        <button type="button" onClick={() => openLevel3('software', watchCount > 0 ? 'EOL/EOS Watch' : 'Supported')} style={{ width: 170, height: 170, border: '1px solid #e2e8f0', borderRadius: '50%', background: 'conic-gradient(' + (gradientParts || '#e2e8f0 0deg 360deg') + ')', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: '0 18px 45px rgba(15,23,42,.10)' }}>
-          <span style={{ width: 104, height: 104, borderRadius: '50%', background: '#fff', display: 'grid', placeItems: 'center', textAlign: 'center', boxShadow: 'inset 0 0 0 1px #e2e8f0' }}><strong style={{ display: 'block', fontSize: 25, lineHeight: 1, fontWeight: 950, color: '#0f172a' }}>{formatPercent(riskShare, 0)}</strong><small style={{ color: '#64748b', fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.08em' }}>Exposure</small></span>
-        </button>
-        <div style={{ display: 'grid', gap: 9 }}>
-          {items.map((item) => {
-            const value = numberOrFallback(item.value);
-            return (
-              <button key={item.label} type="button" onClick={() => openLevel3('software', item.target)} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center', border: '1px solid #e2e8f0', borderRadius: 14, background: '#fff', padding: '10px 12px', cursor: 'pointer', color: '#0f172a', textAlign: 'left' }}>
-                <span style={{ minWidth: 0 }}><strong style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 950 }}><i style={{ width: 9, height: 9, borderRadius: 999, background: toneSolid(item.tone) }} />{item.label}</strong><small style={{ display: 'block', marginTop: 3, color: '#64748b', fontSize: 10, fontWeight: 800 }}>{item.note}</small></span>
-                <strong style={{ fontSize: 18, fontWeight: 950 }}>{formatNumber(value)}</strong>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
   const getSoftwareClassificationGraphRows = () => {
     const rows = getSoftwareEvidenceRows();
     return buildSoftwareGraphRows(rows, [
@@ -258,9 +223,14 @@ const ENHANCED_SOFTWARE_HELPERS = String.raw`
     ]);
   };
 
-  const renderSoftwareAnalyticsGraphs = () => {
+  const renderSoftwareLevel2Analytics = () => {
     const rows = getSoftwareEvidenceRows();
-    const totalInstallations = Math.max(numberOrFallback(software.totalInstallations), rows.length, 1);
+    const totalInstallations = Math.max(numberOrFallback(software.totalInstallations), rows.length, 0);
+    const uniqueTitles = Math.max(numberOrFallback(software.uniqueSoftware), uniqueSoftwareRows(rows).length, 0);
+    const eolWatch = numberOrFallback(software.eolApplications) + numberOrFallback(software.eosApplications);
+    const unsupportedApps = numberOrFallback(software.unsupportedApplications);
+    const unclassifiedCount = numberOrFallback(software.unclassifiedSoftware);
+    const classifiedCount = Math.max(totalInstallations - unclassifiedCount, 0);
     const classificationRows = getSoftwareClassificationGraphRows();
     const majorRows = buildSoftwareGraphRows(rows, [
       { label: 'Microsoft Office', target: 'Microsoft Office', note: 'Office desktop clients', tone: 'blue', matcher: (row) => softwareMajorFamilyMatches(row, 'Microsoft Office') },
@@ -269,41 +239,45 @@ const ENHANCED_SOFTWARE_HELPERS = String.raw`
       { label: 'Google Chrome', target: 'Google Chrome', note: 'Chrome browser family', tone: 'green', matcher: (row) => softwareMajorFamilyMatches(row, 'Google Chrome') },
       { label: 'Firefox', target: 'Firefox', note: 'Mozilla Firefox family', tone: 'amber', matcher: (row) => softwareMajorFamilyMatches(row, 'Firefox') },
     ]);
-    const lifecycleRows = [
-      { label: 'Supported', target: 'Supported', note: 'Supported application lifecycle', tone: 'green' as CardTone, value: rows.filter((row) => softwareLifecycleMatches(row, 'supported')).length },
-      { label: 'EOL/EOS Watch', target: 'EOL/EOS Watch', note: 'Near EOL/EOS from lifecycle lookup', tone: 'amber' as CardTone, value: numberOrFallback(software.eolApplications) + numberOrFallback(software.eosApplications) },
-      { label: 'Unsupported Apps', target: 'Unsupported Apps', note: 'Expired or unsupported applications', tone: 'red' as CardTone, value: numberOrFallback(software.unsupportedApplications) },
-      { label: 'Lifecycle Not Found', target: 'Lifecycle Not Found', note: 'No lifecycle mapping returned', tone: 'purple' as CardTone, value: rows.filter((row) => softwareLifecycleMatches(row, 'not found')).length },
+    const overviewCards = [
+      { label: 'Installations', value: totalInstallations, note: 'Total software records', target: 'Installations', tone: 'purple' as CardTone, icon: Database },
+      { label: 'Unique Software', value: uniqueTitles, note: 'Distinct software titles', target: 'Unique Software', tone: 'blue' as CardTone, icon: BarChart3 },
+      { label: 'Business Software', value: numberOrFallback(software.businessSoftware), note: 'Business and productivity tools', target: 'Business Software', tone: 'green' as CardTone, icon: Gauge },
+      { label: 'Needs Review', value: unclassifiedCount + eolWatch + unsupportedApps, note: 'Cleanup or lifecycle risk', target: unclassifiedCount > 0 ? 'Unclassified' : 'EOL/EOS Watch', tone: (unclassifiedCount + eolWatch + unsupportedApps) > 0 ? 'amber' as CardTone : 'green' as CardTone, icon: ShieldAlert },
     ];
     const governanceRows = [
-      { label: 'Classified', value: Math.max(totalInstallations - numberOrFallback(software.unclassifiedSoftware), 0), target: 'Business Software', note: 'Records with usable classification', tone: 'green' as CardTone },
-      { label: 'Unclassified', value: numberOrFallback(software.unclassifiedSoftware), target: 'Unclassified', note: 'Needs software classification cleanup', tone: 'amber' as CardTone },
-      { label: 'EOL/EOS Watch', value: numberOrFallback(software.eolApplications) + numberOrFallback(software.eosApplications), target: 'EOL/EOS Watch', note: 'Lifecycle dates require review', tone: 'red' as CardTone },
+      { label: 'Classified', value: classifiedCount, target: 'Business Software', note: 'Records with usable classification', tone: 'green' as CardTone },
+      { label: 'Unclassified', value: unclassifiedCount, target: 'Unclassified', note: 'Needs category cleanup', tone: 'amber' as CardTone },
+      { label: 'EOL/EOS Watch', value: eolWatch, target: 'EOL/EOS Watch', note: 'Lifecycle dates require review', tone: 'red' as CardTone },
+      { label: 'Unsupported', value: unsupportedApps, target: 'Unsupported Apps', note: 'Expired or unsupported apps', tone: 'purple' as CardTone },
     ];
 
     return (
-      <div style={{ display: 'grid', gap: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(360px, .9fr)', gap: 16, alignItems: 'stretch' }}>
-          <Panel title="Software Classification Distribution" subtitle="Portfolio split by business, remote control, antivirus, browser, gaming and unclassified records. Click any segment to open the matching list." icon={BarChart3}>{renderSoftwareStackedDistribution(classificationRows, totalInstallations)}</Panel>
-          <Panel title="Lifecycle Exposure" subtitle="Application support posture from lifecycle lookup. The donut highlights EOL/EOS and unsupported exposure." icon={ShieldAlert}>{renderSoftwareLifecycleDonut(lifecycleRows, totalInstallations)}</Panel>
+      <div className="itops-pro-drawer-stack">
+        <DrilldownTrace domain="Software" stage="breakdown" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
+          {overviewCards.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button key={item.label} type="button" onClick={() => openLevel3('software', item.target)} style={{ display: 'grid', gridTemplateColumns: '48px minmax(0, 1fr) auto', gap: 12, alignItems: 'center', padding: 15, border: '1px solid #dbeafe', borderRadius: 18, background: '#fff', color: '#0f172a', cursor: 'pointer', boxShadow: '0 12px 30px rgba(15,23,42,.06)', textAlign: 'left' }}>
+                <span style={{ width: 42, height: 42, borderRadius: 14, display: 'grid', placeItems: 'center', color: '#fff', background: toneGradient(item.tone), boxShadow: '0 12px 24px rgba(37,99,235,.16)' }}><Icon size={19} /></span>
+                <span style={{ minWidth: 0 }}><strong style={{ display: 'block', color: '#64748b', fontSize: 10, fontWeight: 950, letterSpacing: '.08em', textTransform: 'uppercase' }}>{item.label}</strong><strong style={{ display: 'block', marginTop: 5, color: '#0f172a', fontSize: 23, lineHeight: 1, fontWeight: 950 }}>{formatNumber(item.value)}</strong><small style={{ display: 'block', marginTop: 6, color: '#64748b', fontSize: 11, fontWeight: 800 }}>{item.note}</small></span>
+                <ChevronRight size={16} color="#94a3b8" />
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.05fr) minmax(360px, .95fr)', gap: 16, alignItems: 'stretch' }}>
+          <Panel title="Classification & Distribution" subtitle="Business tools, remote control, antivirus, browser, gaming and unclassified software. Click any segment to open details." icon={BarChart3}>{renderSoftwareStackedDistribution(classificationRows, Math.max(totalInstallations, 1))}</Panel>
+          <Panel title="Software Review Queue" subtitle="Focus on cleanup and application lifecycle risk before it becomes compliance exposure." icon={ShieldAlert}>{renderSoftwareHorizontalBars(governanceRows, Math.max(totalInstallations, 1))}</Panel>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'stretch' }}>
-          <Panel title="Major Application EOL/EOS Watch" subtitle="Microsoft Office, Microsoft 365, Adobe, Google Chrome and Firefox coverage with click-through detail." icon={CalendarDays}>{renderSoftwareHorizontalBars(majorRows, totalInstallations)}</Panel>
-          <Panel title="Software Governance Balance" subtitle="Shows the relationship between classified inventory, cleanup backlog and lifecycle risk." icon={Gauge}>{renderSoftwareHorizontalBars(governanceRows, totalInstallations)}</Panel>
+          <Panel title="Major Software Watch" subtitle="Microsoft Office, Microsoft 365, Adobe, Google Chrome and Firefox. Click any bar to view matching software records." icon={CalendarDays}>{renderSoftwareHorizontalBars(majorRows, Math.max(totalInstallations, 1))}</Panel>
+          <Panel title="Software Categories" subtitle="Top software categories from inventory. Click a category to view the matching records." icon={Database}>{renderBreakdownDrillCards(software.topCategories, 'software', 'No software category data yet.')}</Panel>
         </div>
       </div>
     );
   };
-
-  const renderSoftwareLevel2Analytics = () => (
-    <div className="itops-pro-drawer-stack">
-      <DrilldownTrace domain="Software" stage="breakdown" />
-      <div className="itops-pro-story-panel"><strong>Software Estate Dashboard</strong><p>Use the graphs below to review classification exposure, remote tools, antivirus/browser/gaming distribution and application lifecycle risk. Click any graph segment or bar to open evidence rows.</p></div>
-      {renderSoftwareAnalyticsGraphs()}
-      <Panel title="Application Lifecycle Detail Cards" subtitle="Raw lifecycle signals returned by the service lookup for monitored major applications." icon={CalendarDays}>{renderSoftwareLifecycleCards()}</Panel>
-      <Panel title="Software Categories" subtitle="Click a category to open matching software records." icon={Database}>{renderBreakdownDrillCards(software.topCategories, 'software', 'No software category data yet.')}</Panel>
-    </div>
-  );
 
   const renderSoftwareInventoryTable`;
 
@@ -317,28 +291,10 @@ const ENHANCED_SOFTWARE_LEVEL3 = String.raw`    if (view === 'software') {
       const selectedRows = resolveSoftwareEvidenceRows(item);
       const selectedLifecycle = software.lifecycleWatch.find((row) => String(row.name || '').toLowerCase() === String(item || '').toLowerCase());
       const expectedCount = getSoftwareExpectedCount(item);
-      const hasSummaryCountWithoutRows = expectedCount > 0 && selectedRows.length === 0;
 
       return (
         <div className="itops-pro-drawer-stack">
           <DrilldownTrace domain="Software" stage="evidence" selected={selectedLabel} />
-          <div className="itops-pro-story-panel level3">
-            <strong>Software Inventory Evidence</strong>
-            <p>Selected: {selectedLabel}. Table rows are matched using the same software name and classification rules used by the dashboard graphs.</p>
-          </div>
-          <div className="itops-pro-summary-row five">
-            <MiniMetric label="Matched Rows" value={formatNumber(selectedRows.length)} tone={selectedRows.length ? 'blue' : expectedCount > 0 ? 'amber' : 'blue'} />
-            <MiniMetric label="Summary Count" value={formatNumber(expectedCount || selectedRows.length)} tone="purple" />
-            <MiniMetric label="Installations" value={formatNumber(software.totalInstallations)} tone="purple" />
-            <MiniMetric label="Unique" value={formatNumber(software.uniqueSoftware)} tone="blue" />
-            <MiniMetric label="EOL/EOS Watch" value={formatNumber(software.eolApplications + software.eosApplications)} tone="red" />
-          </div>
-          {hasSummaryCountWithoutRows && (
-            <div className="itops-pro-story-panel level3" style={{ borderColor: '#fbbf24', background: '#fffbeb' }}>
-              <strong>Summary count exists but detail rows were not included in the current dashboard payload.</strong>
-              <p>The selected software type has {formatNumber(expectedCount)} record(s) in the summary. Backend needs to return matching softwareRows for this selected group so the table can list every record.</p>
-            </div>
-          )}
           {selectedLifecycle && (
             <Panel title={selectedLifecycle.name + ' Lifecycle'} subtitle="Application lifecycle signal from backend lookup." icon={CalendarDays}>
               <div className="itops-pro-summary-row four">
@@ -349,8 +305,13 @@ const ENHANCED_SOFTWARE_LEVEL3 = String.raw`    if (view === 'software') {
               </div>
             </Panel>
           )}
+          {expectedCount > 0 && selectedRows.length === 0 && (
+            <div className="itops-pro-story-panel level3" style={{ borderColor: '#fbbf24', background: '#fffbeb' }}>
+              <strong>Summary count exists but detail rows were not included in the current dashboard payload.</strong>
+              <p>The selected software type has {formatNumber(expectedCount)} record(s). Backend needs to return matching softwareRows for this selected group.</p>
+            </div>
+          )}
           <Panel title="Software Records" subtitle="Filtered rows for the selected software statistic." icon={Database}>{renderSoftwareInventoryTable(item)}</Panel>
-          <Panel title="Classification Overview" subtitle="Graph view of classification distribution. Click a segment to switch the table filter." icon={BarChart3}>{renderSoftwareStackedDistribution(getSoftwareClassificationGraphRows(), Math.max(numberOrFallback(software.totalInstallations), 1))}</Panel>
         </div>
       );
     }
