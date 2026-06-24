@@ -10,9 +10,11 @@ export type ManagementDashboardDrilldownParams = QueryParams & {
 
 const MANAGEMENT_DASHBOARD_CACHE_MS = 45000;
 const MANAGEMENT_DASHBOARD_DRILLDOWN_CACHE_MS = 30000;
+const MANAGEMENT_DASHBOARD_SOFTWARE_ROI_CACHE_MS = 45000;
 
 let overviewCache: { at: number; value: unknown } | null = null;
 let storytellingCache: { at: number; value: unknown } | null = null;
+let softwareRoiCache: { at: number; value: unknown } | null = null;
 const drilldownCache = new Map<string, { at: number; value: unknown }>();
 
 function cacheIsFresh(entry: { at: number } | null | undefined, ttl = MANAGEMENT_DASHBOARD_CACHE_MS) {
@@ -30,6 +32,7 @@ function drilldownCacheKey(params?: ManagementDashboardDrilldownParams) {
 export function clearManagementDashboardCache() {
   overviewCache = null;
   storytellingCache = null;
+  softwareRoiCache = null;
   drilldownCache.clear();
 }
 
@@ -72,10 +75,22 @@ export async function getDrilldown<T = unknown>(params?: ManagementDashboardDril
   return value;
 }
 
+export async function getSoftwareRoi<T = unknown>(forceRefresh = false): Promise<T> {
+  if (!forceRefresh && cacheIsFresh(softwareRoiCache, MANAGEMENT_DASHBOARD_SOFTWARE_ROI_CACHE_MS)) return softwareRoiCache!.value as T;
+
+  const payload = await api.get("/api/management-dashboard/software-roi", {
+    params: forceRefresh ? { refresh: 1 } : undefined,
+  });
+  const value = unwrapData<T>(payload, payload as T);
+  softwareRoiCache = { at: Date.now(), value };
+  return value;
+}
+
 export async function loadInitialData() {
   const overview = await getOverview();
   const storytelling = await getStorytelling().catch(() => null);
-  return { overview, storytelling };
+  const softwareRoi = await getSoftwareRoi().catch(() => null);
+  return { overview, storytelling, softwareRoi };
 }
 
 // Backward-compatible names for existing imports elsewhere.
@@ -83,16 +98,19 @@ export const getManagementDashboardOverview = getOverview;
 export const getManagementDashboardStorytelling = getStorytelling;
 export const refreshManagementDashboardStorytelling = refreshStorytelling;
 export const getManagementDashboardDrilldown = getDrilldown;
+export const getManagementDashboardSoftwareRoi = getSoftwareRoi;
 
 export default {
   getOverview,
   getStorytelling,
   refreshStorytelling,
   getDrilldown,
+  getSoftwareRoi,
   loadInitialData,
   clearManagementDashboardCache,
   getManagementDashboardOverview,
   getManagementDashboardStorytelling,
   refreshManagementDashboardStorytelling,
   getManagementDashboardDrilldown,
+  getManagementDashboardSoftwareRoi,
 };
