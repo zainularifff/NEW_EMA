@@ -161,6 +161,147 @@ function createTimedGetCacheMiddleware(namespace, ttlMs) {
 
 const softwareCacheMiddleware = createTimedGetCacheMiddleware('software', SOFTWARE_CACHE_TTL_MS);
 
+// ============================================================
+// HARDWARE INVENTORY RESPONSE CACHE
+// Branch asset clicks should not hit SQL Server repeatedly for the same
+// relationID while the user navigates the tree. This cache is scoped by user
+// and endpoint, ignores timestamp cache-busters, and is cleared after hardware
+// move/department write actions. Use ?noCache=1 or ?forceRefresh=1 to bypass.
+// Note: ?refresh=1 is intentionally NOT a bypass here because the hardware
+// list endpoint is a database read, not a live agent refresh.
+// ============================================================
+const HARDWARE_CACHE_TTL_MS = Number(process.env.HARDWARE_CACHE_TTL_MS || 180000);
+
+function shouldBypassHardwareCache(req) {
+    const value = String(req?.query?.noCache || req?.query?.nocache || req?.query?.forceRefresh || '').toLowerCase();
+    return value === '1' || value === 'true' || value === 'yes';
+}
+
+function buildHardwareCacheKey(namespace, req) {
+    const userKey = [
+        req?.user?.authSource || 'auth',
+        req?.user?.emaUserID || req?.user?.console_Idn || req?.user?.userID || 'anonymous'
+    ].join(':');
+
+    const url = new URL(req.originalUrl || req.url || '', 'http://localhost');
+    url.searchParams.delete('_');
+    url.searchParams.delete('t');
+    url.searchParams.delete('timestamp');
+    url.searchParams.delete('refresh');
+
+    return `${namespace}:${req.method}:${userKey}:${url.pathname}${url.search}`;
+}
+
+function createHardwareGetCacheMiddleware(namespace, ttlMs = HARDWARE_CACHE_TTL_MS) {
+    return function hardwareGetCacheMiddleware(req, res, next) {
+        const activeTtlMs = Number(ttlMs || 0);
+        if (req.method !== 'GET' || activeTtlMs <= 0 || shouldBypassHardwareCache(req)) {
+            return next();
+        }
+
+        const cacheKey = buildHardwareCacheKey(namespace, req);
+        const cachedPayload = readTimedResponseCache(cacheKey, activeTtlMs);
+        if (cachedPayload !== null && cachedPayload !== undefined) {
+            res.setHeader('X-EMA-Cache', 'HIT');
+            return res.json(cachedPayload);
+        }
+
+        const startedAt = Date.now();
+        const originalJson = res.json.bind(res);
+        res.json = function cachedHardwareJson(payload) {
+            if (res.statusCode >= 200 && res.statusCode < 300 && payload !== undefined && payload?.success !== false) {
+                writeTimedResponseCache(cacheKey, payload, activeTtlMs);
+            }
+            res.setHeader('X-EMA-Cache', 'MISS');
+            res.setHeader('X-EMA-Elapsed-Ms', String(Date.now() - startedAt));
+            return originalJson(payload);
+        };
+
+        return next();
+    };
+}
+
+function clearHardwareInventoryCache() {
+    clearTimedResponseCache('hardware:');
+}
+
+const hardwareCacheMiddleware = createHardwareGetCacheMiddleware('hardware', HARDWARE_CACHE_TTL_MS);
+
+// ============================================================
+// EXPENSIVE ROUTE CONCURRENCY GUARDS
+// A single slow SQL request can otherwise occupy backend/SQL capacity while the
+// browser fires many more requests. These middlewares queue excess work instead
+// of flooding SQL Server. Cache middleware should run before these guards.
+// ============================================================
+function createAsyncQueueMiddleware(name, maxActive, timeoutMs) {
+    const queue = [];
+    let active = 0;
+    const limit = Math.max(1, Number(maxActive || 1));
+    const timeout = Math.max(1000, Number(timeoutMs || 60000));
+
+    function release() {
+        active = Math.max(0, active - 1);
+        while (active < limit && queue.length > 0) {
+            const next = queue.shift();
+            if (!next || next.released) continue;
+            clearTimeout(next.timer);
+            next.released = true;
+            active += 1;
+            next.start();
+        }
+    }
+
+    return function asyncQueueMiddleware(req, res, next) {
+        const queuedAt = Date.now();
+
+        const start = () => {
+            if (req._emaTiming) {
+                req._emaTiming.routeQueueMs = (req._emaTiming.routeQueueMs || 0) + (Date.now() - queuedAt);
+            }
+
+            let done = false;
+            const finish = () => {
+                if (done) return;
+                done = true;
+                release();
+            };
+
+            res.once('finish', finish);
+            res.once('close', finish);
+            next();
+        };
+
+        if (active < limit) {
+            active += 1;
+            return start();
+        }
+
+        const item = {
+            released: false,
+            start,
+            timer: setTimeout(() => {
+                item.released = true;
+                const index = queue.indexOf(item);
+                if (index >= 0) queue.splice(index, 1);
+                if (!res.headersSent) {
+                    return res.status(503).json({
+                        success: false,
+                        message: `Server is busy processing ${name}. Please retry shortly.`,
+                        code: 'EMA_ROUTE_QUEUE_TIMEOUT'
+                    });
+                }
+            }, timeout)
+        };
+
+        queue.push(item);
+    };
+}
+
+const hardwareRouteQueueMiddleware = createAsyncQueueMiddleware('hardware inventory', process.env.HARDWARE_ROUTE_MAX_CONCURRENT || 6, process.env.HARDWARE_ROUTE_QUEUE_TIMEOUT_MS || 60000);
+const assetRouteQueueMiddleware = createAsyncQueueMiddleware('asset lookup', process.env.ASSET_ROUTE_MAX_CONCURRENT || 8, process.env.ASSET_ROUTE_QUEUE_TIMEOUT_MS || 60000);
+const softwareRouteQueueMiddleware = createAsyncQueueMiddleware('software inventory', process.env.SOFTWARE_ROUTE_MAX_CONCURRENT || 4, process.env.SOFTWARE_ROUTE_QUEUE_TIMEOUT_MS || 60000);
+const networkRouteQueueMiddleware = createAsyncQueueMiddleware('network inventory', process.env.NETWORK_ROUTE_MAX_CONCURRENT || 4, process.env.NETWORK_ROUTE_QUEUE_TIMEOUT_MS || 60000);
+
 if (compression) {
     app.use(compression({
         threshold: 1024
@@ -177,6 +318,44 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+// ============================================================
+// API TIMING / BACKPRESSURE DIAGNOSTICS
+// Adds low-cost visibility for browser requests that spend most time waiting
+// for the server response. Enable detailed logs with API_TIMING_LOG=true.
+// ============================================================
+const API_SLOW_LOG_MS = Number(process.env.API_SLOW_LOG_MS || 1000);
+const API_TIMING_LOG_ENABLED = String(process.env.API_TIMING_LOG || 'true').toLowerCase() !== 'false';
+
+app.use((req, res, next) => {
+    req._emaTiming = {
+        startedAt: Date.now(),
+        authMs: 0,
+        poolWaitMs: 0,
+        poolCalls: 0
+    };
+
+    res.setHeader('X-EMA-Request-Start', String(req._emaTiming.startedAt));
+
+    res.on('finish', () => {
+        const totalMs = Date.now() - req._emaTiming.startedAt;
+        if (!API_TIMING_LOG_ENABLED || totalMs < API_SLOW_LOG_MS) return;
+
+        console.warn('[SLOW API]', {
+            method: req.method,
+            url: req.originalUrl || req.url,
+            status: res.statusCode,
+            totalMs,
+            authMs: req._emaTiming.authMs || 0,
+            poolWaitMs: req._emaTiming.poolWaitMs || 0,
+            poolCalls: req._emaTiming.poolCalls || 0,
+            routeQueueMs: req._emaTiming.routeQueueMs || 0,
+            user: req.user?.username || req.user?.email || req.user?.userID || req.user?.emaUserID || 'anonymous'
+        });
+    });
+
+    next();
+});
+
 async function generatePassword(passwordStr) {
     const hash = await bcrypt.hash(passwordStr, 10);
     console.log(hash);
@@ -188,13 +367,279 @@ const dbConfig = {
     password: process.env.DB_PASSWORD,
     server: process.env.DB_SERVER,
     database: process.env.DB_NAME,
-    connectionTimeout: Number(process.env.DB_CONNECTION_TIMEOUT || 30000),
-    requestTimeout: Number(process.env.DB_REQUEST_TIMEOUT || 180000),
+    connectionTimeout: Number(process.env.DB_CONNECTION_TIMEOUT || 15000),
+    requestTimeout: Number(process.env.DB_REQUEST_TIMEOUT || 60000),
+    pool: {
+        max: Number(process.env.DB_POOL_MAX || 20),
+        min: Number(process.env.DB_POOL_MIN || 2),
+        idleTimeoutMillis: Number(process.env.DB_POOL_IDLE_TIMEOUT || 30000)
+    },
     options: {
         encrypt: false,
-        trustServerCertificate: true
+        trustServerCertificate: true,
+        appName: process.env.DB_APP_NAME || 'EMA-Backend'
     }
 };
+
+// ============================================================
+// SHARED MSSQL POOL
+// Keep one process-wide pool promise instead of letting high-concurrency route
+// bursts repeatedly call sql.connect(dbConfig). This also lets us measure pool
+// wait time per request.
+// ============================================================
+let dbPoolPromise = null;
+let dbPoolCreatedAt = 0;
+let dbPoolResetCount = 0;
+
+async function getDbPool(req) {
+    const startedAt = Date.now();
+
+    if (!dbPoolPromise) {
+        dbPoolPromise = sql.connect(dbConfig)
+            .then((pool) => {
+                dbPoolCreatedAt = Date.now();
+                pool.on('error', (err) => {
+                    console.error('[MSSQL POOL ERROR]', err);
+                    dbPoolPromise = null;
+                    dbPoolResetCount += 1;
+                });
+                return pool;
+            })
+            .catch((err) => {
+                dbPoolPromise = null;
+                dbPoolResetCount += 1;
+                throw err;
+            });
+    }
+
+    try {
+        const pool = await dbPoolPromise;
+        const waitMs = Date.now() - startedAt;
+        if (req?._emaTiming) {
+            req._emaTiming.poolWaitMs = (req._emaTiming.poolWaitMs || 0) + waitMs;
+            req._emaTiming.poolCalls = (req._emaTiming.poolCalls || 0) + 1;
+        }
+        if (waitMs > Number(process.env.DB_POOL_SLOW_WAIT_MS || 1000)) {
+            console.warn('[MSSQL POOL WAIT]', {
+                waitMs,
+                url: req?.originalUrl || req?.url || '',
+                createdAt: dbPoolCreatedAt,
+                resetCount: dbPoolResetCount
+            });
+        }
+        return pool;
+    } catch (err) {
+        dbPoolPromise = null;
+        throw err;
+    }
+}
+
+async function closeDbPool() {
+    if (!dbPoolPromise) return;
+    try {
+        const pool = await dbPoolPromise;
+        await pool.close();
+    } catch (err) {
+        console.warn('[MSSQL POOL CLOSE WARNING]', err.message);
+    } finally {
+        dbPoolPromise = null;
+    }
+}
+
+process.on('SIGINT', async () => {
+    await closeDbPool();
+    process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+    await closeDbPool();
+    process.exit(0);
+});
+
+
+// ============================================================
+// MSSQL DATETIME NORMALIZATION
+// SQL Server DATETIME columns in this application represent database-local
+// clock time. The mssql driver exposes them as JavaScript Date objects that
+// serialize as UTC ISO strings (with Z), which caused UI times to display
+// 8 hours ahead in Malaysia time. Normalize database result dates immediately
+// after every mssql query/execute so module code receives stable local-clock
+// strings such as "2026-06-23 14:46:03".
+//
+// Disable only for diagnosis with: MSSQL_DATETIME_NORMALIZATION=false
+// ============================================================
+const MSSQL_DATETIME_NORMALIZATION_ENABLED = String(process.env.MSSQL_DATETIME_NORMALIZATION || 'true').toLowerCase() !== 'false';
+
+function padDatePart(value, size = 2) {
+    return String(value).padStart(size, '0');
+}
+
+function formatDbLocalDateTime(value, includeMilliseconds = false) {
+    if (!(value instanceof Date) || Number.isNaN(value.getTime())) return value;
+
+    const base = `${value.getUTCFullYear()}-${padDatePart(value.getUTCMonth() + 1)}-${padDatePart(value.getUTCDate())} ` +
+        `${padDatePart(value.getUTCHours())}:${padDatePart(value.getUTCMinutes())}:${padDatePart(value.getUTCSeconds())}`;
+
+    if (!includeMilliseconds) return base;
+    return `${base}.${padDatePart(value.getUTCMilliseconds(), 3)}`;
+}
+
+function formatServerLocalDateTime(value = new Date(), includeMilliseconds = false) {
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const base = `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())} ` +
+        `${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}:${padDatePart(date.getSeconds())}`;
+
+    if (!includeMilliseconds) return base;
+    return `${base}.${padDatePart(date.getMilliseconds(), 3)}`;
+}
+
+function normalizeDbDateValue(value) {
+    if (value instanceof Date) return formatDbLocalDateTime(value, true);
+
+    if (Array.isArray(value)) return value.map(normalizeDbDateValue);
+
+    if (value && typeof value === 'object') {
+        const output = {};
+        for (const [key, item] of Object.entries(value)) {
+            output[key] = normalizeDbDateValue(item);
+        }
+        return output;
+    }
+
+    return value;
+}
+
+function normalizeDbRowDateValues(row) {
+    if (!MSSQL_DATETIME_NORMALIZATION_ENABLED || !row || typeof row !== 'object') return row;
+    const mappedRow = {};
+    Object.keys(row).forEach(columnName => {
+        mappedRow[columnName] = normalizeDbDateValue(row[columnName]);
+    });
+    return mappedRow;
+}
+
+function normalizeMssqlResultDateValues(result) {
+    if (!MSSQL_DATETIME_NORMALIZATION_ENABLED || !result || typeof result !== 'object') return result;
+
+    if (Array.isArray(result.recordset)) {
+        result.recordset = result.recordset.map(normalizeDbRowDateValues);
+    }
+
+    if (Array.isArray(result.recordsets)) {
+        result.recordsets = result.recordsets.map(recordset => (
+            Array.isArray(recordset) ? recordset.map(normalizeDbRowDateValues) : recordset
+        ));
+    }
+
+    if (Array.isArray(result.output)) {
+        result.output = normalizeDbDateValue(result.output);
+    } else if (result.output && typeof result.output === 'object') {
+        result.output = normalizeDbDateValue(result.output);
+    }
+
+    return result;
+}
+
+function installMssqlDateResultNormalizer() {
+    if (!MSSQL_DATETIME_NORMALIZATION_ENABLED || !sql?.Request?.prototype) return;
+    const proto = sql.Request.prototype;
+    if (proto.__emaDateResultNormalizerInstalled) return;
+
+    ['query', 'execute', 'batch'].forEach(methodName => {
+        const original = proto[methodName];
+        if (typeof original !== 'function') return;
+
+        proto[methodName] = async function normalizedMssqlResultMethod(...args) {
+            const startedAt = Date.now();
+            try {
+                const result = await original.apply(this, args);
+                const elapsedMs = Date.now() - startedAt;
+                const slowSqlMs = Number(process.env.MSSQL_SLOW_QUERY_MS || 1000);
+                if (elapsedMs >= slowSqlMs) {
+                    const sqlText = typeof args[0] === 'string' ? args[0].replace(/\s+/g, ' ').trim().slice(0, 1200) : methodName;
+                    const rowCount = Array.isArray(result?.recordset) ? result.recordset.length : undefined;
+                    console.warn('[SLOW SQL]', { method: methodName, elapsedMs, rowCount, sqlText });
+                }
+                return normalizeMssqlResultDateValues(result);
+            } catch (err) {
+                const elapsedMs = Date.now() - startedAt;
+                console.error('[SQL ERROR]', { method: methodName, elapsedMs, message: err.message });
+                throw err;
+            }
+        };
+    });
+
+    Object.defineProperty(proto, '__emaDateResultNormalizerInstalled', {
+        value: true,
+        enumerable: false,
+        configurable: false
+    });
+}
+
+installMssqlDateResultNormalizer();
+
+const LOCAL_DATETIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?(?:\.(\d{1,7}))?(?:Z|[+-]\d{2}:?\d{2})?$/;
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function getDbLocalDateParts(value) {
+    if (value === undefined || value === null || value === '') return null;
+
+    if (value instanceof Date) {
+        if (Number.isNaN(value.getTime())) return null;
+        return {
+            year: value.getUTCFullYear(),
+            month: value.getUTCMonth() + 1,
+            day: value.getUTCDate(),
+            hour: value.getUTCHours(),
+            minute: value.getUTCMinutes(),
+            second: value.getUTCSeconds()
+        };
+    }
+
+    const text = String(value).trim();
+    if (!text) return null;
+
+    const localMatch = text.match(LOCAL_DATETIME_PATTERN);
+    if (localMatch) {
+        return {
+            year: Number(localMatch[1]),
+            month: Number(localMatch[2]),
+            day: Number(localMatch[3]),
+            hour: Number(localMatch[4]),
+            minute: Number(localMatch[5]),
+            second: Number(localMatch[6] || 0)
+        };
+    }
+
+    const dateOnlyMatch = text.match(DATE_ONLY_PATTERN);
+    if (dateOnlyMatch) {
+        return {
+            year: Number(dateOnlyMatch[1]),
+            month: Number(dateOnlyMatch[2]),
+            day: Number(dateOnlyMatch[3]),
+            hour: 0,
+            minute: 0,
+            second: 0
+        };
+    }
+
+    return null;
+}
+
+function formatDbLocalDisplayDateTime(value, options = {}) {
+    const parts = getDbLocalDateParts(value);
+    if (!parts) return null;
+
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const hour12 = parts.hour % 12 || 12;
+    const period = parts.hour >= 12 ? 'pm' : 'am';
+    const includeSeconds = options.includeSeconds !== false;
+    const time = `${padDatePart(hour12)}:${padDatePart(parts.minute)}${includeSeconds ? `:${padDatePart(parts.second)}` : ''} ${period}`;
+
+    return `${padDatePart(parts.day)} ${months[Math.max(0, Math.min(11, parts.month - 1))]} ${parts.year}, ${time}`;
+}
 
 /* TASK/JOB CONSOLE ID RESOLUTION
  * Some EMA-authenticated tokens carry console_Idn = 0. Job rows must not be
@@ -683,8 +1128,17 @@ function enforceCriticalActionApproval(req, accessRows) {
 }
 
 async function enforceAccessControlsForRequest(req, user) {
-    const pool = await sql.connect(dbConfig);
-    const accessRows = await getAccessControlPolicies(pool);
+    const now = Date.now();
+    let accessRows = [];
+
+    // Hot path: most API requests can use the in-memory access-control policy
+    // cache without touching SQL or waiting for the DB pool.
+    if (accessControlPolicyCache.rows && accessControlPolicyCache.expiresAt > now) {
+        accessRows = accessControlPolicyCache.rows;
+    } else {
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
+        accessRows = await getAccessControlPolicies(pool);
+    }
 
     const ipCheck = enforceIpAccessControl(req, accessRows);
     if (!ipCheck.ok) return ipCheck;
@@ -1034,7 +1488,7 @@ app.post("/api/auth/login", async (req, res) => {
             });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const loginAccessControlRows = await getAccessControlPolicies(pool);
         const loginIpCheck = enforceIpAccessControl(req, loginAccessControlRows);
         if (!loginIpCheck.ok) {
@@ -1260,7 +1714,7 @@ app.post("/api/auth/2fa/setup", async (req, res) => {
             return res.status(400).json({ success: false, message: "User ID is required for 2FA setup." });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaUsersTable(pool);
 
         const userResult = await pool.request()
@@ -1339,7 +1793,7 @@ app.post("/api/auth/2fa/verify", async (req, res) => {
             return res.status(400).json({ success: false, message: "User ID and 2FA code are required." });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaUsersTable(pool);
 
         const userResult = await pool.request()
@@ -1477,7 +1931,7 @@ app.post("/api/refresh-token", async (req, res) => {
             });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request()
             .input("RefreshToken", sql.VarChar(sql.MAX), refreshToken)
@@ -1564,7 +2018,9 @@ function authenticateToken(req, res, next) {
             }
 
             try {
+                const authStartedAt = Date.now();
                 const enforcement = await enforceAccessControlsForRequest(req, user);
+                if (req._emaTiming) req._emaTiming.authMs = Date.now() - authStartedAt;
                 if (!enforcement.ok) {
                     return res.status(enforcement.status || 403).json({
                         success: false,
@@ -1588,7 +2044,7 @@ function authenticateToken(req, res, next) {
 // Return current logged-in user based on valid JWT token
 app.get("/api/auth/me", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureEmaUsers2faColumns(pool);
 
         if (req.user?.authSource === "EMA" || req.user?.emaUserID) {
@@ -1718,17 +2174,13 @@ app.get("/api/auth/logout", (req, res) => {
 });
 
 function getSafeRecordset(result) {
-    if (Array.isArray(result?.recordset)) return result.recordset;
-    if (Array.isArray(result?.recordsets?.[0])) return result.recordsets[0];
+    if (Array.isArray(result?.recordset)) return result.recordset.map(normalizeDbRowDateValues);
+    if (Array.isArray(result?.recordsets?.[0])) return result.recordsets[0].map(normalizeDbRowDateValues);
     return [];
 }
 
 function cloneDbRow(row) {
-    const mappedRow = {};
-    Object.keys(row || {}).forEach(columnName => {
-        mappedRow[columnName] = row[columnName];
-    });
-    return mappedRow;
+    return normalizeDbRowDateValues(row || {});
 }
 
 async function executeQuery(pool, query, inputs = {}) {
@@ -1904,43 +2356,75 @@ async function getAllHardwareInventoryAssets(pool, options = {}) {
     }
 
     if (hasMdmAssets) {
-        const mdmRelationJoin = hasMdmRelation
-            ? "LEFT JOIN TSMDM_OBJECT_RELATION mor WITH (NOLOCK) ON mdm.MDM_Asset_Idn = mor.MDM_Asset_Idn"
-            : "";
-        const relationJoin = hasMdmRelation && hasRelation
-            ? "LEFT JOIN TS_OBJECT_RELATION rel WITH (NOLOCK) ON mor.Object_Rel_Idn = rel.Object_Rel_Idn"
-            : "";
-        const relationSelect = hasMdmRelation ? "CAST(mor.Object_Rel_Idn AS INT)" : "CAST(NULL AS INT)";
         const mappingExclude = hasMdmMapping
             ? "AND NOT EXISTS (SELECT 1 FROM TSMDM_TS_OBJECT_MAPPING map WITH (NOLOCK) WHERE map.MDM_Asset_Idn = mdm.MDM_Asset_Idn)"
             : "";
-        parts.push(`
-            SELECT
-                mdm.MDM_Asset_Idn AS _Idn,
-                'MDM' AS Object_Agent,
-                mdm.DeviceID AS Object_DeviceID,
-                mdm.DeviceName AS ComputerName,
-                ${hasMdmRelation && hasRelation ? "rel.Object_Full_Name" : "CAST(NULL AS NVARCHAR(500))"} AS Object_Full_Name,
-                ${hasMdmRelation && hasRelation ? "rel.Object_Rel_Name" : "CAST(NULL AS NVARCHAR(255))"} AS Object_Rel_Name,
-                ${relationSelect} AS Object_Rel_Idn,
-                ${hasMdmRelation && hasRelation ? "CAST(rel.Object_PR_Idn AS INT)" : "CAST(NULL AS INT)"} AS Object_PR_Idn,
-                ISNULL(NULLIF(mdm.PlatformType, ''), 'MDM') AS PlatformType,
-                mdm.DeviceModelName AS Model,
-                mdm.DeviceTimeStamp AS ConnectionTime,
-                ISNULL(NULLIF(CAST(mdm.ConnectionStatus AS NVARCHAR(100)), ''), 'Unknown') AS ConnectionStatus,
-                CASE
-                    WHEN mdm.DeviceLocalIPAddress IS NULL OR mdm.DeviceLocalIPAddress = '' THEN mdm.DeviceIPAddress
-                    ELSE mdm.DeviceLocalIPAddress
-                END AS IP,
-                CAST(NULL AS NVARCHAR(100)) AS BiosDate,
-                CAST(NULL AS INT) AS PCAge
-            FROM TSMDM_ASSET mdm WITH (NOLOCK)
-            ${mdmRelationJoin}
-            ${relationJoin}
-            WHERE ISNULL(mdm.MDM_Asset_Idn, 0) > 0
-              AND (@RelationID = 0 ${hasMdmRelation ? "OR mor.Object_Rel_Idn = @RelationID" : ""})
-              ${mappingExclude}
-        `);
+
+        if (relationID > 0 && hasMdmRelation) {
+            // Relation-filtered hardware inventory should start from the relation
+            // table, not from every MDM asset. This mirrors the fast branch API.
+            parts.push(`
+                SELECT
+                    mdm.MDM_Asset_Idn AS _Idn,
+                    'MDM' AS Object_Agent,
+                    mdm.DeviceID AS Object_DeviceID,
+                    mdm.DeviceName AS ComputerName,
+                    ${hasRelation ? "rel.Object_Full_Name" : "CAST(NULL AS NVARCHAR(500))"} AS Object_Full_Name,
+                    ${hasRelation ? "rel.Object_Rel_Name" : "CAST(NULL AS NVARCHAR(255))"} AS Object_Rel_Name,
+                    CAST(mor.Object_Rel_Idn AS INT) AS Object_Rel_Idn,
+                    ${hasRelation ? "CAST(rel.Object_PR_Idn AS INT)" : "CAST(NULL AS INT)"} AS Object_PR_Idn,
+                    ISNULL(NULLIF(mdm.PlatformType, ''), 'MDM') AS PlatformType,
+                    mdm.DeviceModelName AS Model,
+                    mdm.DeviceTimeStamp AS ConnectionTime,
+                    ISNULL(NULLIF(CAST(mdm.ConnectionStatus AS NVARCHAR(100)), ''), 'Unknown') AS ConnectionStatus,
+                    CASE
+                        WHEN mdm.DeviceLocalIPAddress IS NULL OR mdm.DeviceLocalIPAddress = '' THEN mdm.DeviceIPAddress
+                        ELSE mdm.DeviceLocalIPAddress
+                    END AS IP,
+                    CAST(NULL AS NVARCHAR(100)) AS BiosDate,
+                    CAST(NULL AS INT) AS PCAge
+                FROM TSMDM_OBJECT_RELATION mor WITH (NOLOCK)
+                INNER JOIN TSMDM_ASSET mdm WITH (NOLOCK)
+                    ON mdm.MDM_Asset_Idn = mor.MDM_Asset_Idn
+                ${hasRelation ? "LEFT JOIN TS_OBJECT_RELATION rel WITH (NOLOCK) ON mor.Object_Rel_Idn = rel.Object_Rel_Idn" : ""}
+                WHERE mor.Object_Rel_Idn = @RelationID
+                  ${mappingExclude}
+            `);
+        } else {
+            const mdmRelationJoin = hasMdmRelation
+                ? "LEFT JOIN TSMDM_OBJECT_RELATION mor WITH (NOLOCK) ON mdm.MDM_Asset_Idn = mor.MDM_Asset_Idn"
+                : "";
+            const relationJoin = hasMdmRelation && hasRelation
+                ? "LEFT JOIN TS_OBJECT_RELATION rel WITH (NOLOCK) ON mor.Object_Rel_Idn = rel.Object_Rel_Idn"
+                : "";
+            const relationSelect = hasMdmRelation ? "CAST(mor.Object_Rel_Idn AS INT)" : "CAST(NULL AS INT)";
+            parts.push(`
+                SELECT
+                    mdm.MDM_Asset_Idn AS _Idn,
+                    'MDM' AS Object_Agent,
+                    mdm.DeviceID AS Object_DeviceID,
+                    mdm.DeviceName AS ComputerName,
+                    ${hasMdmRelation && hasRelation ? "rel.Object_Full_Name" : "CAST(NULL AS NVARCHAR(500))"} AS Object_Full_Name,
+                    ${hasMdmRelation && hasRelation ? "rel.Object_Rel_Name" : "CAST(NULL AS NVARCHAR(255))"} AS Object_Rel_Name,
+                    ${relationSelect} AS Object_Rel_Idn,
+                    ${hasMdmRelation && hasRelation ? "CAST(rel.Object_PR_Idn AS INT)" : "CAST(NULL AS INT)"} AS Object_PR_Idn,
+                    ISNULL(NULLIF(mdm.PlatformType, ''), 'MDM') AS PlatformType,
+                    mdm.DeviceModelName AS Model,
+                    mdm.DeviceTimeStamp AS ConnectionTime,
+                    ISNULL(NULLIF(CAST(mdm.ConnectionStatus AS NVARCHAR(100)), ''), 'Unknown') AS ConnectionStatus,
+                    CASE
+                        WHEN mdm.DeviceLocalIPAddress IS NULL OR mdm.DeviceLocalIPAddress = '' THEN mdm.DeviceIPAddress
+                        ELSE mdm.DeviceLocalIPAddress
+                    END AS IP,
+                    CAST(NULL AS NVARCHAR(100)) AS BiosDate,
+                    CAST(NULL AS INT) AS PCAge
+                FROM TSMDM_ASSET mdm WITH (NOLOCK)
+                ${mdmRelationJoin}
+                ${relationJoin}
+                WHERE ISNULL(mdm.MDM_Asset_Idn, 0) > 0
+                  ${mappingExclude}
+            `);
+        }
     }
 
     if (parts.length === 0) return [];
@@ -1966,84 +2450,90 @@ async function getAllHardwareInventoryAssets(pool, options = {}) {
             ORDER BY ISNULL(Object_Full_Name, ''), ISNULL(ComputerName, Object_DeviceID), Object_Agent;
         `);
 
-    return (result.recordset || []).map(row => {
-        const mappedRow = {};
-        Object.keys(row).forEach(columnName => {
-            mappedRow[columnName] = row[columnName];
-        });
-        return mappedRow;
-    });
+    return (result.recordset || []).map(normalizeDbRowDateValues);
 }
 
 async function getAssetsByRelationID(pool, relationID) {
-    // let query = "";
-    // switch (process.env.PROJECT_NAME) {
-    //     case "EM":
-    //         query = `spGetClientName`;
-    //         break;
-    //     case "EMA":
-    //         query = `spGetClientName_EMA`;
-    //         break;
-    //     case "EMA_LS":
-    //         query = `spGetClientName_EMA_LS`;
-    //         break;
-    //     default:
-    //         return res.status(500).json({
-    //             success: false,
-    //             message: "Unknown project"
-    //         });
-    // }
+    // Hardware Inventory branch asset list.
+    // This is intentionally executed as two independent reads instead of one
+    // UNION query. The old combined SQL could force SQL Server into an unstable
+    // plan even when a branch returned only one row. Running EM and MDM as
+    // separate filtered queries avoids duplicate-removal work and lets each
+    // side use its own best index/plan.
+    const includeBios = await hasBiosInventoryTables(pool);
+    const biosFragments = getBiosSqlFragments("em", "em", includeBios);
 
-    // const result = await pool.request()
-    //         .input("RelationID", sql.Int, relationID)
-    //         .execute(query);
-
-    const biosFragments = getBiosSqlFragments("a", "a", await hasBiosInventoryTables(pool));
-
-    const query = `
-declare @Object_Rel_Idn int = @RelationID;
+    const emQuery = `
 SELECT
-        a.Object_Root_Idn as _Idn,
-        'EM' as Object_Agent,
-        a.Object_DeviceID,
-        a.ComputerName,
-        b.Object_Full_Name,
-        'Windows' as PlatformType,
-        a.Model,
-        a.ConnectionTime,
-        case when a.ConnectionStatus=1 then 'Online' else 'Offline' end as ConnectionStatus,
-        a.IP,
-        ${biosFragments.select}
-    FROM TS_OBJECT_ROOT a
-        left join TS_OBJECT_RELATION b on a.Object_Rel_Idn=b.Object_Rel_Idn
-        ${biosFragments.join}
-    WHERE a.Object_Rel_Idn = @Object_Rel_Idn
-union
-    select 
-        a.MDM_Asset_Idn as _Idn,
-        'MDM' as Object_Agent,
-        a.DeviceID as Object_DeviceID,
-        a.DeviceName as ComputerName,
-        c.Object_Full_Name,
-        a.PlatformType as PlatformType,
-        a.DeviceModelName as Model,
-        a.DeviceTimeStamp as ConnectionTime,
-        a.ConnectionStatus as ConnectionStatus,
-        case when a.DeviceLocalIPAddress is null or a.DeviceLocalIPAddress='' then a.DeviceIPAddress else a.DeviceLocalIPAddress end as IP,
-        CAST(NULL AS NVARCHAR(100)) AS BiosDate,
-        CAST(NULL AS INT) AS PCAge
-    from TSMDM_ASSET a
-        left join TSMDM_OBJECT_RELATION b on a.MDM_Asset_Idn=b.MDM_Asset_Idn
-        left join TS_OBJECT_RELATION c on b.Object_Rel_Idn=c.Object_Rel_Idn
-    where a.MDM_Asset_Idn not in (select MDM_Asset_Idn from TSMDM_TS_OBJECT_MAPPING)
-        and b.Object_Rel_Idn = @Object_Rel_Idn
+    em.Object_Root_Idn AS _Idn,
+    'EM' AS Object_Agent,
+    em.Object_DeviceID,
+    em.ComputerName,
+    rel.Object_Full_Name,
+    'Windows' AS PlatformType,
+    em.Model,
+    em.ConnectionTime,
+    CASE WHEN em.ConnectionStatus = 1 THEN 'Online' ELSE 'Offline' END AS ConnectionStatus,
+    em.IP,
+    ${biosFragments.select}
+FROM TS_OBJECT_ROOT em WITH (NOLOCK)
+LEFT JOIN TS_OBJECT_RELATION rel WITH (NOLOCK)
+    ON em.Object_Rel_Idn = rel.Object_Rel_Idn
+${biosFragments.join}
+WHERE em.Object_Rel_Idn = @RelationID;
     `;
 
-    const result = await pool.request()
-            .input("RelationID", sql.Int, relationID)
-            .query(query);
+    const mdmQuery = `
+SELECT
+    mdm.MDM_Asset_Idn AS _Idn,
+    'MDM' AS Object_Agent,
+    mdm.DeviceID AS Object_DeviceID,
+    mdm.DeviceName AS ComputerName,
+    rel.Object_Full_Name,
+    ISNULL(NULLIF(mdm.PlatformType, ''), 'MDM') AS PlatformType,
+    mdm.DeviceModelName AS Model,
+    mdm.DeviceTimeStamp AS ConnectionTime,
+    ISNULL(NULLIF(CAST(mdm.ConnectionStatus AS NVARCHAR(100)), ''), 'Unknown') AS ConnectionStatus,
+    CASE
+        WHEN mdm.DeviceLocalIPAddress IS NULL OR mdm.DeviceLocalIPAddress = '' THEN mdm.DeviceIPAddress
+        ELSE mdm.DeviceLocalIPAddress
+    END AS IP,
+    CAST(NULL AS NVARCHAR(100)) AS BiosDate,
+    CAST(NULL AS INT) AS PCAge
+FROM TSMDM_OBJECT_RELATION mor WITH (NOLOCK)
+INNER JOIN TSMDM_ASSET mdm WITH (NOLOCK)
+    ON mdm.MDM_Asset_Idn = mor.MDM_Asset_Idn
+LEFT JOIN TS_OBJECT_RELATION rel WITH (NOLOCK)
+    ON mor.Object_Rel_Idn = rel.Object_Rel_Idn
+WHERE mor.Object_Rel_Idn = @RelationID
+AND NOT EXISTS (
+    SELECT 1
+    FROM TSMDM_TS_OBJECT_MAPPING map WITH (NOLOCK)
+    WHERE map.MDM_Asset_Idn = mdm.MDM_Asset_Idn
+);
+    `;
 
-    return getSafeRecordset(result).map(cloneDbRow);
+    const [emResult, mdmResult] = await Promise.all([
+        pool.request().input("RelationID", sql.Int, relationID).query(emQuery),
+        pool.request().input("RelationID", sql.Int, relationID).query(mdmQuery)
+    ]);
+
+    const rows = [
+        ...getSafeRecordset(emResult),
+        ...getSafeRecordset(mdmResult)
+    ];
+
+    rows.sort((a, b) => {
+        const branchA = String(a.Object_Full_Name || '');
+        const branchB = String(b.Object_Full_Name || '');
+        if (branchA !== branchB) return branchA.localeCompare(branchB);
+        const nameA = String(a.ComputerName || a.Object_DeviceID || '');
+        const nameB = String(b.ComputerName || b.Object_DeviceID || '');
+        if (nameA !== nameB) return nameA.localeCompare(nameB);
+        return String(a.Object_Agent || '').localeCompare(String(b.Object_Agent || ''));
+    });
+
+    return rows.map(cloneDbRow);
 }
 
 // GET /api/departments
@@ -2386,7 +2876,7 @@ app.post("/api/departments", authenticateToken, async (req, res) => {
             return res.status(400).json({ success: false, message: "Branch name is required." });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         if (parentID !== -1) {
             const parent = await getDepartmentById(pool, parentID);
@@ -2417,6 +2907,7 @@ app.post("/api/departments", authenticateToken, async (req, res) => {
             return res.status(500).json({ success: false, message: "Branch was created but the new row could not be read." });
         }
 
+        clearHardwareInventoryCache();
         return res.json({ success: true, data: row, message: "Branch created successfully." });
     } catch (err) {
         console.error("POST /api/departments error:", err);
@@ -2442,7 +2933,7 @@ app.put("/api/departments/:relationID", authenticateToken, async (req, res) => {
             return res.status(400).json({ success: false, message: "Branch name is required." });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const current = await getDepartmentById(pool, relationID);
 
         if (!current) {
@@ -2488,6 +2979,7 @@ app.put("/api/departments/:relationID", authenticateToken, async (req, res) => {
         const row = getSafeRecordset(updateResult)[0];
         await refreshDepartmentDescendantFullNames(pool, relationID);
 
+        clearHardwareInventoryCache();
         return res.json({ success: true, data: row, message: "Branch renamed successfully." });
     } catch (err) {
         console.error("PUT /api/departments/:relationID error:", err);
@@ -2504,7 +2996,7 @@ app.delete("/api/departments/:relationID", authenticateToken, async (req, res) =
             return res.status(400).json({ success: false, message: "Invalid branch ID." });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const current = await getDepartmentById(pool, relationID);
 
         if (!current) {
@@ -2570,6 +3062,7 @@ app.delete("/api/departments/:relationID", authenticateToken, async (req, res) =
             `);
 
         const row = getSafeRecordset(deleteResult)[0];
+        clearHardwareInventoryCache();
         return res.json({ success: true, data: row, message: "Branch deleted successfully." });
     } catch (err) {
         console.error("DELETE /api/departments/:relationID error:", err);
@@ -2661,7 +3154,7 @@ async function handleServiceDeskAssets(req, res) {
         const search = String(req.query.search || req.query.q || req.query.keyword || "").trim();
         const requesterName = String(req.query.requesterName || req.query.requester || req.query.client || "").trim();
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const request = pool.request();
         request.input("SearchText", sql.NVarChar(255), `%${search}%`);
         request.input("RequesterName", sql.NVarChar(255), requesterName);
@@ -2971,7 +3464,7 @@ async function handleMoveAssetDepartment(req, res) {
             });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const destination = await getMoveDeptTargetRelation(pool, relationID);
 
         if (!destination) {
@@ -2985,6 +3478,7 @@ async function handleMoveAssetDepartment(req, res) {
             ? await moveMdmAssetDepartment(pool, assetId, relationID)
             : await moveEmAssetDepartment(pool, assetId, relationID);
 
+        clearHardwareInventoryCache();
         return res.json({
             success: true,
             message: "Device moved successfully.",
@@ -3163,7 +3657,7 @@ async function getTSMDMData(pool, MDM_Asset_Idn) {
 // from EMA_Incidents so it works even when there is no separate HD_Clients table.
 app.get('/api/clients', authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request().query(`
             SELECT
@@ -3196,7 +3690,7 @@ app.get('/api/clients', authenticateToken, async (req, res) => {
 // EMA_Users is the only runtime user source for the rebuilt UI.
 app.get('/api/users', authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaUsersTable(pool);
 
         const result = await pool.request().query(`
@@ -3227,7 +3721,7 @@ app.get('/api/users', authenticateToken, async (req, res) => {
 // GET /api/users/:id
 app.get('/api/users/:id', authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaUsersTable(pool);
 
         const userID = parseInt(req.params.id, 10);
@@ -3268,7 +3762,7 @@ app.delete('/api/users/:id', authenticateToken, async (req, res) => {
 // Role list is sourced from EMA_Roles only.
 app.get('/api/roles', authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaRolesTable(pool);
 
         const result = await pool.request().query(`
@@ -3330,7 +3824,7 @@ function normalizeServiceDeskIncidentStatus(value, fallback = 'Awaiting') {
 // GET all incidents
 app.get('/api/incidents', authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request().query(`
             SELECT 
                 IncidentID as id,
@@ -3369,7 +3863,7 @@ app.get('/api/incidents', authenticateToken, async (req, res) => {
 app.get('/api/incidents/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request()
             .input('id', sql.NVarChar, id)
             .query(`
@@ -3420,7 +3914,7 @@ app.post('/api/incidents', authenticateToken, async (req, res) => {
     } = req.body;
     
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await pool.request()
             .input('id', sql.NVarChar, id)
             .input('title', sql.NVarChar, title || '')
@@ -3428,7 +3922,7 @@ app.post('/api/incidents', authenticateToken, async (req, res) => {
             .input('priority', sql.NVarChar, priority || 'Medium')
             .input('status', sql.NVarChar, normalizeServiceDeskIncidentStatus(status, 'Awaiting'))
             .input('category', sql.NVarChar, category || '')
-            .input('createdAt', sql.NVarChar, createdAt || new Date().toISOString())
+            .input('createdAt', sql.NVarChar, createdAt || formatServerLocalDateTime())
             .input('requesterId', sql.NVarChar, requesterId || '')
             .input('requesterName', sql.NVarChar, requesterName || '')
             .input('deviceType', sql.NVarChar, deviceType || '')
@@ -3488,7 +3982,7 @@ app.put('/api/incidents/:id', authenticateToken, async (req, res) => {
     } = req.body;
     
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const previousIncidentResult = await pool.request()
             .input('id', sql.NVarChar, id)
             .query(`SELECT TOP 1 Status, Title, Priority, AssignedTo, RequesterName FROM EMA_Incidents WITH (NOLOCK) WHERE IncidentID = @id;`);
@@ -3571,7 +4065,7 @@ app.put('/api/incidents/:id', authenticateToken, async (req, res) => {
 app.delete('/api/incidents/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const attachmentResult = await pool.request()
             .input('id', sql.NVarChar, id)
@@ -3629,7 +4123,7 @@ app.delete('/api/incidents/:id', authenticateToken, async (req, res) => {
 
 app.get('/api/incident-config', authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request().query(`
             SELECT 
                 ConfigID as id,
@@ -3649,7 +4143,7 @@ app.get('/api/incident-config', authenticateToken, async (req, res) => {
 
 app.get('/api/incident-config/working-hours', authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request().query(`
             SELECT 
                 DayOfWeek as dayOfWeek,
@@ -3671,7 +4165,7 @@ app.get('/api/incident-config/working-hours', authenticateToken, async (req, res
 
 app.get('/api/incident-config/visibility', authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request().query(`
             SELECT 
                 FieldName as fieldName,
@@ -3696,7 +4190,7 @@ app.get('/api/incident-config/visibility', authenticateToken, async (req, res) =
 
 app.get('/api/incident-categories', authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request().query(`
             SELECT 
                 c.CategoryID as id,
@@ -3747,7 +4241,7 @@ app.get('/api/incident-categories', authenticateToken, async (req, res) => {
 
 app.get('/api/knowledge-base', authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request().query(`
             SELECT 
                 KBID as id,
@@ -3769,7 +4263,7 @@ app.get('/api/knowledge-base', authenticateToken, async (req, res) => {
 app.post('/api/knowledge-base', authenticateToken, async (req, res) => {
     const { title, incidentDetails, resolution } = req.body;
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request()
             .input('title', sql.NVarChar, title)
             .input('incidentDetails', sql.NVarChar, incidentDetails || '')
@@ -3790,7 +4284,7 @@ app.put('/api/knowledge-base/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { title, incidentDetails, resolution } = req.body;
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await pool.request()
             .input('id', sql.Int, id)
             .input('title', sql.NVarChar, title)
@@ -3814,7 +4308,7 @@ app.put('/api/knowledge-base/:id', authenticateToken, async (req, res) => {
 app.delete('/api/knowledge-base/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await pool.request()
             .input('id', sql.Int, id)
             .query('DELETE FROM EMA_KnowledgeBase WHERE KBID = @id');
@@ -3858,7 +4352,7 @@ app.post('/api/incidents/:id/attachments', authenticateToken, upload.single('fil
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const countResult = await pool.request()
             .input('incidentId', sql.NVarChar, incidentId)
@@ -3909,7 +4403,7 @@ app.post('/api/incidents/:id/attachments', authenticateToken, upload.single('fil
             originalName: req.file.originalname,
             size: req.file.size,
             url: filePath,
-            uploadedAt: new Date().toISOString()
+            uploadedAt: formatServerLocalDateTime()
         };
         res.json(attachment);
     } catch (err) {
@@ -3922,7 +4416,7 @@ app.post('/api/incidents/:id/attachments', authenticateToken, upload.single('fil
 app.get('/api/incidents/:id/attachments', authenticateToken, async (req, res) => {
     const incidentId = req.params.id;
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request()
             .input('incidentId', sql.NVarChar, incidentId)
             .query(`
@@ -3947,7 +4441,7 @@ app.get('/api/incidents/:id/attachments', authenticateToken, async (req, res) =>
 app.delete('/api/incidents/:id/attachments/:filename', authenticateToken, async (req, res) => {
     const { id, filename } = req.params;
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         
         // Get file path to delete from disk
         const fileResult = await pool.request()
@@ -4002,7 +4496,7 @@ app.post('/api/knowledge-base/:id/attachments', authenticateToken, kbUpload.sing
         originalName: req.file.originalname,
         size: req.file.size,
         url: `/api/uploads/kb/${req.params.id}/${req.file.filename}`,
-        uploadedAt: new Date().toISOString()
+        uploadedAt: formatServerLocalDateTime()
     };
     const metaPath = path.join(kbUploadsDir, req.params.id, '_meta.json');
     let meta = [];
@@ -4047,7 +4541,7 @@ app.post('/api/incidents/search', authenticateToken, async (req, res) => {
             slaStatus
         } = req.body;
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         let query = `
             SELECT 
                 IncidentID as id,
@@ -4393,7 +4887,7 @@ async function fetchServiceDeskEngineers(pool, { checkDate = null, supportLevel 
 app.get('/api/engineer-availability', authenticateToken, async (req, res) => {
     try {
         const { engineerId, startDate, endDate, userId } = req.query;
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureEmaEngineerAvailabilityTable(pool);
 
         let query = `
@@ -4481,7 +4975,7 @@ app.post('/api/engineer-availability', authenticateToken, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Start date and end date are required.' });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureEmaEngineerAvailabilityTable(pool);
 
         const engineerResult = await pool.request()
@@ -4571,7 +5065,7 @@ app.put('/api/engineer-availability/:id', authenticateToken, async (req, res) =>
             return res.status(400).json({ success: false, message: 'Start date and end date are required.' });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureEmaEngineerAvailabilityTable(pool);
 
         const scheduleResult = await pool.request()
@@ -4645,7 +5139,7 @@ app.put('/api/engineer-availability/:id', authenticateToken, async (req, res) =>
 app.get('/api/engineer-availability/available-engineers', authenticateToken, async (req, res) => {
     try {
         const { date, supportLevel, level } = req.query;
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const rows = await fetchServiceDeskEngineers(pool, {
             checkDate: date || new Date().toISOString().slice(0, 10),
             supportLevel: supportLevel || level || ''
@@ -4661,7 +5155,7 @@ app.get('/api/engineer-availability/available-engineers', authenticateToken, asy
 app.get('/api/engineers', authenticateToken, async (req, res) => {
     try {
         const { supportLevel, level } = req.query;
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const rows = await fetchServiceDeskEngineers(pool, {
             checkDate: new Date().toISOString().slice(0, 10),
             supportLevel: supportLevel || level || ''
@@ -4679,7 +5173,7 @@ app.get('/api/engineer-availability/unavailable-by-date', authenticateToken, asy
         const { year, month } = req.query;
         const targetYear = parseInt(year, 10) || new Date().getFullYear();
         const targetMonth = parseInt(month, 10) || new Date().getMonth() + 1;
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureEmaEngineerAvailabilityTable(pool);
 
         const result = await pool.request()
@@ -4761,7 +5255,7 @@ app.get('/api/engineer-availability/unavailable-by-date', authenticateToken, asy
 app.delete('/api/engineer-availability/:id', authenticateToken, async (req, res) => {
     try {
         const id = parseInt(req.params.id, 10);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureEmaEngineerAvailabilityTable(pool);
 
         const result = await pool.request()
@@ -5099,7 +5593,7 @@ function buildPricingAuditAction(actionType, beforeRow, afterRow) {
 // GENERAL
 app.get("/api/settings/general", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request().query(`
             SELECT SettingKey, SettingValue
             FROM EMA_Settings
@@ -5127,7 +5621,7 @@ app.get("/api/settings/general", authenticateToken, async (req, res) => {
 
 app.put("/api/settings/general", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const keys = ["orgName", "supportEmail", "timezone", "loginAnimationStyle", "logo"];
 
         for (const key of keys) {
@@ -5425,7 +5919,7 @@ async function getEmaUserById(pool, userID) {
 
 app.get("/api/settings/users", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaUsersTable(pool);
 
         const result = await pool.request().query(`
@@ -5460,7 +5954,7 @@ app.get("/api/settings/users/:id", authenticateToken, async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid user ID." });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaUsersTable(pool);
 
         const row = await getEmaUserById(pool, userID);
@@ -5501,7 +5995,7 @@ app.post("/api/settings/users", authenticateToken, async (req, res) => {
 
         const passwordHash = await bcrypt.hash(passwordText, 10);
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaUsersTable(pool);
 
         const duplicate = await pool.request()
@@ -5628,7 +6122,7 @@ app.put("/api/settings/users/:id", authenticateToken, async (req, res) => {
         const passwordHash = passwordText ? await bcrypt.hash(passwordText, 10) : null;
         const requestedRequireMFA = parseEmaBit(req.body.requireMFA ?? req.body.mfa, false);
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaUsersTable(pool);
 
         const duplicate = await pool.request()
@@ -5752,7 +6246,7 @@ app.put("/api/settings/users/:id/status", authenticateToken, async (req, res) =>
             return res.status(400).json({ success: false, message: "Invalid user ID." });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaUsersTable(pool);
 
         const result = await pool.request()
@@ -5792,7 +6286,7 @@ app.put("/api/settings/users/:id/lock", authenticateToken, async (req, res) => {
         const userID = parseInt(req.params.id, 10);
         if (!userID) return res.status(400).json({ success: false, message: "Invalid user ID." });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaUsersTable(pool);
 
         const result = await pool.request()
@@ -5826,7 +6320,7 @@ app.put("/api/settings/users/:id/unlock", authenticateToken, async (req, res) =>
         const userID = parseInt(req.params.id, 10);
         if (!userID) return res.status(400).json({ success: false, message: "Invalid user ID." });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaUsersTable(pool);
 
         const result = await pool.request()
@@ -5861,7 +6355,7 @@ app.put("/api/settings/users/:id/mfa", authenticateToken, async (req, res) => {
         if (!userID) return res.status(400).json({ success: false, message: "Invalid user ID." });
 
         const requireMFA = parseEmaBit(req.body.requireMFA ?? req.body.mfa, true);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaUsersTable(pool);
 
         const currentUserResult = await pool.request()
@@ -5914,7 +6408,7 @@ app.put("/api/settings/users/:id/2fa/reset", authenticateToken, async (req, res)
         const userID = parseInt(req.params.id, 10);
         if (!userID) return res.status(400).json({ success: false, message: "Invalid user ID." });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaUsersTable(pool);
 
         const result = await pool.request()
@@ -5956,7 +6450,7 @@ app.put("/api/settings/users/:id/reset-password", authenticateToken, async (req,
 
         const passwordHash = await bcrypt.hash(passwordText, 10);
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaUsersTable(pool);
 
         const result = await pool.request()
@@ -5992,7 +6486,7 @@ app.delete("/api/settings/users/:id", authenticateToken, async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid user ID." });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaUsersTable(pool);
 
         const userResult = await pool.request()
@@ -6064,7 +6558,7 @@ app.delete("/api/settings/users/:id", authenticateToken, async (req, res) => {
 // ROLE BASED CONTROL
 app.get("/api/settings/roles", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaRolesTable(pool);
 
         const hasRoleName = await tableColumnExists(pool, "EMA_Roles", "RoleName");
@@ -6136,7 +6630,7 @@ app.get("/api/settings/roles/:id", authenticateToken, async (req, res) => {
         const roleID = parseInt(req.params.id, 10);
         if (!roleID) return res.status(400).json({ success: false, message: "Invalid role ID." });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaRolesTable(pool);
 
         const hasRoleName = await tableColumnExists(pool, "EMA_Roles", "RoleName");
@@ -6189,7 +6683,7 @@ app.post("/api/settings/roles", authenticateToken, async (req, res) => {
         const description = String(req.body.description || "").trim();
         const roleKey = makeEmaRoleKey(roleName);
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaRolesTable(pool);
 
         const hasRoleName = await tableColumnExists(pool, "EMA_Roles", "RoleName");
@@ -6281,7 +6775,7 @@ app.put("/api/settings/roles/:id", authenticateToken, async (req, res) => {
         const description = String(req.body.description || "").trim();
         const roleKey = makeEmaRoleKey(roleName);
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaRolesTable(pool);
 
         const hasRoleName = await tableColumnExists(pool, "EMA_Roles", "RoleName");
@@ -6371,7 +6865,7 @@ app.delete("/api/settings/roles/:id", authenticateToken, async (req, res) => {
         const roleID = parseInt(req.params.id, 10);
         if (!roleID) return res.status(400).json({ success: false, message: "Invalid role ID." });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await assertEmaRolesTable(pool);
         await assertEmaUserRolesTable(pool);
 
@@ -6439,7 +6933,7 @@ app.delete("/api/settings/roles/:id", authenticateToken, async (req, res) => {
 // CLIENT DIRECTORY
 app.get("/api/settings/clients", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request().query(`
             SELECT
                 ClientID as id,
@@ -6458,7 +6952,7 @@ app.get("/api/settings/clients", authenticateToken, async (req, res) => {
 
 app.post("/api/settings/clients", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request()
             .input("FullName", sql.NVarChar, req.body.fullName || "")
             .input("ShortName", sql.NVarChar, req.body.shortName || "")
@@ -6480,7 +6974,7 @@ app.post("/api/settings/clients", authenticateToken, async (req, res) => {
 
 app.put("/api/settings/clients/:id", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await pool.request()
             .input("ClientID", sql.Int, parseInt(req.params.id))
             .input("FullName", sql.NVarChar, req.body.fullName || "")
@@ -6507,7 +7001,7 @@ app.put("/api/settings/clients/:id", authenticateToken, async (req, res) => {
 
 app.delete("/api/settings/clients/:id", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await pool.request()
             .input("ClientID", sql.Int, parseInt(req.params.id))
             .query(`DELETE FROM EMA_Clients WHERE ClientID = @ClientID`);
@@ -6534,7 +7028,7 @@ app.delete("/api/settings/clients/:id", authenticateToken, async (req, res) => {
 // SLA CONFIG - uses EMA_SLA_Configs
 app.get("/api/settings/incident-config/sla", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request().query(`
             SELECT
@@ -6564,7 +7058,7 @@ app.get("/api/settings/incident-config/sla", authenticateToken, async (req, res)
 
 app.put("/api/settings/incident-config/sla", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const items = Array.isArray(req.body) ? req.body : [];
 
         for (const item of items) {
@@ -6602,7 +7096,7 @@ app.put("/api/settings/incident-config/sla", authenticateToken, async (req, res)
 // WORKING HOURS - uses EMA_WorkingHours
 app.get("/api/settings/incident-config/working-hours", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request().query(`
             SELECT
@@ -6635,7 +7129,7 @@ app.get("/api/settings/incident-config/working-hours", authenticateToken, async 
 
 app.put("/api/settings/incident-config/working-hours", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const items = Array.isArray(req.body) ? req.body : [];
 
         for (const item of items) {
@@ -6672,7 +7166,7 @@ app.put("/api/settings/incident-config/working-hours", authenticateToken, async 
 // FIELD VISIBILITY - uses EMA_VisibilityConfig
 app.get("/api/settings/incident-config/fields", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request().query(`
             SELECT
@@ -6700,7 +7194,7 @@ app.get("/api/settings/incident-config/fields", authenticateToken, async (req, r
 
 app.put("/api/settings/incident-config/fields", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const items = Array.isArray(req.body) ? req.body : [];
 
         for (const item of items) {
@@ -6857,7 +7351,7 @@ function getIncidentConfigIsActiveFromBody(body, fallback = true) {
 // CATEGORY HIERARCHY - uses EMA_IncidentCategories, EMA_IncidentSubcategories, EMA_IncidentDetails
 app.get("/api/settings/incident-config/categories", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request().query(`
             SELECT
@@ -6945,7 +7439,7 @@ app.post("/api/settings/incident-config/categories", authenticateToken, async (r
             });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request()
             .input("Name", sql.NVarChar, name.trim())
@@ -6997,7 +7491,7 @@ app.put("/api/settings/incident-config/categories/:id", authenticateToken, async
         }
 
         const categoryId = parseInt(req.params.id, 10);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const currentCategory = await getIncidentCategoryById(pool, categoryId);
 
         if (!currentCategory) {
@@ -7048,7 +7542,7 @@ app.put("/api/settings/incident-config/categories/:id", authenticateToken, async
 app.delete("/api/settings/incident-config/categories/:id", authenticateToken, async (req, res) => {
     try {
         const categoryId = parseInt(req.params.id, 10);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const currentCategory = await getIncidentCategoryById(pool, categoryId);
 
         if (!currentCategory) {
@@ -7100,7 +7594,7 @@ app.post("/api/settings/incident-config/categories/:categoryId/subcategories", a
             });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request()
             .input("CategoryID", sql.Int, parseInt(req.params.categoryId, 10))
@@ -7155,7 +7649,7 @@ app.put("/api/settings/incident-config/subcategories/:id", authenticateToken, as
         }
 
         const subcategoryId = parseInt(req.params.id, 10);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const currentSubcategory = await getIncidentSubcategoryById(pool, subcategoryId);
 
         if (!currentSubcategory) {
@@ -7206,7 +7700,7 @@ app.put("/api/settings/incident-config/subcategories/:id", authenticateToken, as
 app.delete("/api/settings/incident-config/subcategories/:id", authenticateToken, async (req, res) => {
     try {
         const subcategoryId = parseInt(req.params.id, 10);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const currentSubcategory = await getIncidentSubcategoryById(pool, subcategoryId);
 
         if (!currentSubcategory) {
@@ -7252,7 +7746,7 @@ app.post("/api/settings/incident-config/subcategories/:subcategoryId/details", a
             });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request()
             .input("SubcategoryID", sql.Int, parseInt(req.params.subcategoryId, 10))
@@ -7307,7 +7801,7 @@ app.put("/api/settings/incident-config/details/:id", authenticateToken, async (r
         }
 
         const detailId = parseInt(req.params.id, 10);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const currentDetail = await getIncidentDetailById(pool, detailId);
 
         if (!currentDetail) {
@@ -7358,7 +7852,7 @@ app.put("/api/settings/incident-config/details/:id", authenticateToken, async (r
 app.delete("/api/settings/incident-config/details/:id", authenticateToken, async (req, res) => {
     try {
         const detailId = parseInt(req.params.id, 10);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const currentDetail = await getIncidentDetailById(pool, detailId);
 
         if (!currentDetail) {
@@ -8077,7 +8571,7 @@ async function incrementWhatsappUsage(pool) {
 
 app.get("/api/settings/email", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureNotificationSettingsTables(pool);
         const result = await pool.request().query(`SELECT * FROM dbo.EMA_EmailSettings ORDER BY Provider ASC, SettingID ASC;`);
         const rows = result.recordset?.length ? result.recordset.map(mapEmailSetting) : [{ provider: "SMTP", host: "", port: 587, user: "", pass: "", ssl: true, isActive: true }];
@@ -8140,7 +8634,7 @@ async function saveEmailSetting(pool, body = {}, req) {
 
 app.post("/api/settings/email", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await saveEmailSetting(pool, req.body || {}, req);
         return res.json({ success: true, data });
     } catch (err) {
@@ -8151,7 +8645,7 @@ app.post("/api/settings/email", authenticateToken, async (req, res) => {
 
 app.put("/api/settings/email", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await saveEmailSetting(pool, req.body || {}, req);
         return res.json({ success: true, data });
     } catch (err) {
@@ -8162,7 +8656,7 @@ app.put("/api/settings/email", authenticateToken, async (req, res) => {
 
 app.post("/api/settings/email/test", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureNotificationSettingsTables(pool);
         await logEmaAudit(pool, req, "Tested Email Notification", "Notification Channels", "Info", { provider: req.body?.provider || "SMTP" });
         return res.json({ success: true, data: { simulated: true, provider: req.body?.provider || "SMTP" }, message: "Email test simulated successfully" });
@@ -8174,7 +8668,7 @@ app.post("/api/settings/email/test", authenticateToken, async (req, res) => {
 
 app.get("/api/settings/whatsapp", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const row = await readWhatsappSettingRow(pool);
         return res.json({ success: true, data: mapWhatsappSetting(row || {}) });
     } catch (err) {
@@ -8222,7 +8716,7 @@ async function saveWhatsappSetting(pool, body = {}, req) {
 
 app.post("/api/settings/whatsapp", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await saveWhatsappSetting(pool, req.body || {}, req);
         return res.json({ success: true, data });
     } catch (err) {
@@ -8233,7 +8727,7 @@ app.post("/api/settings/whatsapp", authenticateToken, async (req, res) => {
 
 app.put("/api/settings/whatsapp", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await saveWhatsappSetting(pool, req.body || {}, req);
         return res.json({ success: true, data });
     } catch (err) {
@@ -8244,7 +8738,7 @@ app.put("/api/settings/whatsapp", authenticateToken, async (req, res) => {
 
 app.get("/api/settings/whatsapp/usage", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const usage = await readWhatsappUsage(pool);
         return res.json({ success: true, data: usage });
     } catch (err) {
@@ -8256,7 +8750,7 @@ app.get("/api/settings/whatsapp/usage", authenticateToken, async (req, res) => {
 
 app.get("/api/settings/notification-recipients", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureNotificationSettingsTables(pool);
         const result = await pool.request().query(`
             SELECT
@@ -8349,7 +8843,7 @@ async function saveNotificationRecipient(pool, body = {}, recipientId = 0) {
 
 app.post("/api/settings/notification-recipients", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await saveNotificationRecipient(pool, req.body || {}, 0);
         await logEmaAudit(pool, req, "Added Notification Recipient", "Notification Channels", "Success", { recipientID: data.RecipientID, recipientName: data.RecipientName });
         return res.json({ success: true, data });
@@ -8361,7 +8855,7 @@ app.post("/api/settings/notification-recipients", authenticateToken, async (req,
 
 app.put("/api/settings/notification-recipients/:id", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await saveNotificationRecipient(pool, req.body || {}, req.params.id);
         await logEmaAudit(pool, req, "Updated Notification Recipient", "Notification Channels", "Success", { recipientID: data.RecipientID, recipientName: data.RecipientName });
         return res.json({ success: true, data });
@@ -8373,7 +8867,7 @@ app.put("/api/settings/notification-recipients/:id", authenticateToken, async (r
 
 app.delete("/api/settings/notification-recipients/:id", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureNotificationSettingsTables(pool);
         const id = Number(req.params.id || 0) || 0;
         await pool.request()
@@ -8389,7 +8883,7 @@ app.delete("/api/settings/notification-recipients/:id", authenticateToken, async
 
 app.get("/api/settings/notification-diagnostics", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureNotificationSettingsTables(pool);
         const whatsapp = await readWhatsappSettingRow(pool);
         const usage = await readWhatsappUsage(pool);
@@ -8431,7 +8925,7 @@ app.get("/api/settings/notification-diagnostics", authenticateToken, async (req,
 
 app.post("/api/settings/whatsapp/test", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureNotificationSettingsTables(pool);
         if (req.body?.accountSid || req.body?.fromNumber || req.body?.authToken) {
             await saveWhatsappSetting(pool, req.body || {}, req);
@@ -8517,7 +9011,7 @@ app.post("/api/settings/whatsapp/test", authenticateToken, async (req, res) => {
 
 app.get("/api/settings/notification-rules", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureNotificationSettingsTables(pool);
         const result = await pool.request().query(`
             SELECT
@@ -8542,7 +9036,7 @@ app.get("/api/settings/notification-rules", authenticateToken, async (req, res) 
 
 app.put("/api/settings/notification-rules", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureNotificationSettingsTables(pool);
         const rules = Array.isArray(req.body) ? req.body : Array.isArray(req.body?.rules) ? req.body.rules : [];
 
@@ -8607,7 +9101,7 @@ app.put("/api/settings/notification-rules", authenticateToken, async (req, res) 
 // Legacy combined settings endpoint kept for compatibility with older Settings pages.
 app.get("/api/settings/notifications", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const [emailResult, whatsappRow, usage, rulesResult] = await Promise.all([
             (async () => {
                 await ensureNotificationSettingsTables(pool);
@@ -8649,7 +9143,7 @@ app.get("/api/settings/notifications", authenticateToken, async (req, res) => {
 
 app.put("/api/settings/notifications", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await upsertSettingValue(pool, "notificationSettings", JSON.stringify(req.body || {}), notificationUserKey(req));
         await logEmaAudit(pool, req, "Updated Notification Settings", "Notification Channels", "Success", req.body);
         return res.json({ success: true, data: req.body });
@@ -8666,7 +9160,7 @@ app.post("/api/settings/notifications/test", authenticateToken, async (req, res)
             req.body = { ...(req.body || {}), testNumber: req.body?.testNumber || req.body?.to || req.body?.recipient };
             return res.redirect(307, "/api/settings/whatsapp/test");
         }
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await logEmaAudit(pool, req, `Tested ${channel} Notification`, "Notification Channels", "Info", req.body);
         return res.json({ success: true, data: { simulated: true, channel }, message: `${channel} test simulated successfully` });
     } catch (err) {
@@ -8678,7 +9172,7 @@ app.post("/api/settings/notifications/test", authenticateToken, async (req, res)
 // SECURITY & AUTH
 app.get("/api/settings/security", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const jsonValue = await getSettingValue(pool, "securitySettings", "{}");
         const data = safeJsonParse(jsonValue, {});
         return res.json({ success: true, data });
@@ -8690,7 +9184,7 @@ app.get("/api/settings/security", authenticateToken, async (req, res) => {
 
 app.put("/api/settings/security", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await upsertSettingValue(pool, "securitySettings", JSON.stringify(req.body || {}), req.user?.userID);
         await logEmaAudit(pool, req, "Updated Security Settings", "Security & Auth", "Success", req.body);
         return res.json({ success: true, data: req.body });
@@ -8703,7 +9197,7 @@ app.put("/api/settings/security", authenticateToken, async (req, res) => {
 // AUDIT LOGS
 app.get('/api/settings/audit-logs', authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureEmaAuditLogsTable(pool);
 
         const search = normalizeAuthValue(req.query.search || req.query.q || '', '');
@@ -8810,7 +9304,7 @@ app.get('/api/settings/audit-logs', authenticateToken, async (req, res) => {
 
 app.post('/api/settings/audit-logs', authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureEmaAuditLogsTable(pool);
 
         const userName = normalizeAuthValue(req.body.user || req.body.userName || req.user?.userID, 'system');
@@ -8877,7 +9371,7 @@ app.post('/api/settings/audit-logs', authenticateToken, async (req, res) => {
 // Frontend can call this after exporting CSV so export evidence is also captured.
 app.post('/api/settings/audit-logs/export-event', authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const recordCount = Number(req.body?.recordCount || req.body?.totalRecords || 0) || 0;
         const filters = req.body?.filters || req.body?.filter || {};
 
@@ -8907,7 +9401,7 @@ app.post('/api/settings/audit-logs/export-event', authenticateToken, async (req,
 
 app.delete('/api/settings/audit-logs', authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureEmaAuditLogsTable(pool);
         await pool.request().query('DELETE FROM dbo.EMA_AuditLogs;');
         await logEmaAudit(pool, req, 'Cleared Audit Logs', 'Audit Logs', 'Warning', {});
@@ -8943,11 +9437,11 @@ function firstMdmDefined(...values) {
 
 async function getSqlPoolWithRetry() {
     try {
-        return await sql.connect(dbConfig);
+        return await getDbPool(typeof req !== 'undefined' ? req : null);
     } catch (err) {
         console.warn("SQL connect failed. Retrying with a fresh pool:", err.message || err);
         try { await sql.close(); } catch (_) {}
-        return await sql.connect(dbConfig);
+        return await getDbPool(typeof req !== 'undefined' ? req : null);
     }
 }
 
@@ -9128,6 +9622,959 @@ async function getMdmAssetByObjectRoot(pool, objectRootIdn, options = {}) {
 
     return result.recordset?.[0] || null;
 }
+
+/*
+|--------------------------------------------------------------------------
+| MDM / SureMDM Asset Sync APIs + Background Workers
+|--------------------------------------------------------------------------
+| Mirrors the Java ApiMdmController flow for keeping TSMDM_ASSET current:
+| - UpdateAll_scheduled(): DeleteNonExistingMDMAsset + InsertMDMAsset
+| - UpdateAssets(): InsertMDMVersion + UpdateMDMAsset + InsertMDMObjectMapping
+| - UpdateMDMAssetFrequent(): frequent online/lost-mode/tracking fields only
+|--------------------------------------------------------------------------
+*/
+const mdmAssetSyncState = {
+    updateAll: { enabled: false, running: false, intervalMs: 0, lastStartedAt: null, lastFinishedAt: null, lastResult: null, lastError: null },
+    updateAssets: { enabled: false, running: false, intervalMs: 0, lastStartedAt: null, lastFinishedAt: null, lastResult: null, lastError: null },
+    updateFrequent: { enabled: false, running: false, intervalMs: 0, lastStartedAt: null, lastFinishedAt: null, lastResult: null, lastError: null }
+};
+
+function getMdmAssetSyncEnvBoolean(name, fallback = false) {
+    return parseMdmBoolean(process.env[name], fallback);
+}
+
+function getMdmAssetSyncEnvInt(name, fallback, min = 0, max = Number.MAX_SAFE_INTEGER) {
+    const parsed = parseInt(process.env[name], 10);
+    if (Number.isNaN(parsed)) return fallback;
+    return Math.min(Math.max(parsed, min), max);
+}
+
+function getMdmAssetSyncConfigValue(...keys) {
+    let config = {};
+    try { config = getMdmConfig() || {}; } catch (_) {}
+
+    for (const key of keys) {
+        if (!key) continue;
+        const envValue = process.env[key];
+        if (envValue !== undefined && envValue !== null && String(envValue).trim() !== "") return String(envValue).trim();
+
+        const directKey = key.replace(/^MDM_/i, "").replace(/^ASSET_SYNC_/i, "");
+        const camelKey = directKey.toLowerCase().replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+        const candidates = [key, directKey, camelKey, camelKey.charAt(0).toLowerCase() + camelKey.slice(1)];
+        for (const candidate of candidates) {
+            if (config[candidate] !== undefined && config[candidate] !== null && String(config[candidate]).trim() !== "") {
+                return String(config[candidate]).trim();
+            }
+        }
+    }
+
+    return "";
+}
+
+function getSureMdmGroupId() {
+    const configuredGroupId = normalizeMdmValue(firstMdmDefined(
+        process.env.MDM_GROUP_ID,
+        process.env.SUREMDM_GROUP_ID,
+        getMdmAssetSyncConfigValue("MDM_GROUP_ID", "GROUP_ID", "groupId"),
+        ""
+    ));
+
+    // Java backend allowed null group id for /v2/devicegrid to pull all SureMDM devices.
+    // Keep the same behavior here instead of failing when config.ini has no groupId.
+    return configuredGroupId || "null";
+}
+
+function nowMdmAssetSyncString() {
+    const pad = (value) => String(value).padStart(2, "0");
+    const now = new Date();
+    return [now.getFullYear(), pad(now.getMonth() + 1), pad(now.getDate())].join("-") + " " +
+        [pad(now.getHours()), pad(now.getMinutes()), pad(now.getSeconds())].join(":");
+}
+
+function extractSureMdmAssetRows(payload) {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload.rows)) return payload.rows;
+    if (Array.isArray(payload.data)) return payload.data;
+    if (payload.data && Array.isArray(payload.data.rows)) return payload.data.rows;
+    if (payload.Data && Array.isArray(payload.Data.rows)) return payload.Data.rows;
+    return [];
+}
+
+async function mdmApiGetVersion() {
+    const response = await callSureMdmApi("v2/version", { method: "GET" });
+    const payload = response.data;
+    return typeof payload === "object" && payload !== null ? payload : { data: payload };
+}
+
+async function mdmApiGetMDMAssets(groupId_MDM = getSureMdmGroupId()) {
+    const groupId = normalizeMdmValue(groupId_MDM) || "null";
+    const pullAllDevices = !groupId || groupId.toLowerCase() === "null" || groupId.toLowerCase() === "all";
+
+    const requestPayload = {
+        ID: pullAllDevices ? null : groupId,
+        IsTag: false,
+        SortColumn: "LastTimeStamp",
+        SortOrder: "desc",
+        Limit: 2000000000,
+        Offset: 0,
+        IsSearch: false,
+        IsIncludedBlackListed: true,
+        AdanceSearch: false,
+        EnableDeviceGlobalSearch: true,
+        SearchValue: "%"
+    };
+
+    console.log(`MDM Asset Sync [SUREMDM] /v2/devicegrid request: ID=${pullAllDevices ? "null(all devices)" : groupId}, Limit=${requestPayload.Limit}, SearchValue=${requestPayload.SearchValue}`);
+
+    try {
+        const response = await callSureMdmApi("v2/devicegrid", {
+            method: "POST",
+            contentType: "application/json",
+            data: requestPayload,
+            timeout: getMdmAssetSyncEnvInt("MDM_ASSET_SYNC_REQUEST_TIMEOUT_MS", 180000, 5000, 600000)
+        });
+
+        return {
+            data: extractSureMdmAssetRows(response.data),
+            requestPayload,
+            requestUrl: response.url
+        };
+    } catch (err) {
+        return {
+            errorMessage: getMdmErrorMessage(err.response?.data || err.responseData, err.message || String(err)),
+            data: []
+        };
+    }
+}
+
+async function mdmApiGetMDMAssetCustomProperties(deviceID, platformType) {
+    const DeviceID = normalizeMdmValue(deviceID);
+    let PlatformType = normalizeMdmValue(platformType);
+    if (!DeviceID || !PlatformType) return { action: `Get MDM Asset Custom Properties (${DeviceID})`, results: {} };
+    if (PlatformType.includes("Windows")) PlatformType = "Windows";
+
+    try {
+        const response = await callSureMdmApi(
+            `v2/CustomProperties/${encodeURIComponent(DeviceID)}/200/0/Time/desc/bnVsbA==/${encodeURIComponent(PlatformType)}`,
+            { method: "GET", timeout: getMdmAssetSyncEnvInt("MDM_CUSTOM_PROPERTIES_TIMEOUT_MS", 60000, 5000, 180000) }
+        );
+
+        const rows = response.data?.Data?.rows || response.data?.data?.rows || response.data?.rows || [];
+        const results = {};
+        for (const row of Array.isArray(rows) ? rows : []) {
+            const key = normalizeMdmValue(firstMdmDefined(row.CustomPropertiesKey, row.customPropertiesKey, row.Key, row.key));
+            if (!key) continue;
+            results[key] = firstMdmDefined(row.CustomPropertiesValue, row.customPropertiesValue, row.Value, row.value, "");
+        }
+
+        return { action: `Get MDM Asset Custom Properties (${DeviceID})`, results, requestUrl: response.url };
+    } catch (err) {
+        return {
+            action: `Get MDM Asset Custom Properties (${DeviceID})`,
+            results: {},
+            errorMessage: getMdmErrorMessage(err.response?.data || err.responseData, err.message || String(err))
+        };
+    }
+}
+
+async function enrichMdmAssetWithCustomProperties(rawAsset) {
+    const asset = { ...(rawAsset || {}) };
+    const deviceID = normalizeMdmValue(asset.DeviceID || asset.deviceID || asset.DeviceId);
+    const platformType = normalizeMdmValue(asset.PlatformType || asset.platformType);
+    if (!deviceID || !platformType) return asset;
+
+    const customProperties = await mdmApiGetMDMAssetCustomProperties(deviceID, platformType);
+    const props = customProperties.results || {};
+
+    if (platformType.includes("Windows")) {
+        if (props.DeviceManufacture !== undefined) asset.DeviceManufacture = props.DeviceManufacture;
+        if (props.Locale !== undefined) asset.Locale = props.Locale;
+    } else if (platformType === "Linux") {
+        if (props.DeviceManufactureLinux !== undefined) asset.DeviceManufacture = props.DeviceManufactureLinux;
+    } else if (platformType === "macOS") {
+        if (props.DeviceLocalIPAddressMacOS0 && props.DeviceLocalIPAddressMacOS0 !== "N/A") asset.DeviceLocalIPAddress = props.DeviceLocalIPAddressMacOS0;
+        else if (props.DeviceLocalIPAddressMacOS1 && props.DeviceLocalIPAddressMacOS1 !== "N/A") asset.DeviceLocalIPAddress = props.DeviceLocalIPAddressMacOS1;
+        if (props.ProcessorMacOS !== undefined) asset.Processor = props.ProcessorMacOS;
+        if (props.LocaleMacOS !== undefined) asset.LocaleMacOS = props.LocaleMacOS;
+        if (props.TotalPhysicalMemoryMacOS && props.TotalPhysicalMemoryMacOS !== "N/A") {
+            const memoryValue = Number(props.TotalPhysicalMemoryMacOS);
+            if (Number.isFinite(memoryValue)) asset.TotalPhysicalMemory = memoryValue;
+        }
+    }
+
+    return asset;
+}
+
+let mdmAssetTableColumnsCache = { expiresAt: 0, columns: [] };
+
+async function getMdmAssetTableColumns(pool, forceRefresh = false) {
+    const now = Date.now();
+    if (!forceRefresh && mdmAssetTableColumnsCache.expiresAt > now && mdmAssetTableColumnsCache.columns.length > 0) {
+        return mdmAssetTableColumnsCache.columns;
+    }
+
+    const result = await pool.request().query(`
+        SELECT
+            c.name AS columnName,
+            t.name AS typeName,
+            c.max_length AS maxLength,
+            c.precision AS precisionValue,
+            c.scale AS scaleValue,
+            c.is_nullable AS isNullable,
+            c.is_identity AS isIdentity,
+            dc.definition AS defaultDefinition
+        FROM sys.columns c
+        INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
+        LEFT JOIN sys.default_constraints dc ON c.default_object_id = dc.object_id
+        WHERE c.object_id = OBJECT_ID(N'dbo.TSMDM_ASSET')
+        ORDER BY c.column_id;
+    `);
+
+    mdmAssetTableColumnsCache = {
+        expiresAt: now + getMdmAssetSyncEnvInt("MDM_ASSET_SCHEMA_CACHE_MS", 300000, 10000, 3600000),
+        columns: result.recordset || []
+    };
+
+    return mdmAssetTableColumnsCache.columns;
+}
+
+function getMdmAssetSqlInputType(column) {
+    const typeName = normalizeMdmValue(column?.typeName).toLowerCase();
+    const maxLength = Number(column?.maxLength || 0);
+    const precision = Number(column?.precisionValue || 18);
+    const scale = Number(column?.scaleValue || 0);
+
+    switch (typeName) {
+        case "bigint": return sql.BigInt;
+        case "bit": return sql.Bit;
+        case "date": return sql.Date;
+        case "datetime": return sql.DateTime;
+        case "datetime2": return sql.DateTime2;
+        case "smalldatetime": return sql.SmallDateTime;
+        case "decimal":
+        case "numeric": return sql.Decimal(precision || 18, scale || 0);
+        case "float": return sql.Float;
+        case "int": return sql.Int;
+        case "money": return sql.Money;
+        case "real": return sql.Real;
+        case "smallint": return sql.SmallInt;
+        case "smallmoney": return sql.SmallMoney;
+        case "tinyint": return sql.TinyInt;
+        case "uniqueidentifier": return sql.UniqueIdentifier;
+        case "varchar": return sql.VarChar(maxLength === -1 ? sql.MAX : Math.max(1, maxLength || 255));
+        case "char": return sql.Char(Math.max(1, maxLength || 1));
+        case "nvarchar": return sql.NVarChar(maxLength === -1 ? sql.MAX : Math.max(1, Math.floor((maxLength || 510) / 2)));
+        case "nchar": return sql.NChar(Math.max(1, Math.floor((maxLength || 2) / 2)));
+        default: return sql.NVarChar(sql.MAX);
+    }
+}
+
+function normalizeMdmAssetDbValue(value, column) {
+    const typeName = normalizeMdmValue(column?.typeName).toLowerCase();
+    if (value === undefined || value === null) return null;
+
+    if (typeof value === "object" && !(value instanceof Date)) {
+        try { value = JSON.stringify(value); } catch (_) { value = String(value); }
+    }
+
+    if (["int", "smallint", "tinyint"].includes(typeName)) {
+        const parsed = parseInt(value, 10);
+        return Number.isNaN(parsed) ? null : parsed;
+    }
+
+    if (typeName === "bigint") {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
+    }
+
+    if (["decimal", "numeric", "float", "real", "money", "smallmoney"].includes(typeName)) {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    if (typeName === "bit") {
+        return parseMdmBoolean(value, false) ? 1 : 0;
+    }
+
+    if (["date", "datetime", "datetime2", "smalldatetime"].includes(typeName)) {
+        if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+        const text = normalizeMdmValue(value);
+        if (!text || text.toLowerCase() === "n/a") return null;
+        const parsed = new Date(text);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    const text = String(value);
+    return text;
+}
+
+function getMdmAssetFallbackValue(column) {
+    const typeName = normalizeMdmValue(column?.typeName).toLowerCase();
+    const columnName = normalizeMdmValue(column?.columnName).toLowerCase();
+    if (columnName.includes("date") || columnName.includes("time")) return new Date();
+    if (["int", "smallint", "tinyint", "bigint", "decimal", "numeric", "float", "real", "money", "smallmoney"].includes(typeName)) return 0;
+    if (typeName === "bit") return 0;
+    if (["date", "datetime", "datetime2", "smalldatetime"].includes(typeName)) return new Date();
+    if (typeName === "uniqueidentifier") return typeof crypto.randomUUID === "function" ? crypto.randomUUID() : crypto.randomBytes(16).toString("hex");
+    return "";
+}
+
+function buildMdmAssetValueMap(rawAsset, columns, mode = "Insert") {
+    const source = rawAsset || {};
+    const sourceByLower = new Map();
+    for (const [key, value] of Object.entries(source)) sourceByLower.set(key.toLowerCase(), value);
+
+    const aliases = {
+        users: ["users", "Users", "User", "user"],
+        batteryState: ["batteryState", "BatteryState"],
+        iOSVendorId: ["iOSVendorId", "IOSVendorId", "IosVendorId"],
+        OsBuildNumber: ["OsBuildNumber", "OSBuildNumber", "osBuildNumber"],
+        CurrentWorkProfile: ["CurrentWorkProfile", "currentWorkProfile"],
+        Email: ["Email", "email"],
+        Object_Rel_Idn: ["Object_Rel_Idn", "objectRelIdn"]
+    };
+
+    const output = new Map();
+    for (const column of columns) {
+        if (column.isIdentity === true || column.isIdentity === 1) continue;
+        const columnName = column.columnName;
+        const lower = columnName.toLowerCase();
+
+        let value;
+        if (sourceByLower.has(lower)) value = sourceByLower.get(lower);
+        else {
+            const aliasList = aliases[columnName] || aliases[lower] || [];
+            for (const alias of aliasList) {
+                if (sourceByLower.has(String(alias).toLowerCase())) {
+                    value = sourceByLower.get(String(alias).toLowerCase());
+                    break;
+                }
+            }
+        }
+
+        if (value === undefined && mode === "Insert") {
+            if (column.defaultDefinition) continue;
+            value = (column.isNullable === true || column.isNullable === 1) ? null : getMdmAssetFallbackValue(column);
+        }
+
+        if (value !== undefined) output.set(columnName, normalizeMdmAssetDbValue(value, column));
+    }
+
+    return output;
+}
+
+
+function getMdmAssetLogField(rawAsset, ...keys) {
+    for (const key of keys) {
+        const value = firstMdmDefined(rawAsset?.[key], rawAsset?.[key?.toLowerCase?.()]);
+        const text = normalizeMdmValue(value);
+        if (text) return text;
+    }
+    return "";
+}
+
+function buildMdmAssetDeviceLogInfo(rawAsset = {}) {
+    return {
+        DeviceID: getMdmAssetLogField(rawAsset, "DeviceID", "DeviceId", "deviceID", "deviceId"),
+        DeviceName: getMdmAssetLogField(rawAsset, "DeviceName", "Name", "deviceName", "name"),
+        PlatformType: getMdmAssetLogField(rawAsset, "PlatformType", "platformType", "Platform"),
+        SerialNumber: getMdmAssetLogField(rawAsset, "SerialNumber", "serialNumber"),
+        ConnectionStatus: getMdmAssetLogField(rawAsset, "ConnectionStatus", "connectionStatus"),
+        LastTimeStamp: getMdmAssetLogField(rawAsset, "LastTimeStamp", "lastTimeStamp", "LastConnected", "lastConnected")
+    };
+}
+
+function summarizeMdmAssetDbResults(results = []) {
+    const summary = {
+        totalProcessed: results.length,
+        inserted: 0,
+        updated: 0,
+        updatedFrequent: 0,
+        exists: 0,
+        missingInDb: 0,
+        skipped: 0,
+        failed: 0,
+        noColumns: 0
+    };
+
+    for (const item of results) {
+        const action = normalizeMdmValue(item?.action).toLowerCase();
+        const status = normalizeMdmValue(item?.status).toLowerCase();
+        if (action === "inserted") summary.inserted += 1;
+        else if (action === "updated") summary.updated += 1;
+        else if (action === "updated-frequent") summary.updatedFrequent += 1;
+        else if (action === "exists") summary.exists += 1;
+        else if (action === "missing") summary.missingInDb += 1;
+        else if (action === "no-columns") summary.noColumns += 1;
+        else if (status.startsWith("skipped")) summary.skipped += 1;
+        else if (status && status !== "1" && status !== "0") summary.failed += 1;
+    }
+
+    return summary;
+}
+
+function logMdmAssetSyncDevice(actionLabel, rawAsset, dbResult) {
+    const info = buildMdmAssetDeviceLogInfo(rawAsset);
+    const action = normalizeMdmValue(dbResult?.action || dbResult?.status || "unknown");
+    const status = normalizeMdmValue(dbResult?.status || "");
+    const parts = [
+        `DeviceID=${info.DeviceID || "-"}`,
+        `DeviceName=${info.DeviceName || "-"}`,
+        `Platform=${info.PlatformType || "-"}`,
+        `Serial=${info.SerialNumber || "-"}`,
+        `Connection=${info.ConnectionStatus || "-"}`,
+        `DBAction=${action || "-"}`,
+        `DBStatus=${status || "-"}`
+    ];
+    console.log(`MDM Asset Sync [DEVICE] ${actionLabel}: ${parts.join(" | ")}`);
+}
+
+function logMdmAssetSyncSummary(actionLabel, result = {}) {
+    const summary = result.summary || summarizeMdmAssetDbResults(result.results || []);
+    console.log(`MDM Asset Sync [SUMMARY] ${actionLabel}: ${JSON.stringify({
+        totalAssetsFromSureMDM: result.totalAssets_MDM || 0,
+        totalDeviceIDsFromSureMDM: result.totalDeviceIDs_MDM || result.totalAssets_MDM || 0,
+        totalProcessed: result.totalProcessed || 0,
+        inserted: summary.inserted || 0,
+        updated: summary.updated || 0,
+        updatedFrequent: summary.updatedFrequent || 0,
+        existsSkipped: summary.exists || 0,
+        missingInDb: summary.missingInDb || 0,
+        noColumns: summary.noColumns || 0,
+        skipped: summary.skipped || 0,
+        failed: summary.failed || 0,
+        errorMessage: result.errorMessage || result.message || null
+    })}`);
+}
+
+async function insertOrUpdateMdmAsset(pool, rawAsset, insertType = "Update") {
+    const columns = await getMdmAssetTableColumns(pool);
+    const deviceID = normalizeMdmValue(firstMdmDefined(rawAsset?.DeviceID, rawAsset?.deviceID, rawAsset?.DeviceId));
+    if (!deviceID) return { DeviceID: "", status: "Skipped: DeviceID missing", action: "skipped-missing-deviceid" };
+
+    const existsResult = await pool.request()
+        .input("DeviceID", sql.VarChar(255), deviceID)
+        .query(`SELECT TOP 1 MDM_Asset_Idn FROM TSMDM_ASSET WITH (NOLOCK) WHERE DeviceID = @DeviceID;`);
+    const exists = existsResult.recordset?.length > 0;
+
+    if (insertType === "Insert" && exists) {
+        return { DeviceID: deviceID, MDM_Asset_Idn: existsResult.recordset?.[0]?.MDM_Asset_Idn || null, status: "0", action: "exists" };
+    }
+
+    const valueMap = buildMdmAssetValueMap(rawAsset, columns, exists ? "Update" : "Insert");
+    valueMap.set("DeviceID", deviceID);
+
+    const frequentColumns = ["ConnectionStatus", "IsLostModeEnabled", "TrackingOn"];
+    const preserveUnlessBlankColumns = ["PhoneNumber", "DeviceManufacture", "DeviceModelName"];
+
+    if (insertType === "UpdateFrequent") {
+        if (!exists) return { DeviceID: deviceID, MDM_Asset_Idn: null, status: "0", action: "missing" };
+        for (const key of [...valueMap.keys()]) {
+            if (!frequentColumns.includes(key)) valueMap.delete(key);
+        }
+    }
+
+    if (insertType === "Update") {
+        for (const key of preserveUnlessBlankColumns) valueMap.delete(key);
+    }
+
+    const filteredColumns = columns.filter((column) => valueMap.has(column.columnName));
+    if (filteredColumns.length === 0) return { DeviceID: deviceID, MDM_Asset_Idn: existsResult.recordset?.[0]?.MDM_Asset_Idn || null, status: "0", action: "no-columns" };
+
+    const request = pool.request();
+    filteredColumns.forEach((column, index) => {
+        request.input(`MdmAssetCol${index}`, getMdmAssetSqlInputType(column), valueMap.get(column.columnName));
+    });
+    request.input("DeviceID", sql.VarChar(255), deviceID);
+
+    if (!exists) {
+        const insertColumns = filteredColumns.map((column) => quoteSqlIdentifier(column.columnName)).join(", ");
+        const insertValues = filteredColumns.map((_, index) => `@MdmAssetCol${index}`).join(", ");
+        await request.query(`
+            INSERT INTO TSMDM_ASSET (${insertColumns})
+            VALUES (${insertValues});
+        `);
+        return { DeviceID: deviceID, MDM_Asset_Idn: null, status: "1", action: "inserted" };
+    }
+
+    const setClause = filteredColumns
+        .map((column, index) => ({ column, index }))
+        .filter((item) => item.column.columnName !== "DeviceID")
+        .map((item) => `${quoteSqlIdentifier(item.column.columnName)} = @MdmAssetCol${item.index}`)
+        .join(",\n                ");
+
+    if (setClause) {
+        await request.query(`
+            UPDATE TSMDM_ASSET
+            SET ${setClause}
+            WHERE DeviceID = @DeviceID;
+        `);
+    }
+
+    if (insertType === "Update") {
+        const blankUpdateColumns = preserveUnlessBlankColumns.filter((columnName) => {
+            const column = columns.find((item) => item.columnName === columnName);
+            return column && rawAsset[columnName] !== undefined && rawAsset[columnName] !== null;
+        });
+
+        for (const columnName of blankUpdateColumns) {
+            const column = columns.find((item) => item.columnName === columnName);
+            await pool.request()
+                .input("DeviceID", sql.VarChar(255), deviceID)
+                .input("ColumnValue", getMdmAssetSqlInputType(column), normalizeMdmAssetDbValue(rawAsset[columnName], column))
+                .query(`
+                    UPDATE TSMDM_ASSET
+                    SET ${quoteSqlIdentifier(columnName)} = @ColumnValue
+                    WHERE DeviceID = @DeviceID
+                      AND (${quoteSqlIdentifier(columnName)} IS NULL OR ${quoteSqlIdentifier(columnName)} = '' OR ${quoteSqlIdentifier(columnName)} = 'N/A');
+                `);
+        }
+    }
+
+    return { DeviceID: deviceID, MDM_Asset_Idn: existsResult.recordset?.[0]?.MDM_Asset_Idn || null, status: "1", action: insertType === "UpdateFrequent" ? "updated-frequent" : "updated" };
+}
+
+async function insertMDMVersion(pool) {
+    const result = { action: "Insert MDM Version" };
+    try {
+        const versionResponse = await mdmApiGetVersion();
+        const version = normalizeMdmValue(firstMdmDefined(versionResponse.data, versionResponse.version, versionResponse.Version, versionResponse.MDM_Version));
+        if (!version) {
+            result.status = "Version not returned";
+            return result;
+        }
+
+        const hasVersionTable = await tableExists(pool, "TSMDM_VERSION");
+        if (!hasVersionTable) {
+            result.status = "TSMDM_VERSION table does not exist";
+            return result;
+        }
+
+        let mdmServerName = "";
+        try {
+            const url = new URL(getMdmConfig().url);
+            mdmServerName = url.hostname.split(".")[0] || url.hostname;
+        } catch (_) {
+            mdmServerName = "SureMDM";
+        }
+
+        await pool.request()
+            .input("MDM_ServerName", sql.VarChar(255), mdmServerName)
+            .input("MDM_Version", sql.VarChar(255), version)
+            .query(`
+                IF NOT EXISTS (SELECT 1 FROM TSMDM_VERSION)
+                    INSERT INTO TSMDM_VERSION (MDM_ServerName, MDM_Version) VALUES (@MDM_ServerName, @MDM_Version);
+                ELSE
+                    UPDATE TSMDM_VERSION SET MDM_ServerName = @MDM_ServerName, MDM_Version = @MDM_Version;
+            `);
+
+        result.status = "1";
+    } catch (err) {
+        result.status = err.message || String(err);
+    }
+    return result;
+}
+
+async function insertMDMAsset(options = {}) {
+    const groupId_MDM = normalizeMdmValue(firstMdmDefined(options.groupId, getSureMdmGroupId())) || "null";
+    const result = { action: "Inserting MDM Assets" };
+    const groupLogValue = groupId_MDM.toLowerCase() === "null" || groupId_MDM.toLowerCase() === "all" ? "ALL_DEVICES(ID:null)" : groupId_MDM;
+
+    console.log(`MDM Asset Sync [START] InsertMDMAsset: groupId=${groupLogValue}`);
+    const assetsResponse = await mdmApiGetMDMAssets(groupId_MDM);
+    if (assetsResponse.errorMessage) {
+        result.results = [];
+        result.errorMessage = assetsResponse.errorMessage;
+        logMdmAssetSyncSummary("InsertMDMAsset", result);
+        return result;
+    }
+
+    const pool = options.pool || await getSqlPoolWithRetry();
+    const rows = assetsResponse.data || [];
+    const output = [];
+    const enrich = options.enrichCustomProperties !== false;
+    console.log(`MDM Asset Sync [PULL] InsertMDMAsset: SureMDM /v2/devicegrid returned ${rows.length} devices. enrichCustomProperties=${enrich}`);
+
+    for (const row of rows) {
+        const deviceID = normalizeMdmValue(firstMdmDefined(row.DeviceID, row.deviceID, row.DeviceId));
+        if (!deviceID) {
+            const skipped = { DeviceID: "", status: "Skipped: DeviceID missing", action: "skipped-missing-deviceid" };
+            output.push(skipped);
+            if (options.logDevices !== false) logMdmAssetSyncDevice("InsertMDMAsset", row, skipped);
+            continue;
+        }
+        try {
+            const paramsJson = enrich ? await enrichMdmAssetWithCustomProperties(row) : row;
+            const dbResult = await insertOrUpdateMdmAsset(pool, paramsJson, "Insert");
+            output.push(dbResult);
+            if (options.logDevices !== false) logMdmAssetSyncDevice("InsertMDMAsset", paramsJson, dbResult);
+        } catch (err) {
+            const failed = { DeviceID: deviceID, status: err.message || String(err), action: "failed" };
+            output.push(failed);
+            console.error(`MDM Asset Sync [DEVICE-FAIL] InsertMDMAsset: DeviceID=${deviceID} | ${failed.status}`);
+        }
+    }
+
+    result.results = output;
+    result.totalAssets_MDM = rows.length;
+    result.totalDeviceIDs_MDM = rows.filter((row) => normalizeMdmValue(firstMdmDefined(row.DeviceID, row.deviceID, row.DeviceId))).length;
+    result.totalProcessed = output.length;
+    result.summary = summarizeMdmAssetDbResults(output);
+    logMdmAssetSyncSummary("InsertMDMAsset", result);
+    return result;
+}
+
+async function updateMDMAsset(options = {}) {
+    const groupId_MDM = normalizeMdmValue(firstMdmDefined(options.groupId, getSureMdmGroupId())) || "null";
+    const result = { action: "Update MDM Assets" };
+    const groupLogValue = groupId_MDM.toLowerCase() === "null" || groupId_MDM.toLowerCase() === "all" ? "ALL_DEVICES(ID:null)" : groupId_MDM;
+
+    console.log(`MDM Asset Sync [START] UpdateMDMAsset: groupId=${groupLogValue}`);
+    const assetsResponse = await mdmApiGetMDMAssets(groupId_MDM);
+    if (assetsResponse.errorMessage) {
+        result.results = [];
+        result.errorMessage = assetsResponse.errorMessage;
+        logMdmAssetSyncSummary("UpdateMDMAsset", result);
+        return result;
+    }
+
+    const pool = options.pool || await getSqlPoolWithRetry();
+    const rows = assetsResponse.data || [];
+    const output = [];
+    const enrich = options.enrichCustomProperties !== false;
+    console.log(`MDM Asset Sync [PULL] UpdateMDMAsset: SureMDM /v2/devicegrid returned ${rows.length} devices. enrichCustomProperties=${enrich}`);
+
+    for (const row of rows) {
+        const deviceID = normalizeMdmValue(firstMdmDefined(row.DeviceID, row.deviceID, row.DeviceId));
+        if (!deviceID) {
+            const skipped = { DeviceID: "", status: "Skipped: DeviceID missing", action: "skipped-missing-deviceid" };
+            output.push(skipped);
+            if (options.logDevices !== false) logMdmAssetSyncDevice("UpdateMDMAsset", row, skipped);
+            continue;
+        }
+        try {
+            const paramsJson = enrich ? await enrichMdmAssetWithCustomProperties(row) : row;
+            const dbResult = await insertOrUpdateMdmAsset(pool, paramsJson, "Update");
+            output.push(dbResult);
+            if (options.logDevices !== false) logMdmAssetSyncDevice("UpdateMDMAsset", paramsJson, dbResult);
+        } catch (err) {
+            const failed = { DeviceID: deviceID, status: err.message || String(err), action: "failed" };
+            output.push(failed);
+            console.error(`MDM Asset Sync [DEVICE-FAIL] UpdateMDMAsset: DeviceID=${deviceID} | ${failed.status}`);
+        }
+    }
+
+    result.results = output;
+    result.totalAssets_MDM = rows.length;
+    result.totalDeviceIDs_MDM = rows.filter((row) => normalizeMdmValue(firstMdmDefined(row.DeviceID, row.deviceID, row.DeviceId))).length;
+    result.totalProcessed = output.length;
+    result.summary = summarizeMdmAssetDbResults(output);
+    logMdmAssetSyncSummary("UpdateMDMAsset", result);
+    return result;
+}
+
+async function updateMDMAssetFrequent(options = {}) {
+    const groupId_MDM = normalizeMdmValue(firstMdmDefined(options.groupId, getSureMdmGroupId())) || "null";
+    const result = { action: "Update MDM Assets Online Status" };
+    const groupLogValue = groupId_MDM.toLowerCase() === "null" || groupId_MDM.toLowerCase() === "all" ? "ALL_DEVICES(ID:null)" : groupId_MDM;
+
+    console.log(`MDM Asset Sync [START] UpdateMDMAssetFrequent: groupId=${groupLogValue}`);
+    const assetsResponse = await mdmApiGetMDMAssets(groupId_MDM);
+    if (assetsResponse.errorMessage) {
+        result.results = [];
+        result.errorMessage = assetsResponse.errorMessage;
+        logMdmAssetSyncSummary("UpdateMDMAssetFrequent", result);
+        return result;
+    }
+
+    const pool = options.pool || await getSqlPoolWithRetry();
+    const rows = assetsResponse.data || [];
+    const output = [];
+    console.log(`MDM Asset Sync [PULL] UpdateMDMAssetFrequent: SureMDM /v2/devicegrid returned ${rows.length} devices.`);
+
+    for (const row of rows) {
+        const deviceID = normalizeMdmValue(firstMdmDefined(row.DeviceID, row.deviceID, row.DeviceId));
+        if (!deviceID) {
+            const skipped = { DeviceID: "", status: "Skipped: DeviceID missing", action: "skipped-missing-deviceid" };
+            output.push(skipped);
+            if (options.logDevices !== false) logMdmAssetSyncDevice("UpdateMDMAssetFrequent", row, skipped);
+            continue;
+        }
+        try {
+            const dbResult = await insertOrUpdateMdmAsset(pool, row, "UpdateFrequent");
+            output.push(dbResult);
+            if (options.logDevices !== false) logMdmAssetSyncDevice("UpdateMDMAssetFrequent", row, dbResult);
+        } catch (err) {
+            const failed = { DeviceID: deviceID, status: err.message || String(err), action: "failed" };
+            output.push(failed);
+            console.error(`MDM Asset Sync [DEVICE-FAIL] UpdateMDMAssetFrequent: DeviceID=${deviceID} | ${failed.status}`);
+        }
+    }
+
+    result.results = output;
+    result.totalAssets_MDM = rows.length;
+    result.totalDeviceIDs_MDM = rows.filter((row) => normalizeMdmValue(firstMdmDefined(row.DeviceID, row.deviceID, row.DeviceId))).length;
+    result.totalProcessed = output.length;
+    result.summary = summarizeMdmAssetDbResults(output);
+    logMdmAssetSyncSummary("UpdateMDMAssetFrequent", result);
+    return result;
+}
+
+async function deleteNonExistingMDMAsset(options = {}) {
+    const groupId_MDM = normalizeMdmValue(firstMdmDefined(options.groupId, getSureMdmGroupId())) || "null";
+    const result = { action: "Delete Non-Existing MDM Assets" };
+    const groupLogValue = groupId_MDM.toLowerCase() === "null" || groupId_MDM.toLowerCase() === "all" ? "ALL_DEVICES(ID:null)" : groupId_MDM;
+
+    console.log(`MDM Asset Sync [START] DeleteNonExistingMDMAsset: groupId=${groupLogValue}`);
+    const assetsResponse = await mdmApiGetMDMAssets(groupId_MDM);
+    if (assetsResponse.errorMessage) {
+        result.status = assetsResponse.errorMessage;
+        console.log(`MDM Asset Sync [SUMMARY] DeleteNonExistingMDMAsset: ${JSON.stringify(result)}`);
+        return result;
+    }
+
+    const rows = assetsResponse.data || [];
+    console.log(`MDM Asset Sync [PULL] DeleteNonExistingMDMAsset: SureMDM /v2/devicegrid returned ${rows.length} devices.`);
+    const deviceIDs = [...new Set(rows
+        .map((row) => normalizeMdmValue(firstMdmDefined(row.DeviceID, row.deviceID, row.DeviceId)))
+        .filter(Boolean))];
+    result.totalAssets_MDM = deviceIDs.length;
+
+    const pool = options.pool || await getSqlPoolWithRetry();
+    const dbCountResult = await pool.request().query(`SELECT COUNT(1) AS totalAssets_DB FROM TSMDM_ASSET WITH (NOLOCK);`);
+    result.totalAssets_DB = Number(dbCountResult.recordset?.[0]?.totalAssets_DB || 0);
+
+    if (deviceIDs.length === 0) {
+        result.status = "Skipped: SureMDM returned zero DeviceID values.";
+        result.totalAssets_toBeDeleted = 0;
+        return result;
+    }
+
+    const deleteResult = await pool.request()
+        .input("DeviceIDsJson", sql.NVarChar(sql.MAX), JSON.stringify(deviceIDs))
+        .query(`
+            DECLARE @CurrentDeviceIDs TABLE (DeviceID varchar(255) PRIMARY KEY);
+            INSERT INTO @CurrentDeviceIDs (DeviceID)
+            SELECT DISTINCT DeviceID
+            FROM OPENJSON(@DeviceIDsJson) WITH (DeviceID varchar(255) '$')
+            WHERE DeviceID IS NOT NULL AND DeviceID <> '';
+
+            DECLARE @ToDelete TABLE (MDM_Asset_Idn int, DeviceID varchar(255));
+            INSERT INTO @ToDelete (MDM_Asset_Idn, DeviceID)
+            SELECT MDM_Asset_Idn, DeviceID
+            FROM TSMDM_ASSET
+            WHERE DeviceID IS NOT NULL
+              AND DeviceID <> ''
+              AND DeviceID NOT IN (SELECT DeviceID FROM @CurrentDeviceIDs);
+
+            DELETE map
+            FROM TSMDM_TS_OBJECT_MAPPING map
+            INNER JOIN @ToDelete d ON d.MDM_Asset_Idn = map.MDM_Asset_Idn;
+
+            DELETE rel
+            FROM TSMDM_OBJECT_RELATION rel
+            INNER JOIN @ToDelete d ON d.MDM_Asset_Idn = rel.MDM_Asset_Idn;
+
+            DELETE asset
+            FROM TSMDM_ASSET asset
+            INNER JOIN @ToDelete d ON d.MDM_Asset_Idn = asset.MDM_Asset_Idn;
+
+            SELECT COUNT(1) AS totalAssets_toBeDeleted FROM @ToDelete;
+        `);
+
+    result.totalAssets_toBeDeleted = Number(deleteResult.recordset?.[0]?.totalAssets_toBeDeleted || 0);
+    result.status = "1";
+    console.log(`MDM Asset Sync [SUMMARY] DeleteNonExistingMDMAsset: ${JSON.stringify({
+        totalAssetsFromSureMDM: result.totalAssets_MDM,
+        totalAssetsInDbBeforeDelete: result.totalAssets_DB,
+        totalAssetsDeletedFromDb: result.totalAssets_toBeDeleted,
+        status: result.status
+    })}`);
+    return result;
+}
+
+async function insertMDMObjectMapping(options = {}) {
+    console.log("MDM Asset Sync [START] InsertMDMObjectMapping: mapping TSMDM_ASSET to TS_OBJECT_ROOT");
+    const pool = options.pool || await getSqlPoolWithRetry();
+    const mapping = await syncMdmObjectMapping(pool);
+    const result = { action: "Insert MDM Object Mapping", result: "1", mapping };
+    console.log(`MDM Asset Sync [SUMMARY] InsertMDMObjectMapping: ${JSON.stringify(mapping)}`);
+    return result;
+}
+
+async function runInitialStartupUpdate(options = {}) {
+    const runId = Math.floor(Math.random() * 100);
+    const result = { startTime: nowMdmAssetSyncString() };
+    console.log(`EMA [${runId}] [START] InitialStartupUpdate(): ${result.startTime}`);
+    const pool = options.pool || await getSqlPoolWithRetry();
+
+    try { result.MDMAsset_result = await insertMDMAsset({ ...options, pool }); }
+    catch (err) { result.MDMAsset_result = err.message || String(err); }
+
+    result.endTime = nowMdmAssetSyncString();
+    console.log(`EMA [${runId}] [END] InitialStartupUpdate(): ${result.endTime}`);
+    return result;
+}
+
+async function runUpdateAll(options = {}) {
+    const runId = Math.floor(Math.random() * 100000);
+    const result = { startTime: nowMdmAssetSyncString() };
+    console.log(`EMA [${runId}] [START] UpdateAll(): ${result.startTime}`);
+    const pool = options.pool || await getSqlPoolWithRetry();
+
+    try { result.DeleteMDMAsset_result = await deleteNonExistingMDMAsset({ ...options, pool }); }
+    catch (err) { result.DeleteMDMAsset_result = err.message || String(err); }
+
+    try { result.MDMAsset_result = await insertMDMAsset({ ...options, pool }); }
+    catch (err) { result.MDMAsset_result = err.message || String(err); }
+
+    result.endTime = nowMdmAssetSyncString();
+    console.log(`EMA [${runId}] [END] UpdateAll(): ${result.endTime}`);
+    console.log(`UpdateAll: ${JSON.stringify(result, null, 2)}`);
+    return result;
+}
+
+async function runUpdateAssets(options = {}) {
+    const runId = Math.floor(Math.random() * 100000);
+    const result = { startTime: nowMdmAssetSyncString() };
+    console.log(`EMA [${runId}] [START] UpdateAssets(): ${result.startTime}`);
+    const pool = options.pool || await getSqlPoolWithRetry();
+
+    try { result.MDMVersion_result = await insertMDMVersion(pool); }
+    catch (err) { result.MDMVersion_result = err.message || String(err); }
+
+    try { result.MDMAsset_result = await updateMDMAsset({ ...options, pool }); }
+    catch (err) { result.MDMAsset_result = err.message || String(err); }
+
+    try { result.MDMObjectMapping_result = await insertMDMObjectMapping({ ...options, pool }); }
+    catch (err) { result.MDMObjectMapping_result = err.message || String(err); }
+
+    result.endTime = nowMdmAssetSyncString();
+    console.log(`EMA [${runId}] [END] UpdateAssets(): ${result.endTime}`);
+    console.log(`UpdateAssets: ${JSON.stringify(result, null, 2)}`);
+    return result;
+}
+
+async function runUpdateMDMAssetFrequent(options = {}) {
+    const runId = Math.floor(Math.random() * 100000);
+    const result = { startTime: nowMdmAssetSyncString() };
+    console.log(`EMA [${runId}] [START] UpdateMDMAssetFrequent(): ${result.startTime}`);
+    const pool = options.pool || await getSqlPoolWithRetry();
+
+    try { result.MDMAsset_result = await updateMDMAssetFrequent({ ...options, pool }); }
+    catch (err) { result.MDMAsset_result = err.message || String(err); }
+
+    result.endTime = nowMdmAssetSyncString();
+    console.log(`EMA [${runId}] [END] UpdateMDMAssetFrequent(): ${result.endTime}`);
+    console.log(`UpdateMDMAssetFrequent: ${JSON.stringify(result, null, 2)}`);
+    return result;
+}
+
+function scheduleMdmAssetFixedDelay(stateKey, label, workerFn, intervalMs, initialDelayMs) {
+    let stopped = false;
+
+    const tick = async () => {
+        if (stopped) return;
+        const state = mdmAssetSyncState[stateKey];
+        if (state.running) {
+            if (!stopped) setTimeout(tick, intervalMs);
+            return;
+        }
+
+        state.running = true;
+        state.lastStartedAt = new Date();
+        try {
+            const workerResult = await workerFn();
+            state.lastResult = workerResult;
+            state.lastError = null;
+        } catch (err) {
+            state.lastError = err.message || String(err);
+            console.error(`${label} failed:`, err.response?.data || err.message || err);
+        } finally {
+            state.running = false;
+            state.lastFinishedAt = new Date();
+            if (!stopped) setTimeout(tick, intervalMs);
+        }
+    };
+
+    setTimeout(tick, Math.max(initialDelayMs, 0));
+    return () => { stopped = true; };
+}
+
+function startMdmAssetSchedulers() {
+    const enabled = getMdmAssetSyncEnvBoolean("MDM_ASSET_SYNC_ENABLED", true);
+    const runOnStart = getMdmAssetSyncEnvBoolean("MDM_ASSET_SYNC_RUN_ON_START", false);
+    const initialDelayMs = runOnStart ? getMdmAssetSyncEnvInt("MDM_ASSET_SYNC_INITIAL_DELAY_MS", 30000, 0, 3600000) : 60000;
+
+    const updateAllIntervalMs = getMdmAssetSyncEnvInt("MDM_ASSET_UPDATE_ALL_INTERVAL_MS", 30 * 60 * 1000, 60 * 1000);
+    const updateAssetsIntervalMs = getMdmAssetSyncEnvInt("MDM_ASSET_UPDATE_INTERVAL_MS", 60 * 60 * 1000, 60 * 1000);
+    const updateFrequentIntervalMs = getMdmAssetSyncEnvInt("MDM_ASSET_FREQUENT_INTERVAL_MS", 5 * 60 * 1000, 60 * 1000);
+
+    mdmAssetSyncState.updateAll.enabled = enabled;
+    mdmAssetSyncState.updateAll.intervalMs = updateAllIntervalMs;
+    mdmAssetSyncState.updateAssets.enabled = enabled;
+    mdmAssetSyncState.updateAssets.intervalMs = updateAssetsIntervalMs;
+    mdmAssetSyncState.updateFrequent.enabled = enabled;
+    mdmAssetSyncState.updateFrequent.intervalMs = updateFrequentIntervalMs;
+
+    if (!enabled) {
+        console.log("MDM asset scheduler disabled. Set MDM_ASSET_SYNC_ENABLED=true to enable it.");
+        return;
+    }
+
+    console.log("MDM asset schedulers enabled:", {
+        updateAllIntervalMs,
+        updateAssetsIntervalMs,
+        updateFrequentIntervalMs,
+        runOnStart,
+        initialDelayMs,
+        groupIdConfigured: Boolean(getSureMdmGroupId())
+    });
+
+    scheduleMdmAssetFixedDelay("updateAll", "MDM UpdateAll scheduler", () => runUpdateAll({ trigger: "schedule:updateAll" }), updateAllIntervalMs, initialDelayMs);
+    scheduleMdmAssetFixedDelay("updateAssets", "MDM UpdateAssets scheduler", () => runUpdateAssets({ trigger: "schedule:updateAssets" }), updateAssetsIntervalMs, initialDelayMs + 15000);
+    scheduleMdmAssetFixedDelay("updateFrequent", "MDM UpdateFrequent scheduler", () => runUpdateMDMAssetFrequent({ trigger: "schedule:updateFrequent", enrichCustomProperties: false }), updateFrequentIntervalMs, initialDelayMs + 30000);
+}
+
+app.get("/api/mdm/asset-sync/status", authenticateToken, async (req, res) => {
+    return res.json({ success: true, data: mdmAssetSyncState });
+});
+
+app.get("/api/mdm/InitialStartupUpdate", authenticateToken, async (req, res) => {
+    const result = await runInitialStartupUpdate({ trigger: "api:/api/mdm/InitialStartupUpdate" });
+    return res.json(result);
+});
+
+app.get("/api/mdm/UpdateAll", authenticateToken, async (req, res) => {
+    const result = await runUpdateAll({ trigger: "api:/api/mdm/UpdateAll", enrichCustomProperties: req.query.enrichCustomProperties !== "false" });
+    return res.json(result);
+});
+
+app.post("/api/mdm/UpdateAll", authenticateToken, async (req, res) => {
+    const result = await runUpdateAll({ trigger: "api:/api/mdm/UpdateAll", ...(req.body || {}) });
+    return res.json(result);
+});
+
+app.get("/api/mdm/UpdateAssets", authenticateToken, async (req, res) => {
+    const result = await runUpdateAssets({ trigger: "api:/api/mdm/UpdateAssets", enrichCustomProperties: req.query.enrichCustomProperties !== "false" });
+    return res.json(result);
+});
+
+app.post("/api/mdm/UpdateAssets", authenticateToken, async (req, res) => {
+    const result = await runUpdateAssets({ trigger: "api:/api/mdm/UpdateAssets", ...(req.body || {}) });
+    return res.json(result);
+});
+
+app.get("/api/mdm/UpdateAssetsFrequent", authenticateToken, async (req, res) => {
+    const result = await runUpdateMDMAssetFrequent({ trigger: "api:/api/mdm/UpdateAssetsFrequent", enrichCustomProperties: false });
+    return res.json(result);
+});
+
+app.post("/api/mdm/UpdateAssetsFrequent", authenticateToken, async (req, res) => {
+    const result = await runUpdateMDMAssetFrequent({ trigger: "api:/api/mdm/UpdateAssetsFrequent", ...(req.body || {}), enrichCustomProperties: false });
+    return res.json(result);
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -11625,7 +13072,7 @@ function remoteBuildSupportUrl(target, permissions) {
 // Legacy RemoteSupport.aspx route kept for fallback only. Do not use for Hardware Inventory Advanced Remote Control.
 app.post("/api/mdm/remote-control-legacy", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const target = await remoteResolveTarget(pool, req.body || {});
         const permissions = remoteNormalizePermissions(req.body || {});
         const url = remoteBuildSupportUrl(target, permissions);
@@ -11714,11 +13161,11 @@ function rcCleanApiPath(apiPath, baseUrl = "") {
 
 async function rcGetSqlPoolWithRetry() {
     try {
-        return await sql.connect(dbConfig);
+        return await getDbPool(typeof req !== 'undefined' ? req : null);
     } catch (err) {
         console.warn("SQL connect failed. Retrying with a fresh pool:", err.message || err);
         try { await sql.close(); } catch (_) {}
-        return await sql.connect(dbConfig);
+        return await getDbPool(typeof req !== 'undefined' ? req : null);
     }
 }
 
@@ -12310,11 +13757,11 @@ async function rcHandleMdmRemoteControl(req, res, mode = "auto") {
 
     async function rcGetSqlPoolWithRetry() {
         try {
-            return await sql.connect(dbConfig);
+            return await getDbPool(typeof req !== 'undefined' ? req : null);
         } catch (err) {
             console.warn("SQL connect failed. Retrying with a fresh pool:", err.message || err);
             try { await sql.close(); } catch (_) {}
-            return await sql.connect(dbConfig);
+            return await getDbPool(typeof req !== 'undefined' ? req : null);
         }
     }
 
@@ -13024,11 +14471,11 @@ async function rcHandleMdmRemoteControl(req, res, mode = "auto") {
 
     async function getSqlPoolWithRetry() {
         try {
-            return await sql.connect(dbConfig);
+            return await getDbPool(typeof req !== 'undefined' ? req : null);
         } catch (err) {
             console.warn("SQL connect failed. Retrying with a fresh pool:", err.message || err);
             try { await sql.close(); } catch (_) {}
-            return await sql.connect(dbConfig);
+            return await getDbPool(typeof req !== 'undefined' ? req : null);
         }
     }
 
@@ -14659,7 +16106,7 @@ app.get("/api/software-distribution/targets", authenticateToken, async (req, res
         const relationID = sdistInt(req.query.relationID, 0);
         const search = sdistText(req.query.search || req.query.q).toLowerCase();
         const status = sdistText(req.query.status).toLowerCase();
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         let rows = [];
         if (relationID) {
@@ -14763,7 +16210,7 @@ app.delete("/api/software-distribution/packages/:packageName/versions/:version",
             return res.status(400).json({ success: false, message: "Package name and version are required." });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request()
             .input("Pkg_Name", sql.VarChar(255), packageName)
             .input("Pkg_Version", sql.Int, versionNumber)
@@ -14962,7 +16409,7 @@ async function handleSoftwareInventoryList(req, res) {
         const clientID = softInvParseInt(req.query.clientID, 0);
         const swname = softInvText(req.query.swname || req.query.search || req.query.q);
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         if (clientID) {
             const data = await softInvExecuteStoredProcedure(pool, "spGetClientSWUNIList", {
@@ -14997,7 +16444,7 @@ async function handleSoftwareInventoryList(req, res) {
 
 async function handleSoftwareCategories(req, res) {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request().query(`
             SELECT DISTINCT
                 ISNULL(NULLIF(LTRIM(RTRIM(cat.CategoryName)), ''), 'Unclassified') AS CategoryName
@@ -15027,7 +16474,7 @@ async function handleSoftwareCategories(req, res) {
 
 async function handleSoftwareDebugSummary(req, res) {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request().query(`
             SELECT
                 CASE WHEN EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'TSMDM_SW_LIST') THEN 1 ELSE 0 END AS HasTSMDMSWList,
@@ -15306,24 +16753,15 @@ async function createSoftScanJobHeader(transaction, req, payload, scanMode) {
     if (jobIdn <= 0) throw new Error("spUpdateJob did not return a valid Job_Idn.");
 
     const jobDestType = getSoftScanModeCode(scanMode);
-    const imageLink = softScanNormalizeValue(softScanFirstDefined(payload.imagelink, payload.imageLink));
 
     await new sql.Request(transaction)
         .input("Job_Idn", sql.Int, jobIdn)
         .input("Job_Dest_Type", sql.Int, jobDestType)
-        .input("imagelink", sql.VarChar(1000), imageLink)
         .query(`
             IF COL_LENGTH('TS_JOB', 'Job_Dest_Type') IS NOT NULL
             BEGIN
                 UPDATE TS_JOB
                 SET Job_Dest_Type = @Job_Dest_Type
-                WHERE Job_Idn = @Job_Idn;
-            END
-
-            IF COL_LENGTH('TS_JOB', 'imagelink') IS NOT NULL
-            BEGIN
-                UPDATE TS_JOB
-                SET imagelink = @imagelink
                 WHERE Job_Idn = @Job_Idn;
             END
         `);
@@ -15453,7 +16891,7 @@ async function handleSoftInventoryScan(req, res) {
             objectDeviceID: softScanFirstDefined(body.Object_DeviceID, body.objectDeviceID, body.deviceID, body.deviceId)
         };
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const targets = await getSoftScanTargets(pool, options);
 
         if (!targets.length) {
@@ -15754,7 +17192,7 @@ function registerApplicationMeteringApis(dependencies = {}) {
                 req.query.relation_id
             ), -1);
             const recursive = String(firstAmDefined(req.query.recursive, "true")).toLowerCase() !== "false";
-            const pool = await sql.connect(dbConfig);
+            const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
             const result = await pool.request()
                 .input("Object_Rel_Idn", sql.Int, relationID)
@@ -16462,7 +17900,7 @@ function registerApplicationMeteringApis(dependencies = {}) {
 
         try {
             const payload = req.body || {};
-            const pool = await sql.connect(dbConfig);
+            const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
             const effectiveCommand = normalizeApplicationMeteringCommand(firstAmDefined(payload.commandID, payload.commandId, command));
             const requestedExistingJobIdn = parseAmInt(firstAmDefined(
                 payload.Job_Idn,
@@ -16771,7 +18209,7 @@ function registerApplicationMeteringApis(dependencies = {}) {
             const oneYear = String(source.oneYear || source.year || "false").toLowerCase() === "true";
             const nextpage = String(source.nextpage || source.nextPage || "false").toLowerCase() === "true";
 
-            const pool = await sql.connect(dbConfig);
+            const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
             let procedure;
             let inputs;
 
@@ -16841,7 +18279,7 @@ function registerApplicationMeteringApis(dependencies = {}) {
             const page = Math.max(parseAmInt(source.page, 1), 1);
             const limit = Math.min(Math.max(parseAmInt(firstAmDefined(source.limit, source.rowperpage), 100), 1), 1000);
 
-            const pool = await sql.connect(dbConfig);
+            const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
             let procedure;
             let inputs;
 
@@ -16890,7 +18328,7 @@ function registerApplicationMeteringApis(dependencies = {}) {
     
     app.post("/api/application-metering/resolve-target", authenticateToken, async (req, res) => {
         try {
-            const pool = await sql.connect(dbConfig);
+            const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
             const resolved = await getApplicationMeteringTargets(pool, req.body || {});
             return res.json({
                 success: true,
@@ -17112,17 +18550,11 @@ function formatTaskDate(value) {
     if (value === undefined || value === null || value === "") return "-";
     const raw = String(value).trim();
     if (!raw) return "-";
-    const parsed = new Date(raw);
-    if (Number.isNaN(parsed.getTime())) return raw;
-    return parsed.toLocaleString("en-MY", {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true
-    });
+
+    const dbLocalDisplay = formatDbLocalDisplayDateTime(value, { includeSeconds: true });
+    if (dbLocalDisplay) return dbLocalDisplay;
+
+    return raw;
 }
 
 function calculateTaskPercent(numerator, denominator) {
@@ -17700,7 +19132,7 @@ async function getTaskProgressDetails(pool, jobId, jobStatus = -1, knownTargets 
 
 async function sendTaskListResponse(req, res) {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const rows = await getTaskRows(pool, { ...(req.query || {}), ...(req.body || {}) });
         const data = rows.map(row => normalizeTaskRow(row));
         return res.json({ success: true, totalRecords: data.length, data });
@@ -17714,7 +19146,7 @@ async function sendTaskProgressResponse(req, res) {
     try {
         const jobId = getTaskIdFromRequest(req);
         if (!jobId) return res.status(400).json({ success: false, message: "job_id is required" });
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await getTaskProgressSummary(pool, jobId);
         return res.json({ success: true, data });
     } catch (err) {
@@ -17728,7 +19160,7 @@ async function sendTaskProgressDetailsResponse(req, res) {
         const jobId = getTaskIdFromRequest(req);
         const jobStatus = resolveTaskCode(firstTaskDefined(req.body?.job_status, req.query?.job_status, req.body?.jobStatus, req.query?.jobStatus), TASK_JOB_STATUS_LABELS);
         if (!jobId) return res.status(400).json({ success: false, message: "job_id is required" });
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const targets = await getTaskTargets(pool, jobId);
         const data = await getTaskProgressDetails(pool, jobId, jobStatus, targets);
         return res.json({ success: true, totalRecords: data.length, data });
@@ -17742,7 +19174,7 @@ async function sendTaskTargetsResponse(req, res) {
     try {
         const jobId = getTaskIdFromRequest(req);
         if (!jobId) return res.status(400).json({ success: false, message: "job_id is required" });
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await getTaskTargets(pool, jobId);
         return res.json({ success: true, totalRecords: data.length, data });
     } catch (err) {
@@ -17756,7 +19188,7 @@ async function sendTaskDetailResponse(req, res) {
         const jobId = getTaskIdFromRequest(req);
         if (!jobId) return res.status(400).json({ success: false, message: "job_id is required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const [job, progress, targets] = await Promise.all([
             getTaskBaseRow(pool, jobId),
             getTaskProgressSummary(pool, jobId),
@@ -17793,7 +19225,7 @@ async function sendTaskActionResponse(req, res) {
             return res.status(400).json({ success: false, message: "Unsupported task action. Use stop, cancel, or delete." });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         if (action === "stop" || action === "cancel") {
             const newStatus = action === "stop" ? 2203 : 2204;
@@ -18412,7 +19844,7 @@ function registerInternetMeteringApis(options = {}) {
 
         try {
             const payload = req.body || {};
-            const pool = await sql.connect(dbConfig);
+            const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
             const resolved = await getWebMeteringTargets(pool, payload);
             const targets = resolved.targets || [];
 
@@ -18684,7 +20116,7 @@ function registerInternetMeteringApis(options = {}) {
             const oneYear = String(source.oneYear || source.year || 'false').toLowerCase() === 'true';
             const nextpage = String(source.nextpage || source.nextPage || 'false').toLowerCase() === 'true';
 
-            const pool = await sql.connect(dbConfig);
+            const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
             let procedure;
             let inputs;
 
@@ -18755,7 +20187,7 @@ function registerInternetMeteringApis(options = {}) {
             const page = Math.max(parseWebInt(source.page, 1), 1);
             const limit = Math.min(Math.max(parseWebInt(firstWebDefined(source.limit, source.rowperpage), 100), 1), 1000);
 
-            const pool = await sql.connect(dbConfig);
+            const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
             let procedure;
             let inputs;
 
@@ -18860,7 +20292,7 @@ function registerInternetMeteringApis(options = {}) {
         try {
             const source = { ...(req.query || {}), ...(req.body || {}) };
             const restrictID = parseWebInt(firstWebDefined(source.restrictID, source.restrict_id, source.restrict), -1);
-            const pool = await sql.connect(dbConfig);
+            const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
             const parentRows = await getWebUrlParentRows(pool, { ...source, restrictID });
 
             const children = [];
@@ -19639,7 +21071,7 @@ async function createNetworkInventoryScanJob(req, res) {
 
     try {
         const body = req.body || {};
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const consoleId = await resolveTaskJobConsoleId(pool, req, body, getNetworkScanConsoleId(req));
         const jobStyle = getNetworkScanJobStyle(body);
         const jobStartTime = normalizeNetworkValue(firstNetworkScanDefined(
@@ -22594,7 +24026,7 @@ app.get("/api/reports/catalog", authenticateToken, async (req, res) => {
 
 app.get("/api/reports/options", authenticateToken, async (req, res) => {
   try {
-    const pool = await sql.connect(dbConfig);
+    const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
     const data = await erGetReportOptions(pool);
     return res.json({ success: true, data });
   } catch (err) {
@@ -22607,7 +24039,7 @@ app.post("/api/reports/preview", authenticateToken, async (req, res) => {
   try {
     const reportId = erText(req.body?.reportId, "executive-summary");
     const filters = erReadFilters(req);
-    const pool = await sql.connect(dbConfig);
+    const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
     const payload = await erBuildReportPayload(pool, reportId, filters, "preview");
     return res.json(payload);
   } catch (err) {
@@ -22620,7 +24052,7 @@ app.post("/api/reports/generate", authenticateToken, async (req, res) => {
   try {
     const reportId = erText(req.body?.reportId, "executive-summary");
     const filters = erReadFilters(req);
-    const pool = await sql.connect(dbConfig);
+    const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
     const payload = await erBuildReportPayload(pool, reportId, filters, "generated");
     return res.json(payload);
   } catch (err) {
@@ -22797,7 +24229,7 @@ function apUnifiedDeviceBaseSql() {
 // GET /api/settings/device-pricing/categories
 app.get("/api/settings/device-pricing/categories", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request().query(`
             WITH DeviceBase AS (
@@ -22829,7 +24261,7 @@ app.get("/api/settings/device-pricing/categories", authenticateToken, async (req
 app.get("/api/settings/device-pricing/brands", authenticateToken, async (req, res) => {
     try {
         const category = apText(req.query.category);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request()
             .input("Category", sql.NVarChar(100), category)
@@ -22867,7 +24299,7 @@ app.get("/api/settings/device-pricing/models", authenticateToken, async (req, re
     try {
         const category = apText(req.query.category);
         const brand = apText(req.query.brand);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request()
             .input("Category", sql.NVarChar(100), category)
@@ -22911,7 +24343,7 @@ app.get("/api/settings/device-pricing/models", authenticateToken, async (req, re
 
 async function apListPricingHandler(req, res) {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request().query(`
             SELECT
@@ -22963,7 +24395,7 @@ async function apBulkSavePricingHandler(req, res) {
     let transaction;
 
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         transaction = new sql.Transaction(pool);
         await transaction.begin();
 
@@ -23053,7 +24485,7 @@ app.post("/api/asset-pricing", authenticateToken, apBulkSavePricingHandler);
 app.post("/api/settings/device-pricing/row", authenticateToken, async (req, res) => {
     try {
         const row = apReadPricingPayload(req.body || {});
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         if (row.PricingID > 0) {
             const beforeResult = await pool.request()
@@ -23187,7 +24619,7 @@ app.put("/api/settings/device-pricing/:id", authenticateToken, async (req, res) 
             PricingID: pricingID
         });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const beforeResult = await pool.request()
             .input("PricingID", sql.Int, pricingID)
@@ -23267,7 +24699,7 @@ app.delete("/api/settings/device-pricing/:id", authenticateToken, async (req, re
             });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request()
             .input("PricingID", sql.Int, pricingID)
@@ -23417,7 +24849,7 @@ function safeParsePcAgingJson(value) {
 // GET /api/settings/pc-aging-rule
 app.get("/api/settings/pc-aging-rule", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request()
             .input("SettingKey", sql.NVarChar(100), PC_AGING_RULE_KEY)
@@ -23468,7 +24900,7 @@ app.post("/api/settings/pc-aging-rule", authenticateToken, async (req, res) => {
         const rule = normalizePcAgingRule(req.body || {});
         const settingValue = JSON.stringify(rule);
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const existingResult = await pool.request()
             .input("SettingKey", sql.NVarChar(100), PC_AGING_RULE_KEY)
@@ -23910,7 +25342,7 @@ async function mdLoadManagementPolicy(pool) {
 
 app.get("/api/settings/management-policy", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const policy = await mdLoadManagementPolicy(pool);
         return res.json({
             success: true,
@@ -23929,7 +25361,7 @@ app.get("/api/settings/management-policy", authenticateToken, async (req, res) =
 async function saveManagementPolicyHandler(req, res) {
     let transaction;
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const previousPolicy = await mdLoadManagementPolicy(pool);
         const values = mpNormalizeManagementPolicyValues(req.body?.values || req.body || {});
         const profile = await ensureManagementPolicyTables(pool);
@@ -24840,24 +26272,15 @@ async function createOnlinePatchScanJobHeader(transaction, req, payload, scopePa
     if (jobIdn <= 0) throw new Error("spUpdateJob did not return a valid Job_Idn for online patch scan.");
 
     const jobDestType = getOnlinePatchScanModeCode(scopeParams.scope);
-    const imageLink = normalizeOnlinePatchValue(firstOnlinePatchDefined(payload.imagelink, payload.imageLink));
 
     await new sql.Request(transaction)
         .input("Job_Idn", sql.Int, jobIdn)
         .input("Job_Dest_Type", sql.Int, jobDestType)
-        .input("imagelink", sql.VarChar(1000), imageLink)
         .query(`
             IF COL_LENGTH('TS_JOB', 'Job_Dest_Type') IS NOT NULL
             BEGIN
                 UPDATE TS_JOB
                 SET Job_Dest_Type = @Job_Dest_Type
-                WHERE Job_Idn = @Job_Idn;
-            END
-
-            IF COL_LENGTH('TS_JOB', 'imagelink') IS NOT NULL
-            BEGIN
-                UPDATE TS_JOB
-                SET imagelink = @imagelink
                 WHERE Job_Idn = @Job_Idn;
             END
         `);
@@ -25004,7 +26427,7 @@ async function createOnlinePatchScanJob(req, res) {
         const scopeError = validateOnlinePatchScope(scopeParams);
         if (scopeError) return res.status(400).json({ success: false, message: scopeError });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const targets = await getOnlinePatchScanTargets(pool, scopeParams);
 
         if (!targets.length) {
@@ -25136,15 +26559,9 @@ function itopsStatusTone(status, priority) {
 
 function itopsDateLabel(value) {
     if (!value) return "-";
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value);
-    return date.toLocaleString("en-MY", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
-    });
+    const dbLocalDisplay = formatDbLocalDisplayDateTime(value, { includeSeconds: false });
+    if (dbLocalDisplay) return dbLocalDisplay;
+    return String(value);
 }
 
 async function itopsTableExists(pool, tableName) {
@@ -26493,7 +27910,7 @@ function buildItOpsAttentionQueue({ incidentSummary, hardware, patchSummary, sof
 
 app.get("/api/dashboard/it-operations", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const [
             hardware,
@@ -27324,24 +28741,15 @@ async function createHardwareScanJobHeader(transaction, req, payload) {
 
     const scanMode = normalizeHwScanMode(payload);
     const jobDestType = scanMode === "all" ? 0 : scanMode === "folder" ? 1 : 2;
-    const imageLink = normalizeHwScanValue(firstHwScanDefined(payload.imagelink, payload.imageLink));
 
     await new sql.Request(transaction)
         .input("Job_Idn", sql.Int, jobIdn)
         .input("Job_Dest_Type", sql.Int, jobDestType)
-        .input("imagelink", sql.VarChar(1000), imageLink)
         .query(`
             IF COL_LENGTH('TS_JOB', 'Job_Dest_Type') IS NOT NULL
             BEGIN
                 UPDATE TS_JOB
                 SET Job_Dest_Type = @Job_Dest_Type
-                WHERE Job_Idn = @Job_Idn;
-            END
-
-            IF COL_LENGTH('TS_JOB', 'imagelink') IS NOT NULL
-            BEGIN
-                UPDATE TS_JOB
-                SET imagelink = @imagelink
                 WHERE Job_Idn = @Job_Idn;
             END
         `);
@@ -27482,7 +28890,7 @@ async function handleHardwareInventoryScan(req, res) {
             objectDeviceID: firstHwScanDefined(body.Object_DeviceID, body.objectDeviceID, body.deviceID, body.deviceId)
         };
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const targets = await getHardwareScanTargets(pool, options);
 
         if (!targets.length) {
@@ -28722,7 +30130,7 @@ app.get("/api/ai/health", authenticateToken, async (req, res) => {
 });
 
 async function buildEmaAiContext(req, query) {
-    const pool = await sql.connect(dbConfig);
+    const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
     const lowerQuery = String(query || "").toLowerCase();
 
     const context = {
@@ -29215,7 +30623,7 @@ app.post("/api/ai/chat", authenticateToken, async (req, res) => {
 ========================================================= */
 app.get('/api/settings/module-access', authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const rolesResult = await pool.request().query(`
             SELECT
@@ -29307,7 +30715,7 @@ app.put('/api/settings/module-access', authenticateToken, async (req, res) => {
             });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await pool.request()
             .input('RoleID', sql.Int, roleId)
             .input('ModuleID', sql.Int, moduleId)
@@ -29387,7 +30795,7 @@ app.put('/api/settings/module-access', authenticateToken, async (req, res) => {
 ========================================================= */
 app.get('/api/settings/access-controls', authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request().query(`
             IF OBJECT_ID('dbo.EMA_AccessControls', 'U') IS NULL
             BEGIN
@@ -29443,7 +30851,7 @@ app.post('/api/settings/access-controls', authenticateToken, async (req, res) =>
         }
 
         const policyKey = policyName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request()
             .input('PolicyKey', sql.NVarChar(100), policyKey)
             .input('PolicyName', sql.NVarChar(200), policyName)
@@ -29493,7 +30901,7 @@ app.put('/api/settings/access-controls/:id', authenticateToken, async (req, res)
         }
 
         const policyKey = policyName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const beforeResult = await pool.request()
             .input('ControlID', sql.Int, controlId)
             .query(`
@@ -29563,7 +30971,7 @@ app.delete('/api/settings/access-controls/:id', authenticateToken, async (req, r
             return res.status(400).json({ success: false, message: 'Control ID is required.' });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request()
             .input('ControlID', sql.Int, controlId)
             .query(`
@@ -30886,7 +32294,7 @@ app.get("/api/management-dashboard/overview", authenticateToken, async (req, res
         }
 
         res.set("X-EMA-Cache", "MISS");
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const context = await mdLoadDashboardContext(pool);
         const data = mdBuildOverviewPayload(context.assets, context.incidents, context.rule, context);
         writeDashboardCache(cacheKey, data);
@@ -30910,7 +32318,7 @@ app.get("/api/management-dashboard/drilldown", authenticateToken, async (req, re
         }
 
         res.set("X-EMA-Cache", "MISS");
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const context = await mdLoadDashboardContext(pool);
         const ipMap = new Map();
         context.assets.forEach((row) => { const ip = mdText(row.ipAddress); if (!ip) return; if (!ipMap.has(ip)) ipMap.set(ip, []); ipMap.get(ip).push(row); });
@@ -31390,7 +32798,7 @@ async function mdGenerateStoryInBackground(moduleKey = MD_STORY_MODULE_KEY, opti
     mdStoryGenerationLocks.add(moduleKey);
 
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         if (!options.force) {
             const cached = await mdGetCachedStory(pool, moduleKey);
@@ -31458,7 +32866,7 @@ async function handleManagementDashboardStorytelling(req, res) {
     const moduleKey = MD_STORY_MODULE_KEY;
 
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const force = String(req.query.force || req.body?.force || "").toLowerCase() === "true";
         const cached = force ? null : await mdGetCachedStory(pool, moduleKey);
 
@@ -31530,7 +32938,7 @@ app.post("/api/management-dashboard/storytelling/refresh", authenticateToken, as
 (() => {
 app.get("/api/departments", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const responseData = await getDepartmentsRecursive(pool, -1);
         // console.log("responseData: ", responseData);
 
@@ -31570,7 +32978,7 @@ WHERE a.Object_PR_Idn = @parentID
     AND a.Object_Rel_Deleted = 0;
         `;
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         
         const result = await pool.request()
             .input("parentID", sql.Int, parentID)
@@ -31813,7 +33221,7 @@ async function handleMoveAssetDepartment(req, res) {
             });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const destination = await getMoveDeptTargetRelation(pool, relationID);
 
         if (!destination) {
@@ -31858,9 +33266,9 @@ app.patch("/api/assets/:objectAgent/:assetId/department", authenticateToken, han
 // GET /api/hardware-inventory/assets
 // Optimized Hardware Inventory loader. Returns all EM + unmapped MDM assets in one request
 // so the frontend does not need to call /api/assets/:relationID for every department.
-app.get("/api/hardware-inventory/assets", authenticateToken, async (req, res) => {
+app.get("/api/hardware-inventory/assets", authenticateToken, hardwareCacheMiddleware, hardwareRouteQueueMiddleware, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await getAllHardwareInventoryAssets(pool, {
             limit: req.query.limit,
             relationID: req.query.relationID || req.query.departmentID,
@@ -31883,7 +33291,7 @@ app.get("/api/hardware-inventory/assets", authenticateToken, async (req, res) =>
 });
 
 // GET /api/assets/:relationID
-app.get("/api/assets/:relationID", authenticateToken, async (req, res) => {
+app.get("/api/assets/:relationID", authenticateToken, hardwareCacheMiddleware, assetRouteQueueMiddleware, async (req, res) => {
     try {
         const relationID = parseInt(req.params.relationID);
 
@@ -31894,7 +33302,7 @@ app.get("/api/assets/:relationID", authenticateToken, async (req, res) => {
             });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const responseData = await getAssetsByRelationID(pool, relationID);
 
         return res.json({
@@ -32711,7 +34119,7 @@ app.get("/api/asset/:objectAgent/:assetId", authenticateToken, async (req, res) 
             });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         let data = {};
 
@@ -33080,7 +34488,7 @@ app.get("/api/software-distribution/packages", authenticateToken, async (req, re
         const owner = parseSdInt(req.query.owner || req.query.Pkg_Owner || req.query.pkg_Owner, 0);
         const deleted = parseSdInt(req.query.deleted, 0);
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         // const result = await pool.request()
         //     .input("deleted", sql.Int, deleted)
@@ -33225,7 +34633,7 @@ app.get("/api/software-distribution/packages/:pkgName", authenticateToken, async
             });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const packageResult = await pool.request()
             .input("pkgName", sql.VarChar(255), pkgName)
@@ -33739,7 +35147,7 @@ async function handleCreateSoftwareDistributionPackage(req, res, { isWebloader =
             });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         transaction = new sql.Transaction(pool);
         await transaction.begin();
 
@@ -33949,7 +35357,7 @@ async function handleDeleteSoftwareDistributionPackage(req, res) {
             });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request()
             .input("Pkg_Name", sql.VarChar(255), pkgName)
@@ -34040,7 +35448,7 @@ async function handleSendSoftwareDistributionPackage(req, res) {
             });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const consoleIdn = await resolveTaskJobConsoleId(pool, req, payload, getConsoleOwner(req));
         let packageRow = await getLatestActivePackage(pool, payload.Pkg_Name, payload.Pkg_Owner || 0);
         if (!packageRow && payload.Pkg_Owner) {
@@ -34320,7 +35728,7 @@ app.post("/api/software-distribution/job-status", authenticateToken, async (req,
         const jobStatus = parseSdInt(payload.Job_Status, 0);
 
         if (jobIdn > 0 && jobStatus > 0) {
-            const pool = await sql.connect(dbConfig);
+            const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
             const historyUpdateResult = await pool.request()
                 .input("Job_Idn", sql.Int, jobIdn)
                 .input("Job_Status", sql.Int, jobStatus)
@@ -34419,7 +35827,7 @@ app.get("/api/software-distribution/jobs", authenticateToken, async (req, res) =
         const pkgName = normalizeSdValue(req.query.pkgName || req.query.Pkg_Name || req.query.pkg_Name);
         const jobIdn = parseSdInt(req.query.jobIdn || req.query.Job_Idn, 0);
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request()
             .input("pkgName", sql.VarChar(255), pkgName)
@@ -34631,7 +36039,7 @@ async function handleSoftwareInventoryList(req, res) {
         const clientID = softInvParseInt(req.query.clientID, 0);
         const swname = softInvText(req.query.swname || req.query.search || req.query.q);
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         if (clientID) {
             const data = await softInvExecuteStoredProcedure(pool, "spGetClientSWUNIList", {
@@ -34666,7 +36074,7 @@ async function handleSoftwareInventoryList(req, res) {
 
 async function handleSoftwareCategories(req, res) {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request().query(`
             SELECT DISTINCT
                 ISNULL(NULLIF(LTRIM(RTRIM(cat.CategoryName)), ''), 'Unclassified') AS CategoryName
@@ -34696,7 +36104,7 @@ async function handleSoftwareCategories(req, res) {
 
 async function handleSoftwareDebugSummary(req, res) {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request().query(`
             SELECT
                 CASE WHEN EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'TSMDM_SW_LIST') THEN 1 ELSE 0 END AS HasTSMDMSWList,
@@ -34724,14 +36132,14 @@ async function handleSoftwareDebugSummary(req, res) {
     }
 }
 
-app.get("/api/software", authenticateToken, handleSoftwareInventoryList);
-app.get("/api/software/categories", authenticateToken, handleSoftwareCategories);
-app.get("/api/software/debug/summary", authenticateToken, handleSoftwareDebugSummary);
+app.get("/api/software", authenticateToken, softwareCacheMiddleware, softwareRouteQueueMiddleware, handleSoftwareInventoryList);
+app.get("/api/software/categories", authenticateToken, softwareCacheMiddleware, handleSoftwareCategories);
+app.get("/api/software/debug/summary", authenticateToken, softwareCacheMiddleware, softwareRouteQueueMiddleware, handleSoftwareDebugSummary);
 
 // Compatibility aliases, in case old frontend/service uses software-inventory wording.
-app.get("/api/software-inventory", authenticateToken, handleSoftwareInventoryList);
-app.get("/api/software-inventory/categories", authenticateToken, handleSoftwareCategories);
-app.get("/api/software-inventory/debug/summary", authenticateToken, handleSoftwareDebugSummary);
+app.get("/api/software-inventory", authenticateToken, softwareCacheMiddleware, softwareRouteQueueMiddleware, handleSoftwareInventoryList);
+app.get("/api/software-inventory/categories", authenticateToken, softwareCacheMiddleware, handleSoftwareCategories);
+app.get("/api/software-inventory/debug/summary", authenticateToken, softwareCacheMiddleware, softwareRouteQueueMiddleware, handleSoftwareDebugSummary);
 
 
 // ============================================================
@@ -34765,7 +36173,7 @@ app.get("/api/software/client/:clientID", authenticateToken, async (req, res) =>
             return res.status(400).json({ success: false, message: "Invalid clientID" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await softInvExecuteStoredProcedure(pool, "spGetClientSWUNIList", {
             Object_Root_Idn: { type: sql.Int, value: clientID },
             SWName: { type: sql.VarChar(255), value: swname }
@@ -34799,7 +36207,7 @@ app.get("/api/software/mdm/:deviceID", authenticateToken, async (req, res) => {
             WHERE a.DeviceID = @DeviceID
         `;
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeQuery(pool, query, {
             DeviceID: { type: sql.VarChar(255), value: deviceID }
         });
@@ -34837,7 +36245,7 @@ app.get("/api/software/relation/:relationID/installed", authenticateToken, async
         const procedure = procedureMap[mode] || procedureMap.summary1;
         const isDeviceListMode = mode === "list1" || mode === "list2";
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await softInvExecuteStoredProcedure(pool, procedure, isDeviceListMode
             ? {
                 nRelationID: { type: sql.Int, value: relationID },
@@ -34882,7 +36290,7 @@ app.get("/api/software/relation/:relationID/packages", authenticateToken, async 
         const procedure = procedureMap[mode] || procedureMap.stat1;
         const isListMode = mode === "list1" || mode === "list2";
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await softInvExecuteStoredProcedure(pool, procedure, isListMode
             ? {
                 nRelationID: { type: sql.Int, value: relationID },
@@ -34913,7 +36321,7 @@ app.get("/api/software/client/:clientID/packages", authenticateToken, async (req
         }
 
         const procedure = mode === "package2" || mode === "2" ? "spGetClientPackage2" : "spGetClientPackage";
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await softInvExecuteStoredProcedure(pool, procedure, {
             nObjectIdn: { type: sql.Int, value: clientID }
         });
@@ -34939,7 +36347,7 @@ app.get("/api/software/relation/:relationID/files", authenticateToken, async (re
         }
 
         const procedure = mode === "list" || mode === "detail" ? "spGetRelationSWFileListE" : "spGetRelationSWFileStat";
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await softInvExecuteStoredProcedure(pool, procedure, procedure === "spGetRelationSWFileListE"
             ? {
                 Object_Rel_Idn: { type: sql.Int, value: relationID },
@@ -34974,7 +36382,7 @@ app.get("/api/software/client/:clientID/files", authenticateToken, async (req, r
             return res.status(400).json({ success: false, message: "Invalid clientID" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await softInvExecuteStoredProcedure(pool, "spGetSWListClient", {
             Object_Root_Idn: { type: sql.Int, value: clientID },
             sExtension: { type: sql.VarChar(50), value: extension },
@@ -34998,7 +36406,7 @@ app.get("/api/software/relation/:relationID/swr-stat", authenticateToken, async 
             return res.status(400).json({ success: false, message: "Invalid relationID" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await softInvExecuteStoredProcedure(pool, "spGetRelationSWRStat", {
             nRelationID: { type: sql.Int, value: relationID }
         });
@@ -35019,7 +36427,7 @@ app.get("/api/software/client/:clientID/swr-detail", authenticateToken, async (r
             return res.status(400).json({ success: false, message: "Invalid clientID" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await softInvExecuteStoredProcedure(pool, "spGetClientSWRDetail", {
             Object_Root_Idn: { type: sql.Int, value: clientID }
         });
@@ -35041,7 +36449,7 @@ app.get("/api/software/stats", authenticateToken, async (req, res) => {
             return res.status(400).json({ success: false, message: "relationID is required" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const [installedSoftware, licenseStatus, fileExtension] = await Promise.all([
             softInvExecuteStoredProcedure(pool, "spGetRelationSWUNIStat1", {
                 nRelationID: { type: sql.Int, value: relationID },
@@ -35307,24 +36715,15 @@ async function createSoftwareScanJobHeader(transaction, req, payload, scanMode) 
     if (jobIdn <= 0) throw new Error("spUpdateJob did not return a valid Job_Idn.");
 
     const jobDestType = getSoftwareScanModeCode(scanMode);
-    const imageLink = normalizeSoftwareScanValue(firstSoftwareScanDefined(payload.imagelink, payload.imageLink));
 
     await new sql.Request(transaction)
         .input("Job_Idn", sql.Int, jobIdn)
         .input("Job_Dest_Type", sql.Int, jobDestType)
-        .input("imagelink", sql.VarChar(1000), imageLink)
         .query(`
             IF COL_LENGTH('TS_JOB', 'Job_Dest_Type') IS NOT NULL
             BEGIN
                 UPDATE TS_JOB
                 SET Job_Dest_Type = @Job_Dest_Type
-                WHERE Job_Idn = @Job_Idn;
-            END
-
-            IF COL_LENGTH('TS_JOB', 'imagelink') IS NOT NULL
-            BEGIN
-                UPDATE TS_JOB
-                SET imagelink = @imagelink
                 WHERE Job_Idn = @Job_Idn;
             END
         `);
@@ -35463,7 +36862,7 @@ async function handleSoftwareInventoryScan(req, res) {
             objectDeviceID: firstSoftwareScanDefined(body.Object_DeviceID, body.objectDeviceID, body.deviceID, body.deviceId)
         };
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const targets = await getSoftwareScanTargets(pool, options);
 
         if (!targets.length) {
@@ -35528,7 +36927,7 @@ app.post("/api/software-inventory/scan", authenticateToken, handleSoftwareInvent
 app.post("/api/software/scan", authenticateToken, handleSoftwareInventoryScan);
 
 // Old relation based route. Must stay after /categories and /debug/summary.
-app.get("/api/software/:relationID", authenticateToken, async (req, res) => {
+app.get("/api/software/:relationID", authenticateToken, softwareCacheMiddleware, softwareRouteQueueMiddleware, async (req, res) => {
     req.query.relationID = req.params.relationID;
     return handleSoftwareInventoryList(req, res);
 });
@@ -35905,7 +37304,7 @@ async function createApplicationMeteringJob(req, res, command = APP_METERING_STA
 
     try {
         const payload = req.body || {};
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const resolved = await getApplicationMeteringTargets(pool, payload);
         const targets = resolved.targets || [];
 
@@ -36100,7 +37499,7 @@ async function sendApplicationMeteringUsageResponse(req, res) {
         const oneYear = String(source.oneYear || source.year || "false").toLowerCase() === "true";
         const nextpage = String(source.nextpage || source.nextPage || "false").toLowerCase() === "true";
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         let procedure;
         let inputs;
 
@@ -36170,7 +37569,7 @@ async function sendApplicationMeteringStatsResponse(req, res) {
         const page = Math.max(parseAmInt(source.page, 1), 1);
         const limit = Math.min(Math.max(parseAmInt(firstAmDefined(source.limit, source.rowperpage), 100), 1), 1000);
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         let procedure;
         let inputs;
 
@@ -36220,7 +37619,7 @@ app.get("/api/application-metering/hierarchy", authenticateToken, async (req, re
     try {
         // Compatibility only: return the same department tree used by Hardware Inventory.
         // The App Metering frontend now calls /api/departments and /api/departments/:parentID directly.
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await getDepartmentsRecursive(pool, -1);
         return res.json({ success: true, compatibilityApi: "/api/departments", data });
     } catch (err) {
@@ -36232,7 +37631,7 @@ app.get("/api/application-metering/hierarchy", authenticateToken, async (req, re
 app.get("/api/application-metering/packages", authenticateToken, async (req, res) => {
     try {
         const meterDate = formatAppMeteringDate(firstAmDefined(req.query.meterDate, req.query.date), 0);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         let rawRows = [];
         let procedure = "spGetMeterSWPackageList";
 
@@ -36262,7 +37661,7 @@ app.get("/api/application-metering/packages/:packageId/files", authenticateToken
         const packageId = parseAmInt(req.params.packageId, 0);
         if (!packageId) return res.status(400).json({ success: false, message: "Invalid packageId" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const rawRows = await executeStoredProcedure(pool, "spGetSWPackageFileGroup", {
             SW_Pkg_Idn: { type: sql.Int, value: packageId }
         });
@@ -36295,7 +37694,7 @@ app.post("/api/sw_meter/getMeterUserStat4Console.do", authenticateToken, sendApp
 app.post("/api/sw_meter/getMeterUserStat4Console_OneYear.do", authenticateToken, (req, res) => { req.body = { ...(req.body || {}), oneYear: true }; return sendApplicationMeteringStatsResponse(req, res); });
 app.post("/api/sw_meter/getCommand_Software_List.do", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const meterDate = formatAppMeteringDate(firstAmDefined(req.body?.meterDate, req.query?.meterDate), 0);
         const rawRows = await executeStoredProcedure(pool, "spGetMeterSWPackageList", {
             MeterDate: { type: sql.VarChar(50), value: meterDate }
@@ -36309,7 +37708,7 @@ app.post("/api/sw_meter/getCommand_Software_List.do", authenticateToken, async (
 });
 app.post("/api/sw_meter/getUpdate_Software_Package_List.do", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const rawRows = await executeStoredProcedure(pool, "spGetSWPackageList", {
             SW_Catg: { type: sql.Int, value: -1 },
             Use_Statistices: { type: sql.Int, value: -1 }
@@ -36325,7 +37724,7 @@ app.post("/api/sw_meter/get_SWPackageFileGroup.do", authenticateToken, async (re
     try {
         const packageId = parseAmInt(firstAmDefined(req.body?.sw_pkg_id, req.body?.SW_Pkg_Idn, req.body?.packageId), 0);
         if (!packageId) return res.status(400).json({ success: false, message: "sw_pkg_id is required" });
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const rawRows = await executeStoredProcedure(pool, "spGetSWPackageFileGroup", {
             SW_Pkg_Idn: { type: sql.Int, value: packageId }
         });
@@ -36483,22 +37882,13 @@ function resolveTaskCommandLabel(jobCommand) {
 
 function formatTaskDate(value) {
     if (value === undefined || value === null || value === "") return "-";
-
     const raw = String(value).trim();
     if (!raw) return "-";
 
-    const parsed = new Date(raw);
-    if (Number.isNaN(parsed.getTime())) return raw;
+    const dbLocalDisplay = formatDbLocalDisplayDateTime(value, { includeSeconds: true });
+    if (dbLocalDisplay) return dbLocalDisplay;
 
-    return parsed.toLocaleString("en-MY", {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true
-    });
+    return raw;
 }
 
 function calculateTaskPercent(numerator, denominator) {
@@ -36975,7 +38365,7 @@ async function getTaskProgressDetails(pool, jobId, jobStatus = -1) {
 
 async function sendTaskListResponse(req, res) {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const rows = await getTaskRows(pool, { ...(req.query || {}), ...(req.body || {}) });
         const data = rows.map(row => normalizeTaskRow(row));
         return res.json({ success: true, totalRecords: data.length, data });
@@ -36990,7 +38380,7 @@ async function sendTaskProgressResponse(req, res) {
         const jobId = getTaskIdFromRequest(req);
         if (!jobId) return res.status(400).json({ success: false, message: "job_id is required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await getTaskProgressSummary(pool, jobId);
         return res.json({ success: true, data });
     } catch (err) {
@@ -37005,7 +38395,7 @@ async function sendTaskProgressDetailsResponse(req, res) {
         const jobStatus = resolveTaskCode(firstTaskDefined(req.body?.job_status, req.query?.job_status, req.body?.jobStatus, req.query?.jobStatus), TASK_JOB_STATUS_LABELS);
         if (!jobId) return res.status(400).json({ success: false, message: "job_id is required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await getTaskProgressDetails(pool, jobId, jobStatus);
         return res.json({ success: true, totalRecords: data.length, data });
     } catch (err) {
@@ -37019,7 +38409,7 @@ async function sendTaskTargetsResponse(req, res) {
         const jobId = getTaskIdFromRequest(req);
         if (!jobId) return res.status(400).json({ success: false, message: "job_id is required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await getTaskTargets(pool, jobId);
         return res.json({ success: true, totalRecords: data.length, data });
     } catch (err) {
@@ -37033,7 +38423,7 @@ async function sendTaskDetailResponse(req, res) {
         const jobId = getTaskIdFromRequest(req);
         if (!jobId) return res.status(400).json({ success: false, message: "job_id is required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const [job, progress, targets, progressDetails] = await Promise.all([
             getTaskBaseRow(pool, jobId),
             getTaskProgressSummary(pool, jobId),
@@ -37070,7 +38460,7 @@ async function sendTaskActionResponse(req, res) {
             return res.status(400).json({ success: false, message: "Unsupported task action. Use stop, cancel, or delete." });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         if (action === "stop" || action === "cancel") {
             const newStatus = action === "stop" ? 2203 : 2204;
@@ -37883,7 +39273,7 @@ async function createWebMeteringJob(req, res, command = WEB_METERING_START_COMMA
 
     try {
         const payload = req.body || {};
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const resolved = await getWebMeteringTargets(pool, payload);
         const targets = resolved.targets || [];
 
@@ -38077,7 +39467,7 @@ async function sendWebMeteringUsageResponse(req, res) {
         const oneYear = String(source.oneYear || source.year || "false").toLowerCase() === "true";
         const nextpage = String(source.nextpage || source.nextPage || "false").toLowerCase() === "true";
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         let procedure;
         let inputs;
 
@@ -38157,7 +39547,7 @@ async function sendWebMeteringStatsResponse(req, res) {
         const page = Math.max(parseWebInt(source.page, 1), 1);
         const limit = Math.min(Math.max(parseWebInt(firstWebDefined(source.limit, source.rowperpage), 100), 1), 1000);
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         let procedure;
         let inputs;
 
@@ -38267,7 +39657,7 @@ async function sendWebUrlTreeResponse(req, res) {
     try {
         const source = { ...(req.query || {}), ...(req.body || {}) };
         const restrictID = parseWebInt(firstWebDefined(source.restrictID, source.restrict_id, source.restrict), -1);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const parentRows = await getWebUrlParentRows(pool, { ...source, restrictID });
 
         const children = [];
@@ -38319,7 +39709,7 @@ app.post("/api/internet-metering/stop", authenticateToken, async (req, res) => c
 app.get("/api/internet-metering/urls/tree", authenticateToken, sendWebUrlTreeResponse);
 app.get("/api/internet-metering/urls/parents", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await getWebUrlParentRows(pool, req.query || {});
         return res.json({ success: true, totalRecords: data.length, data });
     } catch (err) {
@@ -38329,7 +39719,7 @@ app.get("/api/internet-metering/urls/parents", authenticateToken, async (req, re
 });
 app.get("/api/internet-metering/urls/children", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const restrictID = parseWebInt(firstWebDefined(req.query?.restrictID, req.query?.restrict_id, req.query?.restrict), -1);
         const urlMain = normalizeWebValue(firstWebDefined(req.query?.urlMain, req.query?.url_main, req.query?.url));
         const rawRows = await getWebUrlChildrenRows(pool, restrictID, urlMain);
@@ -38345,7 +39735,7 @@ app.post("/api/internet-metering/urls", authenticateToken, async (req, res) => {
         const restrictID = parseWebInt(firstWebDefined(req.body?.restrictID, req.body?.restrict_id, req.body?.restrict), 0);
         const urlMain = normalizeWebValue(firstWebDefined(req.body?.urlMain, req.body?.url_main, req.body?.url));
         if (!urlMain) return res.status(400).json({ success: false, message: "urlMain is required" });
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeStoredProcedure(pool, "spSetMeterMainURLList4Console", {
             URLMain: { type: sql.VarChar(255), value: urlMain },
             nRestrict: { type: sql.Int, value: restrictID }
@@ -38360,7 +39750,7 @@ app.delete("/api/internet-metering/urls", authenticateToken, async (req, res) =>
     try {
         const urlMain = normalizeWebValue(firstWebDefined(req.body?.urlMain, req.body?.url_main, req.body?.url, req.query?.urlMain, req.query?.url_main, req.query?.url));
         if (!urlMain) return res.status(400).json({ success: false, message: "urlMain is required" });
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeStoredProcedure(pool, "spRemMeterMainURLList4Console", {
             URLMain: { type: sql.VarChar(255), value: urlMain }
         });
@@ -38385,7 +39775,7 @@ app.post("/api/web_meter/getMeterURLUserList4Console_OneYear.do", authenticateTo
 app.post("/api/web_meter/getMeterURLUserList4Console_OneYear_nextPage.do", authenticateToken, (req, res) => { req.body = { ...(req.body || {}), oneYear: true, nextpage: true }; return sendWebMeteringUsageResponse(req, res); });
 app.post("/api/web_meter/getURL_ParentList.do", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const restrictID = parseWebInt(firstWebDefined(req.body?.restrict_id, req.body?.restrictID), -1);
         const data = await executeStoredProcedure(pool, "spGetMeterMainURLExt", {
             nRestrict: { type: sql.Int, value: restrictID }
@@ -38398,7 +39788,7 @@ app.post("/api/web_meter/getURL_ParentList.do", authenticateToken, async (req, r
 });
 app.post("/api/web_meter/getURL_ChildList.do", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const restrictID = parseWebInt(firstWebDefined(req.body?.restrict_id, req.body?.restrictID), -1);
         const urlMain = normalizeWebValue(firstWebDefined(req.body?.url_main, req.body?.urlMain, req.body?.url));
         const data = await getWebUrlChildrenRows(pool, restrictID, urlMain);
@@ -38410,7 +39800,7 @@ app.post("/api/web_meter/getURL_ChildList.do", authenticateToken, async (req, re
 });
 app.post("/api/web_meter/setMeterMainURLList4Console.do", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const restrictID = parseWebInt(firstWebDefined(req.body?.restrict_id, req.body?.restrictID), 0);
         const urlMain = normalizeWebValue(firstWebDefined(req.body?.url_main, req.body?.urlMain, req.body?.url));
         if (!urlMain) return res.status(400).json({ success: false, message: "url_main is required" });
@@ -38426,7 +39816,7 @@ app.post("/api/web_meter/setMeterMainURLList4Console.do", authenticateToken, asy
 });
 app.post("/api/web_meter/removeWebMeteringList.do", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const urlMain = normalizeWebValue(firstWebDefined(req.body?.url_main, req.body?.urlMain, req.body?.url));
         if (!urlMain) return res.status(400).json({ success: false, message: "url_main is required" });
         const data = await executeStoredProcedure(pool, "spRemMeterMainURLList4Console", {
@@ -38440,7 +39830,7 @@ app.post("/api/web_meter/removeWebMeteringList.do", authenticateToken, async (re
 });
 app.post("/api/web_meter/getURLMeterParent_Paging.do", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await getWebUrlParentRows(pool, req.body || {});
         return res.json({ success: true, totalRecords: data.length, data });
     } catch (err) {
@@ -38450,7 +39840,7 @@ app.post("/api/web_meter/getURLMeterParent_Paging.do", authenticateToken, async 
 });
 app.post("/api/web_meter/getURLMeterParent_NextPageTotal.do", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const source = req.body || {};
         const restrictID = parseWebInt(firstWebDefined(source.restrict_id, source.restrictID, source.restrict), -1);
         const page = Math.max(parseWebInt(source.page, 1), 1) + 1;
@@ -38764,9 +40154,9 @@ async function getNetworkInventoryRows(pool, options = {}) {
 }
 
 // Device Status tab: full IP/subnet hierarchy for sidebar.
-app.get("/api/network/hierarchy", authenticateToken, async (req, res) => {
+app.get("/api/network/hierarchy", authenticateToken, networkRouteQueueMiddleware, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const rows = await getNetworkInventoryRows(pool, {
             workgroup: req.query.workgroup,
             destDate: req.query.destDate,
@@ -38791,7 +40181,7 @@ app.get("/api/network/hierarchy", authenticateToken, async (req, res) => {
 app.get("/api/network/device-status", authenticateToken, async (req, res) => {
     try {
         const subnet = normalizeNetworkValue(req.query.subnet || req.query.ip);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeNetworkProcedure(pool, "spGetNIIPSegmentCount", {
             IP: { type: sql.VarChar(50), value: subnet }
         });
@@ -38805,10 +40195,10 @@ app.get("/api/network/device-status", authenticateToken, async (req, res) => {
 
 // Device Status tab: workgroup summary.
 // Old Java: getNIWorkGroupCount -> spGetNIWorkGroupCount
-app.get("/api/network/workgroup-count", authenticateToken, async (req, res) => {
+app.get("/api/network/workgroup-count", authenticateToken, networkRouteQueueMiddleware, async (req, res) => {
     try {
         const workgroup = normalizeNetworkValue(req.query.workgroup);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeNetworkProcedure(pool, "spGetNIWorkGroupCount", {
             WorkGroup: { type: sql.VarChar(255), value: workgroup }
         });
@@ -38845,7 +40235,7 @@ app.get("/api/network/subnet/:subnet/details", authenticateToken, async (req, re
         const normalizedType = detailType.replace(/[\s_-]+/g, "").toLowerCase();
         const code = parseNetworkInt(req.query.ncode || req.query.code, codeMap[normalizedType] || 1);
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const procedure = normalizedType === "registered" || normalizedType === "notregistered"
             ? "spGetSubnetNIAgentDetail2"
             : "spGetSubnetNIObjectDetail3";
@@ -38886,7 +40276,7 @@ app.get("/api/network/ip/:ip/agent", authenticateToken, async (req, res) => {
         const ip = normalizeNetworkValue(req.params.ip);
         if (!ip) return res.status(400).json({ success: false, message: "IP is required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeNetworkProcedure(pool, "spGetSubnetAgent", {
             Subnet: { type: sql.VarChar(50), value: ip }
         });
@@ -38905,7 +40295,7 @@ app.get("/api/network/ip/:ip/object", authenticateToken, async (req, res) => {
         const ip = normalizeNetworkValue(req.params.ip);
         if (!ip) return res.status(400).json({ success: false, message: "IP is required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeNetworkProcedure(pool, "spGetSubnetObject", {
             Subnet: { type: sql.VarChar(50), value: ip }
         });
@@ -38924,7 +40314,7 @@ app.get("/api/network/client/:clientID", authenticateToken, async (req, res) => 
         const clientID = parseNetworkInt(req.params.clientID, 0);
         if (!clientID) return res.status(400).json({ success: false, message: "Invalid clientID" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeNetworkProcedure(pool, "spGetNIClient", {
             Object_Root_Idn: { type: sql.Int, value: clientID }
         });
@@ -38943,7 +40333,7 @@ app.get("/api/network/object/:inventoryID", authenticateToken, async (req, res) 
         const inventoryID = parseNetworkInt(req.params.inventoryID, 0);
         if (!inventoryID) return res.status(400).json({ success: false, message: "Invalid inventoryID" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeNetworkProcedure(pool, "spGetNIObject", {
             InventoryID: { type: sql.Int, value: inventoryID }
         });
@@ -38957,9 +40347,9 @@ app.get("/api/network/object/:inventoryID", authenticateToken, async (req, res) 
 
 // Last scan/search date.
 // Old Java: getSearchDate -> spGetNILastSearchDate
-app.get("/api/network/search-date", authenticateToken, async (req, res) => {
+app.get("/api/network/search-date", authenticateToken, networkRouteQueueMiddleware, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const lastSearchDate = await getNetworkLastSearchDate(pool);
 
         return res.json({
@@ -38977,7 +40367,7 @@ app.get("/api/network/search-date", authenticateToken, async (req, res) => {
 // Flat list used by tables or frontend rebuild.
 app.get("/api/network/devices", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const rows = await getNetworkInventoryRows(pool, {
             workgroup: req.query.workgroup,
             destDate: req.query.destDate,
@@ -39110,7 +40500,7 @@ app.delete("/api/network/network-device-status/:id", authenticateToken, async (r
 app.post("/api/net/getIPSegment_DeviceStatus.do", authenticateToken, async (req, res) => {
     try {
         const subnet = normalizeNetworkValue(req.body.subnet);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeNetworkProcedure(pool, "spGetNIIPSegmentCount", {
             IP: { type: sql.VarChar(50), value: subnet }
         });
@@ -39124,7 +40514,7 @@ app.post("/api/net/getIPSegment_DeviceStatus.do", authenticateToken, async (req,
 app.post("/api/net/getNIWorkGroupCount.do", authenticateToken, async (req, res) => {
     try {
         const workgroup = normalizeNetworkValue(req.body.workgroup);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeNetworkProcedure(pool, "spGetNIWorkGroupCount", {
             WorkGroup: { type: sql.VarChar(255), value: workgroup }
         });
@@ -39139,7 +40529,7 @@ app.post("/api/net/getSubnetNIAgentDetail2.do", authenticateToken, async (req, r
     try {
         const subnet = normalizeNetworkValue(req.body.subnet);
         const ncode = parseNetworkInt(req.body.ncode, 1);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeNetworkProcedure(pool, "spGetSubnetNIAgentDetail2", {
             Subnet: { type: sql.VarChar(50), value: subnet },
             nCode: { type: sql.Int, value: ncode }
@@ -39155,7 +40545,7 @@ app.post("/api/net/getNIAgentList2.do", authenticateToken, async (req, res) => {
     try {
         const workgroup = normalizeNetworkValue(req.body.workgroup);
         const destDate = normalizeDateForNetwork(req.body.destDate);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeNetworkProcedure(pool, "spGetNIAgentList2", {
             WorkGroup: { type: sql.VarChar(255), value: workgroup },
             tmpDestDate: { type: sql.VarChar(50), value: destDate }
@@ -39173,7 +40563,7 @@ app.post("/api/net/getSubnetNIObjectDetail3.do", authenticateToken, async (req, 
         const systemType = parseNetworkInt(req.body.systemType, 0);
         const destDate = normalizeDateForNetwork(req.body.destDate);
         const tca = parseNetworkInt(req.body.tca, 0);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeNetworkProcedure(pool, "spGetSubnetNIObjectDetail3", {
             Subnet: { type: sql.VarChar(50), value: subnet },
             nSystemType: { type: sql.Int, value: systemType },
@@ -39193,7 +40583,7 @@ app.post("/api/net/getNIObjectList2.do", authenticateToken, async (req, res) => 
         const systemType = parseNetworkInt(req.body.systemType, 0);
         const destDate = normalizeDateForNetwork(req.body.destDate);
         const tca = parseNetworkInt(req.body.tca, 0);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeNetworkProcedure(pool, "spGetNIObjectList2", {
             WorkGroup: { type: sql.VarChar(255), value: workgroup },
             SystemType: { type: sql.Int, value: systemType },
@@ -39211,7 +40601,7 @@ app.post("/api/net/getNIClient.do", authenticateToken, async (req, res) => {
     try {
         const clientID = parseNetworkInt(req.body.clientID, 0);
         if (!clientID) return res.status(400).json({ success: false, message: "clientID is required" });
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeNetworkProcedure(pool, "spGetNIClient", {
             Object_Root_Idn: { type: sql.Int, value: clientID }
         });
@@ -39226,7 +40616,7 @@ app.post("/api/net/getNIObject.do", authenticateToken, async (req, res) => {
     try {
         const inventoryID = parseNetworkInt(req.body.inventoryID, 0);
         if (!inventoryID) return res.status(400).json({ success: false, message: "inventoryID is required" });
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeNetworkProcedure(pool, "spGetNIObject", {
             InventoryID: { type: sql.Int, value: inventoryID }
         });
@@ -39241,7 +40631,7 @@ app.post("/api/net/getSubnetObject.do", authenticateToken, async (req, res) => {
     try {
         const subnet = normalizeNetworkValue(req.body.subnet);
         if (!subnet) return res.status(400).json({ success: false, message: "subnet is required" });
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeNetworkProcedure(pool, "spGetSubnetObject", {
             Subnet: { type: sql.VarChar(50), value: subnet }
         });
@@ -39256,7 +40646,7 @@ app.post("/api/net/getSubnetAgent.do", authenticateToken, async (req, res) => {
     try {
         const subnet = normalizeNetworkValue(req.body.subnet);
         if (!subnet) return res.status(400).json({ success: false, message: "subnet is required" });
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeNetworkProcedure(pool, "spGetSubnetAgent", {
             Subnet: { type: sql.VarChar(50), value: subnet }
         });
@@ -39269,7 +40659,7 @@ app.post("/api/net/getSubnetAgent.do", authenticateToken, async (req, res) => {
 
 app.post("/api/net/getSearchDate.do", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const lastSearchDate = await getNetworkLastSearchDate(pool);
         return res.json({ success: true, data: [{ LastSearchDateStr: lastSearchDate }] });
     } catch (err) {
@@ -40251,7 +41641,7 @@ async function createNetworkInventoryScanJob(req, res) {
 
     try {
         const body = req.body || {};
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const consoleId = await resolveTaskJobConsoleId(pool, req, body, getNetworkScanConsoleId(req));
         const jobStyle = getNetworkScanJobStyle(body);
         const jobStartTime = normalizeNetworkValue(firstNetworkScanDefined(
@@ -40874,7 +42264,7 @@ app.get("/api/patch/online/summary", authenticateToken, async (req, res) => {
         const scopeError = validateOnlinePatchScope(scopeParams);
         if (scopeError) return res.status(400).json({ success: false, message: scopeError });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const request = addOnlinePatchScopeInputs(pool.request(), scopeParams);
         const query = `
             ${getOnlinePatchTargetsCte()}
@@ -40912,7 +42302,7 @@ app.get("/api/patch/online/status", authenticateToken, async (req, res) => {
         if (scopeError) return res.status(400).json({ success: false, message: scopeError });
 
         const paging = getOnlinePatchPaging(req);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const optionalMasterSelectSql = await getOnlinePatchOptionalMasterSelectSql(pool, "m");
         const request = addOnlinePatchFilterInputs(addOnlinePatchScopeInputs(pool.request(), scopeParams), req);
         request.input("Offset", sql.Int, paging.offset);
@@ -41004,7 +42394,7 @@ app.get("/api/patch/online/status", authenticateToken, async (req, res) => {
 app.get("/api/patch/online/catalog", authenticateToken, async (req, res) => {
     try {
         const paging = getOnlinePatchPaging(req);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const optionalMasterSelectSql = await getOnlinePatchOptionalMasterSelectSql(pool, "m");
         const request = addOnlinePatchFilterInputs(pool.request(), req);
         request.input("Offset", sql.Int, paging.offset);
@@ -41093,7 +42483,7 @@ app.get("/api/patch/online/updates/:updateID/:revisionNumber", authenticateToken
         const revisionNumber = parseOnlinePatchInt(req.params.revisionNumber, 0);
         if (!updateID || !revisionNumber) return res.status(400).json({ success: false, message: "UpdateID and revisionNumber are required." });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const optionalMasterSelectSql = await getOnlinePatchOptionalMasterSelectSql(pool, "");
         const [masterResult, filesResult, replaceResult, statusAggResult] = await Promise.all([
             pool.request()
@@ -41168,7 +42558,7 @@ app.get("/api/patch/online/updates/:updateID/:revisionNumber/files", authenticat
         const revisionNumber = parseOnlinePatchInt(req.params.revisionNumber, 0);
         if (!updateID || !revisionNumber) return res.status(400).json({ success: false, message: "UpdateID and revisionNumber are required." });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request()
             .input("UpdateID", sql.VarChar(255), updateID)
             .input("RevisionNumber", sql.Int, revisionNumber)
@@ -41193,7 +42583,7 @@ app.get("/api/patch/online/activity", authenticateToken, async (req, res) => {
         if (scopeError) return res.status(400).json({ success: false, message: scopeError });
 
         const paging = getOnlinePatchPaging(req);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const request = addOnlinePatchScopeInputs(pool.request(), scopeParams);
         request.input("Offset", sql.Int, paging.offset);
         request.input("Limit", sql.Int, paging.limit);
@@ -41480,7 +42870,7 @@ app.post("/api/patch/online/install", authenticateToken, async (req, res) => {
             return res.status(400).json({ success: false, message: "Object_Root_Idn, UpdateID and RevisionNumber are required." });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const payload = await getOnlinePatchInstallPayload(pool, objectRootIdn, updateID, revisionNumber);
         if (!payload.device) return res.status(404).json({ success: false, message: "Target device was not found." });
         if (!payload.patch) return res.status(404).json({ success: false, message: "Online patch was not found." });
@@ -41709,24 +43099,15 @@ async function createOnlinePatchScanJobHeader(transaction, req, payload, scopePa
     if (jobIdn <= 0) throw new Error("spUpdateJob did not return a valid Job_Idn for online patch scan.");
 
     const jobDestType = getOnlinePatchScanModeCode(scopeParams.scope);
-    const imageLink = normalizeOnlinePatchValue(firstOnlinePatchDefined(payload.imagelink, payload.imageLink));
 
     await new sql.Request(transaction)
         .input("Job_Idn", sql.Int, jobIdn)
         .input("Job_Dest_Type", sql.Int, jobDestType)
-        .input("imagelink", sql.VarChar(1000), imageLink)
         .query(`
             IF COL_LENGTH('TS_JOB', 'Job_Dest_Type') IS NOT NULL
             BEGIN
                 UPDATE TS_JOB
                 SET Job_Dest_Type = @Job_Dest_Type
-                WHERE Job_Idn = @Job_Idn;
-            END
-
-            IF COL_LENGTH('TS_JOB', 'imagelink') IS NOT NULL
-            BEGIN
-                UPDATE TS_JOB
-                SET imagelink = @imagelink
                 WHERE Job_Idn = @Job_Idn;
             END
         `);
@@ -41804,7 +43185,7 @@ async function createOnlinePatchScanJob(req, res) {
         const scopeError = validateOnlinePatchScope(scopeParams);
         if (scopeError) return res.status(400).json({ success: false, message: scopeError });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const targets = await getOnlinePatchScanTargets(pool, scopeParams);
 
         if (!targets.length) {
@@ -42052,7 +43433,7 @@ app.get("/api/hardware-statistics/:relationID/connection-summary", authenticateT
             return res.status(400).json({ success: false, message: "Invalid relationID" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeStoredProcedure(pool, "spGetConnectionStat", {
             nRelationIdn: { type: sql.Int, value: relationID },
             CurDate: { type: sql.DateTime, value: new Date() }
@@ -42074,7 +43455,7 @@ app.get("/api/hardware-statistics/:relationID/connection-summary/:code", authent
             return res.status(400).json({ success: false, message: "Invalid parameter" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeStoredProcedure(pool, "spGetConnectionStatList", {
             nRelationIdn: { type: sql.Int, value: relationID },
             nCode: { type: sql.Int, value: code },
@@ -42096,7 +43477,7 @@ app.get("/api/hardware-statistics/:relationID/connection-list", authenticateToke
             return res.status(400).json({ success: false, message: "Invalid relationID" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeStoredProcedure(pool, "spGetAllClientListInfo", {
             RelationID: { type: sql.Int, value: relationID }
         });
@@ -42116,7 +43497,7 @@ app.get("/api/hardware-statistics/:relationID/client-version", authenticateToken
             return res.status(400).json({ success: false, message: "Invalid relationID" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeStoredProcedure(pool, "spGetRelationClientVersion", {
             RelationId: { type: sql.Int, value: relationID }
         });
@@ -42137,7 +43518,7 @@ app.get("/api/hardware-statistics/:relationID/client-version/:clientVersion", au
             return res.status(400).json({ success: false, message: "Invalid parameter" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeStoredProcedure(pool, "spGetRelationClientVersionDetail", {
             RelationId: { type: sql.Int, value: relationID },
             ClientVersion: { type: sql.VarChar(255), value: clientVersion }
@@ -42158,7 +43539,7 @@ app.get("/api/hardware-statistics/:relationID/all", authenticateToken, async (re
             return res.status(400).json({ success: false, message: "Invalid relationID" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await getAllHardwareStatistics(pool, relationID);
 
         return res.json({ success: true, data });
@@ -42177,7 +43558,7 @@ app.get("/api/hardware-statistics/:relationID/category/:categoryKey", authentica
             return res.status(400).json({ success: false, message: "Invalid relationID or category" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const rawRows = await executeStoredProcedure(pool, "spGetHWStat2", {
             nRelationID: { type: sql.Int, value: relationID },
             Catg: { type: sql.Int, value: category.code }
@@ -42211,7 +43592,7 @@ app.get("/api/hardware-statistics/:relationID/category/:categoryKey/list", authe
             return res.status(400).json({ success: false, message: "Invalid relationID, category, or value" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeStoredProcedure(pool, mode === "2" ? "spGetHWList2" : "spGetHWList1", {
             nRelationID: { type: sql.Int, value: relationID },
             Catg: { type: sql.Int, value: category.code },
@@ -42242,7 +43623,7 @@ app.get("/api/hardware-management/:relationID/changed-items", authenticateToken,
             return res.status(400).json({ success: false, message: "Invalid relationID" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeStoredProcedure(pool, "spGetHWHistoryAllStat", {
             nRelationID: { type: sql.Int, value: relationID },
             tTimeStamp: { type: sql.VarChar(50), value: datetime }
@@ -42266,7 +43647,7 @@ app.get("/api/hardware-management/:relationID/changed-items/:fieldName", authent
             return res.status(400).json({ success: false, message: "Invalid parameter" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeStoredProcedure(pool, statOnly ? "spGetHWHistoryStat" : "spGetHWHistoryList", {
             nRelationID: { type: sql.Int, value: relationID },
             FieldName: { type: sql.VarChar(255), value: fieldName },
@@ -42283,7 +43664,7 @@ app.get("/api/hardware-management/:relationID/changed-items/:fieldName", authent
 // Statistic Hierarchy > Hardware Management > Duplicated IP
 app.get("/api/hardware-management/duplicate-ips", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeStoredProcedure(pool, "spGetDupIPList");
         return res.json({ success: true, totalRecords: data.length, data });
     } catch (err) {
@@ -42299,7 +43680,7 @@ app.get("/api/hardware-management/duplicate-ips/:ip", authenticateToken, async (
             return res.status(400).json({ success: false, message: "Invalid IP" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeStoredProcedure(pool, "spGetDupIPDetails", {
             IP: { type: sql.VarChar(50), value: ip }
         });
@@ -42343,7 +43724,7 @@ app.get("/api/hardware-reports/:relationID/client-list", authenticateToken, asyn
             return res.status(400).json({ success: false, message: "Invalid relationID" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeStoredProcedure(pool, "spGetRPTRelationClientList", {
             nRelationID: { type: sql.Int, value: relationID }
         });
@@ -42364,7 +43745,7 @@ app.get("/api/hardware-reports/:relationID/:reportKey", authenticateToken, async
             return res.status(400).json({ success: false, message: "Invalid relationID or reportKey" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await executeStoredProcedure(pool, report.procedure, {
             nRelation: { type: sql.Int, value: relationID },
             szAllSum: { type: sql.VarChar(50), value: "Total" },
@@ -42860,24 +44241,15 @@ async function createHardwareScanJobHeader(transaction, req, payload) {
 
     const scanMode = normalizeHwScanMode(payload);
     const jobDestType = scanMode === "all" ? 0 : scanMode === "folder" ? 1 : 2;
-    const imageLink = normalizeHwScanValue(firstHwScanDefined(payload.imagelink, payload.imageLink));
 
     await new sql.Request(transaction)
         .input("Job_Idn", sql.Int, jobIdn)
         .input("Job_Dest_Type", sql.Int, jobDestType)
-        .input("imagelink", sql.VarChar(1000), imageLink)
         .query(`
             IF COL_LENGTH('TS_JOB', 'Job_Dest_Type') IS NOT NULL
             BEGIN
                 UPDATE TS_JOB
                 SET Job_Dest_Type = @Job_Dest_Type
-                WHERE Job_Idn = @Job_Idn;
-            END
-
-            IF COL_LENGTH('TS_JOB', 'imagelink') IS NOT NULL
-            BEGIN
-                UPDATE TS_JOB
-                SET imagelink = @imagelink
                 WHERE Job_Idn = @Job_Idn;
             END
         `);
@@ -43018,7 +44390,7 @@ async function handleHardwareInventoryScan(req, res) {
             objectDeviceID: firstHwScanDefined(body.Object_DeviceID, body.objectDeviceID, body.deviceID, body.deviceId)
         };
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const targets = await getHardwareScanTargets(pool, options);
 
         if (!targets.length) {
@@ -43242,7 +44614,7 @@ async function getRestrictionTreeRecursive(pool, parentID) {
 
 app.get("/api/restrictions/tree", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const departmentNodes = await getRestrictionTreeRecursive(pool, -1);
 
         const data = [
@@ -43473,7 +44845,7 @@ app.get("/api/restrictions/:module/effective-policy", authenticateToken, async (
         if (!moduleConfig) return res.status(400).json({ success: false, message: "Invalid restriction module" });
 
         const { targetType, targetId } = getRestrictionTargetParams(req.query);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const foundPolicy = await findRestrictionEffectivePolicy(pool, moduleConfig.policyType, targetType, targetId);
         const detail = await buildRestrictionPolicyDetail(pool, moduleConfig, foundPolicy);
 
@@ -43491,13 +44863,13 @@ app.get("/api/restrictions/:module/policies", authenticateToken, async (req, res
 
         const { targetType, targetId } = getRestrictionTargetParams(req.query);
         const relationCodeResult = targetType === 1 && targetId !== "-1"
-            ? await (await sql.connect(dbConfig)).request()
+            ? await (await getDbPool(typeof req !== 'undefined' ? req : null)).request()
                 .input("Object_Rel_Idn", sql.Int, parseRestrictionInt(targetId, -1))
                 .query("SELECT TOP 1 Object_Rel_Code FROM TS_OBJECT_RELATION WHERE Object_Rel_Idn = @Object_Rel_Idn")
             : { recordset: [] };
 
         const relationCode = normalizeRestrictionValue(relationCodeResult.recordset?.[0]?.Object_Rel_Code);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const request = pool.request()
             .input("Policy_Type", sql.Int, moduleConfig.policyType)
             .input("Target_Type", sql.Int, targetType)
@@ -43551,7 +44923,7 @@ app.get("/api/restrictions/:module/policies", authenticateToken, async (req, res
 app.get("/api/restrictions/app/packages", authenticateToken, async (req, res) => {
     try {
         const search = normalizeRestrictionValue(req.query.search || req.query.q);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request()
             .input("Search", sql.VarChar(255), search)
             .query(`
@@ -43735,7 +45107,7 @@ app.get("/api/restrictions/app/package-manager", authenticateToken, async (req, 
     try {
         const search = normalizeRestrictionValue(req.query.search || req.query.q);
         const includeInactive = parseRestrictionInt(req.query.includeInactive, 0) === 1;
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request()
             .input("Search", sql.VarChar(255), search)
@@ -43783,7 +45155,7 @@ app.get("/api/restrictions/app/package-manager/file-search", authenticateToken, 
     try {
         const filename = normalizeRestrictionValue(req.query.filename || req.query.fileName || req.query.search || req.query.q);
         const extension = normalizeRestrictionValue(req.query.extension || "EXE").replace(/^\./, "");
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         const result = await pool.request()
             .input("Filename", sql.VarChar(255), filename)
@@ -43826,7 +45198,7 @@ app.get("/api/restrictions/app/package-manager/:packageId", authenticateToken, a
         const packageId = parseRestrictionInt(req.params.packageId, 0);
         if (!packageId) return res.status(400).json({ success: false, message: "Invalid package ID." });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const data = await getPackageManagerDetail(pool, packageId);
         if (!data) return res.status(404).json({ success: false, message: "Package not found." });
 
@@ -43838,7 +45210,7 @@ app.get("/api/restrictions/app/package-manager/:packageId", authenticateToken, a
 });
 
 app.post("/api/restrictions/app/package-manager", authenticateToken, async (req, res) => {
-    const pool = await sql.connect(dbConfig);
+    const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
     const transaction = new sql.Transaction(pool);
 
     try {
@@ -43918,7 +45290,7 @@ app.put("/api/restrictions/app/package-manager/:packageId", authenticateToken, a
         const payload = normalizePackageManagerPayload(req.body || {});
         if (!payload.SW_Pkg_Name) return res.status(400).json({ success: false, message: "Package name is required." });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const existing = await getPackageManagerDetail(pool, packageId);
         if (!existing) return res.status(404).json({ success: false, message: "Package not found." });
 
@@ -43954,7 +45326,7 @@ app.put("/api/restrictions/app/package-manager/:packageId", authenticateToken, a
 });
 
 app.delete("/api/restrictions/app/package-manager/:packageId", authenticateToken, async (req, res) => {
-    const pool = await sql.connect(dbConfig);
+    const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
     const transaction = new sql.Transaction(pool);
 
     try {
@@ -43993,7 +45365,7 @@ app.post("/api/restrictions/app/package-manager/:packageId/files", authenticateT
         const packageId = parseRestrictionInt(req.params.packageId, 0);
         if (!packageId) return res.status(400).json({ success: false, message: "Invalid package ID." });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const detail = await getPackageManagerDetail(pool, packageId);
         if (!detail) return res.status(404).json({ success: false, message: "Package not found." });
 
@@ -44014,7 +45386,7 @@ app.put("/api/restrictions/app/package-manager/:packageId/files/:fileId", authen
         if (!packageId || !fileId) return res.status(400).json({ success: false, message: "Invalid package/file ID." });
         if (!file.FileName) return res.status(400).json({ success: false, message: "FileName is required." });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await pool.request()
             .input("ID", sql.Int, fileId)
             .input("SW_Pkg_Idn", sql.Int, packageId)
@@ -44053,7 +45425,7 @@ app.delete("/api/restrictions/app/package-manager/:packageId/files/:fileId", aut
         const fileId = parseRestrictionInt(req.params.fileId, 0);
         if (!packageId || !fileId) return res.status(400).json({ success: false, message: "Invalid package/file ID." });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await pool.request()
             .input("ID", sql.Int, fileId)
             .input("SW_Pkg_Idn", sql.Int, packageId)
@@ -44070,7 +45442,7 @@ app.delete("/api/restrictions/app/package-manager/:packageId/files/:fileId", aut
 app.get("/api/restrictions/whitelist/software", authenticateToken, async (req, res) => {
     try {
         const search = normalizeRestrictionValue(req.query.search || req.query.q);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
 
         // App Whitelist policy selection is stored using package IDs in TSSWB_PKG,
         // the same policy-package table used by App Restriction. Therefore the
@@ -44269,7 +45641,7 @@ async function ensureWhitelistSoftwareExists(poolOrTransaction, item = {}) {
 app.get("/api/restrictions/whitelist/manage/software", authenticateToken, async (req, res) => {
     try {
         const search = normalizeRestrictionValue(req.query.search || req.query.q);
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await readWhitelistManagedSoftwareRows(pool, search, true);
         return restrictionSuccess(res, result.rows, { source: result.source, warning: result.warning });
     } catch (err) {
@@ -44283,7 +45655,7 @@ app.post("/api/restrictions/whitelist/manage/software", authenticateToken, async
         const name = normalizeRestrictionValue(req.body.Name || req.body.name || req.body.softwareName);
         if (!name) return res.status(400).json({ success: false, message: "Software name is required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const tableInfo = await getWhitelistTableInfo(pool);
         if (!tableInfo.hasSoftwareTable) {
             return res.status(501).json({ success: false, message: "TSSWB_WL_SW_LIST table is not available in this database." });
@@ -44328,7 +45700,7 @@ app.put("/api/restrictions/whitelist/manage/software/:id", authenticateToken, as
         const name = normalizeRestrictionValue(req.body.Name || req.body.name || req.body.softwareName);
         if (!id || !name) return res.status(400).json({ success: false, message: "Software ID and name are required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const tableInfo = await getWhitelistTableInfo(pool);
         if (!tableInfo.hasSoftwareTable) {
             return res.status(501).json({ success: false, message: "TSSWB_WL_SW_LIST table is not available in this database." });
@@ -44351,7 +45723,7 @@ app.delete("/api/restrictions/whitelist/manage/software/:id", authenticateToken,
         const id = parseRestrictionInt(req.params.id, 0);
         if (!id) return res.status(400).json({ success: false, message: "Software ID is required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const tableInfo = await getWhitelistTableInfo(pool);
         if (!tableInfo.hasSoftwareTable) {
             return res.status(501).json({ success: false, message: "TSSWB_WL_SW_LIST table is not available in this database." });
@@ -44376,7 +45748,7 @@ app.delete("/api/restrictions/whitelist/manage/software/:id", authenticateToken,
 
 app.get("/api/restrictions/whitelist/default-permitted", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const tableInfo = await getWhitelistTableInfo(pool);
 
         if (!tableInfo.hasPermitTable || !tableInfo.permitHasIsBase) {
@@ -44418,7 +45790,7 @@ app.post("/api/restrictions/whitelist/default-permitted", authenticateToken, asy
             req.body?.package_list
         ));
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const tableInfo = await getWhitelistTableInfo(pool);
         if (!tableInfo.hasPermitTable || !tableInfo.permitHasIsBase) {
             return res.status(501).json({ success: false, message: "TSSWB_WL_SW_PERMIT table or IsBase column is not available in this database." });
@@ -44553,7 +45925,7 @@ async function getWebsiteGroupDetail(pool, groupId) {
 
 app.get("/api/restrictions/web/groups", authenticateToken, async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureWebsiteRestrictionTables(pool);
 
         const result = await pool.request().query(`
@@ -44580,7 +45952,7 @@ app.get("/api/restrictions/web/groups/:groupId", authenticateToken, async (req, 
         const groupId = parseRestrictionInt(req.params.groupId, 0);
         if (!groupId) return res.status(400).json({ success: false, message: "Group ID is required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureWebsiteRestrictionTables(pool);
         const detail = await getWebsiteGroupDetail(pool, groupId);
         if (!detail) return res.status(404).json({ success: false, message: "Website group was not found" });
@@ -44600,7 +45972,7 @@ app.post("/api/restrictions/web/groups", authenticateToken, async (req, res) => 
 
         if (!name) return res.status(400).json({ success: false, message: "Group name is required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureWebsiteRestrictionTables(pool);
         const transaction = new sql.Transaction(pool);
         await transaction.begin();
@@ -44664,7 +46036,7 @@ app.put("/api/restrictions/web/groups/:groupId", authenticateToken, async (req, 
         const description = normalizeRestrictionValue(req.body.description);
         if (!groupId || !name) return res.status(400).json({ success: false, message: "Group ID and name are required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureWebsiteRestrictionTables(pool);
         const result = await pool.request()
             .input("GroupId", sql.Int, groupId)
@@ -44702,7 +46074,7 @@ app.delete("/api/restrictions/web/groups/:groupId", authenticateToken, async (re
         const groupId = parseRestrictionInt(req.params.groupId, 0);
         if (!groupId) return res.status(400).json({ success: false, message: "Group ID is required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureWebsiteRestrictionTables(pool);
         await pool.request()
             .input("GroupId", sql.Int, groupId)
@@ -44723,7 +46095,7 @@ app.get("/api/restrictions/web/groups/:groupId/urls", authenticateToken, async (
         const groupId = parseRestrictionInt(req.params.groupId, 0);
         if (!groupId) return res.status(400).json({ success: false, message: "Group ID is required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureWebsiteRestrictionTables(pool);
         const result = await pool.request()
             .input("GroupId", sql.Int, groupId)
@@ -44742,7 +46114,7 @@ app.post("/api/restrictions/web/groups/:groupId/urls", authenticateToken, async 
         const url = normalizeWebsiteRestrictionUrl(req.body.url);
         if (!groupId || !url) return res.status(400).json({ success: false, message: "Group ID and URL are required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureWebsiteRestrictionTables(pool);
         const result = await pool.request()
             .input("GroupId", sql.Int, groupId)
@@ -44782,7 +46154,7 @@ app.put("/api/restrictions/web/groups/:groupId/urls/:seq", authenticateToken, as
         const url = normalizeWebsiteRestrictionUrl(req.body.url || req.body.new_url);
         if (!groupId || !seq || !url) return res.status(400).json({ success: false, message: "Group ID, URL sequence, and URL are required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureWebsiteRestrictionTables(pool);
         const result = await pool.request()
             .input("GroupId", sql.Int, groupId)
@@ -44817,7 +46189,7 @@ app.delete("/api/restrictions/web/groups/:groupId/urls/:seq", authenticateToken,
         const seq = parseRestrictionInt(req.params.seq, 0);
         if (!groupId || !seq) return res.status(400).json({ success: false, message: "Group ID and URL sequence are required" });
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureWebsiteRestrictionTables(pool);
         await pool.request()
             .input("GroupId", sql.Int, groupId)
@@ -44930,7 +46302,7 @@ app.get("/api/restrictions/:module/status", authenticateToken, async (req, res) 
         const startDate = normalizeRestrictionDate(firstRestrictionDefined(req.query.startDate, req.query.start_date), -30);
         const endDate = normalizeRestrictionDate(firstRestrictionDefined(req.query.endDate, req.query.end_date), 0);
         const includeSub = parseRestrictionInt(req.query.includeSub, 1) === 1;
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const rows = await getRestrictionStatusRows(pool, moduleConfig, targetType, targetId, startDate, endDate, includeSub);
 
         return restrictionSuccess(res, rows, { startDate, endDate, includeSub });
@@ -45200,7 +46572,7 @@ app.post("/api/restrictions/:module/policy", authenticateToken, async (req, res)
             return res.status(400).json({ success: false, message: "target_type and target_id are required" });
         }
 
-        const pool = await sql.connect(dbConfig);
+        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         transaction = new sql.Transaction(pool);
         await transaction.begin();
 
@@ -45988,6 +47360,7 @@ console.log("Software Policy API registered");
 // ============================================================
 
 
+
 /*
 |--------------------------------------------------------------------------
 | START SERVER
@@ -45997,6 +47370,9 @@ const PORT = process.env.PORT || 3001;
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    if (typeof startMdmAssetSchedulers === "function") {
+        startMdmAssetSchedulers();
+    }
     if (typeof startGeolocationSchedulers === "function") {
         startGeolocationSchedulers();
     }

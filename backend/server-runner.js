@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const sql = require('mssql');
 const registerNotificationSettingsRoutes = require('./notificationSettingsRoutes');
 const registerSoftwarePolicyRoutes = require('./softwarePolicyRoutes');
+const registerSoftwareComplianceDashboardRoutes = require('./softwareComplianceDashboardRoutes');
 
 const dbConfig = {
   user: process.env.DB_USER,
@@ -296,6 +297,15 @@ function wrappedExpress(...args) {
   registerFastSoftwareRegistryListRoute(app);
   registerFastSoftwarePublishersRoute(app);
   registerFastSoftwareInventoryRoute(app);
+
+  if (!app.__emaSoftwareComplianceDashboardRoutesRegistered) {
+    app.__emaSoftwareComplianceDashboardRoutesRegistered = true;
+    registerSoftwareComplianceDashboardRoutes(app, {
+      authenticateToken: notificationAuthenticateToken,
+      dbConfig,
+      sql
+    });
+  }
 
   if (!app.__emaNotificationRoutesRegistered) {
     app.__emaNotificationRoutesRegistered = true;

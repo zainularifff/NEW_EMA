@@ -39,7 +39,7 @@ const SOFTWARE_COMPLIANCE_TABLE_COMPONENT = String.raw`
 
   const getSoftwareCompliancePositionTone = (value?: string): StatusTone => {
     const text = String(value || '').toLowerCase();
-    if (text.includes('negative') || text.includes('over')) return 'danger';
+    if (text.includes('negative') || text.includes('over') || text.includes('unlisted')) return 'danger';
     if (text.includes('enough')) return 'success';
     if (text.includes('positive') || text.includes('available')) return 'success';
     return 'neutral';
@@ -170,6 +170,11 @@ export function softwareComplianceSimpleDetailTransform(): Plugin {
           `${SOFTWARE_COMPLIANCE_TABLE_COMPONENT}  const renderSoftwareInventoryTable = (item = '') => {`,
         );
       }
+
+      next = next.replace(
+        /    if \(!activeView\) return;\s*\n\s*const \{ view \} = parseDrilldownKey\(activeView\);/,
+        `    if (!activeView) return;\n    const activeDrilldownPartsForCompliance = String(activeView).split(':');\n    const activeDrilldownItemForCompliance = activeDrilldownPartsForCompliance.slice(1).join(':');\n    if (activeDrilldownPartsForCompliance[0] === 'software' && isSoftwareCompliancePolicySelection(activeDrilldownItemForCompliance)) return;\n    const { view } = parseDrilldownKey(activeView);`,
+      );
 
       next = next.replace(
         /    if \(view === 'software'\) \{\s*\n\s*const selectedRows = resolveSoftwareEvidenceRows\(item\);/,
