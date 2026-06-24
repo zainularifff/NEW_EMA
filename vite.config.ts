@@ -6,7 +6,8 @@ import { managementSoftwareRoiTransform } from './src/utils/managementSoftwareRo
 import { hardwarePaginationFixTransform } from './src/utils/hardwarePaginationFixTransform';
 import { dashboardFocusCardColorPatch, dashboardFocusCardOrderPatch, dashboardUiPatch } from './src/utils/dashboardUiPatches';
 
-const isDashboardFile = (id: string) => id.replace(/\/g, '/').endsWith('/src/pages/Dashboard.tsx');
+const normalizePath = (id: string) => id.split(String.fromCharCode(92)).join('/');
+const isDashboardFile = (id: string) => normalizePath(id).endsWith('/src/pages/Dashboard.tsx');
 
 function softwareTrendRowsSafePatch() {
   return {
