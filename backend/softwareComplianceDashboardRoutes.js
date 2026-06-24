@@ -35,52 +35,6 @@ function bypassCache(req) {
   return value === '1' || value === 'true' || value === 'yes';
 }
 
-async function ensureSoftwareComplianceColumns(pool) {
-  await pool.request().query(`
-    IF OBJECT_ID('[TCO2].[dbo].[EMA_SoftwarePolicy]', 'U') IS NOT NULL
-    BEGIN
-      IF COL_LENGTH('[TCO2].[dbo].[EMA_SoftwarePolicy]', 'IsActive') IS NULL
-        ALTER TABLE [TCO2].[dbo].[EMA_SoftwarePolicy] ADD IsActive BIT NULL;
-
-      UPDATE [TCO2].[dbo].[EMA_SoftwarePolicy]
-      SET IsActive = 1
-      WHERE IsActive IS NULL;
-    END;
-
-    IF OBJECT_ID('[TCO2].[dbo].[EMA_SoftwarePolicyItem]', 'U') IS NOT NULL
-    BEGIN
-      IF COL_LENGTH('[TCO2].[dbo].[EMA_SoftwarePolicyItem]', 'SWUNI_Idn') IS NULL
-        ALTER TABLE [TCO2].[dbo].[EMA_SoftwarePolicyItem] ADD SWUNI_Idn INT NULL;
-
-      IF COL_LENGTH('[TCO2].[dbo].[EMA_SoftwarePolicyItem]', 'CategoryID') IS NULL
-        ALTER TABLE [TCO2].[dbo].[EMA_SoftwarePolicyItem] ADD CategoryID INT NULL;
-
-      IF COL_LENGTH('[TCO2].[dbo].[EMA_SoftwarePolicyItem]', 'CategoryName') IS NULL
-        ALTER TABLE [TCO2].[dbo].[EMA_SoftwarePolicyItem] ADD CategoryName NVARCHAR(255) NULL;
-
-      IF COL_LENGTH('[TCO2].[dbo].[EMA_SoftwarePolicyItem]', 'Publisher') IS NULL
-        ALTER TABLE [TCO2].[dbo].[EMA_SoftwarePolicyItem] ADD Publisher NVARCHAR(255) NULL;
-
-      IF COL_LENGTH('[TCO2].[dbo].[EMA_SoftwarePolicyItem]', 'ComplianceStatus') IS NULL
-        ALTER TABLE [TCO2].[dbo].[EMA_SoftwarePolicyItem] ADD ComplianceStatus NVARCHAR(20) NULL;
-
-      IF COL_LENGTH('[TCO2].[dbo].[EMA_SoftwarePolicyItem]', 'LicenseCount') IS NULL
-        ALTER TABLE [TCO2].[dbo].[EMA_SoftwarePolicyItem] ADD LicenseCount INT NULL;
-
-      IF COL_LENGTH('[TCO2].[dbo].[EMA_SoftwarePolicyItem]', 'LicenseEndDate') IS NULL
-        ALTER TABLE [TCO2].[dbo].[EMA_SoftwarePolicyItem] ADD LicenseEndDate DATE NULL;
-
-      UPDATE [TCO2].[dbo].[EMA_SoftwarePolicyItem]
-      SET ComplianceStatus = CASE
-        WHEN LOWER(ISNULL(ComplianceStatus, '')) IN ('illegal', 'restricted', 'blocked', 'unauthorized', 'unapproved') THEN 'Illegal'
-        ELSE 'Legal'
-      END
-      WHERE ComplianceStatus IS NULL
-         OR LOWER(ISNULL(ComplianceStatus, '')) IN ('illegal', 'restricted', 'blocked', 'unauthorized', 'unapproved', 'legal', 'allowed', 'approved');
-    END;
-  `);
-}
-
 function registerSoftwareComplianceDashboardRoutes(app, { authenticateToken, dbConfig, sql }) {
   const guard = typeof authenticateToken === 'function' ? authenticateToken : (_req, _res, next) => next();
 
@@ -93,8 +47,6 @@ function registerSoftwareComplianceDashboardRoutes(app, { authenticateToken, dbC
 
     try {
       const pool = await sql.connect(dbConfig);
-      await ensureSoftwareComplianceColumns(pool);
-
       const request = pool.request();
       request.timeout = 30000;
 
@@ -102,11 +54,12 @@ function registerSoftwareComplianceDashboardRoutes(app, { authenticateToken, dbC
         ;WITH policy_items AS (
           SELECT
             pi.PolicyItemID,
-            CASE WHEN LOWER(ISNULL(pi.ComplianceStatus, 'Legal')) = 'illegal' THEN 'Illegal' ELSE 'Legal' END AS ComplianceStatus,
+            CASE
+              WHEN LOWER(LTRIM(RTRIM(ISNULL(pi.ComplianceStatus, 'Legal')))) IN ('illegal', 'restricted', 'blocked', 'unauthorized', 'unapproved') THEN 'Illegal'
+              ELSE 'Legal'
+            END AS ComplianceStatus,
             ISNULL(pi.LicenseCount, 0) AS LicenseCount
           FROM [TCO2].[dbo].[EMA_SoftwarePolicyItem] pi WITH (NOLOCK)
-          LEFT JOIN [TCO2].[dbo].[EMA_SoftwarePolicy] p WITH (NOLOCK)
-            ON p.PolicyID = pi.PolicyID
           WHERE NULLIF(LTRIM(RTRIM(pi.SoftwareName)), '') IS NOT NULL
         ),
         policy_counts AS (
@@ -155,6 +108,7 @@ function registerSoftwareComplianceDashboardRoutes(app, { authenticateToken, dbC
           policyLegalSoftware: data[0].LegalCount,
           policyIllegalSoftware: data[0].IllegalCount,
           explicitPolicyIllegalSoftware: data[0].ExplicitIllegalCount,
+          policyItemCount: data[0].PolicyItemCount,
           policyLicenseTotal: data[0].LicenseTotal
         }
       };
@@ -183,8 +137,6 @@ function registerSoftwareComplianceDashboardRoutes(app, { authenticateToken, dbC
       }
 
       const pool = await sql.connect(dbConfig);
-      await ensureSoftwareComplianceColumns(pool);
-
       const request = pool.request();
       request.timeout = 45000;
       request.input('Status', sql.NVarChar(20), status);
@@ -200,12 +152,13 @@ function registerSoftwareComplianceDashboardRoutes(app, { authenticateToken, dbC
             NULLIF(LTRIM(RTRIM(pi.SoftwareName)), '') AS SoftwareName,
             NULLIF(LTRIM(RTRIM(pi.Publisher)), '') AS Publisher,
             NULLIF(LTRIM(RTRIM(pi.CategoryName)), '') AS CategoryName,
-            CASE WHEN LOWER(ISNULL(pi.ComplianceStatus, 'Legal')) = 'illegal' THEN 'Illegal' ELSE 'Legal' END AS ComplianceStatus,
+            CASE
+              WHEN LOWER(LTRIM(RTRIM(ISNULL(pi.ComplianceStatus, 'Legal')))) IN ('illegal', 'restricted', 'blocked', 'unauthorized', 'unapproved') THEN 'Illegal'
+              ELSE 'Legal'
+            END AS ComplianceStatus,
             ISNULL(pi.LicenseCount, 0) AS TotalLicense,
             pi.LicenseEndDate
           FROM [TCO2].[dbo].[EMA_SoftwarePolicyItem] pi WITH (NOLOCK)
-          LEFT JOIN [TCO2].[dbo].[EMA_SoftwarePolicy] p WITH (NOLOCK)
-            ON p.PolicyID = pi.PolicyID
           WHERE NULLIF(LTRIM(RTRIM(pi.SoftwareName)), '') IS NOT NULL
         ),
         selected_policy_items AS (
@@ -270,6 +223,7 @@ function registerSoftwareComplianceDashboardRoutes(app, { authenticateToken, dbC
           SELECT
             si.SW_Idn,
             COALESCE(NULLIF(LTRIM(RTRIM(si.SW_ProductName)), ''), NULLIF(LTRIM(RTRIM(si.SW_OrgFileName)), ''), NULLIF(LTRIM(RTRIM(si.SW_FileName)), ''), CONCAT('Software ', si.SW_Idn)) AS SoftwareName,
+            LOWER(LTRIM(RTRIM(COALESCE(NULLIF(si.SW_ProductName, ''), NULLIF(si.SW_OrgFileName, ''), NULLIF(si.SW_FileName, ''), CONCAT('Software ', si.SW_Idn))))) AS SoftwareKey,
             NULLIF(LTRIM(RTRIM(si.SW_CompanyName)), '') AS Publisher,
             COALESCE(NULLIF(LTRIM(RTRIM(CONVERT(NVARCHAR(255), si.SW_Category))), ''), 'Unclassified') AS CategoryName,
             COUNT_BIG(DISTINCT CONCAT(CONVERT(NVARCHAR(50), mh.Object_Root_Idn), ':', CONVERT(NVARCHAR(50), si.SW_Idn))) AS TotalInstall,
@@ -314,7 +268,7 @@ function registerSoftwareComplianceDashboardRoutes(app, { authenticateToken, dbC
                       WHERE sx.SW_Idn = inv.SW_Idn
                         AND sx.SW_Pkg_Idn = pi.SWUNI_Idn
                     ))
-                 OR LOWER(inv.SoftwareName) = pi.SoftwareKey
+                 OR inv.SoftwareKey = pi.SoftwareKey
             )
         ),
         combined AS (
