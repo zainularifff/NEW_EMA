@@ -30,6 +30,13 @@ const SOFTWARE_COMPLIANCE_TABLE_COMPONENT = String.raw`
     return selected.includes('illegal') ? 'Illegal' : 'Legal';
   };
 
+  const formatSoftwareComplianceDate = (value?: string | null) => {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value).slice(0, 10) || '-';
+    return date.toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: '2-digit' });
+  };
+
   const getSoftwareCompliancePositionTone = (value?: string): StatusTone => {
     const text = String(value || '').toLowerCase();
     if (text.includes('negative') || text.includes('over')) return 'danger';
@@ -113,7 +120,7 @@ const SOFTWARE_COMPLIANCE_TABLE_COMPONENT = String.raw`
               const expiryText = row.LicenseStatus || '-';
 
               return (
-                <tr key={`${status}-${row.PolicyItemID || row.PolicyID || row.SoftwareName || index}-${index}`}>
+                <tr key={String(row.PolicyItemID || row.PolicyID || row.SoftwareName || index)}>
                   <td><strong>{row.SoftwareName || '-'}</strong></td>
                   <td>{row.Publisher || '-'}</td>
                   <td>{row.CategoryName || '-'}</td>
@@ -121,7 +128,7 @@ const SOFTWARE_COMPLIANCE_TABLE_COMPONENT = String.raw`
                   <td>{formatNumber(installedPc)}</td>
                   <td>{formatNumber(totalLicense)}</td>
                   <td><strong style={{ color: balance < 0 ? '#b91c1c' : '#047857' }}>{formatNumber(balance)}</strong></td>
-                  <td>{row.LicenseEndDate ? formatDateLabel(row.LicenseEndDate) : '-'}</td>
+                  <td>{formatSoftwareComplianceDate(row.LicenseEndDate)}</td>
                   <td>{daysLeft}</td>
                   <td><ToneBadge tone={getSoftwareCompliancePositionTone(statusText)}>{statusText}</ToneBadge></td>
                   <td><ToneBadge tone={getSoftwareComplianceExpiryTone(expiryText)}>{expiryText}</ToneBadge></td>
@@ -151,7 +158,9 @@ const SOFTWARE_COMPLIANCE_TABLE_COMPONENT = String.raw`
 export function softwareComplianceSimpleDetailTransform(): Plugin {
   return {
     name: 'software-compliance-simple-detail-transform',
-    enforce: 'pre',
+    // Do not run as a pre-transform. The software drilldown transform is a pre-transform
+    // that replaces the whole software level 3 block. This plugin must run after that
+    // replacement, but still before React compiles the JSX.
     transform(code, id) {
       if (!id.replace(/\\/g, '/').endsWith('/src/pages/Dashboard.tsx')) return null;
 
@@ -165,7 +174,7 @@ export function softwareComplianceSimpleDetailTransform(): Plugin {
       }
 
       next = next.replace(
-        /    if \(view === 'software'\) \{\n      const selectedRows = resolveSoftwareEvidenceRows\(item\);/,
+        /    if \(view === 'software'\) \{\s*\n\s*const selectedRows = resolveSoftwareEvidenceRows\(item\);/,
         `    if (view === 'software') {\n      if (isSoftwareCompliancePolicySelection(item)) {\n        return renderSoftwareCompliancePolicyOnlyDetail(item);\n      }\n\n      const selectedRows = resolveSoftwareEvidenceRows(item);`,
       );
 
