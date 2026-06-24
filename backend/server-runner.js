@@ -82,6 +82,7 @@ function registerFastSoftwareRegistryListRoute(app) {
           COALESCE(primaryItem.NotUsedHours, 0.00) AS NotUsedHours,
           COALESCE(p.OpenCountThreshold, primaryItem.OpenCountThreshold, 1) AS OpenCountThreshold,
           ISNULL(p.IsActive, 1) AS IsActive,
+          CASE WHEN ISNULL(p.IsActive, 1) = 1 THEN 'Active' ELSE 'Inactive' END AS Status,
           p.CreatedAt,
           COALESCE(p.UpdatedAt, primaryItem.UpdatedAt, p.CreatedAt) AS UpdatedAt,
           primaryItem.PolicyItemID,
@@ -122,7 +123,6 @@ function registerFastSoftwareRegistryListRoute(app) {
           WHERE pi.PolicyID = p.PolicyID
           ORDER BY COALESCE(pi.UpdatedAt, pi.CreatedAt) DESC, pi.PolicyItemID DESC
         ) primaryItem
-        WHERE ISNULL(p.IsActive, 1) = 1
         GROUP BY
           p.PolicyID,
           p.PolicyName,
@@ -164,6 +164,59 @@ function registerFastSoftwareRegistryListRoute(app) {
       return res.status(500).json({
         success: false,
         message: 'Failed to load software registry list',
+        error: error.message
+      });
+    }
+  });
+}
+
+function registerFastSoftwarePublishersRoute(app) {
+  if (app.__emaFastSoftwarePublishersRouteRegistered) return;
+  app.__emaFastSoftwarePublishersRouteRegistered = true;
+
+  app.get('/api/settings/software-policy/publishers', notificationAuthenticateToken, async (req, res) => {
+    try {
+      const categoryId = toInt(req.query.categoryId || req.query.CategoryID, 0);
+      const categoryName = toText(req.query.categoryName || req.query.CategoryName);
+
+      if (!categoryId && !categoryName) {
+        return res.json({ success: true, data: [] });
+      }
+
+      const pool = await sql.connect(dbConfig);
+      const request = pool.request();
+      request.timeout = 15000;
+      request.input('categoryId', sql.Int, categoryId);
+      request.input('categoryName', sql.NVarChar(255), categoryName);
+
+      const result = await request.query(`
+        ;WITH publisher_rows AS (
+          SELECT DISTINCT TOP (500)
+            NULLIF(LTRIM(RTRIM(c.Publisher)), '') AS Publisher
+          FROM [TCO2].[dbo].[TS_SWUNI_LIST] d WITH (NOLOCK)
+          INNER JOIN [TCO2].[dbo].[TS_SW_CATEGORY] e WITH (NOLOCK)
+            ON e.CategoryID = d.SWUNI_Catg
+          INNER JOIN [TCO2].[dbo].[TSSI_SWUNI_ATTR] c WITH (NOLOCK)
+            ON c.SWUNI_Idn = d.SWUNI_Idn
+          WHERE (@categoryId <= 0 OR e.CategoryID = @categoryId)
+            AND (@categoryName = '' OR e.CategoryName = @categoryName)
+            AND NULLIF(LTRIM(RTRIM(c.Publisher)), '') IS NOT NULL
+        )
+        SELECT
+          Publisher,
+          CAST(0 AS BIGINT) AS SoftwareCount,
+          CAST(0 AS BIGINT) AS InstalledCount
+        FROM publisher_rows
+        ORDER BY Publisher ASC
+        OPTION (RECOMPILE);
+      `);
+
+      return res.json({ success: true, data: result.recordset || [] });
+    } catch (error) {
+      console.error('Fast software registry publishers failed:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to load software publishers',
         error: error.message
       });
     }
@@ -238,9 +291,10 @@ const originalExpress = require(expressPath);
 function wrappedExpress(...args) {
   const app = originalExpress(...args);
 
-  // Register the policy-first registry list and fast inventory mapping endpoints
+  // Register the policy-first registry list, fast publishers and fast inventory mapping endpoints
   // before the legacy software policy routes so Express resolves the intended flow.
   registerFastSoftwareRegistryListRoute(app);
+  registerFastSoftwarePublishersRoute(app);
   registerFastSoftwareInventoryRoute(app);
 
   if (!app.__emaNotificationRoutesRegistered) {
