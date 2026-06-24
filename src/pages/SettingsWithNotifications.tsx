@@ -12,10 +12,10 @@ type Classification = "Legal" | "Illegal";
 type CategoryRow = { CategoryID: number; CategoryName: string };
 type PublisherRow = { Publisher: string; SoftwareCount?: number; InstalledCount?: number };
 type SoftwareRow = {
-  SWUNI_Idn?: number;
+  SWUNI_Idn?: number | null;
   SoftwareID?: string;
   SoftwareName: string;
-  CategoryID?: number;
+  CategoryID?: number | null;
   CategoryName?: string;
   Publisher?: string;
   Version?: string;
@@ -119,7 +119,7 @@ const MANAGEMENT_ITEMS: Array<{ key: ManagementSection; title: string }> = [
 
 const INLINE_CSS = `
 .management-control-wrapper.settings-management-shell{height:100%;min-height:0;display:grid!important;grid-template-columns:292px minmax(0,1fr)!important;gap:12px!important;overflow:hidden!important;padding:0!important;background:transparent!important;border:0!important}.management-control-sidebar{height:100%;display:flex;flex-direction:column;overflow:hidden;border:1px solid #dbe7fb;border-radius:20px;background:#fff}.management-control-sidebar-head{padding:16px 18px;border-bottom:1px solid #e5edf8}.management-control-sidebar-head span,.sp-chip{display:block;color:#2563eb;font-size:.64rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.management-control-sidebar-head strong{display:block;margin-top:6px;color:#0f2746;font-size:1.02rem;font-weight:900}.management-control-sidebar-head small{display:block;margin-top:4px;color:#64748b;font-size:.72rem;font-weight:700}.management-control-nav-list{flex:1;display:grid;align-content:start;gap:8px;overflow:auto;padding:14px 12px}.management-control-nav-btn{width:100%;min-height:56px;display:grid;grid-template-columns:38px minmax(0,1fr);align-items:center;gap:12px;padding:10px 13px;border:0;border-radius:16px;background:transparent;color:#0f2746;text-align:left;font-weight:900}.management-control-nav-btn.active{color:#fff;background:linear-gradient(135deg,#2563eb,#087ea4)}.management-control-nav-icon{width:38px;height:38px;display:grid;place-items:center;border-radius:13px;color:#2563eb;background:#eef4ff}.management-control-nav-btn.active .management-control-nav-icon{color:#fff;background:rgba(255,255,255,.2)}.management-control-content,.management-legacy-content{min-height:0;height:100%;overflow:hidden}.management-legacy-content>.settings-module-root{height:100%!important;max-height:100%!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}.management-legacy-content .settings-layout{height:100%!important;grid-template-columns:1fr!important;padding:0!important}.management-legacy-content .settings-menu{display:none!important}.management-legacy-content .settings-content{height:100%!important;min-height:0!important}
-.software-policy-module{height:100%;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);gap:12px;color:#0f2746;overflow:hidden}.software-policy-module *{box-sizing:border-box}.sp-top,.sp-section,.sp-register-card{border:1px solid #dbe7fb;border-radius:20px;background:#fff;box-shadow:0 14px 30px rgba(15,23,42,.045)}.sp-top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 18px}.sp-top h2{margin:3px 0;color:#0f2746;font-weight:950;letter-spacing:-.04em}.sp-top p,.sp-help{margin:0;color:#64748b;font-size:.74rem;font-weight:700;line-height:1.45}.sp-btn,.sp-icon,.sp-danger{min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;font-size:.76rem;font-weight:900;cursor:pointer}.sp-btn.primary{border:0;color:#fff;background:linear-gradient(135deg,#2563eb,#087ea4);padding:0 16px}.sp-btn.secondary{border:1px solid #d7e3f5;background:#fff;color:#2563eb;padding:0 16px}.sp-icon{width:40px;border:1px solid #d7e3f5;background:#fff;color:#2563eb}.sp-danger{width:40px;border:1px solid #fecaca;background:#fff1f2;color:#dc2626}.sp-btn:disabled,.sp-icon:disabled{opacity:.55;cursor:not-allowed}.sp-work{min-height:0;overflow:auto}.sp-section{overflow:hidden}.sp-section-title{padding:12px 14px;border-bottom:1px solid #eef3fb}.sp-section-title strong{display:block;color:#0f2746;font-size:.84rem;font-weight:900}.sp-section-title small{display:block;margin-top:2px;color:#64748b;font-size:.68rem;font-weight:700}.sp-section-body{padding:14px;min-height:0}.sp-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.sp-field{display:grid;gap:6px}.sp-field.full{grid-column:1/-1}.sp-field span{color:#64748b;font-size:.62rem;font-weight:900;text-transform:uppercase}.sp-field input,.sp-field select,.sp-field textarea,.sp-search input{width:100%;min-height:40px;border:1px solid #d7e3f5;border-radius:12px;background:#fff;color:#0f2746;padding:0 12px;font-size:.78rem;font-weight:750;outline:none}.sp-field textarea{min-height:78px;padding:10px;resize:vertical}.sp-action-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}.sp-alert{padding:10px 14px;border-radius:14px;font-size:.74rem;font-weight:850;margin-bottom:12px}.sp-alert.error{color:#991b1b;background:#fef2f2;border:1px solid #fecaca}.sp-alert.success{color:#166534;background:#f0fdf4;border:1px solid #bbf7d0}.sp-alert.info{color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe}.sp-policy-table-screen{min-height:0;overflow:auto}.sp-policy-table-card{height:100%;min-height:0}.sp-policy-table-wrap{display:grid;gap:10px;overflow:auto;padding-bottom:4px}.sp-policy-table-row{width:100%;min-width:1040px;min-height:68px;display:grid;grid-template-columns:minmax(220px,1.45fr) minmax(150px,.85fr) 96px 88px 88px 110px 150px 124px;gap:12px;align-items:center;padding:12px 14px;border:1px solid #e5edf8;border-radius:15px;background:#fff;color:#0f2746;text-align:left}.sp-policy-table-row.head{min-height:42px;background:#f3f7fc;color:#64748b;font-size:.62rem;font-weight:900;text-transform:uppercase}.sp-policy-table-row strong,.sp-policy-table-row small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sp-policy-table-row small{margin-top:3px;color:#64748b;font-size:.66rem;font-weight:750}.sp-policy-table-row:not(.head):hover{border-color:#bfdbfe;background:#f8fbff}.sp-policy-table-actions{display:flex;justify-content:flex-end;gap:6px}.sp-policy-table-actions .sp-icon,.sp-policy-table-actions .sp-danger{width:34px;min-height:34px;border-radius:10px}.sp-badge{display:inline-flex;justify-content:center;align-items:center;min-height:24px;border-radius:999px;padding:0 8px;font-size:.62rem;font-weight:900}.sp-badge.legal{color:#166534;background:#dcfce7}.sp-badge.illegal{color:#991b1b;background:#fee2e2}.sp-empty{min-height:150px;display:grid;place-items:center;color:#64748b;font-size:.8rem;font-weight:800;text-align:center;padding:18px}.sp-policy-modal-backdrop{position:fixed;inset:0;z-index:3000;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.46);backdrop-filter:blur(6px)}.sp-policy-modal{width:min(1180px,calc(100vw - 56px));height:min(90vh,920px);display:grid;grid-template-rows:auto minmax(0,1fr);border:1px solid #dbe7fb;border-radius:24px;background:#f8fbff;box-shadow:0 30px 80px rgba(15,23,42,.32);overflow:hidden}.sp-policy-modal-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 18px;border-bottom:1px solid #dbe7fb;background:#fff}.sp-policy-modal-head strong{display:block;color:#0f2746;font-size:1rem;font-weight:950}.sp-policy-modal-head small{display:block;margin-top:3px;color:#64748b;font-size:.72rem;font-weight:750}.sp-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}.sp-policy-modal-body{min-height:0;overflow:auto;padding:16px;display:grid;gap:12px}.sp-story{padding:10px 12px;border:1px solid #bfdbfe;border-radius:14px;background:#eff6ff;color:#1d4ed8;font-size:.72rem;font-weight:900}.sp-flow-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.sp-flow-tabs span{min-height:44px;display:flex;align-items:center;gap:8px;border:1px solid #dbe7fb;border-radius:14px;background:#fff;padding:0 12px;color:#64748b;font-size:.7rem;font-weight:900}.sp-flow-tabs b{width:22px;height:22px;display:grid;place-items:center;border-radius:999px;background:#eff6ff;color:#2563eb;font-size:.68rem}.sp-map-panel{margin-top:12px;border:1px solid #dbe7fb;border-radius:16px;background:#f8fbff;overflow:hidden}.sp-map-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px;border-bottom:1px solid #e5edf8}.sp-map-panel-head strong{display:block;font-size:.82rem;font-weight:950;color:#0f2746}.sp-map-panel-head small{display:block;margin-top:2px;color:#64748b;font-size:.68rem;font-weight:740}.sp-search{min-height:40px;display:flex;align-items:center;gap:8px;border:1px solid #d7e3f5;border-radius:12px;padding:0 11px;background:#fff;color:#64748b;min-width:260px}.sp-search input{min-height:0;border:0;padding:0}.sp-table{min-height:220px;max-height:330px;overflow:auto;background:#fff}.sp-row{min-height:56px;display:grid;grid-template-columns:42px minmax(240px,1.3fr) minmax(145px,.7fr) 86px;gap:12px;align-items:center;padding:0 14px;border-bottom:1px solid #edf2f7;font-size:.74rem;font-weight:740}.sp-row.head{position:sticky;top:0;z-index:2;min-height:42px;background:#f3f7fc;color:#64748b;font-size:.62rem;font-weight:900;text-transform:uppercase}.sp-row.selected{background:#eff6ff}.sp-row strong,.sp-row small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis}.sp-row strong{color:#0f2746}.sp-row small{color:#64748b;font-size:.64rem;white-space:nowrap}.sp-selected-box{margin-top:10px;padding:10px 12px;border:1px solid #bfdbfe;border-radius:15px;background:#eff6ff;color:#1d4ed8;font-size:.76rem;font-weight:850}.sp-class-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.sp-class-btn{min-height:70px;padding:12px;border:1px solid #d7e3f5;border-radius:16px;background:#fff;color:#0f2746;text-align:left;font-weight:900}.sp-class-btn.active.legal{border-color:#bbf7d0;background:#f0fdf4;color:#166534}.sp-class-btn.active.illegal{border-color:#fecaca;background:#fef2f2;color:#991b1b}.sp-cost-grid{display:grid;grid-template-columns:1fr .42fr 1fr 1fr;gap:10px}.sp-usage-note{margin-top:10px;padding:11px 12px;border-radius:14px;background:#f8fafc;border:1px dashed #cbd5e1;color:#475569;font-size:.72rem;font-weight:800}.sp-register-stack{display:grid;gap:12px}@media(max-width:1280px){.management-control-wrapper.settings-management-shell,.sp-form-grid,.sp-cost-grid,.sp-flow-tabs{grid-template-columns:1fr!important}.sp-row{grid-template-columns:42px 1fr}.sp-row.head{display:none}.sp-map-panel-head{display:grid}.sp-search{min-width:0}}
+.software-policy-module{height:100%;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);gap:12px;color:#0f2746;overflow:hidden}.software-policy-module *{box-sizing:border-box}.sp-top,.sp-section{border:1px solid #dbe7fb;border-radius:20px;background:#fff;box-shadow:0 14px 30px rgba(15,23,42,.045)}.sp-top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 18px}.sp-top h2{margin:3px 0;color:#0f2746;font-weight:950;letter-spacing:-.04em}.sp-top p,.sp-help{margin:0;color:#64748b;font-size:.74rem;font-weight:700;line-height:1.45}.sp-btn,.sp-icon,.sp-danger{min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;font-size:.76rem;font-weight:900;cursor:pointer}.sp-btn.primary{border:0;color:#fff;background:linear-gradient(135deg,#2563eb,#087ea4);padding:0 16px}.sp-btn.secondary{border:1px solid #d7e3f5;background:#fff;color:#2563eb;padding:0 16px}.sp-icon{width:40px;border:1px solid #d7e3f5;background:#fff;color:#2563eb}.sp-danger{width:40px;border:1px solid #fecaca;background:#fff1f2;color:#dc2626}.sp-btn:disabled,.sp-icon:disabled{opacity:.55;cursor:not-allowed}.sp-work{min-height:0;overflow:auto}.sp-section{overflow:hidden}.sp-section-title{padding:12px 14px;border-bottom:1px solid #eef3fb}.sp-section-title strong{display:block;color:#0f2746;font-size:.84rem;font-weight:900}.sp-section-title small{display:block;margin-top:2px;color:#64748b;font-size:.68rem;font-weight:700}.sp-section-body{padding:14px;min-height:0}.sp-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.sp-field{display:grid;gap:6px}.sp-field.full{grid-column:1/-1}.sp-field span{color:#64748b;font-size:.62rem;font-weight:900;text-transform:uppercase}.sp-field input,.sp-field select,.sp-field textarea,.sp-search input{width:100%;min-height:40px;border:1px solid #d7e3f5;border-radius:12px;background:#fff;color:#0f2746;padding:0 12px;font-size:.78rem;font-weight:750;outline:none}.sp-field textarea{min-height:78px;padding:10px;resize:vertical}.sp-action-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}.sp-alert{padding:10px 14px;border-radius:14px;font-size:.74rem;font-weight:850;margin-bottom:12px}.sp-alert.error{color:#991b1b;background:#fef2f2;border:1px solid #fecaca}.sp-alert.success{color:#166534;background:#f0fdf4;border:1px solid #bbf7d0}.sp-alert.info{color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe}.sp-policy-table-screen{min-height:0;overflow:auto}.sp-policy-table-card{height:100%;min-height:0}.sp-policy-table-wrap{display:grid;gap:10px;overflow:auto;padding-bottom:4px}.sp-policy-table-row{width:100%;min-width:1040px;min-height:68px;display:grid;grid-template-columns:minmax(220px,1.45fr) minmax(150px,.85fr) 96px 88px 88px 110px 150px 124px;gap:12px;align-items:center;padding:12px 14px;border:1px solid #e5edf8;border-radius:15px;background:#fff;color:#0f2746;text-align:left}.sp-policy-table-row.head{min-height:42px;background:#f3f7fc;color:#64748b;font-size:.62rem;font-weight:900;text-transform:uppercase}.sp-policy-table-row strong,.sp-policy-table-row small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sp-policy-table-row small{margin-top:3px;color:#64748b;font-size:.66rem;font-weight:750}.sp-policy-table-row:not(.head):hover{border-color:#bfdbfe;background:#f8fbff}.sp-policy-table-actions{display:flex;justify-content:flex-end;gap:6px}.sp-policy-table-actions .sp-icon,.sp-policy-table-actions .sp-danger{width:34px;min-height:34px;border-radius:10px}.sp-badge{display:inline-flex;justify-content:center;align-items:center;min-height:24px;border-radius:999px;padding:0 8px;font-size:.62rem;font-weight:900}.sp-badge.legal{color:#166534;background:#dcfce7}.sp-badge.illegal{color:#991b1b;background:#fee2e2}.sp-empty{min-height:132px;display:grid;place-items:center;color:#64748b;font-size:.8rem;font-weight:800;text-align:center;padding:18px}.sp-policy-modal-backdrop{position:fixed;inset:0;z-index:3000;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.46);backdrop-filter:blur(6px)}.sp-policy-modal{width:min(1180px,calc(100vw - 56px));height:min(90vh,920px);display:grid;grid-template-rows:auto minmax(0,1fr);border:1px solid #dbe7fb;border-radius:24px;background:#f8fbff;box-shadow:0 30px 80px rgba(15,23,42,.32);overflow:hidden}.sp-policy-modal-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 18px;border-bottom:1px solid #dbe7fb;background:#fff}.sp-policy-modal-head strong{display:block;color:#0f2746;font-size:1rem;font-weight:950}.sp-policy-modal-head small{display:block;margin-top:3px;color:#64748b;font-size:.72rem;font-weight:750}.sp-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}.sp-policy-modal-body{min-height:0;overflow:auto;padding:16px;display:grid;gap:12px}.sp-story{padding:10px 12px;border:1px solid #bfdbfe;border-radius:14px;background:#eff6ff;color:#1d4ed8;font-size:.72rem;font-weight:900}.sp-flow-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.sp-flow-tabs span{min-height:44px;display:flex;align-items:center;gap:8px;border:1px solid #dbe7fb;border-radius:14px;background:#fff;padding:0 12px;color:#64748b;font-size:.7rem;font-weight:900}.sp-flow-tabs b{width:22px;height:22px;display:grid;place-items:center;border-radius:999px;background:#eff6ff;color:#2563eb;font-size:.68rem}.sp-map-panel{margin-top:12px;border:1px solid #dbe7fb;border-radius:16px;background:#f8fbff;overflow:hidden}.sp-map-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px;border-bottom:1px solid #e5edf8}.sp-map-panel-head strong{display:block;font-size:.82rem;font-weight:950;color:#0f2746}.sp-map-panel-head small{display:block;margin-top:2px;color:#64748b;font-size:.68rem;font-weight:740}.sp-search{min-height:40px;display:flex;align-items:center;gap:8px;border:1px solid #d7e3f5;border-radius:12px;padding:0 11px;background:#fff;color:#64748b;min-width:260px}.sp-search input{min-height:0;border:0;padding:0}.sp-table{min-height:220px;max-height:330px;overflow:auto;background:#fff}.sp-row{min-height:56px;display:grid;grid-template-columns:42px minmax(240px,1.3fr) minmax(145px,.7fr) 86px;gap:12px;align-items:center;padding:0 14px;border-bottom:1px solid #edf2f7;font-size:.74rem;font-weight:740}.sp-row.head{position:sticky;top:0;z-index:2;min-height:42px;background:#f3f7fc;color:#64748b;font-size:.62rem;font-weight:900;text-transform:uppercase}.sp-row.selected{background:#eff6ff}.sp-row strong,.sp-row small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis}.sp-row strong{color:#0f2746}.sp-row small{color:#64748b;font-size:.64rem;white-space:nowrap}.sp-selected-box{margin-top:10px;padding:10px 12px;border:1px solid #bfdbfe;border-radius:15px;background:#eff6ff;color:#1d4ed8;font-size:.76rem;font-weight:850}.sp-selected-box.warning{border-color:#fde68a;background:#fffbeb;color:#92400e}.sp-class-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.sp-class-btn{min-height:70px;padding:12px;border:1px solid #d7e3f5;border-radius:16px;background:#fff;color:#0f2746;text-align:left;font-weight:900}.sp-class-btn.active.legal{border-color:#bbf7d0;background:#f0fdf4;color:#166534}.sp-class-btn.active.illegal{border-color:#fecaca;background:#fef2f2;color:#991b1b}.sp-cost-grid{display:grid;grid-template-columns:1fr .42fr 1fr 1fr;gap:10px}.sp-usage-note{margin-top:10px;padding:11px 12px;border-radius:14px;background:#f8fafc;border:1px dashed #cbd5e1;color:#475569;font-size:.72rem;font-weight:800}.sp-register-stack{display:grid;gap:12px}@media(max-width:1280px){.management-control-wrapper.settings-management-shell,.sp-form-grid,.sp-cost-grid,.sp-flow-tabs{grid-template-columns:1fr!important}.sp-row{grid-template-columns:42px 1fr}.sp-row.head{display:none}.sp-map-panel-head{display:grid}.sp-search{min-width:0}}
 `;
 
 function readInitialView(): SettingsView {
@@ -198,6 +198,25 @@ function SoftwareRegistryManagement() {
     if (!Number.isFinite(license) || !Number.isFinite(unitPrice)) return 0;
     return license * unitPrice;
   }, [softwareForm.licenseCount, softwareForm.unitPrice]);
+
+  const currentCategoryName = ruleForm.categoryId === "__other__" ? customCategoryName.trim() : getCategoryName(categories, ruleForm.categoryId);
+  const resolvedRegistrySoftware: SoftwareRow | null = useMemo(() => {
+    const policyName = ruleForm.policyName.trim();
+    if (!policyName) return null;
+    if (selectedSoftware) return selectedSoftware;
+    const edition = subSoftwareName.trim();
+    return {
+      SWUNI_Idn: null,
+      SoftwareID: `manual-${policyName}-${ruleForm.publisher || "publisher"}`,
+      SoftwareName: edition || policyName,
+      CategoryID: ruleForm.categoryId === "__other__" ? null : Number(ruleForm.categoryId) || null,
+      CategoryName: currentCategoryName,
+      Publisher: ruleForm.publisher,
+      Version: edition || undefined,
+      InstalledCount: 0,
+      InstalledDeviceCount: 0,
+    };
+  }, [currentCategoryName, ruleForm.categoryId, ruleForm.policyName, ruleForm.publisher, selectedSoftware, subSoftwareName]);
 
   const loadPolicies = useCallback(async () => {
     const payload = await api.get(`${API_ROOT}/policies`, { forceRefresh: true });
@@ -343,7 +362,7 @@ function SoftwareRegistryManagement() {
     setSubSoftwareName("");
     setSoftwareSearch("");
     setUiMode("form");
-    setMessage({ type: "info", text: "Register one purchased software, select publisher and inventory software, then complete license, cost and usage rules." });
+    setMessage({ type: "info", text: "Register purchased software. Inventory child selection is optional when no child software exists." });
   };
 
   const openRegistry = (policyId: number) => {
@@ -371,7 +390,6 @@ function SoftwareRegistryManagement() {
     if (!ruleForm.categoryId) return "Software category is required.";
     if (ruleForm.categoryId === "__other__" && !customCategoryName.trim()) return "Custom category name is required.";
     if (!ruleForm.publisher) return "Publisher is required.";
-    if (!selectedSoftware) return "Select one inventory software before saving.";
     return "";
   };
 
@@ -422,19 +440,25 @@ function SoftwareRegistryManagement() {
       return;
     }
 
+    const effectiveSoftware = resolvedRegistrySoftware;
+    if (!effectiveSoftware) {
+      setMessage({ type: "error", text: "Software name is required." });
+      return;
+    }
+
     const policyId = await saveRule();
-    if (!policyId || !selectedSoftware) return;
+    if (!policyId) return;
 
     setSaving(true);
     try {
       await api.post(`${API_ROOT}/policies/${policyId}/items`, {
         items: [{
-          SWUNI_Idn: selectedSoftware.SWUNI_Idn || Number(selectedSoftware.SoftwareID) || null,
-          SoftwareName: selectedSoftware.SoftwareName,
-          CategoryID: selectedSoftware.CategoryID || (ruleForm.categoryId === "__other__" ? null : Number(ruleForm.categoryId) || null),
-          CategoryName: selectedSoftware.CategoryName || (ruleForm.categoryId === "__other__" ? customCategoryName.trim() : getCategoryName(categories, ruleForm.categoryId)),
-          Publisher: selectedSoftware.Publisher || ruleForm.publisher,
-          Version: selectedSoftware.Version,
+          SWUNI_Idn: effectiveSoftware.SWUNI_Idn || null,
+          SoftwareName: effectiveSoftware.SoftwareName || ruleForm.policyName.trim(),
+          CategoryID: effectiveSoftware.CategoryID || (ruleForm.categoryId === "__other__" ? null : Number(ruleForm.categoryId) || null),
+          CategoryName: effectiveSoftware.CategoryName || currentCategoryName,
+          Publisher: effectiveSoftware.Publisher || ruleForm.publisher,
+          Version: effectiveSoftware.Version || subSoftwareName.trim(),
           Classification: softwareForm.classification,
           ComplianceStatus: softwareForm.classification,
           WorkingStartTime: ruleForm.workingStartTime || "09:00",
@@ -483,7 +507,7 @@ function SoftwareRegistryManagement() {
         <div>
           <span className="sp-chip">Settings</span>
           <h2>Software Registry</h2>
-          <p>Register purchased software, map it with inventory, classify legal status, license cost and usage rules.</p>
+          <p>Register purchased software, classify legal status, license cost and usage rules.</p>
         </div>
         {uiMode === "list" ? <button className="sp-btn primary" type="button" onClick={startNewRegistry}><Plus size={16} /> Register Software</button> : null}
       </header>
@@ -495,7 +519,7 @@ function SoftwareRegistryManagement() {
             <section className="sp-section sp-policy-table-card">
               <div className="sp-section-title">
                 <strong>Software Registry</strong>
-                <small>Each registration maps one purchased software to one inventory software. Registered Legal software is treated as legal.</small>
+                <small>Each registration can apply to a parent software or one inventory child software.</small>
               </div>
               <div className="sp-section-body">
                 <div className="sp-action-row" style={{ marginTop: 0, marginBottom: 12, justifyContent: "space-between" }}>
@@ -528,13 +552,13 @@ function SoftwareRegistryManagement() {
           <div className="sp-policy-modal-backdrop">
             <div className="sp-policy-modal">
               <div className="sp-policy-modal-head">
-                <div><strong>{activePolicy ? "Edit Software Registry" : "Register Software"}</strong><small>One form registers one purchased software only.</small></div>
+                <div><strong>{activePolicy ? "Edit Software Registry" : "Register Software"}</strong><small>Inventory child selection is optional.</small></div>
                 <div className="sp-top-actions"><button className="sp-btn secondary" type="button" onClick={() => setUiMode("list")}>Back to List</button><button className="sp-btn primary" type="button" onClick={saveRegistry} disabled={saving}><Save size={15} /> Save Registry</button></div>
               </div>
               <div className="sp-policy-modal-body">
                 {message && <div className={`sp-alert ${message.type}`}>{message.text}</div>}
-                <div className="sp-story">Flow: key in software name → choose category → choose publisher → select one inventory software → set license, price and usage rules.</div>
-                <div className="sp-flow-tabs"><span><b>1</b> Software name</span><span><b>2</b> Category & publisher</span><span><b>3</b> One inventory software</span><span><b>4</b> License & usage</span></div>
+                <div className="sp-story">Flow: key in software name → choose category → choose publisher → choose inventory child only when available → set license, price and usage rules.</div>
+                <div className="sp-flow-tabs"><span><b>1</b> Software name</span><span><b>2</b> Category & publisher</span><span><b>3</b> Optional inventory child</span><span><b>4</b> License & usage</span></div>
 
                 <div className="sp-register-stack">
                   <section className="sp-section">
@@ -550,28 +574,28 @@ function SoftwareRegistryManagement() {
 
                       <div className="sp-map-panel">
                         <div className="sp-map-panel-head">
-                          <div><strong>Inventory software list</strong><small>After selecting publisher, pick exactly one software record from inventory.</small></div>
+                          <div><strong>Inventory software list</strong><small>If this publisher has child software, select one. If not, save as parent software only.</small></div>
                           <label className="sp-search"><Search size={15} /><input value={softwareSearch} onChange={(e) => setSoftwareSearch(e.target.value)} placeholder="Search software..." disabled={!ruleForm.publisher} /></label>
                         </div>
                         <div className="sp-table">
                           <div className="sp-row head"><span></span><span>Software</span><span>Publisher</span><span>Installed</span></div>
-                          {!ruleForm.categoryId ? <div className="sp-empty">Select software category first.</div> : !ruleForm.publisher ? <div className="sp-empty">Select publisher to display software list.</div> : softwareLoading ? <div className="sp-empty">Loading software...</div> : softwareRows.length === 0 ? <div className="sp-empty">No software found for this category and publisher.</div> : softwareRows.map((row) => { const key = getSoftwareKey(row); const selected = selectedSoftwareKey === key; return (
+                          {!ruleForm.categoryId ? <div className="sp-empty">Select software category first.</div> : !ruleForm.publisher ? <div className="sp-empty">Select publisher to display available child software.</div> : softwareLoading ? <div className="sp-empty">Loading software...</div> : softwareRows.length === 0 ? <div className="sp-empty">No child software found for this category and publisher. This registry can still be saved as parent software.</div> : softwareRows.map((row) => { const key = getSoftwareKey(row); const selected = selectedSoftwareKey === key; return (
                             <label key={key} className={`sp-row ${selected ? "selected" : ""}`}><span><input type="radio" name="software-registry-map" checked={selected} onChange={() => setSelectedSoftware(row)} /></span><span><strong>{row.SoftwareName}</strong><small>{row.Version || "No version"}</small></span><span>{row.Publisher || "Unknown"}</span><span>{row.InstalledCount ?? row.InstalledDeviceCount ?? 0}</span></label>
                           ); })}
                         </div>
-                        <div className="sp-selected-box">{selectedSoftware ? `Selected: ${selectedSoftware.SoftwareName}` : "No software selected yet"}</div>
+                        <div className={`sp-selected-box ${!selectedSoftware ? "warning" : ""}`}>{selectedSoftware ? `Selected child software: ${selectedSoftware.SoftwareName}` : `No child selected. Registry will apply to parent software: ${subSoftwareName.trim() || ruleForm.policyName.trim() || "software name above"}`}</div>
                       </div>
                     </div>
                   </section>
 
                   <section className="sp-section">
-                    <div className="sp-section-title"><strong>2. Classification, license & cost</strong><small>Classify the selected software and enter license cost for ROI calculation.</small></div>
+                    <div className="sp-section-title"><strong>2. Classification, license & cost</strong><small>Classify the software and enter license cost for ROI calculation.</small></div>
                     <div className="sp-section-body">
                       <div className="sp-class-grid">
                         <button type="button" className={`sp-class-btn ${softwareForm.classification === "Legal" ? "active legal" : ""}`} onClick={() => setSoftwareForm((c) => ({ ...c, classification: "Legal" }))}><ShieldCheck size={18} /> Legal</button>
                         <button type="button" className={`sp-class-btn ${softwareForm.classification === "Illegal" ? "active illegal" : ""}`} onClick={() => setSoftwareForm((c) => ({ ...c, classification: "Illegal" }))}><ShieldAlert size={18} /> Illegal</button>
                       </div>
-                      <div className="sp-selected-box">{selectedSoftware ? `This registry applies to: ${selectedSoftware.SoftwareName}` : "Select one software above before saving."}</div>
+                      <div className="sp-selected-box">This registry applies to: {resolvedRegistrySoftware?.SoftwareName || "software name above"}</div>
                       <div className="sp-cost-grid">
                         <label className="sp-field"><span>Total license</span><input type="number" min="0" value={softwareForm.licenseCount} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseCount: e.target.value }))} /></label>
                         <label className="sp-field"><span>Currency</span><select value={softwareForm.currency} onChange={(e) => setSoftwareForm((c) => ({ ...c, currency: e.target.value }))}><option value="RM">RM</option><option value="USD">USD</option><option value="SGD">SGD</option></select></label>
