@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import { softwareComplianceSimpleDetailTransform } from './src/utils/softwareComplianceSimpleDetailTransform';
 import { softwareComplianceDashboardApiTransform } from './src/utils/softwareComplianceDashboardApiTransform';
 import { managementSoftwareRoiTransform } from './src/utils/managementSoftwareRoiTransform';
+import { managementSoftwareRoiForceViewTransform } from './src/utils/managementSoftwareRoiForceViewTransform';
 import { hardwarePaginationFixTransform } from './src/utils/hardwarePaginationFixTransform';
 import { dashboardFocusCardColorPatch, dashboardFocusCardOrderPatch, dashboardUiPatch } from './src/utils/dashboardUiPatches';
 
@@ -53,6 +54,7 @@ export default defineConfig({
   plugins: [
     softwareComplianceSimpleDetailTransform(),
     managementSoftwareRoiTransform(),
+    managementSoftwareRoiForceViewTransform(),
     hardwarePaginationFixTransform(),
     dashboardUiPatch(),
     softwareComplianceDashboardApiTransform(),
