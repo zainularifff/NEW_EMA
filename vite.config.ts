@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { itopsSoftwareDrilldownTransform } from './src/utils/itopsSoftwareDrilldownTransform';
+import { softwareComplianceSimpleDetailTransform } from './src/utils/softwareComplianceSimpleDetailTransform';
 import { hardwarePaginationFixTransform } from './src/utils/hardwarePaginationFixTransform';
 import { dashboardFocusCardColorPatch, dashboardFocusCardOrderPatch, dashboardUiPatch } from './src/utils/dashboardUiPatches';
 
@@ -49,6 +50,7 @@ function dashboardEnglishWordingPatch() {
 export default defineConfig({
   plugins: [
     itopsSoftwareDrilldownTransform(),
+    softwareComplianceSimpleDetailTransform(),
     hardwarePaginationFixTransform(),
     dashboardUiPatch(),
     softwareTrendRowsSafePatch(),
