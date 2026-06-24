@@ -84,7 +84,7 @@ const MODERN_SOFTWARE_BREAKDOWN = String.raw`  const renderSoftwareLevel2Analyti
 export function softwareComplianceDashboardApiTransform(): Plugin {
   return {
     name: 'software-compliance-dashboard-api-transform',
-    enforce: 'pre',
+    enforce: 'post',
     transform(code, id) {
       if (!id.replace(/\\/g, '/').endsWith('/src/pages/Dashboard.tsx')) return null;
 
@@ -96,6 +96,11 @@ export function softwareComplianceDashboardApiTransform(): Plugin {
 
       next = next.replace(
         /  const renderSoftwareLevel2Analytics = \(\) => \([\s\S]*?\n  \);\n\n  const renderSoftwareInventoryTable/,
+        MODERN_SOFTWARE_BREAKDOWN,
+      );
+
+      next = next.replace(
+        /  const renderSoftwareLevel2Analytics = \(\) => \{[\s\S]*?\n  \};\n\n  const renderSoftwareInventoryTable/,
         MODERN_SOFTWARE_BREAKDOWN,
       );
 
