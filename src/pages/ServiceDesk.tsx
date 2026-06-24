@@ -64,10 +64,9 @@ type QueueKey =
   | 'unassigned'
   | 'awaiting'
   | 'in-progress'
-  | 'pending-user'
-  | 'pending-vendor'
-  | 'on-site'
+  | 'pending-approval'
   | 'resolved'
+  | 'rejected'
   | 'knowledge';
 
 type ToastState = {
@@ -366,11 +365,9 @@ function readJsonStorage(key: string) {
 
 const STATUS_OPTIONS = [
   'Awaiting',
+  'Assigned',
   'In Progress',
   'Pending Approval',
-  'Pending User',
-  'Pending Vendor',
-  'On Site',
   'Resolved',
   'Rejected',
 ];
@@ -1072,6 +1069,75 @@ function getAssetOS(asset: any) {
   return cleanAssetText(asset?.osName || asset?.os || asset?.OS || asset?.PlatformType || asset?.operatingSystem || asset?.OperatingSystem);
 }
 
+
+function normalizeAssetLookupKey(value: any) {
+  return cleanAssetText(value).toLowerCase();
+}
+
+function getAssetLookupValues(asset: any) {
+  return [
+    asset?.id,
+    asset?.ID,
+    asset?.assetId,
+    asset?.AssetID,
+    asset?.assetTag,
+    asset?.AssetTag,
+    asset?.name,
+    asset?.computerName,
+    asset?.ComputerName,
+    asset?.DeviceName,
+    asset?.Object_DeviceID,
+    asset?.DeviceID,
+    getAssetValue(asset),
+  ]
+    .map(normalizeAssetLookupKey)
+    .filter(Boolean);
+}
+
+function findMatchingAsset(assets: any[], assetId: any) {
+  const target = normalizeAssetLookupKey(assetId);
+  if (!target) return null;
+
+  return (assets || []).find((asset) => getAssetLookupValues(asset).includes(target)) || null;
+}
+
+function buildHydratedAssetFields(incident: any, asset: any) {
+  if (!asset) return {};
+
+  const assetOS = getAssetOS(asset);
+
+  return {
+    assetId: cleanAssetText(incident?.assetId || incident?.AssetID || getAssetValue(asset)),
+    assetBrand: cleanAssetText(incident?.assetBrand || incident?.AssetBrand || getAssetBrand(asset)),
+    assetModel: cleanAssetText(incident?.assetModel || incident?.AssetModel || getAssetModel(asset)),
+    assetOS: cleanAssetText(incident?.assetOS || incident?.AssetOS || assetOS),
+    deviceType: cleanAssetText(incident?.deviceType || incident?.DeviceType || asset?.deviceType || asset?.DeviceType || assetOS),
+  };
+}
+
+async function hydrateIncidentAssetFields(incident: any) {
+  const assetId = cleanAssetText(incident?.assetId || incident?.AssetID);
+  if (!assetId) return {};
+
+  const requesterName = cleanAssetText(incident?.requesterName || incident?.RequesterName);
+  const assetRequests: Promise<any[]>[] = [
+    safeApi('GET /api/assets search for edit asset hydration', assetsService.search(assetId), []),
+    safeApi('GET /api/assets all for edit asset hydration', assetsService.getAll(), []),
+  ];
+
+  if (requesterName) {
+    assetRequests.unshift(
+      safeApi('GET /api/assets by requester for edit asset hydration', assetsService.getByCustomer(requesterName), [])
+    );
+  }
+
+  const results = await Promise.all(assetRequests);
+  const mergedAssets = mergeAssetRows(...results.filter(Array.isArray));
+  const matchedAsset = findMatchingAsset(mergedAssets, assetId);
+
+  return buildHydratedAssetFields(incident, matchedAsset);
+}
+
 function getAssetSearchText(asset: any) {
   return [
     getAssetValue(asset),
@@ -1115,6 +1181,35 @@ function getCurrentLoginName(user: any) {
     user?.Email ||
     'Current User'
   );
+}
+
+function normalizeServiceDeskMatchValue(value: any) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function getServiceDeskUserIdentityValues(user: any) {
+  return [
+    getUserName(user),
+    getCurrentLoginName(user),
+    user?.name,
+    user?.Name,
+    user?.fullName,
+    user?.FullName,
+    user?.username,
+    user?.Username,
+    user?.userID,
+    user?.UserID,
+    user?.email,
+    user?.Email,
+    user?.id,
+    user?.ID,
+  ]
+    .map(normalizeServiceDeskMatchValue)
+    .filter(Boolean);
+}
+
+function getServiceDeskRoleText(user: any) {
+  return getUserRoleNames(user).join(' ').toLowerCase();
 }
 
 function getCurrentLoginId(user: any) {
@@ -1284,14 +1379,36 @@ function priorityClass(priority: string) {
 function statusRank(status: string) {
   const map: Record<string, number> = {
     Awaiting: 1,
-    'In Progress': 2,
-    'Pending User': 3,
-    'Pending Vendor': 4,
-    'On Site': 5,
+    Assigned: 2,
+    'In Progress': 3,
+    'Pending Approval': 4,
     Resolved: 6,
     Rejected: 7,
   };
   return map[status] || 99;
+}
+
+function getWorkflowStatusOptions(status: any, isEngineerUser = false, isAdminUser = false) {
+  const normalized = normalizeStatus(status);
+
+  if (isEngineerUser) {
+    if (normalized === 'in progress') return ['In Progress', 'Pending Approval'];
+    if (normalized === 'pending approval') return ['Pending Approval'];
+    if (normalized === 'assigned') return ['Assigned'];
+    if (normalized === 'resolved') return ['Resolved'];
+    if (normalized === 'rejected') return ['Rejected'];
+    return ['Awaiting'];
+  }
+
+  if (isAdminUser) {
+    if (normalized === 'assigned') return ['Assigned', 'Rejected'];
+    if (normalized === 'in progress') return ['In Progress', 'Pending Approval', 'Resolved', 'Rejected'];
+    if (normalized === 'pending approval') return ['Pending Approval', 'Resolved', 'Rejected'];
+    if (normalized === 'resolved') return ['Resolved'];
+    if (normalized === 'rejected') return ['Rejected'];
+  }
+
+  return [standardizeIncidentStatus(status || 'Awaiting')];
 }
 
 function priorityRank(priority: string) {
@@ -1478,6 +1595,8 @@ export default function ServiceDesk() {
   const [formData, setFormData] = useState<any>(emptyForm());
   const [clientAssets, setClientAssets] = useState<any[]>([]);
   const [incidentAttachments, setIncidentAttachments] = useState<any[]>([]);
+  const [approvalFeedbackUploaded, setApprovalFeedbackUploaded] = useState(false);
+  const [generateApprovalJobsheet, setGenerateApprovalJobsheet] = useState(false);
   const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [assetSearchTerm, setAssetSearchTerm] = useState('');
@@ -1489,6 +1608,8 @@ export default function ServiceDesk() {
   const assetDropdownFrameRef = useRef<number | null>(null);
   const detailPanelRef = useRef<HTMLElement>(null);
   const rejectReasonRef = useRef<HTMLTextAreaElement>(null);
+  const rootCauseRef = useRef<HTMLTextAreaElement>(null);
+  const actionPlanRef = useRef<HTMLTextAreaElement>(null);
 
   const [kbFormOpen, setKbFormOpen] = useState(false);
   const [kbFormData, setKbFormData] = useState<any>({ id: '', title: '', incidentDetails: '', resolution: '' });
@@ -1497,11 +1618,32 @@ export default function ServiceDesk() {
 
   const incidentPermissions = currentUser?.permissions?.incidents;
   const hasIncidentPermissionProfile = Boolean(incidentPermissions);
-  const canEdit = !hasIncidentPermissionProfile || Boolean(incidentPermissions?.edit);
-  const canCreate = !hasIncidentPermissionProfile || canEdit || Boolean(incidentPermissions?.create);
-  const canDelete = !hasIncidentPermissionProfile || canEdit || Boolean(incidentPermissions?.delete);
+  const moduleCanEdit = !hasIncidentPermissionProfile || Boolean(incidentPermissions?.edit);
+  const moduleCanCreate = !hasIncidentPermissionProfile || moduleCanEdit || Boolean(incidentPermissions?.create);
+  const moduleCanDelete = !hasIncidentPermissionProfile || moduleCanEdit || Boolean(incidentPermissions?.delete);
+  const serviceDeskRoleText = getServiceDeskRoleText(currentUser);
+  const isSuperadminWssb = /super\s*admin|superadmin/i.test(serviceDeskRoleText);
+  const isServiceDeskAdminRole = serviceDeskRoleText.includes('admin') || serviceDeskRoleText.includes('service desk');
+  const isCurrentUserEngineer = serviceDeskRoleText.includes('support');
+  const canAdminManageTickets = moduleCanEdit && isServiceDeskAdminRole;
+  const canEngineerWorkTickets = moduleCanEdit && isCurrentUserEngineer && !canAdminManageTickets;
+  const canEdit = canAdminManageTickets || canEngineerWorkTickets;
+  const canCreate = moduleCanCreate && canAdminManageTickets;
+  const canDelete = moduleCanDelete && isSuperadminWssb;
+  const canViewAssignedTicketsOnly = isCurrentUserEngineer && !canAdminManageTickets;
+  const canEditMainTicketFields = canAdminManageTickets;
+  const canUpdateStatus = canAdminManageTickets;
+  const canAssignEngineer = canAdminManageTickets;
+  const canEditResolutionFields = canAdminManageTickets || canEngineerWorkTickets;
+  const canUploadIncidentAttachments = canEditResolutionFields;
+  const currentUserIdentityValues = getServiceDeskUserIdentityValues(currentUser);
   const isRequesterAssetLocked = formMode === 'edit';
-  const isSupportUser = /L[123]/i.test(currentUser?.role || '') || /support/i.test(currentUser?.role || '');
+  const statusWorkflowOptions = useMemo(
+    () => getWorkflowStatusOptions(formData.status, canEngineerWorkTickets, canAdminManageTickets),
+    [formData.status, canEngineerWorkTickets, canAdminManageTickets]
+  );
+  const canChangeTicketStatus = canUpdateStatus || (canEngineerWorkTickets && ['in progress', 'pending approval'].includes(normalizeStatus(formData.status)));
+  const requiresEngineerResolutionFields = formMode === 'edit' && canEngineerWorkTickets && ['in progress', 'pending approval'].includes(normalizeStatus(formData.status));
 
   const supportRoles = useMemo(() => {
     const roleNames = new Set<string>();
@@ -1989,6 +2131,13 @@ export default function ServiceDesk() {
   }
 
   function updateFormField(field: string, value: any) {
+    if (field === 'rootCause') {
+      rootCauseRef.current?.setCustomValidity('');
+    }
+    if (field === 'actionPlan') {
+      actionPlanRef.current?.setCustomValidity('');
+    }
+
     setFormData((prev: any) => {
       if (field === 'assignedLevel') {
         return { ...prev, assignedLevel: value, assignedTo: '' };
@@ -2302,6 +2451,9 @@ export default function ServiceDesk() {
       }
 
       await loadIncidentAttachments(incidentId);
+      if (viewMode === 'form' && normalizeStatus(formData.status) === 'pending approval') {
+        setApprovalFeedbackUploaded(true);
+      }
       setToast({ message: 'Attachment uploaded successfully.', type: 'success' });
     } catch (error: any) {
       console.error('Failed to upload incident attachment', error);
@@ -2498,6 +2650,8 @@ export default function ServiceDesk() {
     });
     setClientAssets([]);
     setIncidentAttachments([]);
+    setApprovalFeedbackUploaded(false);
+    setGenerateApprovalJobsheet(false);
     setAssetSearchTerm('');
     setShowAssetDropdown(false);
     void loadClientAssets('all');
@@ -2505,7 +2659,42 @@ export default function ServiceDesk() {
   }
 
   async function openEditForm(incident: any) {
-    if (!canEdit || !incident) return;
+    if (!canEditIncident(incident)) {
+      setToast({ message: 'You do not have permission to edit this ticket.', type: 'warning' });
+      return;
+    }
+
+    const incidentStatus = normalizeStatus(incident?.status);
+    if (canEngineerWorkTickets && incidentStatus === 'assigned' && isIncidentAssignedToCurrentUser(incident)) {
+      const incidentId = getId(incident);
+      setConfirmReason('');
+      setConfirmDialog({
+        tone: 'info',
+        title: 'Assigned Ticket',
+        message: `You have been assigned to Ticket ${incidentId || ''}. Click "Respond" to proceed.`,
+        meta: incidentId ? `Ticket ${incidentId}` : undefined,
+        confirmLabel: 'Respond',
+        cancelLabel: 'Cancel',
+        onConfirm: async () => {
+          const nowIso = new Date().toISOString();
+          const startedIncident = {
+            ...incident,
+            id: incidentId,
+            IncidentID: incidentId,
+            status: 'In Progress',
+            firstResponseAt: toIsoDateOrEmpty(incident.firstResponseAt) || nowIso,
+            createdAt: toIsoDateOrEmpty(incident.createdAt) || nowIso,
+            slaDue: toIsoDateOrEmpty(incident.slaDue),
+            resolvedAt: toIsoDateOrEmpty(incident.resolvedAt),
+          };
+
+          await incidentsService.update(startedIncident);
+          await loadData(true);
+          await openEditForm(startedIncident);
+        },
+      });
+      return;
+    }
 
     await ensureLookupsLoaded();
 
@@ -2513,6 +2702,8 @@ export default function ServiceDesk() {
       ...incident,
       id: getId(incident),
       status: standardizeIncidentStatus(incident.status),
+      _originalStatus: standardizeIncidentStatus(incident.status),
+      _originalAssignedTo: incident.assignedTo || '',
       createdAt: toIsoDateOrEmpty(incident.createdAt) || new Date().toISOString(),
       slaPriority: incident.slaPriority || incident.SlaPriority || getSlaPriorityCode(incident.priority || 'Medium'),
       slaDue: toIsoDateOrEmpty(incident.slaDue),
@@ -2520,11 +2711,15 @@ export default function ServiceDesk() {
       resolvedAt: toIsoDateOrEmpty(incident.resolvedAt),
     };
 
+    const hydratedAssetFields: any = await hydrateIncidentAssetFields(normalizedIncident);
+
     setSelectedIncidentId('');
     setFormMode('edit');
-    setFormData({ ...emptyForm(), ...normalizedIncident });
-    setAssetSearchTerm(incident.assetId || '');
+    setFormData({ ...emptyForm(), ...normalizedIncident, ...hydratedAssetFields });
+    setAssetSearchTerm(hydratedAssetFields.assetId || incident.assetId || '');
     setClientAssets([]);
+    setApprovalFeedbackUploaded(false);
+    setGenerateApprovalJobsheet(false);
     setShowAssetDropdown(false);
 
     if (incident.requesterName) {
@@ -2540,8 +2735,29 @@ export default function ServiceDesk() {
     setFormData(emptyForm());
     setClientAssets([]);
     setIncidentAttachments([]);
+    setApprovalFeedbackUploaded(false);
+    setGenerateApprovalJobsheet(false);
     setAssetSearchTerm('');
     setShowAssetDropdown(false);
+  }
+
+  function isIncidentAssignedToCurrentUser(incident: any) {
+    const assignedTo = normalizeServiceDeskMatchValue(incident?.assignedTo || incident?.AssignedTo);
+    return Boolean(assignedTo && currentUserIdentityValues.includes(assignedTo));
+  }
+
+  function canEditIncident(incident: any) {
+    if (!incident || !canEdit) return false;
+    if (canAdminManageTickets) return true;
+
+    if (canEngineerWorkTickets) {
+      if (isIncidentAssignedToCurrentUser(incident)) return true;
+
+      const originalAssignedTo = normalizeServiceDeskMatchValue(incident?._originalAssignedTo || incident?.OriginalAssignedTo);
+      return Boolean(originalAssignedTo && currentUserIdentityValues.includes(originalAssignedTo));
+    }
+
+    return false;
   }
 
   function requestCloseForm() {
@@ -2565,16 +2781,92 @@ export default function ServiceDesk() {
 
   async function saveIncident(event: FormEvent) {
     event.preventDefault();
-    if (formMode === 'create' && !canCreate) return;
-    if (formMode === 'edit' && !canEdit) return;
 
-    if (!formData.title?.trim()) {
-      setToast({ message: 'Title / Problem Description is required.', type: 'error' });
+    if (formMode === 'create' && !canCreate) {
+      setToast({ message: 'You do not have permission to create tickets.', type: 'warning' });
       return;
     }
 
-    if (!formData.description?.trim()) {
-      setToast({ message: 'Description is required.', type: 'error' });
+    const permissionCheckIncident =
+      formMode === 'edit' && canEngineerWorkTickets
+        ? { ...formData, assignedTo: formData.assignedTo || formData._originalAssignedTo }
+        : formData;
+
+    if (formMode === 'edit' && !canEditIncident(permissionCheckIncident)) {
+      setToast({ message: 'You do not have permission to update this ticket.', type: 'warning' });
+      return;
+    }
+
+    const requiredFields = [
+      ...(formMode === 'create'
+        ? [
+            { value: formData.deviceType, message: 'Device Type is required.' },
+            { value: formData.assetId, message: 'Asset Lookup is required.' },
+          ]
+        : []),
+      ...(formMode === 'create' || canEditMainTicketFields
+        ? [
+            { value: formData.category, message: 'Category is required.' },
+            ...(subcategoryOptions.length > 0
+              ? [{ value: formData.subcategory, message: 'Subcategory is required.' }]
+              : []),
+            ...(detailOptions.length > 0
+              ? [{ value: formData.incidentDetail, message: 'Problem Detail is required.' }]
+              : []),
+            { value: formData.priority, message: 'Urgency Level is required.' },
+            { value: formData.title, message: 'Title / Problem Description is required.' },
+            { value: formData.description, message: 'Description is required.' },
+          ]
+        : []),
+      ...(formMode === 'edit' && canUpdateStatus
+        ? [{ value: formData.status, message: 'Status is required.' }]
+        : []),
+      ...(formMode === 'edit' && canAssignEngineer
+        ? [
+            { value: formData.assignedLevel, message: 'Assigned Level is required.' },
+            { value: formData.assignedTo, message: 'Assigned To is required.' },
+          ]
+        : []),
+      ...(requiresEngineerResolutionFields
+        ? [
+            { value: formData.rootCause, message: 'Root Cause is required.' },
+            { value: formData.actionPlan, message: 'Action Plan is required.' },
+          ]
+        : []),
+    ];
+
+    if (requiresEngineerResolutionFields && (!String(formData.rootCause || '').trim() || !String(formData.actionPlan || '').trim())) {
+      const missingResolutionField = !String(formData.rootCause || '').trim()
+        ? {
+            label: 'Root Cause',
+            ref: rootCauseRef,
+            message: 'Please fill in Root Cause before updating this ticket.',
+          }
+        : {
+            label: 'Action Plan',
+            ref: actionPlanRef,
+            message: 'Please fill in Action Plan before updating this ticket.',
+          };
+
+      const fieldElement = missingResolutionField.ref.current;
+      fieldElement?.setCustomValidity(missingResolutionField.message);
+      fieldElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      fieldElement?.focus();
+      fieldElement?.reportValidity();
+
+      setToast({ message: missingResolutionField.message, type: 'error' });
+
+      return;
+    }
+
+    const missingField = requiredFields.find((field) => !String(field.value || '').trim());
+    if (missingField) {
+      setToast({ message: missingField.message, type: 'error' });
+      return;
+    }
+
+    if ((formMode === 'create' || canAssignEngineer) && ((formData.assignedLevel && !formData.assignedTo) || (!formData.assignedLevel && formData.assignedTo))) {
+      setToast({ message: 'Assigned Level and Assigned To must be completed together.', type: 'error' });
       return;
     }
 
@@ -2588,6 +2880,13 @@ export default function ServiceDesk() {
       return;
     }
 
+    const shouldGenerateApprovalJobsheet =
+      formMode === 'edit' &&
+      generateApprovalJobsheet &&
+      normalizeStatus(formData.status) === 'pending approval';
+
+    const preparedJobsheetWindow = null;
+
     if (formData.assignedTo) {
       await checkEngineerAvailability(formData.assignedTo);
     }
@@ -2597,6 +2896,8 @@ export default function ServiceDesk() {
       const operationalReason = getOperationalReason(formData);
       const currentRequesterName = getCurrentLoginName(currentUser);
       const currentRequesterId = getCurrentLoginId(currentUser);
+      const previousAssignedTo = String(selectedIncident?.assignedTo || formData._originalAssignedTo || '').trim();
+      const previousStatus = selectedIncident?.status || formData._originalStatus || formData.status;
 
       const saveData = {
         ...formData,
@@ -2620,17 +2921,52 @@ export default function ServiceDesk() {
         await incidentsService.create(saveData);
         setToast({ message: `Ticket ${saveData.id} created successfully.`, type: 'success' });
       } else {
+        const engineerRequestedPendingApproval =
+          canEngineerWorkTickets &&
+          normalizeStatus(previousStatus) === 'in progress' &&
+          normalizeStatus(saveData.status) === 'pending approval';
+
+        const lockedSourceIncident = selectedIncident || formData;
+
+        if (!canEditMainTicketFields && canEditResolutionFields && lockedSourceIncident) {
+          saveData.status = engineerRequestedPendingApproval ? 'Pending Approval' : (lockedSourceIncident.status || saveData.status);
+          saveData.category = lockedSourceIncident.category || saveData.category;
+          saveData.subcategory = lockedSourceIncident.subcategory || saveData.subcategory;
+          saveData.incidentDetail = lockedSourceIncident.incidentDetail || saveData.incidentDetail;
+          saveData.priority = lockedSourceIncident.priority || saveData.priority;
+          saveData.title = lockedSourceIncident.title || saveData.title;
+          saveData.description = lockedSourceIncident.description || saveData.description;
+          saveData.deviceType = lockedSourceIncident.deviceType || saveData.deviceType;
+          saveData.assetId = lockedSourceIncident.assetId || saveData.assetId;
+          saveData.assignedLevel = lockedSourceIncident.assignedLevel || saveData.assignedLevel;
+          saveData.assignedTo = lockedSourceIncident.assignedTo || lockedSourceIncident._originalAssignedTo || saveData.assignedTo;
+          saveData.slaDue = toIsoDateOrEmpty(lockedSourceIncident.slaDue) || saveData.slaDue;
+        }
         if (saveData.status === 'Solved') saveData.status = 'Resolved';
-        if (saveData.status === 'Awaiting') saveData.status = 'In Progress';
-        if (!saveData.firstResponseAt) saveData.firstResponseAt = new Date().toISOString();
+        if (canAssignEngineer && !previousAssignedTo && String(saveData.assignedTo || '').trim() && normalizeStatus(previousStatus) === 'awaiting') saveData.status = 'Assigned';
+        if (saveData.status === 'In Progress' && !saveData.firstResponseAt) saveData.firstResponseAt = new Date().toISOString();
         if (saveData.status === 'Resolved' && !saveData.resolvedAt) saveData.resolvedAt = new Date().toISOString();
         await incidentsService.update(saveData);
+        if (shouldGenerateApprovalJobsheet && normalizeStatus(saveData.status) === 'pending approval') {
+          const jobsheetData = { ...saveData };
+          window.setTimeout(() => {
+            try {
+              printApprovalJobsheet(jobsheetData, preparedJobsheetWindow);
+            } catch (printError) {
+              console.error('Jobsheet print failed', printError);
+              setToast({ message: 'Ticket updated, but the jobsheet could not be opened. Please allow popups and try again.', type: 'warning' });
+            }
+          }, 0);
+        }
         setToast({ message: `Ticket ${saveData.id} updated successfully.`, type: 'success' });
       }
 
       await loadData(true);
       closeForm();
     } catch (error) {
+      if (preparedJobsheetWindow && !preparedJobsheetWindow.closed) {
+        preparedJobsheetWindow.close();
+      }
       console.error('Save failed', error);
       setToast({ message: 'Failed to save incident.', type: 'error' });
     } finally {
@@ -2639,7 +2975,7 @@ export default function ServiceDesk() {
   }
 
   async function resolveIncident(incident: any) {
-    if (!canEdit || !incident) return;
+    if (!canEditIncident(incident)) return;
 
     const incidentId = getId(incident);
 
@@ -2737,16 +3073,16 @@ export default function ServiceDesk() {
 
   const scopedIncidents = useMemo(() => {
     return incidents.filter((incident) => {
-      if (isSupportUser && incident.assignedTo !== currentUser?.name) return false;
+      if (canViewAssignedTicketsOnly && !isIncidentAssignedToCurrentUser(incident)) return false;
       return true;
     });
-  }, [incidents, isSupportUser, currentUser?.name]);
+  }, [incidents, canViewAssignedTicketsOnly, currentUserIdentityValues.join('|')]);
 
   const queueCounts = useMemo(() => {
     const open = scopedIncidents.filter((item) => !['Resolved', 'Rejected'].includes(item.status));
     return {
       all: scopedIncidents.length,
-      my: scopedIncidents.filter((item) => item.assignedTo === currentUser?.name).length,
+      my: scopedIncidents.filter((item) => isIncidentAssignedToCurrentUser(item)).length,
       slaRisk: scopedIncidents.filter((item) => {
         const sla = getSlaMeta(item, now);
         return ['overdue', 'near'].includes(sla.className) && !['Resolved', 'Rejected'].includes(item.status);
@@ -2754,14 +3090,13 @@ export default function ServiceDesk() {
       unassigned: open.filter((item) => !item.assignedTo).length,
       awaiting: scopedIncidents.filter((item) => item.status === 'Awaiting').length,
       inProgress: scopedIncidents.filter((item) => item.status === 'In Progress').length,
-      pendingUser: scopedIncidents.filter((item) => item.status === 'Pending User').length,
-      pendingVendor: scopedIncidents.filter((item) => item.status === 'Pending Vendor').length,
-      onSite: scopedIncidents.filter((item) => item.status === 'On Site').length,
+      pendingApproval: scopedIncidents.filter((item) => item.status === 'Pending Approval').length,
       resolved: scopedIncidents.filter((item) => item.status === 'Resolved').length,
+      rejected: scopedIncidents.filter((item) => item.status === 'Rejected').length,
       kb: knowledgeBaseEntries.length,
       open: open.length,
     };
-  }, [scopedIncidents, currentUser?.name, now, knowledgeBaseEntries.length]);
+  }, [scopedIncidents, currentUserIdentityValues.join('|'), now, knowledgeBaseEntries.length]);
 
   const filteredIncidents = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -2771,15 +3106,14 @@ export default function ServiceDesk() {
 
       const queueMatch =
         activeQueue === 'all' ||
-        (activeQueue === 'my' && incident.assignedTo === currentUser?.name) ||
+        (activeQueue === 'my' && isIncidentAssignedToCurrentUser(incident)) ||
         (activeQueue === 'sla-risk' && ['overdue', 'near'].includes(sla.className) && !['Resolved', 'Rejected'].includes(incident.status)) ||
         (activeQueue === 'unassigned' && !incident.assignedTo && !['Resolved', 'Rejected'].includes(incident.status)) ||
         (activeQueue === 'awaiting' && incident.status === 'Awaiting') ||
         (activeQueue === 'in-progress' && incident.status === 'In Progress') ||
-        (activeQueue === 'pending-user' && incident.status === 'Pending User') ||
-        (activeQueue === 'pending-vendor' && incident.status === 'Pending Vendor') ||
-        (activeQueue === 'on-site' && incident.status === 'On Site') ||
+        (activeQueue === 'pending-approval' && incident.status === 'Pending Approval') ||
         (activeQueue === 'resolved' && incident.status === 'Resolved') ||
+        (activeQueue === 'rejected' && incident.status === 'Rejected') ||
         activeQueue === 'knowledge';
 
       if (!queueMatch) return false;
@@ -2832,7 +3166,7 @@ export default function ServiceDesk() {
   }, [
     activeQueue,
     advancedFilters,
-    currentUser?.name,
+    currentUserIdentityValues.join('|'),
     filterAssignedTo,
     filterSlaStatus,
     filterPriority,
@@ -3199,6 +3533,140 @@ export default function ServiceDesk() {
     printWindow.document.close();
   }
 
+
+  function printApprovalJobsheet(incident: any, targetWindow?: Window | null) {
+    if (!incident) return;
+
+    const safe = (value: any) =>
+      String(value ?? '—')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    const rows = [
+      ['Ticket No', getId(incident)],
+      ['Requester / PIC', incident.requesterName || 'N/A'],
+      ['Submitted Date', normalizeDateTime(incident.createdAt)],
+      ['Asset ID', incident.assetId || '—'],
+      ['Device Type', incident.deviceType || '—'],
+      ['Category', incident.category || '—'],
+      ['Subcategory', incident.subcategory || '—'],
+      ['Problem Detail', incident.incidentDetail || '—'],
+      ['Urgency Level', incident.priority || 'Medium'],
+      ['Engineer', incident.assignedTo || getCurrentLoginName(currentUser) || '—'],
+      ['Status', incident.status || 'Pending Approval'],
+      ['Generated At', new Date().toLocaleString('en-GB')],
+    ];
+
+    const printHtml = `
+      <!doctype html>
+      <html>
+        <head>
+          <title>Approval Jobsheet ${safe(getId(incident))}</title>
+          <style>
+            @page { size: A4; margin: 14mm; }
+            * { box-sizing: border-box; }
+            body {
+              margin: 0;
+              background: #ffffff;
+              color: #10254d;
+              font-family: "Segoe UI", Arial, sans-serif;
+              font-size: 12px;
+              line-height: 1.45;
+            }
+            .jobsheet { width: 100%; max-width: 780px; margin: 0 auto; }
+            .head { display: flex; justify-content: space-between; gap: 18px; padding-bottom: 16px; border-bottom: 2px solid #dbe6f5; }
+            .head span { display: block; color: #2e63f0; font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+            .head h1 { margin: 5px 0 6px; color: #10254d; font-size: 23px; line-height: 1.15; font-weight: 850; }
+            .head p { margin: 0; color: #6079a6; font-size: 12px; font-weight: 650; line-height: 1.5; }
+            .badge { min-width: 132px; height: 42px; padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; border-radius: 14px; background: #eef5ff; border: 1px solid #c8d9ff; color: #2e63f0; font-weight: 900; }
+            .section { margin-top: 18px; border: 1px solid #dbe6f5; border-radius: 16px; overflow: hidden; }
+            .section h2 { margin: 0; padding: 11px 14px; background: #f7fbff; border-bottom: 1px solid #dbe6f5; color: #17345f; font-size: 13px; font-weight: 850; }
+            table { width: 100%; border-collapse: collapse; }
+            td { padding: 10px 14px; border-bottom: 1px solid #edf2f8; vertical-align: top; }
+            tr:last-child td { border-bottom: 0; }
+            td:first-child { width: 180px; color: #6f85ad; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
+            td:last-child { color: #10254d; font-weight: 650; }
+            .text-block { padding: 14px; min-height: 70px; color: #10254d; line-height: 1.55; white-space: pre-wrap; }
+            .signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 16px 14px; }
+            .signature-box { min-height: 110px; border: 1px dashed #9fb4d8; border-radius: 14px; padding: 12px; }
+            .signature-line { margin-top: 48px; border-top: 1px solid #7088b2; padding-top: 8px; color: #6079a6; font-size: 11px; font-weight: 800; }
+            .footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid #dbe6f5; color: #7b91b6; font-size: 10px; display: flex; justify-content: space-between; }
+          </style>
+        </head>
+        <body>
+          <main class="jobsheet">
+            <header class="head">
+              <div>
+                <span>EMA Unified System — Approval Jobsheet</span>
+                <h1>${safe(incident.title || 'Service Desk Approval')}</h1>
+                <p>This jobsheet is generated for requester/PIC verification after support action has been completed.</p>
+              </div>
+              <div class="badge">${safe(getId(incident))}</div>
+            </header>
+
+            <section class="section">
+              <h2>Ticket Details</h2>
+              <table>${rows.map(([label, value]) => `<tr><td>${safe(label)}</td><td>${safe(value)}</td></tr>`).join('')}</table>
+            </section>
+
+            <section class="section">
+              <h2>Issue Description</h2>
+              <div class="text-block">${safe(incident.description || '—')}</div>
+            </section>
+
+            <section class="section">
+              <h2>Root Cause</h2>
+              <div class="text-block">${safe(incident.rootCause || '—')}</div>
+            </section>
+
+            <section class="section">
+              <h2>Action Plan / Resolution</h2>
+              <div class="text-block">${safe(incident.actionPlan || '—')}</div>
+            </section>
+
+            <section class="section">
+              <h2>Approval & Sign-Off</h2>
+              <div class="signature-grid">
+                <div class="signature-box">
+                  <strong>Requester / PIC Approval</strong>
+                  <div class="signature-line">Name, Signature & Date</div>
+                </div>
+                <div class="signature-box">
+                  <strong>Engineer Confirmation</strong>
+                  <div class="signature-line">Name, Signature & Date</div>
+                </div>
+              </div>
+            </section>
+
+            <footer class="footer">
+              <span>Printed from EMA Unified System</span>
+              <span>${safe(new Date().toLocaleString('en-GB'))}</span>
+            </footer>
+          </main>
+          <script>
+            window.onload = function () {
+              window.focus();
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    const printWindow = targetWindow || window.open('', '_blank', 'width=900,height=720');
+    if (!printWindow) {
+      setToast({ message: 'Popup blocked. Allow popups to print or save the approval jobsheet PDF.', type: 'warning' });
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
+  }
+
   function printTicketRegistry() {
     const safe = (value: any) =>
       String(value ?? '—')
@@ -3543,10 +4011,9 @@ export default function ServiceDesk() {
     { key: 'unassigned' as QueueKey, label: 'Unassigned', sub: 'Needs ownership', count: queueCounts.unassigned, icon: Users },
     { key: 'awaiting' as QueueKey, label: 'Awaiting', sub: 'New requests', count: queueCounts.awaiting, icon: Clock },
     { key: 'in-progress' as QueueKey, label: 'In Progress', sub: 'Active work', count: queueCounts.inProgress, icon: ArrowRightLeft },
-    { key: 'pending-user' as QueueKey, label: 'Pending User', sub: 'Waiting requester', count: queueCounts.pendingUser, icon: User },
-    { key: 'pending-vendor' as QueueKey, label: 'Pending Vendor', sub: 'External action', count: queueCounts.pendingVendor, icon: Settings },
-    { key: 'on-site' as QueueKey, label: 'On Site', sub: 'Field support', count: queueCounts.onSite, icon: Monitor },
+    { key: 'pending-approval' as QueueKey, label: 'Pending Approval', sub: 'Waiting approval', count: queueCounts.pendingApproval, icon: Settings },
     { key: 'resolved' as QueueKey, label: 'Resolved', sub: 'Completed tickets', count: queueCounts.resolved, icon: CheckCircle2 },
+    { key: 'rejected' as QueueKey, label: 'Rejected', sub: 'Rejected tickets', count: queueCounts.rejected, icon: X },
     { key: 'knowledge' as QueueKey, label: 'Knowledge Base', sub: hasLoadedKb ? 'Resolution articles' : 'Loading articles...', count: queueCounts.kb, icon: BookOpen },
   ];
 
@@ -4961,7 +5428,13 @@ export default function ServiceDesk() {
                   <span>Reset</span>
                 </button>
 
-                <button type="button" className="primary-btn" onClick={openCreateForm}>
+                <button
+                  type="button"
+                  className="primary-btn"
+                  disabled={!canCreate}
+                  title={!canCreate ? 'Create ticket is not available for this role.' : 'Create Ticket'}
+                  onClick={openCreateForm}
+                >
                   <Plus size={15} />
                   <span>Create Ticket</span>
                 </button>
@@ -5113,12 +5586,14 @@ export default function ServiceDesk() {
                     There is no ticket for this queue or selected filter.
                     Try All Tickets, reset filter, or create a new request.
                   </span>
-                  <div className="content-actions justify-content-center">
-                    <button type="button" className="primary-btn" onClick={openCreateForm}>
-                      <Plus size={14} />
-                      <span>New Ticket</span>
-                    </button>
-                  </div>
+                  {canCreate && (
+                    <div className="content-actions justify-content-center">
+                      <button type="button" className="primary-btn" onClick={openCreateForm}>
+                        <Plus size={14} />
+                        <span>New Ticket</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="user-access-table advanced clean-table service-desk-table-wrap" style={{ overflowX: 'hidden', overflowY: 'hidden', maxWidth: '100%', width: '100%' }}>
@@ -5281,26 +5756,30 @@ export default function ServiceDesk() {
 
                         <div className="user-cell" onClick={(event) => event.stopPropagation()}>
                           <div className="row-actions user-row-action-wrap clean" style={{ display: 'inline-flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'nowrap', gap: '.38rem', minWidth: 'max-content' }}>
-                            <button
-                              type="button"
-                              className="mini-btn icon-only edit"
-                              title="Edit ticket"
-                              aria-label="Edit ticket"
-                              onClick={() => openEditForm(incident)}
-                            >
-                              <Pencil size={14} />
-                            </button>
+                            {canEditIncident(incident) && (
+                              <button
+                                type="button"
+                                className="mini-btn icon-only edit"
+                                title="Edit ticket"
+                                aria-label="Edit ticket"
+                                onClick={() => openEditForm(incident)}
+                              >
+                                <Pencil size={14} />
+                              </button>
+                            )}
 
-                            <button
-                              type="button"
-                              className="mini-btn icon-only delete"
-                              title={isDeleteLockedStatus(incident.status) ? 'Delete disabled for closed or resolved tickets' : 'Delete ticket'}
-                              aria-label={isDeleteLockedStatus(incident.status) ? 'Delete disabled for closed or resolved tickets' : 'Delete ticket'}
-                              disabled={isDeleteLockedStatus(incident.status)}
-                              onClick={() => deleteIncident(incident)}
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            {canDelete && (
+                              <button
+                                type="button"
+                                className="mini-btn icon-only delete"
+                                title={isDeleteLockedStatus(incident.status) ? 'Delete disabled for closed or resolved tickets' : 'Delete ticket'}
+                                aria-label={isDeleteLockedStatus(incident.status) ? 'Delete disabled for closed or resolved tickets' : 'Delete ticket'}
+                                disabled={isDeleteLockedStatus(incident.status)}
+                                onClick={() => deleteIncident(incident)}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -5425,7 +5904,7 @@ export default function ServiceDesk() {
                             <Eye size={14} />
                           </button>
 
-                          {canEdit && (
+                          {canAdminManageTickets && (
                             <button
                               type="button"
                               title="Edit article"
@@ -5505,7 +5984,7 @@ export default function ServiceDesk() {
                 Close
               </AppButton>
 
-              {canEdit && (
+              {canAdminManageTickets && (
                 <AppButton
                   type="button"
                   variant="primary"
@@ -5617,7 +6096,7 @@ export default function ServiceDesk() {
                         </strong>
                         <p>{formatAttachmentSize(file.size || file.fileSize) || 'Uploaded file'}</p>
                       </div>
-                      {canEdit && (
+                      {canUploadIncidentAttachments && canEditIncident(selectedIncident) && (
                         <button type="button" className="service-desk-attachment-delete" onClick={() => deleteIncidentAttachment(file.filename)}>
                           <Trash2 size={14} /> Delete
                         </button>
@@ -5629,7 +6108,7 @@ export default function ServiceDesk() {
             </div>
 
             <div className="content-actions service-desk-row-actions">
-              {canEdit && (
+              {canEditIncident(selectedIncident) && (
                 <button
                   type="button"
                   onClick={() => resolveIncident(selectedIncident)}
@@ -5778,10 +6257,13 @@ export default function ServiceDesk() {
                   </label>
 
                   <label>
-                    <span>Device Type</span>
+                    <span>
+                      Device Type
+                      {formMode === 'create' && <em className="service-desk-required-mark">*</em>}
+                    </span>
                     <ServiceDeskSelect
                       value={formData.deviceType || ''}
-                      disabled={isRequesterAssetLocked}
+                      disabled={isRequesterAssetLocked || !canEditMainTicketFields}
                       placeholder="Select Device Type"
                       onChange={(value) => updateFormField('deviceType', value)}
                       options={[
@@ -5792,13 +6274,16 @@ export default function ServiceDesk() {
                   </label>
 
                   <label className="form-field">
-                    <span>Asset Lookup</span>
+                    <span>
+                      Asset Lookup
+                      {formMode === 'create' && <em className="service-desk-required-mark">*</em>}
+                    </span>
                     <div className="price-input-shell service-desk-asset-lookup" ref={assetComboRef}>
                       <div className="price-input-shell service-desk-asset-search">
                         <Search size={15} />
                         <input
                           value={assetSearchTerm}
-                          disabled={isRequesterAssetLocked}
+                          disabled={isRequesterAssetLocked || !canEditMainTicketFields}
                           onChange={(e) => {
                             const value = e.target.value;
                             setAssetSearchTerm(value);
@@ -5825,7 +6310,7 @@ export default function ServiceDesk() {
                       <button
                         type="button"
                         className="service-desk-asset-choose-btn"
-                        disabled={isRequesterAssetLocked}
+                        disabled={isRequesterAssetLocked || !canEditMainTicketFields}
                         onClick={() => {
                           if (showAssetDropdown) {
                             setShowAssetDropdown(false);
@@ -5885,7 +6370,7 @@ export default function ServiceDesk() {
                     <span>Asset Brand</span>
                     <input
                       value={formData.assetBrand || ''}
-                      disabled={isRequesterAssetLocked}
+                      disabled={isRequesterAssetLocked || !canEditMainTicketFields}
                       onChange={(e) => updateFormField('assetBrand', e.target.value)}
                       placeholder="Brand"
                     />
@@ -5895,7 +6380,7 @@ export default function ServiceDesk() {
                     <span>Asset Model</span>
                     <input
                       value={formData.assetModel || ''}
-                      disabled={isRequesterAssetLocked}
+                      disabled={isRequesterAssetLocked || !canEditMainTicketFields}
                       onChange={(e) => updateFormField('assetModel', e.target.value)}
                       placeholder="Model"
                     />
@@ -5905,7 +6390,7 @@ export default function ServiceDesk() {
                     <span>Asset OS</span>
                     <input
                       value={formData.assetOS || ''}
-                      disabled={isRequesterAssetLocked}
+                      disabled={isRequesterAssetLocked || !canEditMainTicketFields}
                       onChange={(e) => updateFormField('assetOS', e.target.value)}
                       placeholder="Operating system"
                     />
@@ -5917,9 +6402,13 @@ export default function ServiceDesk() {
                 <h3>Incident Classification</h3>
                 <div className="form-grid">
                   <label>
-                    <span>Category</span>
+                    <span>
+                      Category
+                      <em className="service-desk-required-mark">*</em>
+                    </span>
                     <ServiceDeskSelect
                       value={formData.category || ''}
+                      disabled={!canEditMainTicketFields}
                       placeholder="Select Category"
                       onChange={(value) => setFormData((prev: any) => ({ ...prev, category: value, subcategory: '', incidentDetail: '' }))}
                       options={[
@@ -5930,9 +6419,13 @@ export default function ServiceDesk() {
                   </label>
 
                   <label>
-                    <span>Subcategory</span>
+                    <span>
+                      Subcategory
+                      <em className="service-desk-required-mark">*</em>
+                    </span>
                     <ServiceDeskSelect
                       value={formData.subcategory || ''}
+                      disabled={!canEditMainTicketFields}
                       placeholder="Select Subcategory"
                       onChange={(value) => setFormData((prev: any) => ({ ...prev, subcategory: value, incidentDetail: '' }))}
                       options={[
@@ -5943,9 +6436,13 @@ export default function ServiceDesk() {
                   </label>
 
                   <label>
-                    <span>Problem Detail</span>
+                    <span>
+                      Problem Detail
+                      <em className="service-desk-required-mark">*</em>
+                    </span>
                     <ServiceDeskSelect
                       value={formData.incidentDetail || ''}
+                      disabled={!canEditMainTicketFields}
                       placeholder="Select Detail"
                       onChange={(value) => updateFormField('incidentDetail', value)}
                       options={[
@@ -5956,9 +6453,13 @@ export default function ServiceDesk() {
                   </label>
 
                   <label>
-                    <span>Urgency Level</span>
+                    <span>
+                      Urgency Level
+                      <em className="service-desk-required-mark">*</em>
+                    </span>
                     <ServiceDeskSelect
                       value={formData.priority || 'Medium'}
+                      disabled={!canEditMainTicketFields}
                       placeholder="Select Urgency"
                       onChange={(value) => updateFormField('priority', value)}
                       options={PRIORITY_OPTIONS.map((priority) => ({ value: priority, label: priority }))}
@@ -5972,6 +6473,7 @@ export default function ServiceDesk() {
                     </span>
                     <input
                       value={formData.title || ''}
+                      disabled={!canEditMainTicketFields}
                       onChange={(e) => updateFormField('title', e.target.value)}
                       placeholder="Example: Unable to access internal HR portal"
                       required
@@ -5985,6 +6487,7 @@ export default function ServiceDesk() {
                     </span>
                     <textarea
                       value={formData.description || ''}
+                      disabled={!canEditMainTicketFields}
                       onChange={(e) => updateFormField('description', e.target.value)}
                       placeholder="Describe issue, impact, error message and troubleshooting done."
                       required
@@ -5999,6 +6502,7 @@ export default function ServiceDesk() {
                   <label>
                     <span>
                       Status
+                      {formMode === 'edit' && <em className="service-desk-required-mark">*</em>}
                       {normalizeStatus(formData.status) === 'rejected' && (
                         <em
                           style={{
@@ -6014,17 +6518,53 @@ export default function ServiceDesk() {
                     </span>
                     <ServiceDeskSelect
                       value={formData.status || 'Awaiting'}
-                      disabled={formMode === 'create'}
+                      disabled={formMode === 'create' || !canChangeTicketStatus || statusWorkflowOptions.length <= 1}
                       placeholder="Select Status"
-                      onChange={(value) => updateFormField('status', value)}
-                      options={STATUS_OPTIONS.map((status) => ({ value: status, label: status }))}
+                      onChange={(value) => {
+                        updateFormField('status', value);
+                        if (normalizeStatus(value) !== 'pending approval') setGenerateApprovalJobsheet(false);
+                      }}
+                      options={statusWorkflowOptions.map((status) => ({ value: status, label: status }))}
                     />
+                    {formMode === 'edit' && (canUpdateStatus || canEngineerWorkTickets) && normalizeStatus(formData.status) === 'pending approval' && normalizeStatus(formData._originalStatus || '') !== 'pending approval' && (
+                      <label
+                        style={{
+                          marginTop: 10,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          color: '#6079a6',
+                          fontSize: 11,
+                          fontWeight: 800,
+                          lineHeight: 1.2,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={generateApprovalJobsheet}
+                          onChange={(event) => setGenerateApprovalJobsheet(event.target.checked)}
+                          style={{
+                            width: 14,
+                            height: 14,
+                            margin: 0,
+                            flexShrink: 0,
+                            cursor: 'pointer',
+                          }}
+                        />
+                        <span>Generate approval jobsheet</span>
+                      </label>
+                    )}
                   </label>
 
                   <label>
-                    <span>Assigned Level</span>
+                    <span>
+                      Assigned Level
+                      {formMode === 'edit' && <em className="service-desk-required-mark">*</em>}
+                    </span>
                     <ServiceDeskSelect
                       value={formData.assignedLevel || ''}
+                      disabled={!canAssignEngineer}
                       placeholder={isLoadingLookups ? 'Loading support levels...' : 'Select Support Level'}
                       onOpen={() => void ensureLookupsLoaded()}
                       onChange={(value) => updateFormField('assignedLevel', value)}
@@ -6036,11 +6576,14 @@ export default function ServiceDesk() {
                   </label>
 
                   <label>
-                    <span>Assigned To</span>
+                    <span>
+                      Assigned To
+                      {formMode === 'edit' && <em className="service-desk-required-mark">*</em>}
+                    </span>
                     <ServiceDeskSelect
                       value={formData.assignedTo || ''}
                       placeholder={formData.assignedLevel ? 'Unassigned' : 'Select support level first'}
-                      disabled={!formData.assignedLevel || isLoadingEngineers}
+                      disabled={!canAssignEngineer || !formData.assignedLevel || isLoadingEngineers}
                       onChange={handleAssignedEngineerChange}
                       options={[
                         {
@@ -6097,13 +6640,19 @@ export default function ServiceDesk() {
                   </div>
 
                   <label className="form-field">
-                    <span>Root Cause</span>
-                    <textarea value={formData.rootCause || ''} onChange={(e) => updateFormField('rootCause', e.target.value)} placeholder="Root cause analysis" />
+                    <span>
+                      Root Cause
+                      {requiresEngineerResolutionFields && <em className="service-desk-required-mark">*</em>}
+                    </span>
+                    <textarea ref={rootCauseRef} value={formData.rootCause || ''} disabled={!canEditResolutionFields} onChange={(e) => updateFormField('rootCause', e.target.value)} placeholder="Root cause analysis" />
                   </label>
 
                   <label className="form-field">
-                    <span>Action Plan</span>
-                    <textarea value={formData.actionPlan || ''} onChange={(e) => updateFormField('actionPlan', e.target.value)} placeholder="Resolution steps / action plan" />
+                    <span>
+                      Action Plan
+                      {requiresEngineerResolutionFields && <em className="service-desk-required-mark">*</em>}
+                    </span>
+                    <textarea ref={actionPlanRef} value={formData.actionPlan || ''} disabled={!canEditResolutionFields} onChange={(e) => updateFormField('actionPlan', e.target.value)} placeholder="Resolution steps / action plan" />
                   </label>
 
                   <label
@@ -6159,6 +6708,7 @@ export default function ServiceDesk() {
 
                     <textarea
                       ref={rejectReasonRef}
+                      disabled={!canEditResolutionFields}
                       aria-required={normalizeStatus(formData.status) === 'rejected'}
                       aria-invalid={normalizeStatus(formData.status) === 'rejected' && !getOperationalReason(formData)}
                       value={formData.additionalMemo || formData.remarks || ''}
@@ -6200,7 +6750,7 @@ export default function ServiceDesk() {
                 </div>
               </section>
 
-              {formMode === 'edit' && (
+              {formMode === 'edit' && canUploadIncidentAttachments && (
               <section className="settings-helper-card service-desk-attachment-card service-desk-attachment-form-card">
                 <div className="service-desk-attachment-form-head">
                   <div>
@@ -6217,7 +6767,7 @@ export default function ServiceDesk() {
                     <input
                       type="file"
                       accept={INCIDENT_ATTACHMENT_ALLOWED_TYPES}
-                      disabled={isUploadingAttachment || !getId(formData) || incidentAttachments.length >= INCIDENT_ATTACHMENT_MAX_FILES}
+                      disabled={!canUploadIncidentAttachments || isUploadingAttachment || !getId(formData) || incidentAttachments.length >= INCIDENT_ATTACHMENT_MAX_FILES}
                       onChange={uploadIncidentAttachment}
                     />
                     <span className="service-desk-upload-icon">
@@ -6251,9 +6801,11 @@ export default function ServiceDesk() {
                               </strong>
                               <p>{formatAttachmentSize(file.size || file.fileSize) || 'Uploaded file'}</p>
                             </div>
-                            <button type="button" className="service-desk-attachment-delete" onClick={() => deleteIncidentAttachment(file.filename)}>
-                              <Trash2 size={14} /> Delete
-                            </button>
+                            {canUploadIncidentAttachments && (
+                              <button type="button" className="service-desk-attachment-delete" onClick={() => deleteIncidentAttachment(file.filename)}>
+                                <Trash2 size={14} /> Delete
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -6262,6 +6814,21 @@ export default function ServiceDesk() {
                 </div>
               </section>
             )}
+
+              {formMode === 'edit' && normalizeStatus(formData._originalStatus || selectedIncident?.status || '') === 'pending approval' && canUploadIncidentAttachments && (
+                <section className="settings-helper-card service-desk-attachment-card service-desk-attachment-form-card">
+                  <div className="service-desk-attachment-form-head">
+                    <div>
+                      <h3>Approval Feedback</h3>
+                      <p>Attach the signed approval jobsheet or user feedback while the ticket is Pending Approval. Admin can review it and resolve the ticket manually.</p>
+                    </div>
+                    <span>{approvalFeedbackUploaded ? 'Feedback attached' : 'Awaiting feedback attachment'}</span>
+                  </div>
+                  <div className="settings-inline-alert">
+                    Use the Incident Attachments upload above to add the signed approval jobsheet or feedback file before admin review.
+                  </div>
+                </section>
+              )}
             </div>
 
             <footer className="content-actions service-desk-row-actions">
@@ -6273,7 +6840,7 @@ export default function ServiceDesk() {
                 Cancel
               </AppButton>
 
-              {formMode === 'edit' && canEdit && (
+              {formMode === 'edit' && canAdminManageTickets && canEditIncident(formData) && (
                 <AppButton
                   type="button"
                   variant="warning"

@@ -47360,6 +47360,318 @@ console.log("Software Policy API registered");
 // ============================================================
 
 
+// ============================================================
+// MANAGEMENT DASHBOARD SOFTWARE POLICY API - START
+// ============================================================
+
+(function registerManagementDashboardSoftwarePolicyApi() {
+  function mdToInt(value, fallback = 0) {
+    const parsed = Number.parseInt(String(value ?? ''), 10);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function mdToNumber(value, fallback = 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function registerManagementSoftwareRoiRoutes(appInstance, deps = {}) {
+    const {
+      authenticateToken: routeAuth,
+      dbConfig: routeDbConfig,
+      sql: routeSql
+    } = deps;
+
+    const guard =
+      typeof routeAuth === 'function'
+        ? routeAuth
+        : (_req, _res, next) => next();
+
+    appInstance.get('/api/management-dashboard/software-roi', guard, async (req, res) => {
+      const days = Math.min(Math.max(mdToInt(req.query.days, 30), 1), 365);
+
+      try {
+        const pool = await routeSql.connect(routeDbConfig);
+        const request = pool.request();
+
+        request.timeout = 60000;
+        request.input('Days', routeSql.Int, days);
+
+        const result = await request.query(`
+          ;WITH policy_items AS (
+            SELECT
+              pi.PolicyItemID,
+              pi.PolicyID,
+              pi.SWUNI_Idn,
+              NULLIF(LTRIM(RTRIM(pi.SoftwareName)), '') AS SoftwareName,
+              NULLIF(LTRIM(RTRIM(pi.Publisher)), '') AS Publisher,
+              NULLIF(LTRIM(RTRIM(pi.CategoryName)), '') AS CategoryName,
+              CASE
+                WHEN LOWER(LTRIM(RTRIM(ISNULL(pi.ComplianceStatus, 'Legal')))) IN ('illegal', 'restricted', 'blocked', 'unauthorized', 'unapproved') THEN 'Illegal'
+                ELSE 'Legal'
+              END AS ComplianceStatus,
+              COALESCE(NULLIF(pi.WorkingStartTime, ''), NULLIF(p.WorkingStartTime, ''), '09:00') AS WorkingStartTime,
+              COALESCE(NULLIF(pi.WorkingEndTime, ''), NULLIF(p.WorkingEndTime, ''), '17:00') AS WorkingEndTime,
+              COALESCE(NULLIF(pi.WorkDays, ''), NULLIF(p.WorkDays, ''), 'Mon-Fri') AS WorkDays,
+              CAST(COALESCE(pi.UtilizedHours, p.UtilizedHours, 2.00) AS DECIMAL(18,2)) AS UtilizedHours,
+              CAST(COALESCE(pi.UnderUtilizedHours, p.UnderUtilizedHours, 0.01) AS DECIMAL(18,2)) AS UnderUtilizedHours,
+              CAST(COALESCE(pi.NotUsedHours, 0.00) AS DECIMAL(18,2)) AS NotUsedHours,
+              CAST(COALESCE(pi.OpenCountThreshold, p.OpenCountThreshold, 1) AS INT) AS OpenCountThreshold,
+              CAST(ISNULL(pi.LicenseCount, 0) AS INT) AS LicenseCount,
+              CAST(ISNULL(pi.UnitPrice, 0) AS DECIMAL(18,2)) AS UnitPrice,
+              COALESCE(NULLIF(pi.Currency, ''), 'RM') AS Currency
+            FROM [TCO2].[dbo].[EMA_SoftwarePolicyItem] pi WITH (NOLOCK)
+            LEFT JOIN [TCO2].[dbo].[EMA_SoftwarePolicy] p WITH (NOLOCK)
+              ON p.PolicyID = pi.PolicyID
+            WHERE NULLIF(LTRIM(RTRIM(pi.SoftwareName)), '') IS NOT NULL
+              AND LOWER(LTRIM(RTRIM(ISNULL(pi.ComplianceStatus, 'Legal')))) NOT IN ('illegal', 'restricted', 'blocked', 'unauthorized', 'unapproved')
+              AND ISNULL(pi.LicenseCount, 0) > 0
+          ),
+          policy_matches AS (
+            SELECT DISTINCT
+              pi.PolicyItemID,
+              si.SW_Idn
+            FROM policy_items pi
+            LEFT JOIN [TCO2].[dbo].[TS_SW_INFO] si WITH (NOLOCK)
+              ON (pi.SWUNI_Idn IS NOT NULL AND pi.SWUNI_Idn = si.SW_Pkg_Idn)
+              OR LOWER(LTRIM(RTRIM(ISNULL(si.SW_ProductName, '')))) = LOWER(LTRIM(RTRIM(pi.SoftwareName)))
+              OR LOWER(LTRIM(RTRIM(ISNULL(si.SW_FileName, '')))) = LOWER(LTRIM(RTRIM(pi.SoftwareName)))
+              OR LOWER(LTRIM(RTRIM(ISNULL(si.SW_OrgFileName, '')))) = LOWER(LTRIM(RTRIM(pi.SoftwareName)))
+              OR LOWER(LTRIM(RTRIM(ISNULL(si.SW_InterName, '')))) = LOWER(LTRIM(RTRIM(pi.SoftwareName)))
+          ),
+          usage_events AS (
+            SELECT
+              pm.PolicyItemID,
+              mh.Object_Root_Idn,
+              mh.App_StartTime,
+              mh.App_EndTime,
+              CASE
+                WHEN ISNULL(mh.ActiveTime, 0) > 0 THEN CAST(mh.ActiveTime AS FLOAT)
+                WHEN mh.App_EndTime > mh.App_StartTime
+                     AND DATEDIFF(HOUR, mh.App_StartTime, mh.App_EndTime) BETWEEN 0 AND 12
+                  THEN CAST(DATEDIFF(SECOND, mh.App_StartTime, mh.App_EndTime) AS FLOAT)
+                ELSE 0
+              END AS UsageSeconds
+            FROM policy_matches pm
+            INNER JOIN [TCO2].[dbo].[TSSM_MONITOR_HISTORY] mh WITH (NOLOCK)
+              ON mh.SW_Idn = pm.SW_Idn
+            INNER JOIN policy_items pi
+              ON pi.PolicyItemID = pm.PolicyItemID
+            WHERE mh.App_StartTime >= DATEADD(DAY, -@Days, GETDATE())
+              AND mh.App_StartTime IS NOT NULL
+              AND (
+                pi.WorkDays IS NULL
+                OR pi.WorkDays = ''
+                OR (
+                  LOWER(pi.WorkDays) LIKE '%mon-fri%'
+                  AND DATENAME(WEEKDAY, mh.App_StartTime) IN ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')
+                )
+                OR CHARINDEX(LEFT(DATENAME(WEEKDAY, mh.App_StartTime), 3), pi.WorkDays) > 0
+              )
+              AND (
+                TRY_CONVERT(time(0), pi.WorkingStartTime) IS NULL
+                OR CONVERT(time(0), mh.App_StartTime) >= TRY_CONVERT(time(0), pi.WorkingStartTime)
+              )
+              AND (
+                TRY_CONVERT(time(0), pi.WorkingEndTime) IS NULL
+                OR CONVERT(time(0), mh.App_StartTime) <= TRY_CONVERT(time(0), pi.WorkingEndTime)
+              )
+          ),
+          usage_summary AS (
+            SELECT
+              PolicyItemID,
+              COUNT_BIG(1) AS TotalOpenCount,
+              COUNT_BIG(DISTINCT Object_Root_Idn) AS InstalledPC,
+              SUM(CASE WHEN UsageSeconds > 0 THEN UsageSeconds ELSE 0 END) / 3600.0 AS TotalUsageHours
+            FROM usage_events
+            GROUP BY PolicyItemID
+          ),
+          roi_base AS (
+            SELECT
+              pi.PolicyItemID,
+              pi.PolicyID,
+              pi.SoftwareName,
+              pi.Publisher,
+              pi.CategoryName,
+              pi.ComplianceStatus,
+              pi.WorkingStartTime,
+              pi.WorkingEndTime,
+              pi.WorkDays,
+              pi.UtilizedHours,
+              pi.UnderUtilizedHours,
+              pi.NotUsedHours,
+              pi.OpenCountThreshold,
+              pi.LicenseCount,
+              pi.UnitPrice,
+              pi.Currency,
+              CAST(ISNULL(us.TotalOpenCount, 0) AS INT) AS TotalOpenCount,
+              CAST(ISNULL(us.InstalledPC, 0) AS INT) AS InstalledPC,
+              CAST(ISNULL(us.TotalUsageHours, 0) AS DECIMAL(18,2)) AS TotalUsageHours,
+              CAST(
+                CASE
+                  WHEN ISNULL(us.InstalledPC, 0) > 0
+                    THEN ISNULL(us.TotalUsageHours, 0) / us.InstalledPC
+                  ELSE 0
+                END AS DECIMAL(18,2)
+              ) AS AverageUsageHours,
+              CAST(ISNULL(us.TotalUsageHours, 0) / NULLIF(@Days, 0) AS DECIMAL(18,2)) AS AverageDailyUsageHours
+            FROM policy_items pi
+            LEFT JOIN usage_summary us
+              ON us.PolicyItemID = pi.PolicyItemID
+          ),
+          roi_scored AS (
+            SELECT
+              *,
+              CASE
+                WHEN InstalledPC = 0 THEN LicenseCount
+                WHEN AverageUsageHours <= NotUsedHours THEN
+                  CASE
+                    WHEN LicenseCount < InstalledPC THEN LicenseCount
+                    ELSE InstalledPC
+                  END
+                WHEN AverageUsageHours < UnderUtilizedHours THEN
+                  CEILING(
+                    (
+                      CASE
+                        WHEN LicenseCount < InstalledPC THEN LicenseCount
+                        ELSE InstalledPC
+                      END
+                    ) * 0.50
+                  )
+                ELSE 0
+              END AS OpportunityLicenses,
+              CASE
+                WHEN InstalledPC = 0 THEN 'Not Installed'
+                WHEN AverageUsageHours <= NotUsedHours THEN 'Not Used'
+                WHEN AverageUsageHours < UnderUtilizedHours THEN 'Under Utilized'
+                WHEN AverageUsageHours >= UtilizedHours THEN 'Utilized'
+                ELSE 'Partially Used'
+              END AS RoiStatus
+            FROM roi_base
+          )
+          SELECT
+            PolicyItemID,
+            PolicyID,
+            SoftwareName,
+            Publisher,
+            CategoryName,
+            ComplianceStatus,
+            WorkingStartTime,
+            WorkingEndTime,
+            WorkDays,
+            UtilizedHours,
+            UnderUtilizedHours,
+            NotUsedHours,
+            OpenCountThreshold,
+            LicenseCount,
+            UnitPrice,
+            Currency,
+            TotalOpenCount,
+            InstalledPC,
+            TotalUsageHours,
+            AverageUsageHours,
+            AverageDailyUsageHours,
+            CAST(OpportunityLicenses AS INT) AS OpportunityLicenses,
+            CAST(OpportunityLicenses * UnitPrice AS DECIMAL(18,2)) AS PotentialSaving,
+            RoiStatus,
+            CASE
+              WHEN RoiStatus = 'Not Installed' THEN 'Registered licence exists but no install evidence was found in monitor history.'
+              WHEN RoiStatus = 'Not Used' THEN 'Average usage is below or equal to NotUsedHours threshold.'
+              WHEN RoiStatus = 'Under Utilized' THEN 'Average usage is below UnderUtilizedHours threshold.'
+              WHEN RoiStatus = 'Utilized' THEN 'Average usage meets UtilizedHours threshold.'
+              ELSE 'Usage is between under-utilized and fully utilized thresholds.'
+            END AS EvidenceNote
+          FROM roi_scored
+          ORDER BY PotentialSaving DESC, OpportunityLicenses DESC, SoftwareName ASC;
+        `);
+
+        const rows = result.recordset || [];
+
+        const summary = rows.reduce(
+          (acc, row) => {
+            const saving = mdToNumber(row.PotentialSaving, 0);
+            const opportunities = mdToInt(row.OpportunityLicenses, 0);
+            const avg = mdToNumber(row.AverageUsageHours, 0);
+
+            acc.potentialSavings += saving;
+            acc.opportunityLicenses += opportunities;
+            acc.monitoredSoftware += 1;
+            acc.averageUsageHours += avg;
+
+            const status = String(row.RoiStatus || '').toLowerCase();
+
+            if (status.includes('not used') || status.includes('not installed')) {
+              acc.unusedPaidSoftware += 1;
+            } else if (status.includes('under')) {
+              acc.underUtilizedSoftware += 1;
+            } else if (status.includes('utilized')) {
+              acc.utilizedSoftware += 1;
+            }
+
+            acc.currency = row.Currency || acc.currency || 'RM';
+
+            return acc;
+          },
+          {
+            currency: 'RM',
+            potentialSavings: 0,
+            opportunityLicenses: 0,
+            monitoredSoftware: 0,
+            unusedPaidSoftware: 0,
+            underUtilizedSoftware: 0,
+            utilizedSoftware: 0,
+            averageUsageHours: 0,
+            evidenceWindowDays: days
+          }
+        );
+
+        summary.potentialSavings = Number(summary.potentialSavings.toFixed(2));
+
+        if (summary.monitoredSoftware > 0) {
+          summary.averageUsageHours = Number(
+            (summary.averageUsageHours / summary.monitoredSoftware).toFixed(2)
+          );
+        }
+
+        return res.json({
+          success: true,
+          data: {
+            summary,
+            rows
+          }
+        });
+      } catch (error) {
+        console.error('Management software ROI failed:', error);
+
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to load software ROI data',
+          error: error.message
+        });
+      }
+    });
+  }
+
+  if (typeof app !== 'undefined' && !app.__emaManagementSoftwareRoiRoutesRegistered) {
+    app.__emaManagementSoftwareRoiRoutesRegistered = true;
+
+    registerManagementSoftwareRoiRoutes(app, {
+      authenticateToken,
+      dbConfig,
+      sql
+    });
+
+    console.log('Management Dashboard Software Policy API registered');
+  }
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = registerManagementSoftwareRoiRoutes;
+  }
+})();
+
+// ============================================================
+// MANAGEMENT DASHBOARD SOFTWARE POLICY API - END
+// ============================================================
 
 /*
 |--------------------------------------------------------------------------
