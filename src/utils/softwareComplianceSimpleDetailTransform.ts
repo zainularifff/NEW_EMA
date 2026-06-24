@@ -153,14 +153,12 @@ const SOFTWARE_COMPLIANCE_TABLE_COMPONENT = String.raw`
     );
   };
 
-`;
+ `;
 
 export function softwareComplianceSimpleDetailTransform(): Plugin {
   return {
     name: 'software-compliance-simple-detail-transform',
-    // Do not run as a pre-transform. The software drilldown transform is a pre-transform
-    // that replaces the whole software level 3 block. This plugin must run after that
-    // replacement, but still before React compiles the JSX.
+    enforce: 'pre',
     transform(code, id) {
       if (!id.replace(/\\/g, '/').endsWith('/src/pages/Dashboard.tsx')) return null;
 
