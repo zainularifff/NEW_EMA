@@ -5455,25 +5455,29 @@ export default function ServiceDesk() {
 `}</style>
 
       {toast && (
-        <div className={cn('settings-toast', `is-${toast.type}`)} role="status" aria-live="polite">
-          <i className="settings-toast-icon">
-            {toast.type === 'success' ? <CheckCircle2 size={18} /> : toast.type === 'error' ? <ShieldAlert size={18} /> : <Clock size={18} />}
-          </i>
-          <div>
-            <strong>
-              {toast.type === 'success'
-                ? 'Success'
-                : toast.type === 'error'
-                  ? 'Action failed'
-                  : toast.type === 'warning'
-                    ? 'Attention'
-                    : 'Information'}
-            </strong>
-            <span>{toast.message}</span>
+        <div className="ema-notify-host" role="status" aria-live="polite">
+          <div className={cn('ema-notify-card', `ema-notify-${toast.type}`)}>
+            <div className="ema-notify-icon">
+              {toast.type === 'success' ? '?' : toast.type === 'error' ? '!' : toast.type === 'warning' ? '!' : 'i'}
+            </div>
+
+            <div className="ema-notify-copy">
+              <strong>
+                {toast.type === 'success'
+                  ? 'Success'
+                  : toast.type === 'error'
+                    ? 'Action failed'
+                    : toast.type === 'warning'
+                      ? 'Attention'
+                      : 'Information'}
+              </strong>
+              <span>{toast.message}</span>
+            </div>
+
+            <button className="ema-notify-close" type="button" onClick={() => setToast(null)} aria-label="Dismiss notification">
+              x
+            </button>
           </div>
-          <button type="button" onClick={() => setToast(null)} aria-label="Dismiss notification">
-            <X size={14} />
-          </button>
         </div>
       )}
 

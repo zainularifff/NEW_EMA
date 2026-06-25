@@ -1034,4 +1034,97 @@ html body main[data-section="service-desk"] .service-desk-table-wrap .muted-cell
 
 html body main[data-section="service-desk"] .service-desk-table-wrap .muted-cell svg {
   display: none !important;
+}\n\n
+
+/* =========================================================
+   FINAL EMA Toast Guard
+   Keep toast compact, top-right, no white side panel.
+========================================================= */
+
+html body > .settings-toast-layer,
+html body .settings-toast-layer {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483647 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+
+html body .settings-toast-layer > .settings-toast,
+html body > .settings-toast {
+  position: fixed !important;
+  top: 86px !important;
+  right: 24px !important;
+  left: auto !important;
+  bottom: auto !important;
+  width: min(390px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  z-index: 2147483647 !important;
+  pointer-events: auto !important;
+}
+
+html body .settings-toast .settings-toast-close {
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  max-width: 30px !important;
+  padding: 0 !important;
+  border-radius: 11px !important;
+}
+
+
+/* =========================================================
+   FINAL EMA Notify Toast Guard
+========================================================= */
+
+html body .ema-notify-host {
+  position: fixed !important;
+  top: 86px !important;
+  right: 24px !important;
+  left: auto !important;
+  bottom: auto !important;
+  width: min(420px, calc(100vw - 32px)) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+  z-index: 2147483647 !important;
+}
+
+html body .ema-notify-card {
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: 38px minmax(0, 1fr) 28px !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 12px 14px !important;
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  pointer-events: auto !important;
+}
+
+html body .ema-notify-close {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  padding: 0 !important;
 }

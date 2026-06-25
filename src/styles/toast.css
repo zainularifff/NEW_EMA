@@ -1,158 +1,187 @@
 /* =========================================================
-   Global Toast
+   EMA Global Toast / Notification
+   Clean top-right toast, no fullscreen white layer
 ========================================================= */
 
-.settings-toast-layer {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 2147483647 !important;
-  pointer-events: none !important;
-  isolation: isolate !important;
-}
-
-.settings-toast,
-.settings-toast-layer .settings-toast {
+.ema-notify-host {
   position: fixed !important;
   top: 86px !important;
   right: 24px !important;
+  left: auto !important;
   bottom: auto !important;
   z-index: 2147483647 !important;
-  width: min(400px, calc(100vw - 32px));
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) 28px;
-  gap: 0.7rem;
-  align-items: center;
-  padding: 0.75rem;
-  border: 1px solid var(--ema-control-border, #d9e5f2) !important;
-  border-radius: 1rem !important;
-  background: var(--ema-control-surface, #fff) !important;
-  color: var(--ema-control-text, #173154) !important;
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.22) !important;
+  width: min(420px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  pointer-events: none !important;
+}
+
+.ema-notify-card {
+  width: 100% !important;
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: 38px minmax(0, 1fr) 28px !important;
+  align-items: center !important;
+  column-gap: 12px !important;
+  padding: 12px 14px !important;
+  border: 1px solid rgba(191, 211, 235, 0.95) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  color: #173154 !important;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18) !important;
+  backdrop-filter: blur(14px) !important;
   pointer-events: auto !important;
-  animation: settingsToastSlideIn 0.18s ease-out;
+  overflow: hidden !important;
+  animation: emaNotifyIn 0.18s ease-out both !important;
 }
 
-@keyframes settingsToastSlideIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.settings-toast-icon {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  border-radius: 0.82rem;
-  font-size: 0.96rem;
-  font-weight: 900;
-}
-
-.settings-toast strong {
-  display: block;
-  color: var(--ema-control-text-strong, #0f2746);
-  font-size: 0.78rem;
-  font-weight: 850;
-  line-height: 1.2;
-}
-
-.settings-toast span {
-  display: block;
-  margin-top: 0.18rem;
-  color: var(--ema-control-muted, #64748b);
-  font-size: 0.68rem;
-  font-weight: 650;
-  line-height: 1.35;
-}
-
-.settings-toast button {
-  width: 1.65rem;
-  height: 1.65rem;
-  border: 0;
-  border-radius: 0.65rem;
-  background: var(--ema-control-soft, #f5f8fc);
-  color: var(--ema-control-muted, #64748b);
-  font-size: 1rem;
-  font-weight: 800;
-  pointer-events: auto !important;
-}
-
-.settings-toast-success .settings-toast-icon {
-  color: #047857;
-  background: rgba(16, 185, 129, 0.12);
-}
-
-.settings-toast-info .settings-toast-icon {
-  color: #2558e8;
-  background: rgba(37, 99, 235, 0.12);
-}
-
-.settings-toast-warning .settings-toast-icon {
-  color: #b45309;
-  background: rgba(245, 158, 11, 0.14);
-}
-
-.settings-toast-error .settings-toast-icon {
-  color: #dc2626;
-  background: rgba(239, 68, 68, 0.12);
-}
-
-@media (max-width: 720px) {
-  .settings-toast,
-  .settings-toast-layer .settings-toast {
-    top: 18px !important;
-    right: 16px !important;
-    left: 16px !important;
-    width: auto !important;
+@keyframes emaNotifyIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
-/* =========================================================
-   V2 Global Toast Front Layer
-   Toast is rendered through a body portal so it stays above
-   confirmations, ticket modals and locked module shells.
-========================================================= */
-
-body > .settings-toast-layer {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 2147483647 !important;
-  pointer-events: none !important;
-  isolation: isolate !important;
+.ema-notify-icon {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 13px !important;
+  font-size: 0.92rem !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
 }
 
-body > .settings-toast-layer .settings-toast {
-  position: fixed !important;
-  top: 86px !important;
-  right: 24px !important;
-  bottom: auto !important;
-  z-index: 2147483647 !important;
-  pointer-events: auto !important;
+.ema-notify-copy {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 2px !important;
 }
 
-.settings-toast-close {
-  width: 1.65rem !important;
-  height: 1.65rem !important;
-  border: 0 !important;
-  border-radius: 0.65rem !important;
+.ema-notify-copy strong {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  color: #0f2746 !important;
+  font-size: 0.82rem !important;
+  font-weight: 900 !important;
+  line-height: 1.18 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.ema-notify-copy span {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  color: #64748b !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  line-height: 1.28 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+.ema-notify-close {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  background: var(--ema-control-soft, #f5f8fc) !important;
-  color: var(--ema-control-muted, #64748b) !important;
-  font-size: 1rem !important;
-  font-weight: 800 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+  font-size: 0.8rem !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
 }
 
-.settings-toast-close:hover {
-  color: var(--ema-control-primary, #2558e8) !important;
-  background: color-mix(in srgb, var(--ema-control-primary, #2558e8) 9%, var(--ema-control-soft, #f5f8fc)) !important;
+.ema-notify-close:hover {
+  color: #2558e8 !important;
+  background: #eaf1ff !important;
+}
+
+.ema-notify-success .ema-notify-icon {
+  color: #047857 !important;
+  background: rgba(16, 185, 129, 0.13) !important;
+}
+
+.ema-notify-info .ema-notify-icon {
+  color: #2558e8 !important;
+  background: rgba(37, 99, 235, 0.13) !important;
+}
+
+.ema-notify-warning .ema-notify-icon {
+  color: #b45309 !important;
+  background: rgba(245, 158, 11, 0.15) !important;
+}
+
+.ema-notify-error .ema-notify-icon {
+  color: #dc2626 !important;
+  background: rgba(239, 68, 68, 0.13) !important;
+}
+
+/* Old toast class safety. Do not allow old layer to become white side panel. */
+.settings-toast-layer {
+  position: fixed !important;
+  top: 86px !important;
+  right: 24px !important;
+  left: auto !important;
+  bottom: auto !important;
+  inset: auto 24px auto auto !important;
+  z-index: 2147483647 !important;
+  width: min(420px, calc(100vw - 32px)) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  pointer-events: none !important;
+  overflow: visible !important;
+}
+
+.settings-toast {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  left: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
+  pointer-events: auto !important;
 }
 
 @media (max-width: 720px) {
-  body > .settings-toast-layer .settings-toast {
+  .ema-notify-host,
+  .settings-toast-layer {
     top: 18px !important;
     right: 16px !important;
     left: 16px !important;
     width: auto !important;
+    max-width: none !important;
   }
 }
