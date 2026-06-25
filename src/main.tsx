@@ -26,3 +26,5 @@ createRoot(document.getElementById("root")!).render(
   </StrictMode>
 );
 import "./styles/ema-layout.css";
+import "./styles/ema-action-buttons.css";
+import "./styles/ema-pagination.css";

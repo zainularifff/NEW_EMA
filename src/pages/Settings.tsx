@@ -11,6 +11,8 @@ import {
   TicketCheck,
   UserCog,
   UsersRound} from "lucide-react";
+import "../styles/settings-v2.css";
+import NotificationChannelsSettings from "../components/settings/NotificationChannelsSettings";
 import {
   accessControls as settingsAccessControls,
   auditLogs as settingsAuditLogs,
@@ -22,7 +24,7 @@ import {
   settingsRoles,
   settingsUsers} from "../services/settingsService";
 
-type SectionKey = "roles" | "users" | "modules" | "access" | "incident" | "audit" | "pricing" | "aging" | "policy" | "risk" | "resources";
+type SectionKey = "roles" | "users" | "modules" | "access" | "incident" | "audit" | "pricing" | "aging" | "policy" | "risk" | "resources" | "notifications";
 type RoleStatus = "Active" | "Review" | "Locked" | "Inactive";
 type ModalMode = "add" | "edit" | "delete";
 type ToastTone = "success" | "info" | "warning" | "error";
@@ -731,6 +733,14 @@ const sections: Record<SectionKey, SectionItem> = {
     scoreOne: "6",
     scoreTwo: "80+",
     subtitle: "Risk rules"},
+  notifications: {
+      title: "Notification Channels",
+      subtitle: "Notification",
+      desc: "Manage system notification channels and delivery templates.",
+      tag: "Communication Control",
+      icon: "notifications"
+    },
+
   resources: {
     key: "resources",
     title: "Resource Planning",
@@ -742,7 +752,7 @@ const sections: Record<SectionKey, SectionItem> = {
     scoreTwo: "0",
     subtitle: "Leave schedules"}};
 
-const sectionOrder: SectionKey[] = ["roles", "users", "modules", "access", "incident", "audit", "pricing", "aging", "policy", "resources"];
+const sectionOrder: SectionKey[] = ["roles", "users", "modules", "access", "incident", "audit", "pricing", "aging", "policy", "notifications", "resources"];
 // const sectionOrder: SectionKey[] = ["roles", "users", "modules", "access", "incident", "audit", "pricing", "aging", "policy", "risk", "resources"];
 
 const defaultAccessRoles: AccessRole[] = [
@@ -3113,26 +3123,27 @@ setModuleLoaded(true);
   const visibleUsers = users.filter((user) => !filteredContentTerm || `${user.name} ${user.username || ""} ${user.email} ${user.role} ${user.status}`.toLowerCase().includes(filteredContentTerm));
 
   return (
-    <main  data-section={activeSection}>
+    <main className="settings-v2-inner" data-section={activeSection}>
       <input aria-hidden="true" id="globalSearch" type="hidden" />
       <button hidden id="themeBtn" type="button">
         <span id="themeLabel">Dark Mode</span>
       </button>
 
-      <div >
-        <aside >
-          <div >
+      <div className="settings-v2-layout">
+        <aside className="settings-v2-side-panel">
+          <div className="settings-v2-side-head">
             <span>SETTINGS CENTER</span>
             <strong>Configuration Area</strong>
             <small>Select system setup domain</small>
           </div>
 
-          <div  id="settingsMenu" role="tablist" aria-label="Settings navigation">
+          <div className="settings-v2-menu" id="settingsMenu" role="tablist" aria-label="Settings navigation">
             {sectionOrder.map((key) => {
               const item = sections[key];
               return (
                 <button
-                  key={key} 
+                  key={key}
+                  className={`settings-v2-menu-item ${activeSection === key ? "active" : ""}`}
                   type="button"
                   data-section={key}
                   onClick={() => {
@@ -3140,22 +3151,22 @@ setModuleLoaded(true);
                     setSectionSearch("");
                   }}
                 >
-                  <span ><SettingsMenuIcon name={item.icon} /></span>
-                  <span><strong>{item.title}</strong><small>{item.desc}</small></span>
+                  <span className="settings-v2-menu-icon"><SettingsMenuIcon name={item.icon} /></span>
+                  <span className="settings-v2-menu-text"><strong>{item.title}</strong><small>{item.desc}</small></span>
                 </button>
               );
             })}
           </div>
         </aside>
 
-        <section >
-          <div >
+        <section className="settings-v2-main-panel">
+          <div className="settings-v2-hero">
             <div>
-              <span >ADMINISTRATION CONTROL</span>
+              <span className="settings-v2-eyebrow">ADMINISTRATION CONTROL</span>
               <h2 id="heroTitle">{activeHeroTitle}</h2>
               <p id="heroDesc">{activeHeroDesc}</p>
             </div>
-            <div >
+            <div className="settings-v2-score-grid">
               {active.key === "users" ? (
                 <>
                   <div >
@@ -3181,12 +3192,18 @@ setModuleLoaded(true);
                 </>
               ) : active.key === "roles" ? (
                 <>
-                  <div >
+                  <div className="settings-v2-score-card settings-v2-score-card-total">
+                    <div className="settings-v2-score-card-icon">
+                      <UsersRound />
+                    </div>
                     <span>Total Roles</span>
                     <strong>{rolesTotalCount}</strong>
                     <small>Roles Records</small>
                   </div>
-                  <div >
+                  <div className="settings-v2-score-card settings-v2-score-card-active">
+                    <div className="settings-v2-score-card-icon">
+                      <UserCog />
+                    </div>
                     <span>Active Roles</span>
                     <strong>{rolesActiveCount}</strong>
                     <small>Assigned To Users</small>
@@ -3248,7 +3265,7 @@ setModuleLoaded(true);
             </div>
           </div>
 
-          <div >
+          <div className="settings-v2-content-card">
             {false && (
               <div >
                 {activeSection !== "audit" && (
@@ -3262,7 +3279,7 @@ setModuleLoaded(true);
                   {activeSection === "roles" ? (
                     <>
                       <button  type="button" onClick={loadAccessRoles} disabled={rolesLoading}>{rolesLoading ? "Loading..." : "Refresh"}</button>
-                      <button  type="button" onClick={() => openAccessRoleModal(null)}>Add Role</button>
+                      <button type="button" onClick={() => openAccessRoleModal(null)}>Add Role</button>
                     </>
                   ) : activeSection === "audit" ? (
                     <button  type="button" onClick={exportAuditLogs} disabled={auditLoading || filteredAuditLogs.length === 0}>Export CSV</button>
@@ -3281,9 +3298,9 @@ setModuleLoaded(true);
               </div>
             )}
 
-            {activeSection !== "users" && activeSection !== "access" && activeSection !== "audit" && activeSection !== "incident" && activeSection !== "aging" && activeSection !== "policy" && activeSection !== "resources" && (
-              <div >
-                <label >
+            {activeSection !== "users" && activeSection !== "access" && activeSection !== "audit" && activeSection !== "incident" && activeSection !== "aging" && activeSection !== "policy" && activeSection !== "resources" && activeSection !== "notifications" && (
+              <div className="settings-v2-toolbar">
+                <label className="settings-v2-search">
                   <SearchSvg />
                   <input
                     id="sectionSearch"
@@ -3293,8 +3310,8 @@ setModuleLoaded(true);
                   />
                 </label>
                 {activeSection === "roles" && (
-                  <div >
-                    <button  type="button" onClick={loadAccessRoles} disabled={rolesLoading}>{rolesLoading ? "Loading..." : "Refresh"}</button>
+                  <div className="settings-v2-actions">
+                    <button type="button" onClick={loadAccessRoles} disabled={rolesLoading}>{rolesLoading ? "Loading..." : "Refresh"}</button>
                     <button  type="button" onClick={() => openAccessRoleModal(null)}>Add Role</button>
                   </div>
                 )}
@@ -3332,7 +3349,7 @@ setModuleLoaded(true);
               </div>
             )}
 
-            <div  id="contentBody">
+            <div className="settings-v2-content-body" id="contentBody">
               {activeSection === "roles" && <RoleContent roles={accessRoles} loading={rolesLoading} error={rolesError} search={filteredContentTerm} onEdit={openAccessRoleModal} onDelete={requestDeleteAccessRole} />}
               {activeSection === "users" && <UserAccessContent users={visibleUsers} sourceUsers={users} loading={usersLoading} error={usersError} search={sectionSearch} onSearchChange={setSectionSearch} onReload={loadUsers} onAdd={() => openUserModal(null)} onEdit={openUserModal} onDelete={requestDeleteUser} />}
               {activeSection === "modules" && <ModuleMatrixContent roles={accessRoles.filter((role) => role.status === "Active")} modules={moduleCatalog} permissions={modulePermissions} loading={moduleLoading} error={moduleError} search={filteredContentTerm} savingKey={moduleSavingKey} onReload={loadModuleAccess} onToggle={toggleRoleModuleAccess} />}
@@ -3436,6 +3453,7 @@ setModuleLoaded(true);
                 />
               )}
               {activeSection === "risk" && <RiskContent search={filteredContentTerm} />}
+              {activeSection === "notifications" && <NotificationChannelsSettings />}
               {activeSection === "resources" && (
                 <ResourcePlanningContent
                   search={filteredContentTerm}
@@ -3537,258 +3555,302 @@ setModuleLoaded(true);
 }
 
 
-function IncidentConfigContent({
-  activeTab,
-  meta,
-  slaRows,
-  workingHours,
-  categories,
-  selectedCategoryId,
-  selectedSubcategoryId,
-  newCategoryName,
-  newSubcategoryName,
-  newDetailName,
-  categorySavingKey,
-  loading,
-  saving,
-  error,
-  onTabChange,
-  onReload,
-  onSlaChange,
-  onWorkingHourChange,
-  onSelectCategory,
-  onSelectSubcategory,
-  onNewCategoryNameChange,
-  onNewSubcategoryNameChange,
-  onNewDetailNameChange,
-  onCategoryNameChange,
-  onSubcategoryNameChange,
-  onDetailNameChange,
-  onAddCategory,
-  onUpdateCategory,
-  onDeactivateCategory,
-  onDeleteCategory,
-  onAddSubcategory,
-  onUpdateSubcategory,
-  onDeactivateSubcategory,
-  onDeleteSubcategory,
-  onAddDetail,
-  onUpdateDetail,
-  onDeactivateDetail,
-  onDeleteDetail,
-  onSave}: IncidentConfigContentProps) {
+function IncidentConfigContent(props: IncidentConfigContentProps) {
+  const {
+    activeTab,
+    meta,
+    slaRows,
+    workingHours,
+    categories,
+    selectedCategoryId,
+    selectedSubcategoryId,
+    newCategoryName,
+    newSubcategoryName,
+    newDetailName,
+    categorySavingKey,
+    loading,
+    saving,
+    error,
+    onTabChange,
+    onReload,
+    onSlaChange,
+    onWorkingHourChange,
+    onSelectCategory,
+    onSelectSubcategory,
+    onNewCategoryNameChange,
+    onNewSubcategoryNameChange,
+    onNewDetailNameChange,
+    onCategoryNameChange,
+    onSubcategoryNameChange,
+    onDetailNameChange,
+    onAddCategory,
+    onUpdateCategory,
+    onDeactivateCategory,
+    onDeleteCategory,
+    onAddSubcategory,
+    onUpdateSubcategory,
+    onDeactivateSubcategory,
+    onDeleteSubcategory,
+    onAddDetail,
+    onUpdateDetail,
+    onDeactivateDetail,
+    onDeleteDetail,
+    onSave
+  } = props;
+
   const selectedCategory = categories.find((category) => String(category.id) === selectedCategoryId) || categories[0];
   const selectedSubcategory = selectedCategory?.subcategories.find((subcategory) => String(subcategory.id) === selectedSubcategoryId) || selectedCategory?.subcategories[0];
   const categoryCounts = getIncidentCategoryCounts(categories);
   const categoriesDisabled = loading || Boolean(categorySavingKey);
+  const enabledWorkingDays = workingHours.filter((row) => row.enabled).length;
 
   return (
-    <div >
+    <div className="settings-v2-incident-content">
+      <div className="settings-v2-incident-command">
+        <div className="settings-v2-incident-info">
+          <span>{meta.eyebrow}</span>
+          <strong>{meta.commandTitle}</strong>
+          <small>{meta.commandDescription}</small>
+        </div>
+
+        <div className="settings-v2-incident-stats">
+          <div><span>SLA Rules</span><strong>{slaRows.length}</strong></div>
+          <div><span>Working Days</span><strong>{enabledWorkingDays}</strong></div>
+          <div><span>Categories</span><strong>{categoryCounts.categoryCount}</strong></div>
+          <div><span>Details</span><strong>{categoryCounts.detailCount}</strong></div>
+        </div>
+
+        <div className="settings-v2-incident-actions">
+          <button type="button" onClick={onReload} disabled={loading || saving || Boolean(categorySavingKey)}>
+            {loading ? "Loading..." : "Refresh"}
+          </button>
+          <button type="button" onClick={onSave} disabled={activeTab === "sla" || loading || saving || Boolean(categorySavingKey)}>
+            {activeTab === "sla" ? "Default Setting" : saving ? "Saving..." : meta.saveLabel}
+          </button>
+        </div>
+      </div>
+
       {error && (
-        <div >
+        <div className="settings-v2-alert">
           <strong>Incident Config load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <section >
-        <div>
-          <span >{meta.eyebrow}</span>
-          <h3>{meta.commandTitle}</h3>
-          <p>{meta.commandDescription}</p>
-        </div>
-        <div >
-          <button  type="button" onClick={onReload} disabled={loading || saving || Boolean(categorySavingKey)}>
-            {loading ? "Loading..." : "Refresh"}
-          </button>
-          <button  type="button" onClick={onSave} disabled={loading || saving || Boolean(categorySavingKey)}>
-            {saving ? "Saving..." : meta.saveLabel}
-          </button>
-        </div>
-      </section>
-
-      <div >
-        <button  type="button" onClick={() => onTabChange("sla")}>
-          SLA Rules
-        </button>
-        <button  type="button" onClick={() => onTabChange("workingHours")}>
-          Working Hours
-        </button>
-        <button  type="button" onClick={() => onTabChange("categories")}>
-          Category Setup
-        </button>
+      <div className="settings-v2-incident-tabs">
+        <button className={activeTab === "sla" ? "active" : ""} type="button" onClick={() => onTabChange("sla")}>SLA Rules</button>
+        <button className={activeTab === "workingHours" ? "active" : ""} type="button" onClick={() => onTabChange("workingHours")}>Working Hours</button>
+        <button className={activeTab === "categories" ? "active" : ""} type="button" onClick={() => onTabChange("categories")}>Category Setup</button>
       </div>
 
-      {activeTab === "sla" && (
-        <section >
-          <div >
-            <div>
-              <span >SLA CONFIGURATION</span>
-              <h4>Priority-based SLA Rules</h4>
-              <p>Resolution time is the main SLA due date source. Response time is stored for future first-response tracking.</p>
+      <div className="settings-v2-incident-body">
+        {activeTab === "sla" && (
+          <section className="settings-v2-incident-panel">
+            <div className="settings-v2-incident-panel-head">
+              <div>
+                <span>SLA Configuration</span>
+                <strong>Priority-based SLA Rules</strong>
+                <small>Resolution time is the main SLA due date source. Response time is stored for future first-response tracking.</small>
+              </div>
             </div>
-          </div>
 
-          <div >
-            <table >
-              <thead>
-                <tr>
-                  <th>Priority Code</th>
-                  <th>Label</th>
-                  <th>Response Time (Min)</th>
-                  <th>Resolution Time (Hrs)</th>
-                  <th>Escalation Policy / Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {slaRows.map((row) => (
-                  <tr key={String(row.id)}>
-                    <td><strong>{row.priority}</strong></td>
-                    <td><input  value={row.label} onChange={(event) => onSlaChange(row.id, { label: event.target.value })} /></td>
-                    <td><input  type="number" min="0" value={row.responseTimeMin} onChange={(event) => onSlaChange(row.id, { responseTimeMin: Number(event.target.value) })} /></td>
-                    <td><input  type="number" min="1" value={row.resolutionTimeHrs} onChange={(event) => onSlaChange(row.id, { resolutionTimeHrs: Number(event.target.value) })} /></td>
-                    <td><textarea  value={row.escalationPolicy} onChange={(event) => onSlaChange(row.id, { escalationPolicy: event.target.value })} placeholder="Escalation note for this SLA priority" /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      {activeTab === "workingHours" && (
-        <section >
-          <div >
-            <div>
-              <span >WORKING HOURS</span>
-              <h4>SLA Counting Window</h4>
-              <p>SLA timer should only count inside enabled working days and configured time range.</p>
-            </div>
-          </div>
-
-          <div >
-            <table >
-              <thead>
-                <tr><th>Day</th><th>Enabled</th><th>Start Time</th><th>End Time</th><th>Status</th></tr>
-              </thead>
-              <tbody>
-                {workingHours.map((row) => (
-                  <tr key={row.id}>
-                    <td><strong>{row.day}</strong></td>
-                    <td>
-                      <SettingSelect value={row.enabled ? "enabled" : "rest"} options={[{ value: "enabled", label: "Enabled" }, { value: "rest", label: "Rest Day" }]} onChange={(value) => onWorkingHourChange(row.id, { enabled: value === "enabled" })} ariaLabel={`${row.day} working status`} />
-                    </td>
-                    <td><input  type="time" value={row.start} disabled={!row.enabled} onChange={(event) => onWorkingHourChange(row.id, { start: event.target.value })} /></td>
-                    <td><input  type="time" value={row.end} disabled={!row.enabled} onChange={(event) => onWorkingHourChange(row.id, { end: event.target.value })} /></td>
-                    <td><span >{row.enabled ? "Working Day" : "Rest Day"}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      {activeTab === "categories" && (
-        <section >
-          <div >
-            <div>
-              <span >CATEGORY SETUP</span>
-              <h4>Incident Category Hierarchy</h4>
-              <p>Maintain editable Category → Subcategory → Incident Detail options used by the Service Desk form and filter.</p>
-            </div>
-            <div >
-              <span><strong>{categoryCounts.categoryCount}</strong> Categories</span>
-              <span><strong>{categoryCounts.subcategoryCount}</strong> Subcategories</span>
-              <span><strong>{categoryCounts.detailCount}</strong> Details</span>
-            </div>
-          </div>
-
-          <div >
-            <aside >
-              <div >
-                <input  value={newCategoryName} onChange={(event) => onNewCategoryNameChange(event.target.value)} placeholder="New category name" disabled={categoriesDisabled} />
-                <button  type="button" onClick={onAddCategory} disabled={categoriesDisabled || !newCategoryName.trim()}>{categorySavingKey === "category:add" ? "Adding..." : "+ Add"}</button>
+            <div className="settings-v2-incident-table settings-v2-sla-readonly">
+              <div className="settings-v2-incident-table-head sla">
+                <div>Priority</div>
+                <div>Label</div>
+                <div>Response Min</div>
+                <div>Resolution Hrs</div>
+                <div>Escalation Note</div>
               </div>
 
-              <div >
-                {categories.length === 0 ? <div >No category yet. Add the first incident category.</div> : categories.map((category) => (
-                  <button key={String(category.id)}  type="button" onClick={() => onSelectCategory(String(category.id))}>
-                    <span>{category.name || "Untitled Category"}</span>
-                    <small>{category.subcategories.length} subcategories</small>
+              {slaRows.map((row) => (
+                <div className="settings-v2-incident-table-row sla" key={String(row.id)}>
+                  <div><span className="settings-v2-priority-badge">{row.priority}</span></div>
+                  <div><input className="settings-v2-readonly-input" value={row.label} readOnly disabled /></div>
+                  <div><input className="settings-v2-readonly-input" value={row.responseTimeMin} readOnly disabled /></div>
+                  <div><input className="settings-v2-readonly-input" value={row.resolutionTimeHrs} readOnly disabled /></div>
+                  <div><textarea className="settings-v2-readonly-textarea" value={row.escalationPolicy} readOnly disabled /></div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {activeTab === "workingHours" && (
+          <section className="settings-v2-incident-panel">
+            <div className="settings-v2-incident-panel-head">
+              <div>
+                <span>Working Hours</span>
+                <strong>SLA Counting Window</strong>
+                <small>SLA timer should only count inside enabled working days and configured time range.</small>
+              </div>
+            </div>
+
+            <div className="settings-v2-incident-table">
+              <div className="settings-v2-incident-table-head hours">
+                <div>Day</div>
+                <div>Status</div>
+                <div>Start Time</div>
+                <div>End Time</div>
+                <div>Summary</div>
+              </div>
+
+              {workingHours.map((row) => (
+                <div className="settings-v2-incident-table-row hours" key={row.id}>
+                  <div><span className="settings-v2-incident-day">{row.day}</span></div>
+                  <div>
+                    <select
+                      className="settings-v2-incident-native-select"
+                      value={row.enabled ? "enabled" : "rest"}
+                      onChange={(event) => onWorkingHourChange(row.id, { enabled: event.target.value === "enabled" })}
+                      aria-label={`${row.day} working status`}
+                    >
+                      <option value="enabled">Enabled</option>
+                      <option value="rest">Rest Day</option>
+                    </select>
+                  </div>
+                  <div><input type="time" value={row.start} disabled={!row.enabled} onChange={(event) => onWorkingHourChange(row.id, { start: event.target.value })} /></div>
+                  <div><input type="time" value={row.end} disabled={!row.enabled} onChange={(event) => onWorkingHourChange(row.id, { end: event.target.value })} /></div>
+                  <div><span className={`settings-v2-user-pill ${row.enabled ? "active" : "inactive"}`}><span />{row.enabled ? "Working Day" : "Rest Day"}</span></div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {activeTab === "categories" && (
+          <section className="settings-v2-incident-panel settings-v2-incident-category-panel">
+            <div className="settings-v2-incident-panel-head">
+              <div>
+                <span>Category Setup</span>
+                <strong>Incident Category Hierarchy</strong>
+                <small>Maintain Category, Subcategory and Incident Detail options used by Service Desk.</small>
+              </div>
+
+              <div className="settings-v2-incident-category-counts">
+                <span><strong>{categoryCounts.categoryCount}</strong> Categories</span>
+                <span><strong>{categoryCounts.subcategoryCount}</strong> Subcategories</span>
+                <span><strong>{categoryCounts.detailCount}</strong> Details</span>
+              </div>
+            </div>
+
+            <div className="settings-v2-incident-category-layout">
+              <aside className="settings-v2-incident-category-list">
+                <div className="settings-v2-incident-inline-form">
+                  <input value={newCategoryName} onChange={(event) => onNewCategoryNameChange(event.target.value)} placeholder="New category name" disabled={categoriesDisabled} />
+                  <button type="button" onClick={onAddCategory} disabled={categoriesDisabled || !newCategoryName.trim()}>
+                    {categorySavingKey === "category:add" ? "Adding..." : "+ Add"}
                   </button>
-                ))}
-              </div>
-            </aside>
+                </div>
 
-            <div >
-              {selectedCategory ? (
-                <>
-                  <section >
-                    <div >
-                      <div><span >CATEGORY</span><h5>Edit Selected Category</h5></div>
-                      <div >
-                        <button  type="button" onClick={() => onUpdateCategory(selectedCategory)} disabled={categoriesDisabled || !selectedCategory.name.trim()}>{categorySavingKey === `category:${selectedCategory.id}:save` ? "Saving..." : "Save"}</button>
-                        <button  type="button" onClick={() => onDeactivateCategory(selectedCategory)} disabled={categoriesDisabled || !selectedCategory.name.trim()}>{categorySavingKey === `category:${selectedCategory.id}:deactivate` ? "Deactivating..." : "Deactivate"}</button>
-                        <button  type="button" onClick={() => onDeleteCategory(selectedCategory)} disabled={categoriesDisabled}>{categorySavingKey === `category:${selectedCategory.id}:delete` ? "Deleting..." : "Delete"}</button>
+                <div className="settings-v2-incident-category-buttons">
+                  {categories.length === 0 ? (
+                    <div className="settings-v2-empty">No category yet. Add the first incident category.</div>
+                  ) : categories.map((category) => (
+                    <button
+                      className={String(category.id) === String(selectedCategory?.id) ? "active" : ""}
+                      key={String(category.id)}
+                      type="button"
+                      onClick={() => onSelectCategory(String(category.id))}
+                    >
+                      <span>{category.name || "Untitled Category"}</span>
+                      <small>{category.subcategories.length} subcategories</small>
+                    </button>
+                  ))}
+                </div>
+              </aside>
+
+              <div className="settings-v2-incident-category-editor">
+                {selectedCategory ? (
+                  <>
+                    <section className="settings-v2-incident-edit-card">
+                      <div className="settings-v2-incident-edit-head">
+                        <div><span>Category</span><strong>Edit Selected Category</strong></div>
+                        <div className="ema-row-actions">
+                          <button className="ema-action-btn ema-action-btn-edit" type="button" onClick={() => onUpdateCategory(selectedCategory)} disabled={categoriesDisabled || !selectedCategory.name.trim()} title="Save category"><PencilSvg /></button>
+                          <button className="ema-action-btn ema-action-btn-delete" type="button" onClick={() => onDeleteCategory(selectedCategory)} disabled={categoriesDisabled} title="Delete category"><TrashSvg /></button>
+                        </div>
                       </div>
-                    </div>
-                    <input  value={selectedCategory.name} onChange={(event) => onCategoryNameChange(selectedCategory.id, event.target.value)} placeholder="Category name" disabled={categoriesDisabled} />
-                  </section>
+                      <input value={selectedCategory.name} onChange={(event) => onCategoryNameChange(selectedCategory.id, event.target.value)} placeholder="Category name" disabled={categoriesDisabled} />
+                    </section>
 
-                  <section >
-                    <div ><div><span >SUBCATEGORY</span><h5>Subcategories under {selectedCategory.name || "selected category"}</h5></div></div>
-                    <div >
-                      <input  value={newSubcategoryName} onChange={(event) => onNewSubcategoryNameChange(event.target.value)} placeholder="New subcategory name" disabled={categoriesDisabled} />
-                      <button  type="button" onClick={onAddSubcategory} disabled={categoriesDisabled || !newSubcategoryName.trim()}>{categorySavingKey === `category:${selectedCategory.id}:subcategory:add` ? "Adding..." : "+ Add Subcategory"}</button>
-                    </div>
-                    <div >
-                      {selectedCategory.subcategories.length === 0 ? <div >No subcategory yet for this category.</div> : selectedCategory.subcategories.map((subcategory) => (
-                        <div key={String(subcategory.id)} >
-                          <button type="button"  onClick={() => onSelectSubcategory(String(subcategory.id))}><strong>{subcategory.name || "Untitled Subcategory"}</strong><small>{subcategory.details.length} details</small></button>
-                          <input  value={subcategory.name} onChange={(event) => onSubcategoryNameChange(selectedCategory.id, subcategory.id, event.target.value)} disabled={categoriesDisabled} />
-                          <div >
-                            <button  type="button" onClick={() => onUpdateSubcategory(selectedCategory.id, subcategory)} disabled={categoriesDisabled || !subcategory.name.trim()}>{categorySavingKey === `subcategory:${subcategory.id}:save` ? "Saving..." : "Save"}</button>
-                            <button  type="button" onClick={() => onDeactivateSubcategory(selectedCategory.id, subcategory)} disabled={categoriesDisabled || !subcategory.name.trim()}>{categorySavingKey === `subcategory:${subcategory.id}:deactivate` ? "Deactivating..." : "Deactivate"}</button>
-                            <button  type="button" onClick={() => onDeleteSubcategory(selectedCategory.id, subcategory)} disabled={categoriesDisabled}>{categorySavingKey === `subcategory:${subcategory.id}:delete` ? "Deleting..." : "Delete"}</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
+                    <section className="settings-v2-incident-edit-card">
+                      <div className="settings-v2-incident-edit-head">
+                        <div><span>Subcategory</span><strong>Subcategories under {selectedCategory.name || "selected category"}</strong></div>
+                      </div>
 
-                  <section >
-                    <div ><div><span >INCIDENT DETAIL</span><h5>{selectedSubcategory ? `Details under ${selectedSubcategory.name}` : "Select a subcategory"}</h5></div></div>
-                    {selectedSubcategory ? (
-                      <>
-                        <div >
-                          <input  value={newDetailName} onChange={(event) => onNewDetailNameChange(event.target.value)} placeholder="New incident detail" disabled={categoriesDisabled} />
-                          <button  type="button" onClick={onAddDetail} disabled={categoriesDisabled || !newDetailName.trim()}>{categorySavingKey === `subcategory:${selectedSubcategory.id}:detail:add` ? "Adding..." : "+ Add Detail"}</button>
-                        </div>
-                        <div >
-                          {selectedSubcategory.details.length === 0 ? <div >No incident detail yet for this subcategory.</div> : selectedSubcategory.details.map((detail) => (
-                            <div key={String(detail.id)} >
-                              <input  value={detail.name} onChange={(event) => onDetailNameChange(selectedCategory.id, selectedSubcategory.id, detail.id, event.target.value)} disabled={categoriesDisabled} />
-                              <div >
-                                <button  type="button" onClick={() => onUpdateDetail(selectedCategory.id, selectedSubcategory.id, detail)} disabled={categoriesDisabled || !detail.name.trim()}>{categorySavingKey === `detail:${detail.id}:save` ? "Saving..." : "Save"}</button>
-                                <button  type="button" onClick={() => onDeactivateDetail(selectedCategory.id, selectedSubcategory.id, detail)} disabled={categoriesDisabled || !detail.name.trim()}>{categorySavingKey === `detail:${detail.id}:deactivate` ? "Deactivating..." : "Deactivate"}</button>
-                                <button  type="button" onClick={() => onDeleteDetail(selectedCategory.id, selectedSubcategory.id, detail)} disabled={categoriesDisabled}>{categorySavingKey === `detail:${detail.id}:delete` ? "Deleting..." : "Delete"}</button>
-                              </div>
+                      <div className="settings-v2-incident-inline-form">
+                        <input value={newSubcategoryName} onChange={(event) => onNewSubcategoryNameChange(event.target.value)} placeholder="New subcategory name" disabled={categoriesDisabled} />
+                        <button type="button" onClick={onAddSubcategory} disabled={categoriesDisabled || !newSubcategoryName.trim()}>
+                          {categorySavingKey === `category:${selectedCategory.id}:subcategory:add` ? "Adding..." : "+ Add Subcategory"}
+                        </button>
+                      </div>
+
+                      <div className="settings-v2-incident-subcategory-list">
+                        {selectedCategory.subcategories.length === 0 ? (
+                          <div className="settings-v2-empty">No subcategory yet for this category.</div>
+                        ) : selectedCategory.subcategories.map((subcategory) => (
+                          <div className={String(subcategory.id) === String(selectedSubcategory?.id) ? "active" : ""} key={String(subcategory.id)}>
+                            <button type="button" onClick={() => onSelectSubcategory(String(subcategory.id))}>
+                              <strong>{subcategory.name || "Untitled Subcategory"}</strong>
+                              <small>{subcategory.details.length} details</small>
+                            </button>
+                            <input value={subcategory.name} onChange={(event) => onSubcategoryNameChange(selectedCategory.id, subcategory.id, event.target.value)} disabled={categoriesDisabled} />
+                            <div className="ema-row-actions">
+                              <button className="ema-action-btn ema-action-btn-edit" type="button" onClick={() => onUpdateSubcategory(selectedCategory.id, subcategory)} disabled={categoriesDisabled || !subcategory.name.trim()} title="Save subcategory"><PencilSvg /></button>
+                              <button className="ema-action-btn ema-action-btn-delete" type="button" onClick={() => onDeleteSubcategory(selectedCategory.id, subcategory)} disabled={categoriesDisabled} title="Delete subcategory"><TrashSvg /></button>
                             </div>
-                          ))}
-                        </div>
-                      </>
-                    ) : <div >Select or add a subcategory before adding incident details.</div>}
-                  </section>
-                </>
-              ) : <div >Add a category first to start configuring Service Desk category setup.</div>}
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="settings-v2-incident-edit-card">
+                      <div className="settings-v2-incident-edit-head">
+                        <div><span>Incident Detail</span><strong>{selectedSubcategory ? `Details under ${selectedSubcategory.name}` : "Select a subcategory"}</strong></div>
+                      </div>
+
+                      {selectedSubcategory ? (
+                        <>
+                          <div className="settings-v2-incident-inline-form">
+                            <input value={newDetailName} onChange={(event) => onNewDetailNameChange(event.target.value)} placeholder="New incident detail" disabled={categoriesDisabled} />
+                            <button type="button" onClick={onAddDetail} disabled={categoriesDisabled || !newDetailName.trim()}>
+                              {categorySavingKey === `subcategory:${selectedSubcategory.id}:detail:add` ? "Adding..." : "+ Add Detail"}
+                            </button>
+                          </div>
+
+                          <div className="settings-v2-incident-detail-list">
+                            {selectedSubcategory.details.length === 0 ? (
+                              <div className="settings-v2-empty">No incident detail yet for this subcategory.</div>
+                            ) : selectedSubcategory.details.map((detail) => (
+                              <div key={String(detail.id)}>
+                                <input value={detail.name} onChange={(event) => onDetailNameChange(selectedCategory.id, selectedSubcategory.id, detail.id, event.target.value)} disabled={categoriesDisabled} />
+                                <div className="ema-row-actions">
+                                  <button className="ema-action-btn ema-action-btn-edit" type="button" onClick={() => onUpdateDetail(selectedCategory.id, selectedSubcategory.id, detail)} disabled={categoriesDisabled || !detail.name.trim()} title="Save detail"><PencilSvg /></button>
+                                  <button className="ema-action-btn ema-action-btn-delete" type="button" onClick={() => onDeleteDetail(selectedCategory.id, selectedSubcategory.id, detail)} disabled={categoriesDisabled} title="Delete detail"><TrashSvg /></button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="settings-v2-empty">Select or add a subcategory before adding incident details.</div>
+                      )}
+                    </section>
+                  </>
+                ) : (
+                  <div className="settings-v2-empty">Add a category first to start configuring Service Desk category setup.</div>
+                )}
+              </div>
             </div>
-          </div>
-        </section>
-      )}
+          </section>
+        )}
+      </div>
     </div>
   );
 }
+
+
 
 
 function ResourcePlanningContent({
@@ -4195,15 +4257,109 @@ function ResourcePlanningContent({
   );
 }
 
+
+/* SETTINGS_V2_ROLE_HELPERS_START */
+function getSettingsRolePageSize() {
+  if (typeof window === "undefined") return 8;
+  const height = window.innerHeight || 900;
+
+  if (height < 760) return 6;
+  if (height < 900) return 8;
+  if (height < 1080) return 10;
+  return 12;
+}
+
+function getSettingsRoleTone(role: AccessRole, index: number) {
+  const name = String(role.name || "").toLowerCase();
+  if (name.includes("super")) return "purple";
+  if (name.includes("client")) return "blue";
+  if (name.includes("dashboard")) return "indigo";
+  if (name.includes("guest")) return "gray";
+  if (name.includes("operation")) return "green";
+  if (name.includes("l1")) return "sky";
+  if (name.includes("l2")) return "blue";
+  if (name.includes("l3")) return "purple";
+  return ["purple", "blue", "indigo", "green"][index % 4];
+}
+
+function EmaPageFirstIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M18 6l-6 6 6 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 6l-6 6 6 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function EmaPagePrevIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function EmaPageNextIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M9 6l6 6-6 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function EmaPageLastIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M6 6l6 6-6 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 6l6 6-6 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SettingsRoleIcon({ role }: { role: AccessRole }) {
+  const name = String(role.name || "").toLowerCase();
+
+  if (name.includes("super")) return <ShieldCheck />;
+  if (name.includes("client")) return <UserCog />;
+  if (name.includes("dashboard")) return <Grid3X3 />;
+  if (name.includes("operation") || name.includes("support")) return <TicketCheck />;
+  return <UsersRound />;
+}
+
+function SettingsMoreSvg() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="5" r="1.8" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+      <circle cx="12" cy="19" r="1.8" fill="currentColor" />
+    </svg>
+  );
+}
+/* SETTINGS_V2_ROLE_HELPERS_END */
+
 function RoleContent({ roles, loading, error, search, onEdit, onDelete }: { roles: AccessRole[]; loading: boolean; error: string; search: string; onEdit: (index: number) => void; onDelete: (index: number) => void }) {
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(() => getSettingsRolePageSize());
 
-  const filteredRoles = roles.filter((role) => !search || `${role.name} ${role.description} ${role.status} ${role.approvalRequired ? "approval required" : "standard"}`.toLowerCase().includes(search));
+  useEffect(() => {
+    const syncPageSize = () => setPageSize(getSettingsRolePageSize());
+    syncPageSize();
+    window.addEventListener("resize", syncPageSize);
+    return () => window.removeEventListener("resize", syncPageSize);
+  }, []);
+
+  const filterTerm = String(search || "").toLowerCase();
+  const filteredRoles = roles.filter((role) => {
+    const haystack = `${role.name} ${role.description} ${role.status} ${role.approvalRequired ? "approval required" : "standard"}`.toLowerCase();
+    return !filterTerm || haystack.includes(filterTerm);
+  });
+
   const totalPages = Math.max(1, Math.ceil(filteredRoles.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const pageStartIndex = (safeCurrentPage - 1) * pageSize;
   const paginatedRoles = filteredRoles.slice(pageStartIndex, pageStartIndex + pageSize);
+  const showingFrom = filteredRoles.length ? pageStartIndex + 1 : 0;
+  const showingTo = Math.min(pageStartIndex + paginatedRoles.length, filteredRoles.length);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -4223,45 +4379,70 @@ function RoleContent({ roles, loading, error, search, onEdit, onDelete }: { role
   };
 
   return (
-    <div >
+    <div className="settings-v2-role-content">
       {error && (
-        <div >
+        <div className="settings-v2-alert">
           <strong>Role load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div >
-        <div >
-          <div >No</div>
-          <div >Role</div>
-          <div >Approval</div>
-          <div >Status</div>
-          <div >Action</div>
+      <div className="settings-v2-data-table settings-v2-role-table">
+        <div className="settings-v2-table-head">
+          <div className="settings-v2-th">No</div>
+          <div className="settings-v2-th">Role</div>
+          <div className="settings-v2-th">Approval</div>
+          <div className="settings-v2-th">Status</div>
+          <div className="settings-v2-th">Action</div>
         </div>
 
-        {loading && <div >Loading role records from EMA_Roles...</div>}
-        {!loading && filteredRoles.length === 0 && <div >No data available.</div>}
+        {loading && <div className="settings-v2-loading">Loading role records from EMA_Roles...</div>}
+        {!loading && filteredRoles.length === 0 && <div className="settings-v2-empty">No role records found.</div>}
 
         {!loading && paginatedRoles.map((role, index) => {
           const actualIndex = getActualIndex(role);
+          const isInactive = role.status === "Inactive";
+          const approvalClass = role.approvalRequired ? "required" : "standard";
+          const tone = getSettingsRoleTone(role, pageStartIndex + index);
+
           return (
-            <div  key={`${role.id || role.roleKey}-${actualIndex}`}>
-              <div ><span >{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
-              <div >
-                <div >
-                  <strong>{role.name}</strong>
-                  <small>{role.description || "No description set"}</small>
+            <div className="settings-v2-table-row" key={`${role.id || role.roleKey}-${actualIndex}`}>
+              <div className="settings-v2-td">
+                <span className="settings-v2-row-no">{String(pageStartIndex + index + 1).padStart(2, "0")}</span>
+              </div>
+
+              <div className="settings-v2-td">
+                <div className="settings-v2-role-main">
+                  <span className={`settings-v2-role-avatar ${tone}`}>
+                    <SettingsRoleIcon role={role} />
+                  </span>
+                  <div className="settings-v2-role-name">
+                    <strong>{role.name}</strong>
+                    <small>{role.description || "No description set"}</small>
+                  </div>
                 </div>
               </div>
-              <div ><span >{role.approvalRequired ? "Required" : "Standard"}</span></div>
-              <div ><span >{role.status === "Inactive" ? "Inactive" : "Active"}</span></div>
-              <div >
-                <div >
-                  <button  type="button" title="Edit role" aria-label="Edit role" onClick={() => onEdit(actualIndex)}>
+
+              <div className="settings-v2-td">
+                <span className={`settings-v2-pill ${approvalClass}`}>
+                  {role.approvalRequired ? "Required" : "Standard"}
+                </span>
+              </div>
+
+              <div className="settings-v2-td">
+                <span className={`settings-v2-pill ${isInactive ? "inactive" : "active"}`}>
+                  <span className="settings-v2-pill-dot" />
+                  {isInactive ? "Inactive" : "Active"}
+                </span>
+              </div>
+
+              <div className="settings-v2-td">
+                <div className="ema-row-actions">
+                  <button className="ema-action-btn ema-action-btn-edit" type="button" title="Edit role" aria-label="Edit role" onClick={() => onEdit(actualIndex)}>
                     <PencilSvg />
                   </button>
-                  <button 
+                  <button
+                    className="ema-action-btn ema-action-btn-delete"
                     type="button"
                     title={isProtectedSuperAdminRole(role) ? "Super Admin is protected and cannot be deleted" : "Delete role"}
                     aria-label={isProtectedSuperAdminRole(role) ? "Protected role" : "Delete role"}
@@ -4278,15 +4459,20 @@ function RoleContent({ roles, loading, error, search, onEdit, onDelete }: { role
       </div>
 
       {!loading && filteredRoles.length > 0 && (
-        <div >
-          <div >Page {safeCurrentPage} of {totalPages}</div>
-          <div  aria-label="Role based control pagination">
-            <button  type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page">«</button>
-            <button  type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page">‹</button>
-            <span >{safeCurrentPage}</span>
-            <button  type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page">›</button>
-            <button  type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page">»</button>
+        <div className="ema-pagination">
+          <div className="ema-pagination-summary">
+            Showing {showingFrom} to {showingTo} of {filteredRoles.length} roles
           </div>
+
+          <div className="ema-pagination-controls" aria-label="Role based control pagination">
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span className="ema-page-current">{safeCurrentPage}</span>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+          </div>
+
+          <div className="ema-page-size">{pageSize} / page</div>
         </div>
       )}
     </div>
@@ -4523,25 +4709,50 @@ function SettingSelect({
 
 
 function UserAccessContent({ users, sourceUsers, loading, error, search, onSearchChange, onReload, onAdd, onEdit, onDelete }: { users: UserAccess[]; sourceUsers: UserAccess[]; loading: boolean; error: string; search: string; onSearchChange: (value: string) => void; onReload: () => void; onAdd: () => void; onEdit: (index: number) => void; onDelete: (index: number) => void }) {
+  const getPageSize = () => {
+    if (typeof window === "undefined") return 8;
+    const height = window.innerHeight || 900;
+    if (height < 760) return 6;
+    if (height < 900) return 8;
+    if (height < 1080) return 10;
+    return 12;
+  };
+
   const [statusFilter, setStatusFilter] = useState("All Status");
   const [roleFilter, setRoleFilter] = useState("All Roles");
-  const [openFilter, setOpenFilter] = useState<"status" | "role" | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(getPageSize);
+
+  useEffect(() => {
+    const syncPageSize = () => setPageSize(getPageSize());
+    syncPageSize();
+    window.addEventListener("resize", syncPageSize);
+    return () => window.removeEventListener("resize", syncPageSize);
+  }, []);
 
   const roleOptions = Array.from(new Set(sourceUsers.flatMap((user) => normalizeUserRoles(user.roles || user.role || user.roleName)))).sort();
+
   const filteredUsers = users.filter((user) => {
+    const roles = normalizeUserRoles(user.roles || user.role || user.roleName);
+    const haystack = `${user.name} ${user.username} ${user.email} ${user.department} ${user.position} ${roles.join(" ")} ${user.status}`.toLowerCase();
+
+    const matchesSearch = !search.trim() || haystack.includes(search.trim().toLowerCase());
     const matchesStatus = statusFilter === "All Status" || user.status === statusFilter;
     const matchesRole = roleFilter === "All Roles" || hasUserRole(user, roleFilter);
-    return matchesStatus && matchesRole;
+
+    return matchesSearch && matchesStatus && matchesRole;
   });
+
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const pageStartIndex = (safeCurrentPage - 1) * pageSize;
   const paginatedUsers = filteredUsers.slice(pageStartIndex, pageStartIndex + pageSize);
+  const showingFrom = filteredUsers.length ? pageStartIndex + 1 : 0;
+  const showingTo = Math.min(pageStartIndex + paginatedUsers.length, filteredUsers.length);
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, roleFilter, users.length]);
+  }, [statusFilter, roleFilter, search, users.length]);
 
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
@@ -4556,69 +4767,71 @@ function UserAccessContent({ users, sourceUsers, loading, error, search, onSearc
     return sourceUsers.indexOf(user);
   };
 
+  const getStatusTone = (status: string) => {
+    const value = String(status || "").toLowerCase();
+    if (value.includes("inactive")) return "inactive";
+    if (value.includes("locked")) return "locked";
+    if (value.includes("review")) return "review";
+    return "active";
+  };
+
   return (
-    <div >
-      <div >
-        <label >
+    <div className="settings-v2-user-content">
+      <div className="settings-v2-user-toolbar">
+        <label className="settings-v2-user-search">
           <SearchSvg />
           <input
-            placeholder="Search users by name, email or role..."
+            placeholder="Search users by name, email, username or role..."
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
           />
         </label>
 
-        <div >
-          <FilterDropdown
-            label="Status"
-            value={statusFilter}
-            options={["All Status", "Active", "Review", "Locked", "Inactive"]}
-            open={openFilter === "status"}
-            onToggle={() => setOpenFilter((current) => current === "status" ? null : "status")}
-            onSelect={(value) => { setStatusFilter(value); setOpenFilter(null); }}
-            onClose={() => setOpenFilter(null)}
-          />
-          <FilterDropdown
-            label="Role"
-            value={roleFilter}
-            options={["All Roles", ...roleOptions]}
-            open={openFilter === "role"}
-            onToggle={() => setOpenFilter((current) => current === "role" ? null : "role")}
-            onSelect={(value) => { setRoleFilter(value); setOpenFilter(null); }}
-            onClose={() => setOpenFilter(null)}
-          />
+        <div className="settings-v2-user-filters">
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="User status filter">
+            <option>All Status</option>
+            <option>Active</option>
+            <option>Review</option>
+            <option>Locked</option>
+            <option>Inactive</option>
+          </select>
+
+          <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} aria-label="User role filter">
+            <option>All Roles</option>
+            {roleOptions.map((role) => <option key={role}>{role}</option>)}
+          </select>
         </div>
 
-        <div >
-          <button  type="button" onClick={onReload} disabled={loading}>{loading ? "Loading..." : "Refresh"}</button>
-          <button  type="button" onClick={onAdd}>Add New User</button>
+        <div className="settings-v2-user-actions">
+          <button type="button" onClick={onReload} disabled={loading}>{loading ? "Loading..." : "Refresh"}</button>
+          <button type="button" onClick={onAdd}>Add New User</button>
         </div>
       </div>
 
       {error && (
-        <div >
+        <div className="settings-v2-alert">
           <strong>User access load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div >
-        <div >
-          <div >No</div>
-          <div >User</div>
-          <div >Roles</div>
-          <div >MFA</div>
-          <div >Status</div>
-          <div >Last Login</div>
-          <div >Action</div>
+      <div className="settings-v2-user-table">
+        <div className="settings-v2-user-head">
+          <div>No</div>
+          <div>User</div>
+          <div>Roles</div>
+          <div>MFA</div>
+          <div>Status</div>
+          <div>Last Login</div>
+          <div>Action</div>
         </div>
 
         {loading && (
-          <div >Loading user access records from EMA_Users...</div>
+          <div className="settings-v2-loading">Loading user access records from EMA_Users...</div>
         )}
 
         {!loading && filteredUsers.length === 0 && (
-          <div >No data available.</div>
+          <div className="settings-v2-empty">No user access record found.</div>
         )}
 
         {!loading && paginatedUsers.map((user, index) => {
@@ -4627,27 +4840,51 @@ function UserAccessContent({ users, sourceUsers, loading, error, search, onSearc
           const roles = normalizeUserRoles(user.roles || user.role || user.roleName);
           const visibleRoles = roles.slice(0, 2);
           const hiddenRoleCount = Math.max(roles.length - visibleRoles.length, 0);
+          const statusTone = getStatusTone(user.status);
+
           return (
-            <div  data-user-index={actualIndex} key={`${user.id || user.email}-${actualIndex}`}>
-              <div ><span >{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
-              <div >
-                <div ><i >{initials(user.name)}</i><div><strong>{user.name}</strong><small>{user.email || user.username || "No email set"}</small></div></div>
-              </div>
-              <div >
-                <div >
-                  {visibleRoles.map((role) => <span  key={role}>{role}</span>)}
-                  {hiddenRoleCount > 0 && <span >+{hiddenRoleCount}</span>}
+            <div className="settings-v2-user-row" data-user-index={actualIndex} key={`${user.id || user.email}-${actualIndex}`}>
+              <div><span className="settings-v2-row-no">{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
+
+              <div>
+                <div className="settings-v2-user-profile">
+                  <i>{initials(user.name || user.username || user.email || "U")}</i>
+                  <div>
+                    <strong>{user.name || user.username || "Unnamed User"}</strong>
+                    <small>{user.email || user.username || "No email set"}</small>
+                  </div>
                 </div>
               </div>
-              <div ><span >{isMfa ? "On" : "Off"}</span></div>
-              <div ><span >{user.status}</span></div>
-              <div ><span >{formatUserDate(user.lastLoginAt)}</span></div>
-              <div >
-                <div >
-                  <button  type="button" onClick={() => onEdit(actualIndex)} aria-label="Edit user access" title="Edit">
+
+              <div>
+                <div className="settings-v2-user-role-list">
+                  {visibleRoles.length === 0 && <span className="settings-v2-user-role empty">No Role</span>}
+                  {visibleRoles.map((role) => <span className="settings-v2-user-role" key={role}>{role}</span>)}
+                  {hiddenRoleCount > 0 && <span className="settings-v2-user-role more">+{hiddenRoleCount}</span>}
+                </div>
+              </div>
+
+              <div>
+                <span className={`settings-v2-user-pill ${isMfa ? "mfa-on" : "mfa-off"}`}>{isMfa ? "On" : "Off"}</span>
+              </div>
+
+              <div>
+                <span className={`settings-v2-user-pill ${statusTone}`}>
+                  <span />
+                  {user.status || "Active"}
+                </span>
+              </div>
+
+              <div>
+                <span className="settings-v2-user-date">{formatUserDate(user.lastLoginAt)}</span>
+              </div>
+
+              <div>
+                <div className="ema-row-actions">
+                  <button className="ema-action-btn ema-action-btn-edit" type="button" onClick={() => onEdit(actualIndex)} aria-label="Edit user access" title="Edit">
                     <PencilSvg />
                   </button>
-                  <button  type="button" onClick={() => onDelete(actualIndex)} aria-label="Delete user access" title="Delete">
+                  <button className="ema-action-btn ema-action-btn-delete" type="button" onClick={() => onDelete(actualIndex)} aria-label="Delete user access" title="Delete">
                     <TrashSvg />
                   </button>
                 </div>
@@ -4658,28 +4895,53 @@ function UserAccessContent({ users, sourceUsers, loading, error, search, onSearc
       </div>
 
       {!loading && filteredUsers.length > 0 && (
-        <div >
-          <div >Page {safeCurrentPage} of {totalPages}</div>
-          <div  aria-label="User access pagination">
-            <button  type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page">«</button>
-            <button  type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page">‹</button>
-            <span >{safeCurrentPage}</span>
-            <button  type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page">›</button>
-            <button  type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page">»</button>
+        <div className="ema-pagination">
+          <div className="ema-pagination-summary">
+            Showing {showingFrom} to {showingTo} of {filteredUsers.length} users
           </div>
+
+          <div className="ema-pagination-controls" aria-label="User access pagination">
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span className="ema-page-current">{safeCurrentPage}</span>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+          </div>
+
+          <div className="ema-page-size">{pageSize} / page</div>
         </div>
       )}
     </div>
   );
 }
 
+
 function ModuleMatrixContent({ roles, modules, permissions, loading, error, search, savingKey, onReload, onToggle }: { roles: AccessRole[]; modules: ModuleControlModule[]; permissions: ModulePermission[]; loading: boolean; error: string; search: string; savingKey: string; onReload: () => void; onToggle: (module: ModuleControlModule, role: AccessRole) => void }) {
+  const getPageSize = () => {
+    if (typeof window === "undefined") return 8;
+    const height = window.innerHeight || 900;
+    if (height < 760) return 6;
+    if (height < 900) return 8;
+    if (height < 1080) return 10;
+    return 12;
+  };
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(getPageSize);
+
+  useEffect(() => {
+    const syncPageSize = () => setPageSize(getPageSize());
+    syncPageSize();
+    window.addEventListener("resize", syncPageSize);
+    return () => window.removeEventListener("resize", syncPageSize);
+  }, []);
+
   const term = search.trim().toLowerCase();
 
   const sortedModules = [...modules].sort((a, b) => {
     const aOrder = Number(a.sortOrder || 0);
     const bOrder = Number(b.sortOrder || 0);
-    return aOrder - bOrder || a.moduleName.localeCompare(b.moduleName);
+    return aOrder - bOrder || String(a.moduleName || "").localeCompare(String(b.moduleName || ""));
   });
 
   const moduleById = new Map(sortedModules.map((module) => [String(getModuleId(module)), module]));
@@ -4694,12 +4956,6 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
     }
   });
 
-  const moduleMatches = (module: ModuleControlModule) => {
-    const parent = moduleById.get(String(module.parentModuleID ?? ""));
-    const haystack = `${module.moduleName} ${module.description} ${module.category || ""} ${module.routePath || ""} ${parent?.moduleName || ""}`.toLowerCase();
-    return !term || haystack.includes(term);
-  };
-
   const getGroupName = (module: ModuleControlModule) => {
     const parentId = module.parentModuleID == null ? "" : String(module.parentModuleID);
     const parent = parentId && parentId !== "0" ? moduleById.get(parentId) : null;
@@ -4713,6 +4969,12 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
     const parentId = module.parentModuleID == null ? "" : String(module.parentModuleID);
     const parent = parentId && parentId !== "0" ? moduleById.get(parentId) : null;
     return Number(parent?.sortOrder ?? module.sortOrder ?? 0) || 0;
+  };
+
+  const moduleMatches = (module: ModuleControlModule) => {
+    const parent = moduleById.get(String(module.parentModuleID ?? ""));
+    const haystack = `${module.moduleName} ${module.description} ${module.category || ""} ${module.routePath || ""} ${parent?.moduleName || ""}`.toLowerCase();
+    return !term || haystack.includes(term);
   };
 
   const grouped = new Map<string, { groupName: string; order: number; modules: ModuleControlModule[] }>();
@@ -4732,89 +4994,143 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
       const groupMatches = !term || group.groupName.toLowerCase().includes(term);
       const visibleModules = group.modules.filter((module) => groupMatches || moduleMatches(module));
       if (visibleModules.length === 0) return [] as Array<{ type: "group"; groupName: string } | { type: "module"; module: ModuleControlModule; isSubmodule: boolean }>;
+
       return [
-        { type: "group", groupName: group.groupName },
+        { type: "group" as const, groupName: group.groupName },
         ...visibleModules.map((module) => ({
           type: "module" as const,
           module,
-          isSubmodule: Boolean(module.parentModuleID && String(module.parentModuleID) !== "0" && moduleById.has(String(module.parentModuleID))) || group.groupName !== module.moduleName}))];
+          isSubmodule: Boolean(module.parentModuleID && String(module.parentModuleID) !== "0" && moduleById.has(String(module.parentModuleID))) || group.groupName !== module.moduleName
+        }))
+      ];
     });
 
-  const visibleModuleCount = groupedRows.filter((row) => row.type === "module").length;
-  let displayIndex = 0;
+  const moduleRows = groupedRows.filter((row) => row.type === "module");
+  const totalPages = Math.max(1, Math.ceil(moduleRows.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStartModuleIndex = (safeCurrentPage - 1) * pageSize;
+  const pageEndModuleIndex = pageStartModuleIndex + pageSize;
 
-  const moduleMatrixRoleCount = Math.max(roles.length, 1);
-  const moduleMatrixMinWidth = `${4.2 + 18 + moduleMatrixRoleCount * 8.6}rem`;
-  const moduleMatrixRowStyle = {
-    gridTemplateColumns: `4.2rem minmax(18rem, 1.4fr) repeat(${moduleMatrixRoleCount}, minmax(8.6rem, 1fr))`,
-    minWidth: moduleMatrixMinWidth} as CSSProperties;
-  const moduleMatrixTableStyle = {
-    "--module-role-count": moduleMatrixRoleCount,
-    minWidth: moduleMatrixMinWidth} as CSSProperties;
-  const moduleMatrixGroupStyle = {
-    minWidth: moduleMatrixMinWidth} as CSSProperties;
+  let moduleCounter = 0;
+  let displayCounter = 0;
+  const pageRows = groupedRows.filter((row) => {
+    if (row.type === "group") {
+      return true;
+    }
+
+    const include = moduleCounter >= pageStartModuleIndex && moduleCounter < pageEndModuleIndex;
+    moduleCounter += 1;
+    return include;
+  }).filter((row, index, arr) => {
+    if (row.type === "module") return true;
+    return arr[index + 1]?.type === "module";
+  });
+
+  const showingFrom = moduleRows.length ? pageStartModuleIndex + 1 : 0;
+  const showingTo = Math.min(pageEndModuleIndex, moduleRows.length);
+  const roleCount = Math.max(roles.length, 1);
+  const matrixStyle = { "--module-role-count": roleCount } as CSSProperties;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, modules.length, roles.length]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  const enabledCount = modules.reduce((total, module) => {
+    return total + roles.reduce((roleTotal, role) => roleTotal + (hasModulePermission(permissions, module, role) ? 1 : 0), 0);
+  }, 0);
+
+  const totalPossible = modules.length * Math.max(roles.length, 1);
+  const coverage = totalPossible ? Math.round((enabledCount / totalPossible) * 100) : 0;
 
   return (
-    <div >
+    <div className="settings-v2-module-content">
+      <div className="settings-v2-module-toolbar">
+        <div className="settings-v2-module-info">
+          <strong>Module Permission Matrix</strong>
+          <span>Turn module and submodule access on or off for each active role.</span>
+        </div>
+
+        <div className="settings-v2-module-stats">
+          <div><span>Modules</span><strong>{modules.length}</strong></div>
+          <div><span>Roles</span><strong>{roles.length}</strong></div>
+          <div><span>Coverage</span><strong>{coverage}%</strong></div>
+        </div>
+
+        <button type="button" onClick={onReload} disabled={loading}>{loading ? "Loading..." : "Refresh"}</button>
+      </div>
+
       {error && (
-        <div >
+        <div className="settings-v2-alert">
           <strong>Module access load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div >
-        <strong>Role permissions are managed from Role Based Control.</strong>
-        <span>Use this page to turn module and submodule access on or off for each active role.</span>
-      </div>
-
-      <div  >
-        <div  >
-          <div >No</div>
-          <div >Module</div>
+      <div className="settings-v2-module-matrix" style={matrixStyle}>
+        <div className="settings-v2-module-head">
+          <div>No</div>
+          <div>Module</div>
           {roles.length > 0 ? roles.map((role) => (
-            <div  key={String(getAccessRoleId(role))}>{role.name}</div>
-          )) : <div >Roles</div>}
+            <div className="settings-v2-module-role-head" key={String(getAccessRoleId(role))}>
+              <span>{role.name}</span>
+            </div>
+          )) : <div className="settings-v2-module-role-head"><span>Roles</span></div>}
         </div>
 
-        {loading && <div >Loading module access from EMA_Modules...</div>}
-        {!loading && visibleModuleCount === 0 && <div >No data available.</div>}
-        {!loading && roles.length === 0 && visibleModuleCount > 0 && <div >No active roles found. Create active roles in Role Based Control first.</div>}
+        {loading && <div className="settings-v2-loading">Loading module access from EMA_Modules...</div>}
+        {!loading && moduleRows.length === 0 && <div className="settings-v2-empty">No module records found.</div>}
+        {!loading && roles.length === 0 && moduleRows.length > 0 && <div className="settings-v2-empty">No active roles found. Create active roles in Role Based Control first.</div>}
 
-        {!loading && roles.length > 0 && groupedRows.map((row) => {
+        {!loading && roles.length > 0 && pageRows.map((row) => {
           if (row.type === "group") {
             return (
-              <div  key={`group-${row.groupName}`} >
+              <div className="settings-v2-module-group" key={`group-${row.groupName}`}>
                 <span>{row.groupName}</span>
               </div>
             );
           }
 
-          displayIndex += 1;
+          displayCounter += 1;
           const module = row.module;
+          const rowNumber = pageStartModuleIndex + displayCounter;
+
           return (
-            <div  key={String(getModuleId(module))} >
-              <div ><span >{String(displayIndex).padStart(2, "0")}</span></div>
-              <div >
-                <div >
-                  <strong>{module.moduleName}</strong>
-                  <small>{module.description || module.routePath || (row.isSubmodule ? "Submodule" : "Main module")}</small>
+            <div className={`settings-v2-module-row ${row.isSubmodule ? "submodule" : ""}`} key={String(getModuleId(module))}>
+              <div><span className="settings-v2-row-no">{String(rowNumber).padStart(2, "0")}</span></div>
+
+              <div>
+                <div className="settings-v2-module-name">
+                  <i>{row.isSubmodule ? "S" : "M"}</i>
+                  <div>
+                    <strong>{module.moduleName}</strong>
+                    <small>{module.description || module.routePath || (row.isSubmodule ? "Submodule" : "Main module")}</small>
+                  </div>
                 </div>
               </div>
+
               {roles.map((role) => {
                 const moduleId = String(getModuleId(module));
                 const roleId = String(getAccessRoleId(role));
                 const key = `${moduleId}:${roleId}`;
                 const enabled = hasModulePermission(permissions, module, role);
+
                 return (
-                  <div  key={key}>
-                    <button 
+                  <div className="settings-v2-module-toggle-cell" key={key}>
+                    <button
+                      className={`settings-v2-module-toggle ${enabled ? "enabled" : "disabled"}`}
                       type="button"
                       disabled={savingKey === key}
                       title={`${enabled ? "Disable" : "Enable"} ${module.moduleName} for ${role.name}`}
                       aria-label={`${enabled ? "Disable" : "Enable"} ${module.moduleName} for ${role.name}`}
                       onClick={() => onToggle(module, role)}
-                    />
+                    >
+                      <span />
+                      <b>{enabled ? "On" : "Off"}</b>
+                    </button>
                   </div>
                 );
               })}
@@ -4822,54 +5138,141 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
           );
         })}
       </div>
+
+      {!loading && moduleRows.length > 0 && (
+        <div className="ema-pagination">
+          <div className="ema-pagination-summary">Showing {showingFrom} to {showingTo} of {moduleRows.length} modules</div>
+
+          <div className="ema-pagination-controls" aria-label="Module control pagination">
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span className="ema-page-current">{safeCurrentPage}</span>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+          </div>
+
+          <div className="ema-page-size">{pageSize} / page</div>
+        </div>
+      )}
     </div>
   );
 }
 
+
 function AccessControlContent({ policies, loading, error, onReload, onAdd, onEdit }: { policies: AccessPolicy[]; loading: boolean; error: string; onReload: () => void; onAdd: () => void; onEdit: (index: number) => void }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
   const filteredPolicies = policies;
+  const totalPages = Math.max(1, Math.ceil(filteredPolicies.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safeCurrentPage - 1) * pageSize;
+  const paginatedPolicies = filteredPolicies.slice(pageStartIndex, pageStartIndex + pageSize);
+  const showingFrom = filteredPolicies.length ? pageStartIndex + 1 : 0;
+  const showingTo = Math.min(pageStartIndex + paginatedPolicies.length, filteredPolicies.length);
+
+  const activeCount = policies.filter((policy) => String(policy.status || "").toLowerCase() === "active").length;
+  const mfaCount = policies.filter((policy) => {
+    const haystack = `${policy.name} ${policy.description} ${policy.enforcement} ${policy.scope}`.toLowerCase();
+    return haystack.includes("mfa") || haystack.includes("multi") || haystack.includes("factor");
+  }).length;
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  const getPolicyTone = (policy: AccessPolicy) => {
+    const text = `${policy.name} ${policy.enforcement} ${policy.scope}`.toLowerCase();
+
+    if (text.includes("mfa") || text.includes("factor")) return "purple";
+    if (text.includes("session") || text.includes("timeout")) return "blue";
+    if (text.includes("ip") || text.includes("vpn") || text.includes("network")) return "green";
+    if (text.includes("approval")) return "orange";
+    return "slate";
+  };
+
+  const getStatusTone = (status: string) => {
+    const value = String(status || "").toLowerCase();
+    if (value.includes("inactive")) return "inactive";
+    if (value.includes("review")) return "review";
+    if (value.includes("draft")) return "draft";
+    return "active";
+  };
 
   return (
-    <div >
+    <div className="settings-v2-access-content">
+      <div className="settings-v2-access-toolbar">
+        <div className="settings-v2-access-info">
+          <strong>Access Control Rules</strong>
+          <span>Manage MFA, session, IP/VPN and approval enforcement rules from EMA_AccessControls.</span>
+        </div>
+
+        <div className="settings-v2-access-stats">
+          <div><span>Total Policies</span><strong>{policies.length}</strong></div>
+          <div><span>Active</span><strong>{activeCount}</strong></div>
+          <div><span>MFA Rules</span><strong>{mfaCount}</strong></div>
+        </div>
+
+        <div className="settings-v2-access-actions">
+          <button type="button" onClick={onReload} disabled={loading}>{loading ? "Loading..." : "Refresh"}</button>
+          <button type="button" onClick={onAdd}>Add Control</button>
+        </div>
+      </div>
+
       {error && (
-        <div >
+        <div className="settings-v2-alert">
           <strong>Access control load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div >
-        <strong>Access controls define login and security enforcement.</strong>
-        <span>Manage MFA, session, IP/VPN and approval rules from EMA_AccessControls.</span>
-      </div>
-
-      <div >
-        <div >
-          <div >No</div>
-          <div >Control</div>
-          <div >Scope</div>
-          <div >Enforcement</div>
-          <div >Review</div>
-          <div >Status</div>
-          <div >Action</div>
+      <div className="settings-v2-access-table">
+        <div className="settings-v2-access-head">
+          <div>No</div>
+          <div>Control</div>
+          <div>Scope</div>
+          <div>Enforcement</div>
+          <div>Review</div>
+          <div>Status</div>
+          <div>Action</div>
         </div>
 
-        {loading && <div >Loading access controls from EMA_AccessControls...</div>}
-        {!loading && filteredPolicies.length === 0 && <div >No data available.</div>}
+        {loading && <div className="settings-v2-loading">Loading access controls from EMA_AccessControls...</div>}
+        {!loading && filteredPolicies.length === 0 && <div className="settings-v2-empty">No access control records found.</div>}
 
-        {!loading && filteredPolicies.map((policy, index) => {
+        {!loading && paginatedPolicies.map((policy, index) => {
           const actualIndex = policies.findIndex((item) => String(getAccessPolicyId(item)) === String(getAccessPolicyId(policy)));
+          const tone = getPolicyTone(policy);
+          const statusTone = getStatusTone(policy.status);
+
           return (
-            <div  key={String(getAccessPolicyId(policy))}>
-              <div ><span >{String(index + 1).padStart(2, "0")}</span></div>
-              <div ><div ><strong>{policy.name}</strong><small>{policy.description || "Access control policy"}</small></div></div>
-              <div ><span >{policy.scope}</span></div>
-              <div ><span >{policy.enforcement}</span></div>
-              <div ><span >{policy.reviewCycle}</span></div>
-              <div ><span >{policy.status}</span></div>
-              <div >
-                <div >
-                  <button  type="button" onClick={() => onEdit(actualIndex)} aria-label="Edit access control" title="Edit">
+            <div className="settings-v2-access-row" key={String(getAccessPolicyId(policy))}>
+              <div><span className="settings-v2-row-no">{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
+
+              <div>
+                <div className="settings-v2-access-name">
+                  <i className={tone}>{String(policy.name || "A").slice(0, 2).toUpperCase()}</i>
+                  <div>
+                    <strong>{policy.name}</strong>
+                    <small>{policy.description || "Access control policy"}</small>
+                  </div>
+                </div>
+              </div>
+
+              <div><span className="settings-v2-access-chip">{policy.scope || "Global"}</span></div>
+              <div><span className="settings-v2-access-chip enforcement">{policy.enforcement || "Standard"}</span></div>
+              <div><span className="settings-v2-access-date">{policy.reviewCycle || "Monthly"}</span></div>
+
+              <div>
+                <span className={`settings-v2-user-pill ${statusTone}`}>
+                  <span />
+                  {policy.status || "Active"}
+                </span>
+              </div>
+
+              <div>
+                <div className="ema-row-actions">
+                  <button className="ema-action-btn ema-action-btn-edit" type="button" onClick={() => onEdit(actualIndex)} aria-label="Edit access control" title="Edit">
                     <PencilSvg />
                   </button>
                 </div>
@@ -4878,168 +5281,201 @@ function AccessControlContent({ policies, loading, error, onReload, onAdd, onEdi
           );
         })}
       </div>
+
+      {!loading && filteredPolicies.length > 0 && (
+        <div className="ema-pagination">
+          <div className="ema-pagination-summary">Showing {showingFrom} to {showingTo} of {filteredPolicies.length} access controls</div>
+
+          <div className="ema-pagination-controls" aria-label="Access control pagination">
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span className="ema-page-current">{safeCurrentPage}</span>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+          </div>
+
+          <div className="ema-page-size">{pageSize} / page</div>
+        </div>
+      )}
     </div>
   );
 }
 
-function AuditContent({
-  logs,
-  allLogs,
-  loading,
-  error,
-  moduleOptions,
-  severityOptions,
-  moduleFilter,
-  severityFilter,
-  dateFilter,
-  page,
-  limit,
-  totalRecords,
-  totalPages,
-  onModuleFilterChange,
-  onSeverityFilterChange,
-  onDateFilterChange,
-  onPageChange,
-  onReload,
-  onExport,
-  exporting,
-  exportDisabled}: {
-  logs: AuditLog[];
-  allLogs: AuditLog[];
-  loading: boolean;
-  error: string;
-  moduleOptions: string[];
-  severityOptions: string[];
-  moduleFilter: string;
-  severityFilter: string;
-  dateFilter: AuditDateFilter;
-  page: number;
-  limit: number;
-  totalRecords: number;
-  totalPages: number;
-  onModuleFilterChange: (value: string) => void;
-  onSeverityFilterChange: (value: string) => void;
-  onDateFilterChange: (value: AuditDateFilter) => void;
-  onPageChange: (page: number) => void;
-  onReload: () => void;
-  onExport: () => void | Promise<void>;
-  exporting: boolean;
-  exportDisabled: boolean;
-}) {
+
+function AuditContent(props: any) {
+  const {
+    logs,
+    allLogs,
+    loading,
+    error,
+    moduleOptions,
+    severityOptions,
+    moduleFilter,
+    severityFilter,
+    dateFilter,
+    page,
+    limit,
+    totalRecords,
+    totalPages,
+    onModuleFilterChange,
+    onSeverityFilterChange,
+    onDateFilterChange,
+    onPageChange,
+    onReload,
+    onExport,
+    exporting,
+    exportDisabled
+  } = props;
+
   const safeTotalPages = Math.max(1, totalPages || 1);
   const safePage = Math.min(Math.max(1, page || 1), safeTotalPages);
   const startIndex = (safePage - 1) * limit;
-  const pageRows = logs;
+  const pageRows = logs || [];
   const shownStart = totalRecords > 0 && pageRows.length ? startIndex + 1 : 0;
   const shownEnd = totalRecords > 0 ? Math.min(startIndex + pageRows.length, totalRecords) : 0;
 
+  const getSeverityTone = (value: string) => {
+    const text = String(value || "").toLowerCase();
+    if (text.includes("success") || text.includes("active") || text.includes("completed")) return "active";
+    if (text.includes("fail") || text.includes("error") || text.includes("delete")) return "danger";
+    if (text.includes("warn") || text.includes("review")) return "review";
+    return "draft";
+  };
+
+  const latestDate = allLogs?.[0] ? formatAuditTimestamp(allLogs[0].timestamp).split(",")[0] : "-";
+
   return (
-    <div >
-      {error && (
-        <div >
-          <strong>Audit log load error</strong>
-          <span>{error}</span>
-        </div>
-      )}
-
-      <div >
-        <div >
-          <label >
-            Main Module
-            <SettingSelect
-              value={moduleFilter}
-              options={[{ value: "all", label: "All modules" }, ...moduleOptions.map((moduleName) => ({ value: moduleName, label: moduleName }))]}
-              onChange={onModuleFilterChange}
-              ariaLabel="Audit module filter"
-            />
-          </label>
-          <label >
-            Severity / Status
-            <SettingSelect
-              value={severityFilter}
-              options={[{ value: "all", label: "All statuses" }, ...severityOptions.map((severity) => ({ value: severity, label: severity }))]}
-              onChange={onSeverityFilterChange}
-              ariaLabel="Audit status filter"
-            />
-          </label>
-          <label >
-            Date Range
-            <SettingSelect
-              value={dateFilter}
-              options={[
-                { value: "30d", label: "Last 30 days" },
-                { value: "7d", label: "Last 7 days" },
-                { value: "today", label: "Today" },
-                { value: "all", label: "All time" }]}
-              onChange={(value) => onDateFilterChange(value as AuditDateFilter)}
-              ariaLabel="Audit date range filter"
-            />
-          </label>
+    <div className="settings-v2-audit-content">
+      <div className="settings-v2-audit-toolbar">
+        <div className="settings-v2-audit-info">
+          <span>Audit Log</span>
+          <h3>System Activity Trail</h3>
+          <p>Review user activity, module changes and system events recorded in EMA_AuditLogs.</p>
         </div>
 
-        <div >
-          <button  type="button" onClick={onReload} disabled={loading}>
+        <div className="settings-v2-audit-stats">
+          <div><span>Total Logs</span><strong>{totalRecords}</strong></div>
+          <div><span>This Page</span><strong>{pageRows.length}</strong></div>
+          <div><span>Modules</span><strong>{moduleOptions.length}</strong></div>
+          <div><span>Latest</span><strong>{latestDate}</strong></div>
+        </div>
+
+        <div className="settings-v2-audit-actions">
+          <button type="button" onClick={onReload} disabled={loading}>
             {loading ? "Loading..." : "Refresh"}
           </button>
-          <button  type="button" onClick={() => void onExport()} disabled={exportDisabled || loading || exporting}>
+          <button type="button" onClick={() => void onExport()} disabled={exportDisabled || loading || exporting}>
             {exporting ? "Exporting..." : "Export CSV"}
           </button>
         </div>
       </div>
 
-      <div >
-        <div><span>Total Matching Logs</span><strong>{totalRecords}</strong></div>
-        <div><span>This Page</span><strong>{pageRows.length}</strong></div>
-        <div><span>Modules</span><strong>{moduleOptions.length}</strong></div>
-        <div><span>Latest</span><strong>{allLogs[0] ? formatAuditTimestamp(allLogs[0].timestamp).split(",")[0] : "-"}</strong></div>
+      {error && (
+        <div className="settings-v2-alert">
+          <strong>Audit log load error</strong>
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div className="settings-v2-audit-filterbar">
+        <label>
+          <span>Main Module</span>
+          <select value={moduleFilter} onChange={(event) => onModuleFilterChange(event.target.value)}>
+            <option value="all">All modules</option>
+            {moduleOptions.map((moduleName: string) => (
+              <option key={moduleName} value={moduleName}>{moduleName}</option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span>Severity / Status</span>
+          <select value={severityFilter} onChange={(event) => onSeverityFilterChange(event.target.value)}>
+            <option value="all">All statuses</option>
+            {severityOptions.map((severity: string) => (
+              <option key={severity} value={severity}>{severity}</option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span>Date Range</span>
+          <select value={dateFilter} onChange={(event) => onDateFilterChange(event.target.value)}>
+            <option value="30d">Last 30 days</option>
+            <option value="7d">Last 7 days</option>
+            <option value="today">Today</option>
+            <option value="all">All time</option>
+          </select>
+        </label>
       </div>
 
-      <div >
-        <div >
-          <div >No</div>
-          <div >Time</div>
-          <div >User</div>
-          <div >Module</div>
-          <div >Activity</div>
-          <div >Status</div>
+      <div className="settings-v2-audit-table">
+        <div className="settings-v2-audit-head">
+          <div>No</div>
+          <div>Time</div>
+          <div>User</div>
+          <div>Module</div>
+          <div>Activity</div>
+          <div>Status</div>
         </div>
 
-        {loading && <div >Loading audit logs from EMA_AuditLogs...</div>}
-        {!loading && pageRows.length === 0 && <div >No audit log records found.</div>}
+        {loading && <div className="settings-v2-loading">Loading audit logs from EMA_AuditLogs...</div>}
+        {!loading && pageRows.length === 0 && <div className="settings-v2-empty">No audit log records found.</div>}
 
-        {!loading && pageRows.map((row, index) => (
-          <div  key={String(row.id || `${row.timestamp}-${row.user}-${row.action}-${index}`)}>
-            <div ><span >{String(startIndex + index + 1).padStart(2, "0")}</span></div>
-            <div >
-              <strong>{formatAuditTimestamp(row.timestamp)}</strong>
+        {!loading && pageRows.map((row: any, index: number) => {
+          const tone = getSeverityTone(row.severity);
+
+          return (
+            <div className="settings-v2-audit-row" key={String(row.id || `${row.timestamp}-${row.user}-${row.action}-${index}`)}>
+              <div><span className="settings-v2-row-no">{String(startIndex + index + 1).padStart(2, "0")}</span></div>
+
+              <div>
+                <span className="settings-v2-audit-time">{formatAuditTimestamp(row.timestamp)}</span>
+              </div>
+
+              <div>
+                <span className="settings-v2-audit-user">{row.user || "-"}</span>
+              </div>
+
+              <div>
+                <span className="settings-v2-audit-module">{row.module || "-"}</span>
+              </div>
+
+              <div>
+                <div className="settings-v2-audit-activity">
+                  <span>{row.action || "-"}</span>
+                  {row.details && <small>{formatAuditDetails(row.details)}</small>}
+                </div>
+              </div>
+
+              <div>
+                <span className={`settings-v2-user-pill ${tone}`}>
+                  <span />
+                  {row.severity || "Info"}
+                </span>
+              </div>
             </div>
-            <div ><span >{row.user}</span></div>
-            <div ><span >{row.module}</span></div>
-            <div >
-              <strong>{row.action}</strong>
-              {row.details && <small>{formatAuditDetails(row.details)}</small>}
-            </div>
-            <div ><span >{row.severity}</span></div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      <div >
-        <div >Page {safePage} / {safeTotalPages}</div>
-        <div >
-          Showing <strong>{shownStart}-{shownEnd}</strong> of <strong>{totalRecords}</strong> matching records
+      <div className="ema-pagination">
+        <div className="ema-pagination-summary">Showing {shownStart} to {shownEnd} of {totalRecords} audit logs</div>
+
+        <div className="ema-pagination-controls" aria-label="Audit log pagination">
+          <button className="ema-page-btn" type="button" disabled={safePage <= 1 || loading} onClick={() => onPageChange(1)} aria-label="First page"><EmaPageFirstIcon /></button>
+          <button className="ema-page-btn" type="button" disabled={safePage <= 1 || loading} onClick={() => onPageChange(Math.max(1, safePage - 1))} aria-label="Previous page"><EmaPagePrevIcon /></button>
+          <span className="ema-page-current">{safePage}</span>
+          <button className="ema-page-btn" type="button" disabled={safePage >= safeTotalPages || loading} onClick={() => onPageChange(Math.min(safeTotalPages, safePage + 1))} aria-label="Next page"><EmaPageNextIcon /></button>
+          <button className="ema-page-btn" type="button" disabled={safePage >= safeTotalPages || loading} onClick={() => onPageChange(safeTotalPages)} aria-label="Last page"><EmaPageLastIcon /></button>
         </div>
-        <div >
-          <button  type="button" disabled={safePage <= 1 || loading} onClick={() => onPageChange(1)}>«</button>
-          <button  type="button" disabled={safePage <= 1 || loading} onClick={() => onPageChange(Math.max(1, safePage - 1))}>‹</button>
-          <span >{safePage}</span>
-          <button  type="button" disabled={safePage >= safeTotalPages || loading} onClick={() => onPageChange(Math.min(safeTotalPages, safePage + 1))}>›</button>
-          <button  type="button" disabled={safePage >= safeTotalPages || loading} onClick={() => onPageChange(safeTotalPages)}>»</button>
-        </div>
+
+        <div className="ema-page-size">{limit} / page</div>
       </div>
     </div>
   );
 }
+
 
 function PricingContent({
   search,
@@ -5762,6 +6198,8 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
     }
   }, [open]);
 
+  if (!open) return null;
+
   const selectedRoles = normalizeUserRoles(form.roles || form.role || form.roleName);
   const unassignedRoles = roleOptions.filter((role) => !selectedRoles.includes(role));
   const filteredRoleOptions = unassignedRoles.filter((role) =>
@@ -5786,112 +6224,142 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
   };
 
   const modalNode = (
-    <div  id="userModalBackdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div >
-        <div >
+    <div className="settings-modal-backdrop" id="userModalBackdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div className="settings-modal settings-user-modal" role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
+        <header className="settings-modal-header">
           <div>
-            <span  id="userModalMode">{mode}</span>
+            <span className="settings-modal-eyebrow" id="userModalMode">{mode}</span>
             <h3 id="userModalTitle">{title}</h3>
             <p>Configure identity profile and assign one or more RBAC roles from EMA_Roles.</p>
           </div>
-          <button  id="closeUserModal" type="button" onClick={onClose}>×</button>
-        </div>
+          <button className="settings-modal-close" id="closeUserModal" type="button" onClick={onClose} aria-label="Close user modal">?</button>
+        </header>
 
-        <div >
-          <div >Profile</div>
-          <label >Full Name<input  id="userFullName" placeholder="Example: Zainul Ariffin" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
-          <label >Username<input  id="userUsername" placeholder="Example: zainul" value={form.username || ""} onChange={(event) => setForm({ ...form, username: event.target.value })} /></label>
-          <label >Email<input  id="userEmail" placeholder="user@company.com" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
-          <label >Phone No<input  id="userPhoneNo" placeholder="Optional" value={form.phoneNo || ""} onChange={(event) => setForm({ ...form, phoneNo: event.target.value })} /></label>
-
-          <div >Access</div>
-          <div >
-            <div >
-              <span >Assigned Roles</span>
-              <button 
-                type="button"
-                onClick={() => setRolePickerOpen((current) => !current)}
-                disabled={roleOptions.length === 0}
-              >
-                + Assign Role
-              </button>
+        <div className="settings-modal-body settings-user-modal-body">
+          <section className="settings-modal-section settings-modal-section-full">
+            <div className="settings-modal-section-head">
+              <span>Profile</span>
+              <small>Basic identity information for this user.</small>
             </div>
 
-            <div >
-              {selectedRoles.length === 0 && (
-                <div >No role assigned yet</div>
-              )}
+            <div className="settings-form-grid four">
+              <label>Full Name<input id="userFullName" placeholder="Example: Zainul Ariffin" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
+              <label>Username<input id="userUsername" placeholder="Example: zainul" value={form.username || ""} onChange={(event) => setForm({ ...form, username: event.target.value })} /></label>
+              <label>Email<input id="userEmail" placeholder="user@company.com" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
+              <label>Phone No<input id="userPhoneNo" placeholder="Optional" value={form.phoneNo || ""} onChange={(event) => setForm({ ...form, phoneNo: event.target.value })} /></label>
+            </div>
+          </section>
 
-              {selectedRoles.map((role) => (
-                <span  key={role}>
-                  {role}
-                  <button type="button" onClick={() => removeSelectedRole(role)} aria-label={`Remove ${role}`}>×</button>
-                </span>
-              ))}
+          <section className="settings-modal-section settings-modal-section-full">
+            <div className="settings-modal-section-head">
+              <span>Access</span>
+              <small>Assign one or more RBAC roles. Module access follows the combined role permissions.</small>
             </div>
 
-            {rolePickerOpen && (
-              <div >
-                <div >
-                  <SearchSvg />
-                  <input 
-                    value={roleSearchTerm}
-                    onChange={(event) => setRoleSearchTerm(event.target.value)}
-                    placeholder="Search role by name..."
-                    autoFocus
-                  />
-                </div>
-
-                <div >
-                  {roleOptions.length === 0 && (
-                    <div >No active roles available. Create a role in Role Based Control first.</div>
-                  )}
-
-                  {roleOptions.length > 0 && filteredRoleOptions.length === 0 && (
-                    <div >No matching unassigned roles.</div>
-                  )}
-
-                  {filteredRoleOptions.map((role) => (
-                    <button  type="button" key={role} onClick={() => addSelectedRole(role)}>
-                      <span>{role}</span>
-                      <b>Assign</b>
-                    </button>
-                  ))}
-                </div>
+            <div className="settings-role-assign-box">
+              <div className="settings-role-assign-head">
+                <strong>Assigned Roles</strong>
+                <button
+                  type="button"
+                  onClick={() => setRolePickerOpen((current) => !current)}
+                  disabled={roleOptions.length === 0}
+                >
+                  + Assign Role
+                </button>
               </div>
-            )}
 
-            <small >Assign one or more roles. Module access will follow the combined RBAC permissions.</small>
-          </div>
-          <label >Department<input  id="userDepartment" placeholder="Example: IT Operation" value={form.department || ""} onChange={(event) => setForm({ ...form, department: event.target.value })} /></label>
-          <label >Position<input  id="userPosition" placeholder="Example: Support Engineer" value={form.position || ""} onChange={(event) => setForm({ ...form, position: event.target.value })} /></label>
-          <label >Status
-            <SettingSelect
-              value={form.status}
-              options={["Active", "Review", "Locked", "Inactive"]}
-              onChange={(value) => setForm({ ...form, status: value as RoleStatus, accountLocked: value === "Locked" })}
-              ariaLabel="User status"
-            />
-          </label>
+              <div className="settings-role-chip-list">
+                {selectedRoles.length === 0 && (
+                  <div className="settings-empty-chip">No role assigned yet</div>
+                )}
 
-          <div >Password</div>
-          <label >{isCreateMode ? "Initial Password" : "New Password"}<input  type="password" id="userPassword" placeholder={isCreateMode ? "Create login password" : "Leave blank to keep current password"} value={form.password || ""} onChange={(event) => setForm({ ...form, password: event.target.value })} /></label>
-          <label >Confirm Password<input  type="password" id="userConfirmPassword" placeholder="Re-enter password" value={form.confirmPassword || ""} onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })} /></label>
-          <small >{isCreateMode ? "This password is saved to EMA_Users and can be used to test login immediately." : "Fill this only when you want to reset the user password."}</small>
+                {selectedRoles.map((role) => (
+                  <span className="settings-role-chip" key={role}>
+                    {role}
+                    <button type="button" onClick={() => removeSelectedRole(role)} aria-label={`Remove ${role}`}>?</button>
+                  </span>
+                ))}
+              </div>
 
-          <div >Security</div>
-          <label ><input type="checkbox" checked={Boolean(form.requireMFA || form.mfa)} onChange={(event) => setForm({ ...form, requireMFA: event.target.checked, mfa: event.target.checked })} /><span>Require MFA</span></label>
-          <label ><input type="checkbox" checked={Boolean(form.accountLocked)} onChange={(event) => setForm({ ...form, accountLocked: event.target.checked, status: event.target.checked ? "Locked" : form.status === "Locked" ? "Active" : form.status })} /><span>Account Locked</span></label>
-          <label >Lock Reason<input  id="userLockReason" placeholder="Optional reason shown in audit" value={form.lockReason || ""} onChange={(event) => setForm({ ...form, lockReason: event.target.value })} /></label>
-          <label >Access Start<input  type="date" id="userAccessStart" value={toDateInputValue(form.accessStartDate)} onChange={(event) => setForm({ ...form, accessStartDate: event.target.value })} /></label>
-          <label >Access End<input  type="date" id="userAccessEnd" value={toDateInputValue(form.accessEndDate)} onChange={(event) => setForm({ ...form, accessEndDate: event.target.value })} /></label>
-          <label >Remarks<textarea  id="userRemarks" placeholder="Optional access notes" value={form.remarks || ""} onChange={(event) => setForm({ ...form, remarks: event.target.value })} /></label>
+              {rolePickerOpen && (
+                <div className="settings-role-picker">
+                  <label className="settings-role-picker-search">
+                    <SearchSvg />
+                    <input
+                      value={roleSearchTerm}
+                      onChange={(event) => setRoleSearchTerm(event.target.value)}
+                      placeholder="Search role by name..."
+                      autoFocus
+                    />
+                  </label>
+
+                  <div className="settings-role-picker-list">
+                    {roleOptions.length === 0 && (
+                      <div className="settings-role-picker-empty">No active roles available. Create a role in Role Based Control first.</div>
+                    )}
+
+                    {roleOptions.length > 0 && filteredRoleOptions.length === 0 && (
+                      <div className="settings-role-picker-empty">No matching unassigned roles.</div>
+                    )}
+
+                    {filteredRoleOptions.map((role) => (
+                      <button className="settings-role-picker-option" type="button" key={role} onClick={() => addSelectedRole(role)}>
+                        <span>{role}</span>
+                        <b>Assign</b>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="settings-form-grid three">
+              <label>Department<input id="userDepartment" placeholder="Example: IT Operation" value={form.department || ""} onChange={(event) => setForm({ ...form, department: event.target.value })} /></label>
+              <label>Position<input id="userPosition" placeholder="Example: Support Engineer" value={form.position || ""} onChange={(event) => setForm({ ...form, position: event.target.value })} /></label>
+              <label>Status
+                <SettingSelect
+                  value={form.status}
+                  options={["Active", "Review", "Locked", "Inactive"]}
+                  onChange={(value) => setForm({ ...form, status: value as RoleStatus, accountLocked: value === "Locked" })}
+                  ariaLabel="User status"
+                />
+              </label>
+            </div>
+          </section>
+
+          <section className="settings-modal-section">
+            <div className="settings-modal-section-head">
+              <span>Password</span>
+              <small>{isCreateMode ? "Create a login password for immediate testing." : "Fill only when resetting password."}</small>
+            </div>
+
+            <div className="settings-form-grid two">
+              <label>{isCreateMode ? "Initial Password" : "New Password"}<input type="password" id="userPassword" placeholder={isCreateMode ? "Create login password" : "Leave blank to keep current password"} value={form.password || ""} onChange={(event) => setForm({ ...form, password: event.target.value })} /></label>
+              <label>Confirm Password<input type="password" id="userConfirmPassword" placeholder="Re-enter password" value={form.confirmPassword || ""} onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })} /></label>
+            </div>
+          </section>
+
+          <section className="settings-modal-section">
+            <div className="settings-modal-section-head">
+              <span>Security</span>
+              <small>Set MFA, lock status, access dates and notes.</small>
+            </div>
+
+            <div className="settings-form-grid two">
+              <label className="settings-check-row"><input type="checkbox" checked={Boolean(form.requireMFA || form.mfa)} onChange={(event) => setForm({ ...form, requireMFA: event.target.checked, mfa: event.target.checked })} /><span>Require MFA</span></label>
+              <label className="settings-check-row"><input type="checkbox" checked={Boolean(form.accountLocked)} onChange={(event) => setForm({ ...form, accountLocked: event.target.checked, status: event.target.checked ? "Locked" : form.status === "Locked" ? "Active" : form.status })} /><span>Account Locked</span></label>
+              <label>Lock Reason<input id="userLockReason" placeholder="Optional reason shown in audit" value={form.lockReason || ""} onChange={(event) => setForm({ ...form, lockReason: event.target.value })} /></label>
+              <label>Access Start<input type="date" id="userAccessStart" value={toDateInputValue(form.accessStartDate)} onChange={(event) => setForm({ ...form, accessStartDate: event.target.value })} /></label>
+              <label>Access End<input type="date" id="userAccessEnd" value={toDateInputValue(form.accessEndDate)} onChange={(event) => setForm({ ...form, accessEndDate: event.target.value })} /></label>
+              <label>Remarks<textarea id="userRemarks" placeholder="Optional access notes" value={form.remarks || ""} onChange={(event) => setForm({ ...form, remarks: event.target.value })} /></label>
+            </div>
+          </section>
         </div>
 
-        <div >
-          <button  id="cancelUserModal" type="button" onClick={onClose}>Cancel</button>
-          <button  id="saveUserAccess" type="button" onClick={onSave}>Save User</button>
-        </div>
+        <footer className="settings-modal-footer">
+          <button className="settings-secondary-btn" id="cancelUserModal" type="button" onClick={onClose}>Cancel</button>
+          <button className="settings-primary-btn" id="saveUserAccess" type="button" onClick={onSave}>Save User</button>
+        </footer>
       </div>
     </div>
   );
@@ -5903,36 +6371,69 @@ function AccessRoleModal({ open, mode, form, setForm, onClose, onSave }: { open:
   if (!open) return null;
 
   const modalNode = (
-    <div  onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div >
-        <div >
+    <div className="rbac-role-modal-v3-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section className="rbac-role-modal-v3" role="dialog" aria-modal="true" aria-labelledby="roleModalTitle">
+        <header className="rbac-role-modal-v3-header">
           <div>
-            <span >{mode}</span>
-            <h3>{mode === "ADD ROLE" ? "Add New Role" : "Update Role"}</h3>
-            <p>Create or update a role name, status and approval requirement for EMA_Roles.</p>
+            <span>{mode}</span>
+            <h3 id="roleModalTitle">{mode === "ADD ROLE" ? "Add New Role" : "Update Role"}</h3>
+            <p>Create or update role name, status and approval requirement for EMA_Roles.</p>
           </div>
-          <button  type="button" onClick={onClose}>×</button>
+
+          <button type="button" onClick={onClose} aria-label="Close role modal">?</button>
+        </header>
+
+        <div className="rbac-role-modal-v3-body">
+          <div className="rbac-role-modal-v3-grid">
+            <label className="rbac-role-modal-v3-field">
+              <span>Role Name</span>
+              <input
+                placeholder="Example: L1 Support"
+                value={form.name}
+                onChange={(event) => setForm({ ...form, name: event.target.value })}
+              />
+            </label>
+
+            <label className="rbac-role-modal-v3-field">
+              <span>Status</span>
+              <select
+                value={form.status === "Inactive" ? "Inactive" : "Active"}
+                onChange={(event) => setForm({ ...form, status: event.target.value as RoleStatus })}
+                aria-label="Role status"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </label>
+
+            <label className="rbac-role-modal-v3-field rbac-role-modal-v3-full">
+              <span>Description</span>
+              <input
+                placeholder="Describe this role"
+                value={form.description}
+                onChange={(event) => setForm({ ...form, description: event.target.value })}
+              />
+            </label>
+
+            <label className="rbac-role-modal-v3-check rbac-role-modal-v3-full">
+              <input
+                type="checkbox"
+                checked={Boolean(form.approvalRequired)}
+                onChange={(event) => setForm({ ...form, approvalRequired: event.target.checked })}
+              />
+              <span>
+                <strong>Require approval</strong>
+                <small>For sensitive actions</small>
+              </span>
+            </label>
+          </div>
         </div>
 
-        <div >
-          <label >Role Name<input  placeholder="Example: L1 Support" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
-          <label >Status
-            <SettingSelect
-              value={form.status === "Inactive" ? "Inactive" : "Active"}
-              options={["Active", "Inactive"]}
-              onChange={(value) => setForm({ ...form, status: value as RoleStatus })}
-              ariaLabel="Role status"
-            />
-          </label>
-          <label >Description<input  placeholder="Describe this role" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
-          <label ><input type="checkbox" checked={Boolean(form.approvalRequired)} onChange={(event) => setForm({ ...form, approvalRequired: event.target.checked })} /><span>Require approval for sensitive actions</span></label>
-        </div>
-
-        <div >
-          <button  type="button" onClick={onClose}>Cancel</button>
-          <button  type="button" onClick={onSave}>Save Role</button>
-        </div>
-      </div>
+        <footer className="rbac-role-modal-v3-footer">
+          <button type="button" onClick={onClose}>Cancel</button>
+          <button type="button" onClick={onSave}>Save Role</button>
+        </footer>
+      </section>
     </div>
   );
 
@@ -5962,68 +6463,125 @@ function ConfirmDeleteRoleModal({ role, onClose, onConfirm }: { role: AccessRole
   return typeof document !== "undefined" ? createPortal(modalNode, document.body) : modalNode;
 }
 
-function AccessPolicyModal({ open, mode, title, form, setForm, onClose, onSave }: { open: boolean; mode: string; title: string; form: AccessPolicy; setForm: (form: AccessPolicy) => void; onClose: () => void; onSave: () => void }) {
+function AccessPolicyModal(props: any) {
+  const open = props.open ?? props.isOpen ?? props.visible ?? true;
+  const mode = props.mode || props.title || "ADD CONTROL";
+  const form = props.form || props.policy || props.accessForm || props.policyForm || props.accessPolicyForm || props.value || {};
+  const setForm =
+    props.setForm ||
+    props.setPolicy ||
+    props.setAccessForm ||
+    props.setPolicyForm ||
+    props.setAccessPolicyForm ||
+    props.onFormChange ||
+    (() => {});
+  const onClose = props.onClose || props.close || (() => {});
+  const onSave = props.onSave || props.onSubmit || props.onApply || (() => {});
+
   if (!open) return null;
 
+  const patchForm = (patch: any) => setForm({ ...form, ...patch });
+  const isEditMode = String(mode).toUpperCase().includes("EDIT") || String(mode).toUpperCase().includes("UPDATE");
+
   const modalNode = (
-    <div  onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div >
-        <div >
+    <div className="access-policy-modal-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section className="access-policy-modal" role="dialog" aria-modal="true" aria-labelledby="accessPolicyModalTitle">
+        <header className="access-policy-modal-header">
           <div>
-            <span >{mode}</span>
-            <h3>{title}</h3>
-            <p>Configure login, session and security access control behaviour.</p>
+            <span>{mode}</span>
+            <h3 id="accessPolicyModalTitle">{isEditMode ? "Update Access Control" : "Add New Access Control"}</h3>
+            <p>Configure MFA, session, IP or approval enforcement rules for EMA_AccessControls.</p>
           </div>
-          <button  type="button" onClick={onClose}>×</button>
+
+          <button type="button" onClick={onClose} aria-label="Close access control modal">?</button>
+        </header>
+
+        <div className="access-policy-modal-body">
+          <div className="access-policy-modal-grid">
+            <label className="access-policy-field access-policy-full">
+              <span>Control Name</span>
+              <input
+                placeholder="Example: MFA Enforcement"
+                value={form.name || ""}
+                onChange={(event) => patchForm({ name: event.target.value })}
+              />
+            </label>
+
+            <label className="access-policy-field access-policy-full">
+              <span>Description</span>
+              <input
+                placeholder="Describe this access control rule"
+                value={form.description || ""}
+                onChange={(event) => patchForm({ description: event.target.value })}
+              />
+            </label>
+
+            <label className="access-policy-field">
+              <span>Scope</span>
+              <select
+                value={form.scope || "Global"}
+                onChange={(event) => patchForm({ scope: event.target.value })}
+              >
+                <option value="Global">Global</option>
+                <option value="Role">Role</option>
+                <option value="User">User</option>
+                <option value="Branch">Branch</option>
+                <option value="Department">Department</option>
+              </select>
+            </label>
+
+            <label className="access-policy-field">
+              <span>Enforcement</span>
+              <select
+                value={form.enforcement || "Standard"}
+                onChange={(event) => patchForm({ enforcement: event.target.value })}
+              >
+                <option value="Standard">Standard</option>
+                <option value="Strict">Strict</option>
+                <option value="MFA Required">MFA Required</option>
+                <option value="Approval Required">Approval Required</option>
+                <option value="IP/VPN Restricted">IP/VPN Restricted</option>
+              </select>
+            </label>
+
+            <label className="access-policy-field">
+              <span>Review Cycle</span>
+              <select
+                value={form.reviewCycle || "Monthly"}
+                onChange={(event) => patchForm({ reviewCycle: event.target.value })}
+              >
+                <option value="Monthly">Monthly</option>
+                <option value="Quarterly">Quarterly</option>
+                <option value="Half Yearly">Half Yearly</option>
+                <option value="Yearly">Yearly</option>
+              </select>
+            </label>
+
+            <label className="access-policy-field">
+              <span>Status</span>
+              <select
+                value={form.status || "Active"}
+                onChange={(event) => patchForm({ status: event.target.value })}
+              >
+                <option value="Active">Active</option>
+                <option value="Review">Review</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </label>
+          </div>
         </div>
 
-        <div >
-          <label >Control Name<input  placeholder="Example: Multi-Factor Authentication" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
-          <label >Status
-            <SettingSelect
-              value={form.status}
-              options={["Active", "Inactive"]}
-              onChange={(value) => setForm({ ...form, status: value === "Inactive" ? "Inactive" : "Active" })}
-              ariaLabel="Access control status"
-            />
-          </label>
-          <label >Description<input  placeholder="Describe this control" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
-          <label >Scope
-            <SettingSelect
-              value={form.scope}
-              options={["All Users", "Admin Only", "Selected Role", "Service Desk"]}
-              onChange={(value) => setForm({ ...form, scope: value })}
-              ariaLabel="Access control scope"
-            />
-          </label>
-          <label >Enforcement
-            <SettingSelect
-              value={form.enforcement}
-              options={["Mandatory", "Optional", "Approval Based", "Disabled"]}
-              onChange={(value) => setForm({ ...form, enforcement: value })}
-              ariaLabel="Access control enforcement"
-            />
-          </label>
-          <label >Review Cycle
-            <SettingSelect
-              value={form.reviewCycle}
-              options={["Monthly", "Quarterly", "Yearly", "Ad Hoc"]}
-              onChange={(value) => setForm({ ...form, reviewCycle: value })}
-              ariaLabel="Access control review cycle"
-            />
-          </label>
-        </div>
-
-        <div >
-          <button  type="button" onClick={onClose}>Cancel</button>
-          <button  type="button" onClick={onSave}>Save Control</button>
-        </div>
-      </div>
+        <footer className="access-policy-modal-footer">
+          <button type="button" onClick={onClose}>Cancel</button>
+          <button type="button" onClick={onSave}>Save Control</button>
+        </footer>
+      </section>
     </div>
   );
 
   return typeof document !== "undefined" ? createPortal(modalNode, document.body) : modalNode;
 }
+
 
 function AccessPolicyDeleteConfirmModal({ target, onCancel, onConfirm }: { target: { policy: AccessPolicy; index: number } | null; onCancel: () => void; onConfirm: () => void }) {
   if (!target) return null;
