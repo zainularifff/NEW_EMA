@@ -1072,22 +1072,43 @@ function enforceIpAccessControl(req, accessRows) {
     };
 }
 
-function enforceSessionTimeoutAccessControl(user, accessRows) {
+function getRequestLastActivityMs(req) {
+    const raw = normalizeAuthValue(
+        req?.headers?.['x-ema-last-activity-at'] ||
+        req?.headers?.['x-last-activity-at'] ||
+        req?.body?.lastActivityAt ||
+        req?.query?.lastActivityAt
+    );
+
+    const parsed = Number(raw);
+    const now = Date.now();
+
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+        return now;
+    }
+
+    return Math.min(parsed, now);
+}
+
+function enforceSessionTimeoutAccessControl(req, user, accessRows) {
     const policy = findAccessControlRow(accessRows, ACCESS_CONTROL_ALIASES.session);
+
+    // Kalau Session Timeout dekat Settings = Inactive/Disabled,
+    // jangan idle logout. Token expiry sahaja yang jalan.
     if (!isAccessControlRowEnabled(policy)) return { ok: true };
 
-    const issuedAtSeconds = Number(user?.iat || 0);
-    if (!issuedAtSeconds) return { ok: true };
-
     const timeoutMinutes = parseAccessControlDurationMinutes(policy, ACCESS_CONTROL_SESSION_TIMEOUT_MINUTES);
-    const ageMs = Date.now() - issuedAtSeconds * 1000;
-    if (ageMs <= timeoutMinutes * 60 * 1000) return { ok: true };
+    const timeoutMs = timeoutMinutes * 60 * 1000;
+    const lastActivityMs = getRequestLastActivityMs(req);
+    const idleMs = Date.now() - lastActivityMs;
+
+    if (idleMs <= timeoutMs) return { ok: true };
 
     return {
         ok: false,
         status: 401,
-        message: `Session expired by Access Control policy after ${timeoutMinutes} minutes.`,
-        code: 'ACCESS_CONTROL_SESSION_EXPIRED'
+        message: `Session expired by inactivity policy after ${timeoutMinutes} minutes.`,
+        code: 'ACCESS_CONTROL_SESSION_IDLE_EXPIRED'
     };
 }
 
@@ -1143,7 +1164,7 @@ async function enforceAccessControlsForRequest(req, user) {
     const ipCheck = enforceIpAccessControl(req, accessRows);
     if (!ipCheck.ok) return ipCheck;
 
-    const sessionCheck = enforceSessionTimeoutAccessControl(user, accessRows);
+    const sessionCheck = enforceSessionTimeoutAccessControl(req, user, accessRows);
     if (!sessionCheck.ok) return sessionCheck;
 
     const approvalCheck = enforceCriticalActionApproval(req, accessRows);

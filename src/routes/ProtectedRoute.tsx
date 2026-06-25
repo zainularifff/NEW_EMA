@@ -13,6 +13,15 @@ import {
   type AccessUser,
 } from "./accessControl";
 
+import {
+  clearSessionActivity,
+  getIdleTimeoutConfigFromAccessControls,
+  getLastActivityHeader,
+  isIdleTimedOut,
+  touchSessionActivity,
+  type IdleTimeoutConfig,
+} from "../utils/sessionActivity";
+
 type ProtectedRouteProps = {
   children?: React.ReactNode;
 };
@@ -72,6 +81,7 @@ function removeStorageValue(key: string) {
 
 function clearStoredAuth() {
   [...TOKEN_KEYS, ...USER_KEYS].forEach(removeStorageValue);
+  clearSessionActivity();
 }
 
 function parseJwtPayload(token: string): Record<string, any> | null {
@@ -138,6 +148,28 @@ function getStoredToken(): string {
   return "";
 }
 
+async function loadIdleTimeoutConfig(token: string): Promise<IdleTimeoutConfig> {
+  try {
+    const response = await fetch(`${API_BASE}/api/settings/access-controls`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-EMA-Last-Activity-At": getLastActivityHeader(),
+      },
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return { enabled: false, timeoutMinutes: 30 };
+    }
+
+    const payload = await response.json().catch(() => null);
+    return getIdleTimeoutConfigFromAccessControls(payload);
+  } catch {
+    return { enabled: false, timeoutMinutes: 30 };
+  }
+}
+
 function mergeFreshUserWithStoredAccess(freshUser: AccessUser, storedUser: AccessUser | null): AccessUser {
   return {
     ...freshUser,
@@ -166,6 +198,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [user, setUser] = useState<AccessUser | null>(() => getStoredAccessUser());
   const [loading, setLoading] = useState(Boolean(token));
   const [authFailed, setAuthFailed] = useState(false);
+  const [idleConfig, setIdleConfig] = useState<IdleTimeoutConfig>({ enabled: false, timeoutMinutes: 30 });
   const path = cleanPath(location.pathname);
 
   useEffect(() => {
@@ -193,7 +226,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
       try {
         const response = await fetch(`${API_BASE}/api/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "X-EMA-Last-Activity-At": getLastActivityHeader(),
+          },
           credentials: "include",
           cache: "no-store",
         });
@@ -229,6 +265,71 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       cancelled = true;
     };
   }, [token, location.pathname]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadIdleConfig() {
+      if (!token || PUBLIC_AUTH_PATHS.includes(path)) {
+        setIdleConfig({ enabled: false, timeoutMinutes: 30 });
+        return;
+      }
+
+      const config = await loadIdleTimeoutConfig(token);
+      if (!cancelled) setIdleConfig(config);
+    }
+
+    void loadIdleConfig();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, path]);
+
+  useEffect(() => {
+    if (!token || PUBLIC_AUTH_PATHS.includes(path)) return undefined;
+
+    touchSessionActivity(true);
+
+    const markActivity = () => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      touchSessionActivity();
+    };
+
+    const events: Array<keyof WindowEventMap> = [
+      "click",
+      "keydown",
+      "mousedown",
+      "mousemove",
+      "scroll",
+      "touchstart",
+      "wheel",
+    ];
+
+    events.forEach((eventName) => window.addEventListener(eventName, markActivity, { passive: true }));
+
+    const handleVisibility = () => {
+      if (!document.hidden) markActivity();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    const interval = window.setInterval(() => {
+      if (!idleConfig.enabled) return;
+      if (!isIdleTimedOut(idleConfig.timeoutMinutes)) return;
+
+      clearStoredAuth();
+      setUser(null);
+      setAuthFailed(true);
+      window.location.href = "/login?reason=idle";
+    }, 15000);
+
+    return () => {
+      events.forEach((eventName) => window.removeEventListener(eventName, markActivity));
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.clearInterval(interval);
+    };
+  }, [token, path, idleConfig.enabled, idleConfig.timeoutMinutes]);
 
   if (PUBLIC_AUTH_PATHS.includes(path)) {
     return children ? <>{children}</> : <Outlet />;

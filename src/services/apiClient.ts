@@ -1,3 +1,4 @@
+import { getLastActivityHeader } from "../utils/sessionActivity";
 export type QueryValue = string | number | boolean | null | undefined;
 export type QueryParams = Record<string, QueryValue | QueryValue[]>;
 
@@ -262,6 +263,10 @@ export async function request<T = any>(
 
   if (token && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  if (token && !headers.has("X-EMA-Last-Activity-At")) {
+    headers.set("X-EMA-Last-Activity-At", getLastActivityHeader());
   }
 
   const requestConfig: ApiRequestConfig = { ...config };
