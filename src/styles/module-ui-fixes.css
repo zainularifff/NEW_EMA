@@ -524,52 +524,514 @@ body .software-inventory-module .software-device-table-row.software-dynamic-row 
   }
 }
 
+
 /* =========================================================
-   FINAL SAFE FIX - Settings sidebar brand white panel
-   Do not touch shell/sidebar layout. Only fix .ema-sidebar-brand.
+   FINAL Service Desk pagination fix
+   Keep pagination below table, not floating over rows.
 ========================================================= */
 
-html.ema-settings-page-active body.ema-settings-page-active .ema-sidebar .ema-sidebar-brand,
-html.ema-settings-page-active body.ema-settings-page-active .ema-sidebar-brand {
+html body main[data-section="service-desk"] .content-shell.roles-content-shell {
+  height: calc(100dvh - 15.2rem) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-registry-panel {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-commandbar,
+html body main[data-section="service-desk"] .service-desk-advanced-panel {
+  flex: 0 0 auto !important;
+}
+
+html body main[data-section="service-desk"] .content-body.service-desk-registry-tablebody {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow: hidden !important;
+  padding: 0 1rem .65rem !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  border-radius: 1rem !important;
+  scrollbar-gutter: stable !important;
+}
+
+html body main[data-section="service-desk"] .uam-pagination.global-style.service-desk-registry-pagination {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  margin: 0 1rem 1rem !important;
+  padding: .55rem .75rem !important;
+  min-height: 3.15rem !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: .75rem !important;
+  border: 1px solid #dbe7fb !important;
+  border-radius: 1rem !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(15, 35, 71, 0.05) !important;
   position: relative !important;
-  inset: auto !important;
   top: auto !important;
   right: auto !important;
   bottom: auto !important;
   left: auto !important;
-  transform: none !important;
+  z-index: 2 !important;
+}
 
-  width: 100% !important;
-  min-width: 0 !important;
-  max-width: 100% !important;
+html body main[data-section="service-desk"] .uam-pagination.global-style.service-desk-registry-pagination .uam-pagination-info {
+  justify-self: start !important;
+  text-align: left !important;
+}
 
+html body main[data-section="service-desk"] .uam-pagination.global-style.service-desk-registry-pagination .uam-pagination-actions,
+html body main[data-section="service-desk"] .uam-pagination.global-style.service-desk-registry-pagination .pagination-actions {
+  justify-self: end !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .35rem !important;
+}
+
+/* =========================================================
+   Service Desk table visual cleanup
+   - plain black column headers
+   - better asset/SLA/status display
+========================================================= */
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-row.head {
+  background: #f3f6fb !important;
+  border-bottom: 1px solid #dbe7f3 !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-row.head .user-cell {
+  color: #0f2746 !important;
+  font-size: .68rem !important;
+  font-weight: 950 !important;
+  letter-spacing: .035em !important;
+  text-transform: uppercase !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-row.head .soft-btn {
   height: auto !important;
   min-height: 0 !important;
-  max-height: 72px !important;
-
-  margin: 0 0 1rem 0 !important;
   padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #0f2746 !important;
+  box-shadow: none !important;
+  font-size: .68rem !important;
+  font-weight: 950 !important;
+  letter-spacing: .035em !important;
+  text-transform: uppercase !important;
+}
 
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-row.head .soft-btn span {
+  color: #0f2746 !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-row.head .soft-btn i {
+  margin-left: .18rem !important;
+  color: #2563eb !important;
+  font-size: .65rem !important;
+  font-style: normal !important;
+}
+
+/* Body row sizing */
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-row:not(.head) {
+  min-height: 4.15rem !important;
+  align-items: center !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-cell {
+  color: #0f2746 !important;
+  font-size: .73rem !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-cell strong {
+  color: #0f2746 !important;
+  font-size: .76rem !important;
+  font-weight: 950 !important;
+  line-height: 1.2 !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-cell small {
+  color: #64748b !important;
+  font-size: .65rem !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+}
+
+/* Asset badge cleanup */
+html body main[data-section="service-desk"] .service-desk-table-wrap .muted-cell {
+  width: 100% !important;
+  max-width: 8.6rem !important;
+  min-height: 2.1rem !important;
+  padding: .32rem .55rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: .35rem !important;
+  border: 1px solid #d6e3f1 !important;
+  border-radius: .8rem !important;
+  background: #f8fafc !important;
+  color: #334155 !important;
+  font-size: .64rem !important;
+  font-weight: 900 !important;
+  line-height: 1.15 !important;
+  text-transform: none !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .muted-cell svg {
+  flex: 0 0 auto !important;
+  color: #64748b !important;
+}
+
+/* Incident text cleanup */
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell strong {
+  display: block !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell small {
+  display: -webkit-box !important;
+  max-width: 100% !important;
+  margin-top: .15rem !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+/* SLA readable */
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.ontrack,
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.near,
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.overdue {
+  padding-right: .35rem !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.ontrack strong {
+  color: #065f46 !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.near strong {
+  color: #b45309 !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.overdue strong {
+  color: #dc2626 !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.ontrack small,
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.near small,
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.overdue small {
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  white-space: nowrap !important;
+  color: #64748b !important;
+}
+
+/* Status color pills */
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-pill {
+  min-width: 4.6rem !important;
+  justify-content: center !important;
+  border-radius: 999px !important;
+  padding: .32rem .58rem !important;
+  font-size: .65rem !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-pill.closed,
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-pill.resolved {
+  color: #065f46 !important;
+  background: #d1fae5 !important;
+  border-color: #a7f3d0 !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-pill.in-progress,
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-pill.progress {
+  color: #1d4ed8 !important;
+  background: #dbeafe !important;
+  border-color: #bfdbfe !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-pill.awaiting,
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-pill.assigned {
+  color: #92400e !important;
+  background: #fef3c7 !important;
+  border-color: #fde68a !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-pill.rejected,
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-pill.cancelled {
+  color: #b91c1c !important;
+  background: #fee2e2 !important;
+  border-color: #fecaca !important;
+}
+
+/* Action buttons stay compact */
+html body main[data-section="service-desk"] .service-desk-table-wrap .row-actions.user-row-action-wrap.clean .mini-btn {
+  width: 2rem !important;
+  min-width: 2rem !important;
+  height: 2rem !important;
+  min-height: 2rem !important;
+  border-radius: .72rem !important;
+}
+
+/* =========================================================
+   Service Desk Asset badge one-line fix
+========================================================= */
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .muted-cell {
+  width: auto !important;
+  max-width: 100% !important;
+  min-height: 1.9rem !important;
+  height: 1.9rem !important;
+  padding: .32rem .62rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: .35rem !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  line-height: 1 !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .muted-cell svg {
+  flex: 0 0 auto !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .muted-cell {
+  font-size: .66rem !important;
+  font-weight: 900 !important;
+}
+
+/* =========================================================
+   Service Desk table final alignment fix
+   Asset = plain one-line text
+   SLA = aligned and readable
+========================================================= */
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-row:not(.head) {
+  min-height: 4.05rem !important;
+  align-items: center !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-cell {
+  align-self: stretch !important;
+  display: flex !important;
+  align-items: center !important;
+  min-width: 0 !important;
+}
+
+/* Asset column: remove badge/card look */
+html body main[data-section="service-desk"] .service-desk-table-wrap .muted-cell {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .35rem !important;
+  color: #334155 !important;
+  font-size: .72rem !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .muted-cell svg {
+  width: .82rem !important;
+  min-width: .82rem !important;
+  flex: 0 0 .82rem !important;
+  color: #64748b !important;
+}
+
+/* Incident + assigned cells back to block text layout */
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell {
+  display: grid !important;
+  align-content: center !important;
+  align-items: center !important;
+  gap: .1rem !important;
+  min-width: 0 !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell strong {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell small {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin-top: .06rem !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* SLA column alignment */
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.ontrack,
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.near,
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.overdue {
+  display: grid !important;
+  align-content: center !important;
+  align-items: center !important;
+  gap: .08rem !important;
+  padding-right: .35rem !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.ontrack strong,
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.near strong,
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.overdue strong {
+  display: block !important;
+  font-size: .74rem !important;
+  font-weight: 950 !important;
+  line-height: 1.15 !important;
+  white-space: nowrap !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.ontrack strong {
+  color: #047857 !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.near strong {
+  color: #b45309 !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.overdue strong {
+  color: #dc2626 !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.ontrack small,
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.near small,
+html body main[data-section="service-desk"] .service-desk-table-wrap .role-info-cell.overdue small {
+  display: block !important;
+  color: #64748b !important;
+  font-size: .64rem !important;
+  font-weight: 800 !important;
+  line-height: 1.16 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Header plain and aligned */
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-row.head .user-cell {
+  display: flex !important;
+  align-items: center !important;
+  color: #0f2746 !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-row.head .soft-btn {
+  justify-content: flex-start !important;
+}
+
+/* Status pill alignment */
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-cell .user-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Service Desk Asset column - no icon spacing */
+html body main[data-section="service-desk"] .service-desk-table-wrap .muted-cell {
+  gap: 0 !important;
+}
+
+/* Service Desk Asset column - force remove asset icon */
+html body main[data-section="service-desk"] .service-desk-table-wrap .muted-cell svg {
+  display: none !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .muted-cell {
+  gap: 0 !important;
+  padding-left: 0 !important;
+}
+
+/* =========================================================
+   FINAL Service Desk Asset overflow fix
+   Asset text must stay inside Asset column only.
+========================================================= */
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-row {
+  overflow: hidden !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-row .user-cell:nth-child(5) {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  padding-right: .85rem !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .user-row .user-cell:nth-child(6) {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  padding-left: .25rem !important;
+}
+
+html body main[data-section="service-desk"] .service-desk-table-wrap .muted-cell {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+
+  padding: 0 !important;
+  margin: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
 
-  overflow: visible !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
+  color: #334155 !important;
+  font-size: .72rem !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
 }
 
-html.ema-settings-page-active body.ema-settings-page-active .ema-sidebar-brand::before,
-html.ema-settings-page-active body.ema-settings-page-active .ema-sidebar-brand::after {
+html body main[data-section="service-desk"] .service-desk-table-wrap .muted-cell svg {
   display: none !important;
-  content: none !important;
-}
-
-html.ema-settings-page-active body.ema-settings-page-active .ema-sidebar-brand *,
-html.ema-settings-page-active body.ema-settings-page-active .ema-sidebar .ema-sidebar-brand * {
-  position: relative !important;
-  max-width: 100% !important;
-  background: transparent !important;
 }

@@ -4300,7 +4300,7 @@ export default function ServiceDesk() {
   }, []);
 
   const ticketTableColumns =
-    '52px minmax(112px, .86fr) 106px minmax(132px, 1fr) minmax(96px, .72fr) minmax(220px, 1.55fr) 102px minmax(118px, .92fr) 104px 108px 104px';
+    '52px minmax(130px, .9fr) 112px minmax(150px, 1fr) minmax(175px, .95fr) minmax(270px, 1.65fr) 100px minmax(125px, .85fr) minmax(150px, .95fr) 120px 92px';
   const ticketTableMinWidth = '100%';
 
   if (isLoading) {
