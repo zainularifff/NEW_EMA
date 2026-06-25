@@ -20,7 +20,7 @@ import NetworkInventory from "./pages/NetworkInventory";
 //import ITOperationsDashboard from "./pages/ITOperationsDashboard";
 
 import ProtectedRoute from "./routes/ProtectedRoute";
-
+import { getDefaultAccessiblePath, getStoredAccessUser } from "./routes/accessControl";
 const ManagementDashboardFallback = () => (
   <div style={{ padding: 24 }}>
     Management Dashboard failed to load. Please check src/pages/ManagementDashboard.tsx export.

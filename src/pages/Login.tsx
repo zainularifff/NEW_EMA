@@ -17,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 
 import authService, { type LoginResponse } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
+import { getDefaultAccessiblePath, normalizeKey } from "../routes/accessControl";
 import "../styles/2fa.css";
 
 type AnyUser = Record<string, any>;
@@ -121,6 +122,8 @@ function storeAuthToken(accessToken: string, user: AnyUser) {
   localStorage.setItem("ema-access-token", accessToken);
   localStorage.setItem("accessToken", accessToken);
   localStorage.setItem("token", accessToken);
+  localStorage.setItem("user", JSON.stringify(user));
+  localStorage.setItem("currentUser", JSON.stringify(user));
   localStorage.setItem(
     "ema-auth",
     JSON.stringify({
@@ -129,6 +132,174 @@ function storeAuthToken(accessToken: string, user: AnyUser) {
       user,
     })
   );
+}
+
+function firstValue(row: AnyUser, keys: string[]) {
+  for (const key of keys) {
+    const value = row?.[key];
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return "";
+}
+
+function arrayFromPayload(payload: AnyUser, key: string) {
+  const data = payload?.data || payload || {};
+  const value = data?.[key] || payload?.[key];
+
+  if (Array.isArray(value)) return value;
+
+  if (key === "permissions") {
+    return (
+      data?.permissions ||
+      data?.rolePermissions ||
+      data?.modulePermissions ||
+      data?.RoleModulePermissions ||
+      payload?.permissions ||
+      payload?.rolePermissions ||
+      payload?.modulePermissions ||
+      []
+    );
+  }
+
+  return [];
+}
+
+function moduleRoute(row: AnyUser) {
+  const explicit = String(firstValue(row, ["routePath", "RoutePath", "path", "Path", "url", "Url"])).trim();
+
+  if (explicit) {
+    const cleanedExplicit = explicit.split("/").filter(Boolean).join("/");
+    return cleanedExplicit ? "/" + cleanedExplicit : "/";
+  }
+
+  const text = normalizeKey([
+    firstValue(row, ["moduleKey", "ModuleKey", "key", "Key"]),
+    firstValue(row, ["moduleName", "ModuleName", "name", "Name", "label", "Label"]),
+  ].join(" "));
+
+  if (text.includes("management_dashboard")) return "/management-dashboard";
+  if (text.includes("it_operation") || text.includes("it_operations") || text.includes("operation_dashboard")) return "/dashboard";
+  if (text.includes("service_desk") || text.includes("incident") || text.includes("ticket")) return "/service-desk";
+  if (text.includes("hardware")) return "/hardware";
+  if (text.includes("software_distribution")) return "/software-distribution";
+  if (text.includes("software")) return "/software";
+  if (text.includes("network")) return "/network-inventory";
+  if (text.includes("app_metering") || text.includes("application_metering")) return "/appmetering";
+  if (text.includes("internet")) return "/internet-metering";
+  if (text.includes("app_restriction")) return "/app-restriction";
+  if (text.includes("web_restriction")) return "/web-restriction";
+  if (text.includes("patch")) return "/patch-management";
+  if (text.includes("task")) return "/tasklist";
+  if (text.includes("report")) return "/report";
+  if (text.includes("setting") || text.includes("user_access")) return "/settings";
+
+  return "";
+}
+
+async function enrichUserWithModuleAccess(accessToken: string, user: AnyUser) {
+  try {
+    const payload = await authService.getRoleModuleAccess(accessToken);
+
+    const roles = arrayFromPayload(payload, "roles");
+    const modules = arrayFromPayload(payload, "modules");
+    const permissions = arrayFromPayload(payload, "permissions");
+
+    const userRoleIds = new Set(
+      [
+        user.roleID,
+        user.RoleID,
+        user.roleId,
+        user.RoleId,
+      ]
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+    );
+
+    const userRoleNames = new Set(
+      [
+        user.role,
+        user.Role,
+        user.roleName,
+        user.RoleName,
+        ...(Array.isArray(user.roles) ? user.roles : []),
+      ]
+        .map((value) => normalizeKey(value))
+        .filter(Boolean)
+    );
+
+    const matchedRoleIds = new Set<string>();
+
+    roles.forEach((role: AnyUser) => {
+      const roleId = String(firstValue(role, ["roleID", "RoleID", "roleId", "RoleId", "id"])).trim();
+      const roleName = normalizeKey(firstValue(role, ["roleName", "RoleName", "name", "Name", "role", "Role"]));
+
+      if ((roleId && userRoleIds.has(roleId)) || (roleName && userRoleNames.has(roleName))) {
+        matchedRoleIds.add(roleId);
+      }
+    });
+
+    userRoleIds.forEach((id) => matchedRoleIds.add(id));
+
+    const allowedModuleIds = new Set<string>();
+
+    permissions.forEach((permission: AnyUser) => {
+      const roleId = String(firstValue(permission, ["roleID", "RoleID", "roleId", "RoleId"])).trim();
+      const roleName = normalizeKey(firstValue(permission, ["roleName", "RoleName", "role", "Role"]));
+      const canView = Boolean(
+        permission.canView ??
+        permission.CanView ??
+        permission.view ??
+        permission.View ??
+        permission.allowed ??
+        permission.Allowed ??
+        permission.isAllowed ??
+        permission.IsAllowed
+      );
+
+      const matchRole = (roleId && matchedRoleIds.has(roleId)) || (roleName && userRoleNames.has(roleName));
+
+      if (matchRole && canView) {
+        const moduleId = String(firstValue(permission, ["moduleID", "ModuleID", "moduleId", "ModuleId"])).trim();
+        if (moduleId) allowedModuleIds.add(moduleId);
+      }
+    });
+
+    const allowedRoutes = new Set<string>();
+    const allowedModules = new Set<string>();
+    const moduleAccess: Record<string, boolean> = {};
+
+    modules.forEach((module: AnyUser) => {
+      const moduleId = String(firstValue(module, ["moduleID", "ModuleID", "moduleId", "ModuleId", "id"])).trim();
+      if (!moduleId || !allowedModuleIds.has(moduleId)) return;
+
+      const route = moduleRoute(module);
+      if (route) allowedRoutes.add(route);
+
+      [
+        firstValue(module, ["moduleKey", "ModuleKey", "key", "Key"]),
+        firstValue(module, ["moduleName", "ModuleName", "name", "Name", "label", "Label"]),
+      ].forEach((key) => {
+        const normalized = normalizeKey(key);
+        if (normalized) {
+          allowedModules.add(normalized);
+          moduleAccess[normalized] = true;
+        }
+      });
+
+      if (route === "/management-dashboard") moduleAccess.management_dashboard = true;
+      if (route === "/dashboard") moduleAccess.it_operation_dashboard = true;
+    });
+
+    return {
+      ...user,
+      allowedRoutes: Array.from(allowedRoutes),
+      allowedModules: Array.from(allowedModules),
+      moduleAccess,
+    };
+  } catch (error) {
+    console.warn("Module access could not be loaded during login.", error);
+    return user;
+  }
 }
 
 export default function Login() {
@@ -158,12 +329,13 @@ export default function Login() {
     localStorage.setItem("ema-login-theme", loginTheme);
   }, [loginTheme]);
 
-  const finalizeLogin = (accessToken: string, rawUser: AnyUser, fallbackUsername = "User") => {
+  const finalizeLogin = async (accessToken: string, rawUser: AnyUser, fallbackUsername = "User") => {
     const normalizedUser = normalizeApiUser(rawUser, fallbackUsername);
+    const accessUser = await enrichUserWithModuleAccess(accessToken, normalizedUser);
 
-    storeAuthToken(accessToken, normalizedUser);
-    login(accessToken, normalizedUser);
-    navigate("/dashboard", { replace: true });
+    storeAuthToken(accessToken, accessUser);
+    login(accessToken, accessUser);
+    navigate(getDefaultAccessiblePath(accessUser), { replace: true });
   };
 
   useEffect(() => {
@@ -205,9 +377,9 @@ export default function Login() {
       try {
         const mePayload = await authService.getCurrentUser(token);
         const user = mePayload?.data || mePayload?.user || mePayload || fallbackUser;
-        finalizeLogin(token, user, email || provider || "SSO User");
+        await finalizeLogin(token, user, email || provider || "SSO User");
       } catch {
-        finalizeLogin(token, fallbackUser, email || provider || "SSO User");
+        await finalizeLogin(token, fallbackUser, email || provider || "SSO User");
       } finally {
         window.history.replaceState({}, "", "/login");
       }
@@ -324,7 +496,7 @@ export default function Login() {
       }
 
       const apiUser = payload?.data?.user || payload?.user || {};
-      finalizeLogin(accessToken, apiUser, cleanUsername);
+      await finalizeLogin(accessToken, apiUser, cleanUsername);
     } catch (err) {
       console.error("Sign-in error:", err);
       setError("Sign-in service is unavailable. Please try again or contact support.");
@@ -384,7 +556,7 @@ export default function Login() {
       }
 
       const apiUser = payload?.data?.user || payload?.user || mfaState.user;
-      finalizeLogin(accessToken, apiUser, username || "User");
+      await finalizeLogin(accessToken, apiUser, username || "User");
     } catch (err) {
       console.error("2FA verify error:", err);
       setError("Verification service is unavailable. Please try again.");

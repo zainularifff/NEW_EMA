@@ -24,7 +24,6 @@ export const PUBLIC_AUTH_PATHS = ["/login", "/forgot-password", "/reset-password
 
 export const LANDING_PATHS = new Set([
   "/",
-  "/dashboard",
   "/landing",
   "/home",
 ]);
@@ -32,7 +31,7 @@ export const LANDING_PATHS = new Set([
 export const ROUTE_MODULE_MAP: Record<string, string[]> = {
   "/settings": ["settings", "system_settings", "user_access_management"],
 
-  "/dashboard": [],
+  "/dashboard": ["it_operation_dashboard", "it_operations_dashboard", "it_operations", "operations_dashboard"],
   "/landing": [],
 
   "/service-desk": ["service_desk", "incidents", "tickets"],
@@ -72,7 +71,7 @@ export const ROUTE_MODULE_MAP: Record<string, string[]> = {
   "/report": ["reports", "reporting", "dynamic_reporting"],
   "/reports": ["reports", "reporting", "dynamic_reporting"],
 
-  "/management-dashboard": ["dashboard", "management_dashboard", "management"],
+  "/management-dashboard": ["management_dashboard"],
   "/internet-metering": ["internet_metering", "web_metering", "internet_usage"],
   "/geolocation": ["geolocation", "geo_location"],
 };
@@ -294,3 +293,218 @@ export function canViewPath(inputUser: AccessUser | null | undefined, pathname: 
 }
 
 export const canAccessPath = canViewPath;
+
+
+export const DEFAULT_ACCESSIBLE_ROUTES = [
+  "/management-dashboard",
+  "/dashboard",
+  "/service-desk",
+  "/hardware",
+  "/software",
+  "/network-inventory",
+  "/appmetering",
+  "/internet-metering",
+  "/app-restriction",
+  "/web-restriction",
+  "/patch-management",
+  "/software-distribution",
+  "/tasklist",
+  "/report",
+  "/settings",
+];
+
+export function getDefaultAccessiblePath(inputUser?: AccessUser | null, fallback = "/dashboard") {
+  const user = extractUser(inputUser) || inputUser || getStoredAccessUser();
+
+  const firstAllowed = DEFAULT_ACCESSIBLE_ROUTES.find((route) => canViewPath(user, route));
+  return firstAllowed || fallback;
+}
+
+
+function firstValue(row: any, keys: string[]) {
+  for (const key of keys) {
+    const value = row?.[key];
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return "";
+}
+
+function roleIdOf(row: any) {
+  return String(firstValue(row, ["RoleID", "roleID", "RoleId", "roleId", "id"])).trim();
+}
+
+function roleNameOf(row: any) {
+  return String(firstValue(row, ["RoleName", "roleName", "name", "Name", "role", "Role"])).trim();
+}
+
+function moduleIdOf(row: any) {
+  return String(firstValue(row, ["ModuleID", "moduleID", "ModuleId", "moduleId", "id"])).trim();
+}
+
+function moduleNameOf(row: any) {
+  return String(firstValue(row, ["ModuleName", "moduleName", "name", "Name", "label", "Label"])).trim();
+}
+
+function moduleKeyOf(row: any) {
+  return String(firstValue(row, ["ModuleKey", "moduleKey", "key", "Key"])).trim();
+}
+
+function moduleRouteOf(row: any) {
+  const explicitRoute = String(firstValue(row, ["RoutePath", "routePath", "path", "Path", "url", "Url"])).trim();
+
+  if (explicitRoute) {
+    return explicitRoute.startsWith("/") ? explicitRoute : `/${explicitRoute.replace(/^\/+/, "")}`;
+  }
+
+  const label = `${moduleKeyOf(row)} ${moduleNameOf(row)}`;
+  const normalized = normalizeKey(label);
+
+  if (normalized.includes("management_dashboard")) return "/management-dashboard";
+  if (normalized.includes("it_operation_dashboard") || normalized.includes("it_operations_dashboard") || normalized.includes("operations_dashboard")) return "/dashboard";
+  if (normalized.includes("service_desk") || normalized.includes("incident") || normalized.includes("ticket")) return "/service-desk";
+  if (normalized.includes("hardware")) return "/hardware";
+  if (normalized.includes("software_inventory")) return "/software";
+  if (normalized === "software" || normalized.includes("software_asset")) return "/software";
+  if (normalized.includes("network")) return "/network-inventory";
+  if (normalized.includes("app_metering") || normalized.includes("application_metering")) return "/appmetering";
+  if (normalized.includes("internet_metering") || normalized.includes("web_metering")) return "/internet-metering";
+  if (normalized.includes("app_restriction") || normalized.includes("application_restriction")) return "/app-restriction";
+  if (normalized.includes("web_restriction")) return "/web-restriction";
+  if (normalized.includes("patch")) return "/patch-management";
+  if (normalized.includes("software_distribution")) return "/software-distribution";
+  if (normalized.includes("task")) return "/tasklist";
+  if (normalized.includes("report")) return "/report";
+  if (normalized.includes("setting") || normalized.includes("user_access")) return "/settings";
+
+  return "";
+}
+
+function userRoleIds(user: AccessUser | null) {
+  return splitAccessText([
+    (user as any)?.roleID,
+    (user as any)?.RoleID,
+    (user as any)?.roleId,
+    (user as any)?.RoleId,
+  ]).map(String).filter(Boolean);
+}
+
+function userRoleNames(user: AccessUser | null) {
+  return [
+    ...splitAccessText((user as any)?.roles),
+    ...splitAccessText((user as any)?.roleName),
+    ...splitAccessText((user as any)?.role),
+  ].map(normalizeKey);
+}
+
+function payloadArray(payload: any, key: string) {
+  const data = payload?.data || payload || {};
+  const direct = data?.[key] || payload?.[key];
+
+  if (Array.isArray(direct)) return direct;
+
+  if (key === "permissions") {
+    return (
+      data?.rolePermissions ||
+      data?.modulePermissions ||
+      data?.RoleModulePermissions ||
+      payload?.rolePermissions ||
+      payload?.modulePermissions ||
+      []
+    );
+  }
+
+  return [];
+}
+
+export function applyRoleModuleAccessToUser(inputUser: AccessUser, moduleAccessPayload: any): AccessUser {
+  const user = extractUser(inputUser) || inputUser;
+  const roles = payloadArray(moduleAccessPayload, "roles");
+  const modules = payloadArray(moduleAccessPayload, "modules");
+  const permissions = payloadArray(moduleAccessPayload, "permissions");
+
+  const roleIdsFromUser = new Set(userRoleIds(user));
+  const roleNamesFromUser = new Set(userRoleNames(user));
+
+  const matchedRoleIds = new Set<string>();
+
+  roles.forEach((role: any) => {
+    const roleId = roleIdOf(role);
+    const roleName = normalizeKey(roleNameOf(role));
+
+    if ((roleId && roleIdsFromUser.has(roleId)) || (roleName && roleNamesFromUser.has(roleName))) {
+      matchedRoleIds.add(roleId);
+    }
+  });
+
+  // If backend does not return role rows, permissions may still use direct role name/id.
+  roleIdsFromUser.forEach((id) => matchedRoleIds.add(id));
+
+  const allowedModuleIds = new Set<string>();
+
+  permissions.forEach((permission: any) => {
+    const permissionRoleId = String(firstValue(permission, ["RoleID", "roleID", "RoleId", "roleId"])).trim();
+    const permissionRoleName = normalizeKey(firstValue(permission, ["RoleName", "roleName", "role", "Role"]));
+    const canView = truthyAccessValue(
+      permission?.CanView ??
+      permission?.canView ??
+      permission?.View ??
+      permission?.view ??
+      permission?.Allowed ??
+      permission?.allowed ??
+      permission?.IsAllowed ??
+      permission?.isAllowed
+    );
+
+    const roleMatched =
+      (permissionRoleId && matchedRoleIds.has(permissionRoleId)) ||
+      (permissionRoleName && roleNamesFromUser.has(permissionRoleName));
+
+    if (roleMatched && canView) {
+      const moduleId = String(firstValue(permission, ["ModuleID", "moduleID", "ModuleId", "moduleId"])).trim();
+      if (moduleId) allowedModuleIds.add(moduleId);
+    }
+  });
+
+  const moduleAccess: Record<string, boolean> = {};
+  const allowedRoutes = new Set(splitAccessText(user.allowedRoutes));
+  const allowedModules = new Set(splitAccessText(user.allowedModules).map(normalizeKey).filter(Boolean));
+
+  modules.forEach((moduleRow: any) => {
+    const moduleId = moduleIdOf(moduleRow);
+    if (!moduleId || !allowedModuleIds.has(moduleId)) return;
+
+    const rawKeys = [
+      moduleKeyOf(moduleRow),
+      moduleNameOf(moduleRow),
+    ].filter(Boolean);
+
+    rawKeys.forEach((key) => {
+      const normalized = normalizeKey(key);
+      if (normalized) {
+        moduleAccess[normalized] = true;
+        allowedModules.add(normalized);
+      }
+    });
+
+    const route = moduleRouteOf(moduleRow);
+
+    if (route) {
+      allowedRoutes.add(route);
+      getRouteModuleKeys(route).forEach((key) => {
+        moduleAccess[key] = true;
+        allowedModules.add(key);
+      });
+    }
+  });
+
+  return {
+    ...user,
+    allowedRoutes: Array.from(allowedRoutes),
+    allowedModules: Array.from(allowedModules),
+    moduleAccess: {
+      ...(user.moduleAccess || {}),
+      ...moduleAccess,
+    },
+    hasModuleAccessConfig: true,
+  };
+}

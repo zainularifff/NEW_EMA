@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 import {
   canViewPath,
   cleanPath,
   extractUser,
+  getDefaultAccessiblePath,
   getRouteModuleKeys,
   getStoredAccessUser,
   PUBLIC_AUTH_PATHS,
@@ -91,7 +92,6 @@ function isTokenExpired(token: string): boolean {
   const exp = Number(payload?.exp);
 
   if (!Number.isFinite(exp) || exp <= 0) return false;
-
   return exp * 1000 <= Date.now() + 30_000;
 }
 
@@ -138,11 +138,33 @@ function getStoredToken(): string {
   return "";
 }
 
+function mergeFreshUserWithStoredAccess(freshUser: AccessUser, storedUser: AccessUser | null): AccessUser {
+  return {
+    ...freshUser,
+    allowedModules:
+      Array.isArray(freshUser.allowedModules) && freshUser.allowedModules.length
+        ? freshUser.allowedModules
+        : storedUser?.allowedModules,
+    allowedRoutes:
+      Array.isArray(freshUser.allowedRoutes) && freshUser.allowedRoutes.length
+        ? freshUser.allowedRoutes
+        : storedUser?.allowedRoutes,
+    moduleAccess:
+      freshUser.moduleAccess && Object.keys(freshUser.moduleAccess).length
+        ? freshUser.moduleAccess
+        : storedUser?.moduleAccess,
+    permissions:
+      freshUser.permissions && Object.keys(freshUser.permissions).length
+        ? freshUser.permissions
+        : storedUser?.permissions,
+  };
+}
+
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const location = useLocation();
   const token = useMemo(() => getStoredToken(), [location.pathname]);
   const [user, setUser] = useState<AccessUser | null>(() => getStoredAccessUser());
-  const [, setLoading] = useState(Boolean(token));
+  const [loading, setLoading] = useState(Boolean(token));
   const [authFailed, setAuthFailed] = useState(false);
   const path = cleanPath(location.pathname);
 
@@ -191,8 +213,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         const nextUser = extractUser(payload);
 
         if (nextUser && !cancelled) {
-          saveAccessUser(nextUser);
-          setUser(nextUser);
+          const storedUser = getStoredAccessUser();
+          const mergedUser = mergeFreshUserWithStoredAccess(nextUser, storedUser);
+          saveAccessUser(mergedUser);
+          setUser(mergedUser);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -210,14 +234,28 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     return children ? <>{children}</> : <Outlet />;
   }
 
+  if (loading) {
+    return (
+      <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center", color: "#0f2746", fontWeight: 800 }}>
+        Please wait while we verify your access...
+      </div>
+    );
+  }
+
   if (!token || authFailed) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   if (!canViewPath(user, path)) {
+    const redirectTo = getDefaultAccessiblePath(user);
+
+    if (cleanPath(redirectTo) === path) {
+      return children ? <>{children}</> : <Outlet />;
+    }
+
     return (
       <Navigate
-        to="/dashboard"
+        to={redirectTo}
         replace
         state={{
           accessDenied: true,

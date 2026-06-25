@@ -63,6 +63,11 @@ export async function getCurrentUser(accessToken?: string): Promise<LoginRespons
   return api.get<LoginResponse>("/api/auth/me", config);
 }
 
+export async function getRoleModuleAccess(accessToken?: string): Promise<any> {
+  const config = accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : {};
+  return api.get<any>("/api/settings/module-access", config);
+}
+
 export async function refreshToken(): Promise<LoginResponse> {
   return api.post<LoginResponse>("/api/refresh-token");
 }
@@ -76,6 +81,7 @@ const authService = {
   setupTwoFactor,
   verifyTwoFactor,
   getCurrentUser,
+  getRoleModuleAccess,
   refreshToken,
   logout,
 };
