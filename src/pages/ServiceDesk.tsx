@@ -5555,6 +5555,58 @@ export default function ServiceDesk() {
           padding-bottom: 0 !important;
         }
 
+
+        /* FINAL: Knowledge Base header action buttons */
+        main[data-section="service-desk"] .service-desk-kb-head .content-actions,
+        main[data-section="service-desk"] .service-desk-kb-head header .content-actions {
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: flex-end !important;
+          gap: 8px !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border: 0 !important;
+          background: transparent !important;
+          min-height: 0 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-head .content-actions button,
+        main[data-section="service-desk"] .service-desk-kb-head button,
+        main[data-section="service-desk"] .service-desk-kb-head .mini-btn,
+        main[data-section="service-desk"] .service-desk-kb-head .icon-only {
+          width: 36px !important;
+          min-width: 36px !important;
+          height: 36px !important;
+          min-height: 36px !important;
+          padding: 0 !important;
+          border-radius: 12px !important;
+          border: 1px solid rgba(148, 163, 184, 0.32) !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+          transition: 120ms ease !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-head .content-actions button:hover,
+        main[data-section="service-desk"] .service-desk-kb-head button:hover,
+        main[data-section="service-desk"] .service-desk-kb-head .mini-btn:hover,
+        main[data-section="service-desk"] .service-desk-kb-head .icon-only:hover {
+          border-color: rgba(37, 99, 235, 0.42) !important;
+          background: rgba(37, 99, 235, 0.08) !important;
+          color: #1d4ed8 !important;
+          transform: translateY(-1px) !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-kb-head .content-actions button svg,
+        main[data-section="service-desk"] .service-desk-kb-head button svg {
+          width: 16px !important;
+          height: 16px !important;
+          stroke-width: 2.4 !important;
+        }
+
 `}</style>
 
       {toast && (
