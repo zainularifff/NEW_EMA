@@ -131,13 +131,25 @@ function combinePayload(range: Range, packs: Pack[], payloads: any[]) {
     exportData: Object.assign({}, ...payloads.map((payload) => payload.exportData || {})),
   };
 }
-function openPrint(payload: any, range: Range) {
+function openPdfReport(payload: any, range: Range) {
   const html = buildBuilderReportHtml(payload, baseFilters(range), { autoPrint: true, preview: false });
-  const win = window.open("", "_blank", "noopener,noreferrer,width=1100,height=900");
-  if (!win) return;
+  const win = window.open("", "_blank", "width=1100,height=900");
+
+  if (!win) {
+    throw new Error("Browser blocked the PDF window. Allow pop-ups for this site and try again.");
+  }
+
   win.document.open();
   win.document.write(html);
   win.document.close();
+
+  window.setTimeout(() => {
+    try {
+      win.focus();
+    } catch {
+      // ignore focus issue
+    }
+  }, 250);
 }
 
 export default function ReportBuilderRulesLive() {
@@ -187,7 +199,7 @@ export default function ReportBuilderRulesLive() {
       }
       const payloads = responses.map((response, index) => normalizePayload(response, selected[index], range));
       const payload = combinePayload(range, selected, payloads);
-      if (mode === "generate") openPrint(payload, range);
+      if (mode === "generate") openPdfReport(payload, range);
       else setPreview({ title: payload.report?.title || buildTitle, html: buildBuilderReportHtml(payload, baseFilters(range), { preview: true, autoPrint: false }), count: selected.length });
     } finally {
       setLoading("");
@@ -207,7 +219,7 @@ export default function ReportBuilderRulesLive() {
         <label className="field"><span>Location / Branch</span><select><option>All Branches</option></select></label>
         <label className="field"><span>Date Range</span><select value={range.preset} onChange={(event) => setRange(rangeForPreset(event.target.value as RangePreset))}><option value="today">Today</option><option value="this-week">This Week</option><option value="this-month">This Month</option><option value="last-30-days">Last 30 Days</option><option value="custom">Custom Range</option></select></label>
         {range.preset === "custom" && <><label className="field compact-date"><span>From</span><input type="date" value={range.from} onChange={(event) => setRange((current) => ({ ...current, from: event.target.value }))} /></label><label className="field compact-date"><span>To</span><input type="date" value={range.to} onChange={(event) => setRange((current) => ({ ...current, to: event.target.value }))} /></label></>}
-        <div className="actions"><button className="builder-btn" onClick={() => runReport("preview")} disabled={Boolean(loading)}>{loading === "preview" ? "Loading..." : "Preview"}</button><button className="builder-btn primary" onClick={() => runReport("generate")} disabled={Boolean(loading)}>{loading === "generate" ? "Opening PDF..." : "Generate Report"}</button></div>
+        <div className="actions"><button className="builder-btn" onClick={() => runReport("preview")} disabled={Boolean(loading)}>{loading === "preview" ? "Loading..." : "Preview"}</button><button className="builder-btn primary" onClick={() => runReport("generate")} disabled={Boolean(loading)}>{loading === "generate" ? "Opening PDF..." : "Generate PDF"}</button></div>
       </section>
       {error && <div className="error">{error}</div>}
       <section className="builder-layout">
