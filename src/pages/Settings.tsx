@@ -1264,6 +1264,57 @@ function formatAuditTimestamp(value?: string | null) {
   });
 }
 
+
+function formatAuditDetailKey(key: string) {
+  return String(key || "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^./, (char) => char.toUpperCase());
+}
+
+function formatAuditDetailValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "-";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+
+  if (typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, item]) => formatAuditDetailKey(key) + ": " + formatAuditDetailValue(item))
+      .join(" ? ");
+  }
+
+  return String(value);
+}
+
+function formatAuditDetails(details?: string) {
+  const raw = String(details || "").trim();
+  if (!raw) return "";
+
+  if ((raw.startsWith("{") && raw.endsWith("}")) || (raw.startsWith("[") && raw.endsWith("]"))) {
+    try {
+      const parsed = JSON.parse(raw);
+
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => formatAuditDetailValue(item)).filter(Boolean).join(" ? ");
+      }
+
+      if (parsed && typeof parsed === "object") {
+        return Object.entries(parsed as Record<string, unknown>)
+          .map(([key, value]) => formatAuditDetailKey(key) + ": " + formatAuditDetailValue(value))
+          .join(" ? ");
+      }
+    } catch {
+      return raw
+        .replace(/[{}"\[\]]/g, "")
+        .replace(/,/g, " ? ")
+        .replace(/:/g, ": ");
+    }
+  }
+
+  return raw;
+}
+
 const AUDIT_API_BASE = (((import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.VITE_API_BASE_URL)
   || ((import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.VITE_API_URL)
   || "http://localhost:3001").replace(/\/$/, "");
@@ -4737,6 +4788,20 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
   const visibleModuleCount = groupedRows.filter((row) => row.type === "module").length;
   let displayIndex = 0;
 
+  const moduleMatrixRoleCount = Math.max(roles.length, 1);
+  const moduleMatrixMinWidth = `${4.2 + 18 + moduleMatrixRoleCount * 8.6}rem`;
+  const moduleMatrixRowStyle = {
+    gridTemplateColumns: `4.2rem minmax(18rem, 1.4fr) repeat(${moduleMatrixRoleCount}, minmax(8.6rem, 1fr))`,
+    minWidth: moduleMatrixMinWidth,
+  } as CSSProperties;
+  const moduleMatrixTableStyle = {
+    "--module-role-count": moduleMatrixRoleCount,
+    minWidth: moduleMatrixMinWidth,
+  } as CSSProperties;
+  const moduleMatrixGroupStyle = {
+    minWidth: moduleMatrixMinWidth,
+  } as CSSProperties;
+
   return (
     <div className="uam-panel clean module-control-panel">
       {error && (
@@ -4751,8 +4816,8 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
         <span>Use this page to turn module and submodule access on or off for each active role.</span>
       </div>
 
-      <div className="user-access-table advanced clean-table module-control-table" style={{ "--module-role-count": Math.max(roles.length, 1) } as CSSProperties}>
-        <div className="user-row head advanced clean-table-row module-control-row">
+      <div className="user-access-table advanced clean-table module-control-table" style={moduleMatrixTableStyle}>
+        <div className="user-row head advanced clean-table-row module-control-row" style={moduleMatrixRowStyle}>
           <div className="user-cell">No</div>
           <div className="user-cell">Module</div>
           {roles.length > 0 ? roles.map((role) => (
@@ -4767,7 +4832,7 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
         {!loading && roles.length > 0 && groupedRows.map((row) => {
           if (row.type === "group") {
             return (
-              <div className="module-control-group-row compact" key={`group-${row.groupName}`}>
+              <div className="module-control-group-row compact" key={`group-${row.groupName}`} style={moduleMatrixGroupStyle}>
                 <span>{row.groupName}</span>
               </div>
             );
@@ -4776,7 +4841,7 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
           displayIndex += 1;
           const module = row.module;
           return (
-            <div className={`user-row advanced clean-table-row module-control-row ${row.isSubmodule ? "submodule-row" : "parent-module-row"}`} key={String(getModuleId(module))}>
+            <div className={`user-row advanced clean-table-row module-control-row ${row.isSubmodule ? "submodule-row" : "parent-module-row"}`} key={String(getModuleId(module))} style={moduleMatrixRowStyle}>
               <div className="user-cell row-number"><span className="row-index-pill">{String(displayIndex).padStart(2, "0")}</span></div>
               <div className="user-cell">
                 <div className={`role-info-cell module-info-cell ${row.isSubmodule ? "submodule-info" : ""}`}>
@@ -5003,7 +5068,7 @@ function AuditContent({
             <div className="user-cell"><span className="role-soft-chip audit-module-chip">{row.module}</span></div>
             <div className="user-cell audit-action-cell">
               <strong>{row.action}</strong>
-              {row.details && <small>{row.details}</small>}
+              {row.details && <small>{formatAuditDetails(row.details)}</small>}
             </div>
             <div className="user-cell"><span className={`user-pill ${getAuditSeverityClass(row.severity)}`}>{row.severity}</span></div>
           </div>

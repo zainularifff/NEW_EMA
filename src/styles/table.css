@@ -712,3 +712,452 @@
   transform: none !important;
   box-shadow: none !important;
 }
+
+/* =========================================================
+   Global table numbering fix
+   Prevent No column / row number pill from being squeezed
+========================================================= */
+
+.row-number,
+.user-cell.row-number,
+.audit-cell.row-number,
+.clean-table-row .row-number {
+  width: 4.2rem !important;
+  min-width: 4.2rem !important;
+  max-width: 4.2rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: visible !important;
+  padding-left: 0.55rem !important;
+  padding-right: 0.55rem !important;
+}
+
+.row-index-pill {
+  width: 2.45rem !important;
+  min-width: 2.45rem !important;
+  max-width: 2.45rem !important;
+  height: 2rem !important;
+  flex: 0 0 2.45rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+.user-row.advanced.clean-table-row {
+  grid-template-columns:
+    4.2rem
+    minmax(260px, 1.55fr)
+    minmax(210px, 1.05fr)
+    82px
+    102px
+    112px
+    134px !important;
+}
+
+.role-standard-table .role-standard-row {
+  grid-template-columns:
+    4.2rem
+    minmax(330px, 1fr)
+    140px
+    112px
+    108px !important;
+}
+
+.access-standard-table .access-standard-row {
+  grid-template-columns:
+    4.2rem
+    minmax(360px, 1.7fr)
+    130px
+    150px
+    110px
+    98px
+    92px !important;
+}
+
+.audit-standard-table .audit-standard-row {
+  grid-template-columns:
+    4.2rem
+    minmax(145px, 0.78fr)
+    minmax(145px, 0.72fr)
+    minmax(155px, 0.78fr)
+    minmax(330px, 1.9fr)
+    108px !important;
+}
+
+
+/* =========================================================
+   Module Control by Role - final stable matrix layout
+   Role columns stay on the right side and fit inside the panel.
+========================================================= */
+
+.ema-settings-pro[data-section="modules"] .module-control-table {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+}
+
+.ema-settings-pro[data-section="modules"] .module-control-table .module-control-row {
+  display: grid !important;
+  grid-template-columns:
+    4.2rem
+    minmax(15rem, 1.45fr)
+    repeat(var(--module-role-count), minmax(5.8rem, 0.85fr)) !important;
+  align-items: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.ema-settings-pro[data-section="modules"] .module-control-table .module-control-row > .user-cell {
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.ema-settings-pro[data-section="modules"] .module-control-table .module-control-row > .user-cell:nth-child(1) {
+  width: 4.2rem !important;
+  min-width: 4.2rem !important;
+  max-width: 4.2rem !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+.ema-settings-pro[data-section="modules"] .module-control-table .module-control-row > .user-cell:nth-child(2) {
+  min-width: 15rem !important;
+  display: flex !important;
+  justify-content: flex-start !important;
+  text-align: left !important;
+}
+
+.ema-settings-pro[data-section="modules"] .module-control-table .module-role-head {
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.12 !important;
+  padding-left: 0.35rem !important;
+  padding-right: 0.35rem !important;
+}
+
+.ema-settings-pro[data-section="modules"] .module-control-table .module-toggle-cell {
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding-left: 0.35rem !important;
+  padding-right: 0.35rem !important;
+}
+
+.ema-settings-pro[data-section="modules"] .module-control-table .module-control-group-row {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.ema-settings-pro[data-section="modules"] .module-control-table .row-index-pill {
+  width: 2.55rem !important;
+  min-width: 2.55rem !important;
+  max-width: 2.55rem !important;
+  flex: 0 0 2.55rem !important;
+}
+
+.ema-settings-pro[data-section="modules"] .module-control-table .toggle {
+  margin: 0 auto !important;
+}
+
+/* Module Control - restore mouse scroll */
+.ema-settings-pro[data-section="modules"] .content-body,
+.ema-settings-pro[data-section="modules"] .module-control-panel {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+}
+
+.ema-settings-pro[data-section="modules"] .module-control-table {
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  max-width: 100% !important;
+  overscroll-behavior: contain !important;
+}
+
+.ema-settings-pro[data-section="modules"] .module-control-table::-webkit-scrollbar,
+.ema-settings-pro[data-section="modules"] .content-body::-webkit-scrollbar {
+  width: 10px !important;
+  height: 10px !important;
+}
+
+.ema-settings-pro[data-section="modules"] .module-control-table::-webkit-scrollbar-thumb,
+.ema-settings-pro[data-section="modules"] .content-body::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.75) !important;
+  border-radius: 999px !important;
+}
+
+/* =========================================================
+   Module Control - final vertical scroll fix
+   One vertical scrollbar on content body. Mouse wheel works.
+========================================================= */
+
+.ema-settings-pro[data-section="modules"] {
+  height: calc(100dvh - 72px) !important;
+  max-height: calc(100dvh - 72px) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ema-settings-pro[data-section="modules"] > .settings-layout {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ema-settings-pro[data-section="modules"] > .settings-layout > .settings-menu {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ema-settings-pro[data-section="modules"] > .settings-layout > .settings-content {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+}
+
+.ema-settings-pro[data-section="modules"] .content-shell {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.ema-settings-pro[data-section="modules"] .content-body {
+  flex: 1 1 auto !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior-y: auto !important;
+  scrollbar-gutter: stable !important;
+}
+
+.ema-settings-pro[data-section="modules"] .module-control-panel {
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+.ema-settings-pro[data-section="modules"] .module-control-table {
+  max-height: none !important;
+  height: auto !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  overscroll-behavior: auto !important;
+}
+
+.ema-settings-pro[data-section="modules"] .module-control-table * {
+  overscroll-behavior: auto !important;
+}
+
+/* =========================================================
+   Audit Log - widen Activity column
+========================================================= */
+
+.ema-settings-pro[data-section="audit"] .audit-standard-table .audit-standard-row {
+  grid-template-columns:
+    4.2rem
+    minmax(155px, 0.75fr)
+    minmax(115px, 0.55fr)
+    minmax(145px, 0.65fr)
+    minmax(520px, 2.6fr)
+    110px !important;
+}
+
+.ema-settings-pro[data-section="audit"] .audit-action-cell {
+  min-width: 0 !important;
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+.ema-settings-pro[data-section="audit"] .audit-action-cell strong,
+.ema-settings-pro[data-section="audit"] .audit-action-cell small {
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  white-space: normal !important;
+  line-height: 1.35 !important;
+}
+
+.ema-settings-pro[data-section="audit"] .audit-action-cell strong {
+  font-size: 0.76rem !important;
+}
+
+.ema-settings-pro[data-section="audit"] .audit-action-cell small {
+  margin-top: 0.18rem !important;
+  font-size: 0.68rem !important;
+}
+
+/* =========================================================
+   Settings Console - Role & User Access single scrollbar
+   Remove double scrollbar from Role Based Control and User Access Management
+========================================================= */
+
+.ema-settings-pro[data-section="roles"],
+.ema-settings-pro[data-section="users"] {
+  height: calc(100dvh - 72px) !important;
+  max-height: calc(100dvh - 72px) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ema-settings-pro[data-section="roles"] > .settings-layout,
+.ema-settings-pro[data-section="users"] > .settings-layout {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ema-settings-pro[data-section="roles"] > .settings-layout > .settings-menu,
+.ema-settings-pro[data-section="users"] > .settings-layout > .settings-menu {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ema-settings-pro[data-section="roles"] > .settings-layout > .settings-content,
+.ema-settings-pro[data-section="users"] > .settings-layout > .settings-content {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+}
+
+.ema-settings-pro[data-section="roles"] .content-shell,
+.ema-settings-pro[data-section="users"] .content-shell {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.ema-settings-pro[data-section="roles"] .content-body,
+.ema-settings-pro[data-section="users"] .content-body {
+  flex: 1 1 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-gutter: stable !important;
+}
+
+.ema-settings-pro[data-section="roles"] .role-control-panel,
+.ema-settings-pro[data-section="roles"] .role-standard-table,
+.ema-settings-pro[data-section="users"] .uam-panel,
+.ema-settings-pro[data-section="users"] .user-access-table {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.ema-settings-pro[data-section="roles"] .role-control-table,
+.ema-settings-pro[data-section="roles"] .user-access-table,
+.ema-settings-pro[data-section="users"] .user-access-table {
+  max-height: none !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+}
+
+/* =========================================================
+   Settings Console - Role & User Access single scrollbar
+   Remove double scrollbar from Role Based Control and User Access Management
+========================================================= */
+
+.ema-settings-pro[data-section="roles"],
+.ema-settings-pro[data-section="users"] {
+  height: calc(100dvh - 72px) !important;
+  max-height: calc(100dvh - 72px) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ema-settings-pro[data-section="roles"] > .settings-layout,
+.ema-settings-pro[data-section="users"] > .settings-layout {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ema-settings-pro[data-section="roles"] > .settings-layout > .settings-menu,
+.ema-settings-pro[data-section="users"] > .settings-layout > .settings-menu {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ema-settings-pro[data-section="roles"] > .settings-layout > .settings-content,
+.ema-settings-pro[data-section="users"] > .settings-layout > .settings-content {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+}
+
+.ema-settings-pro[data-section="roles"] .content-shell,
+.ema-settings-pro[data-section="users"] .content-shell {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.ema-settings-pro[data-section="roles"] .content-body,
+.ema-settings-pro[data-section="users"] .content-body {
+  flex: 1 1 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-gutter: stable !important;
+}
+
+.ema-settings-pro[data-section="roles"] .role-control-panel,
+.ema-settings-pro[data-section="roles"] .role-standard-table,
+.ema-settings-pro[data-section="users"] .uam-panel,
+.ema-settings-pro[data-section="users"] .user-access-table {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.ema-settings-pro[data-section="roles"] .role-control-table,
+.ema-settings-pro[data-section="roles"] .user-access-table,
+.ema-settings-pro[data-section="users"] .user-access-table {
+  max-height: none !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+}

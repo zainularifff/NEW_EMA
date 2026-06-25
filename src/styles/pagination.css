@@ -184,3 +184,79 @@
 .settings-module-root .uam-pagination.global-style {
   width: 100% !important;
 }
+
+/* =========================================================
+   V5 Global Pagination - clean single-line info
+   Applies to all pages using uam-pagination/global-style
+========================================================= */
+
+.uam-pagination,
+.uam-pagination.global-style {
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 0.85rem !important;
+  margin-top: 0.85rem !important;
+}
+
+.uam-page-summary {
+  justify-self: start !important;
+  white-space: nowrap !important;
+}
+
+.uam-pagination-info,
+.uam-page-status {
+  justify-self: center !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.25rem !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  white-space: nowrap !important;
+  text-align: center !important;
+  color: var(--ema-control-muted, #64748b) !important;
+  font-size: 0.72rem !important;
+  font-weight: 760 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.uam-pagination-info strong,
+.uam-page-status strong {
+  display: inline !important;
+  margin: 0 0.12rem !important;
+  color: var(--ema-control-text, #173154) !important;
+  font-weight: 900 !important;
+}
+
+.uam-pagination-controls.global-style,
+.uam-pagination-controls {
+  justify-self: end !important;
+  width: fit-content !important;
+  max-width: fit-content !important;
+  min-width: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 0.42rem !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 900px) {
+  .uam-pagination,
+  .uam-pagination.global-style {
+    grid-template-columns: 1fr !important;
+    justify-items: start !important;
+  }
+
+  .uam-pagination-info,
+  .uam-page-status,
+  .uam-pagination-controls.global-style,
+  .uam-pagination-controls {
+    justify-self: start !important;
+  }
+}

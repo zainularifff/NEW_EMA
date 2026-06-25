@@ -137,3 +137,295 @@
   width: 100% !important;
   min-width: 0 !important;
 }
+
+/* Audit Log - remove double scrollbar */
+.ema-settings-pro[data-section="audit"] .content-shell,
+.ema-settings-pro[data-section="audit"] .content-body,
+.ema-settings-pro[data-section="audit"] .audit-log-panel {
+  overflow: visible !important;
+  max-height: none !important;
+  height: auto !important;
+}
+
+.ema-settings-pro[data-section="audit"] .audit-standard-table {
+  overflow: visible !important;
+  max-height: none !important;
+  height: auto !important;
+}
+
+.ema-settings-pro[data-section="audit"] .audit-standard-table .user-row {
+  overflow: visible !important;
+}
+
+.ema-settings-pro[data-section="audit"] .settings-content {
+  overflow: visible !important;
+}
+
+.ema-settings-pro[data-section="audit"] {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Audit Log - single scrollbar fix */
+.ema-settings-pro[data-section="audit"] {
+  height: calc(100dvh - 72px) !important;
+  max-height: calc(100dvh - 72px) !important;
+  overflow: hidden !important;
+}
+
+.ema-settings-pro[data-section="audit"] > .settings-layout {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ema-settings-pro[data-section="audit"] > .settings-layout > .settings-menu {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ema-settings-pro[data-section="audit"] > .settings-layout > .settings-content {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+}
+
+.ema-settings-pro[data-section="audit"] .content-shell {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.ema-settings-pro[data-section="audit"] .content-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.ema-settings-pro[data-section="audit"] .audit-log-panel,
+.ema-settings-pro[data-section="audit"] .audit-standard-table {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* =========================================================
+   Resource Planning - restore proper layout
+========================================================= */
+
+.ema-settings-pro[data-section="resources"] .content-shell {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ema-settings-pro[data-section="resources"] .content-body {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.resource-planning-module {
+  display: grid !important;
+  gap: 0.9rem !important;
+  align-content: start !important;
+}
+
+.resource-command-card,
+.resource-form-card,
+.resource-table-card {
+  border: 1px solid rgba(203, 213, 225, 0.9) !important;
+  border-radius: 1rem !important;
+  background: #fff !important;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04) !important;
+}
+
+.resource-command-card {
+  padding: 1rem !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 1rem !important;
+  align-items: center !important;
+}
+
+.resource-workbench {
+  display: grid !important;
+  grid-template-columns: minmax(22rem, 0.72fr) minmax(0, 1.28fr) !important;
+  gap: 0.9rem !important;
+  align-items: start !important;
+}
+
+.resource-form-card,
+.resource-table-card {
+  padding: 1rem !important;
+  min-width: 0 !important;
+}
+
+.resource-form-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.75rem !important;
+}
+
+.resource-wide {
+  grid-column: 1 / -1 !important;
+}
+
+.resource-setting-select,
+.resource-setting-select .setting-select-trigger {
+  width: 100% !important;
+}
+
+.resource-textarea {
+  min-height: 6.5rem !important;
+  resize: vertical !important;
+  padding-top: 0.85rem !important;
+}
+
+.resource-form-actions {
+  grid-column: 1 / -1 !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 0.6rem !important;
+  padding-top: 0.8rem !important;
+  border-top: 1px solid rgba(226, 232, 240, 0.95) !important;
+}
+
+.resource-card-head,
+.resource-table-head {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 0.9rem !important;
+  margin-bottom: 0.85rem !important;
+}
+
+.resource-table-filters {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 0.55rem !important;
+  flex-wrap: wrap !important;
+}
+
+.resource-table-wrap {
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  border: 1px solid rgba(226, 232, 240, 0.95) !important;
+  border-radius: 0.95rem !important;
+}
+
+.resource-table {
+  width: 100% !important;
+  min-width: 720px !important;
+  border-collapse: collapse !important;
+}
+
+.resource-table th,
+.resource-table td {
+  padding: 0.75rem 0.85rem !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9) !important;
+  vertical-align: middle !important;
+  text-align: left !important;
+}
+
+.resource-table th {
+  background: #f8fafc !important;
+  color: #64748b !important;
+  font-size: 0.68rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+}
+
+.resource-table td {
+  color: #173154 !important;
+  font-size: 0.78rem !important;
+  font-weight: 720 !important;
+}
+
+.resource-table td strong {
+  display: block !important;
+  color: #10233f !important;
+  font-weight: 900 !important;
+}
+
+.resource-table td small {
+  display: block !important;
+  margin-top: 0.15rem !important;
+  color: #64748b !important;
+  font-size: 0.68rem !important;
+}
+
+.resource-row-actions {
+  display: inline-flex !important;
+  gap: 0.45rem !important;
+  white-space: nowrap !important;
+}
+
+.resource-pagination {
+  margin-top: 0.75rem !important;
+}
+
+@media (max-width: 1200px) {
+  .resource-workbench,
+  .resource-command-card {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .resource-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .resource-form-actions {
+    justify-content: stretch !important;
+    flex-wrap: wrap !important;
+  }
+}
+
+/* Resource Planning - restore sidebar */
+.ema-settings-pro[data-section="resources"] > .settings-layout > aside.settings-menu {
+  display: block !important;
+}
+
+.ema-settings-pro[data-section="resources"] > .settings-layout {
+  display: grid !important;
+  grid-template-columns: minmax(15rem, 0.24fr) minmax(0, 1fr) !important;
+  gap: 0.9rem !important;
+}
+
+.ema-settings-pro[data-section="resources"] > .settings-layout > .settings-content {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+/* =========================================================
+   Resource Planning - match Settings sidebar width with other pages
+========================================================= */
+
+.ema-settings-pro[data-section="resources"] > .settings-layout {
+  display: grid !important;
+  grid-template-columns: 16rem minmax(0, 1fr) !important;
+  gap: 0.9rem !important;
+}
+
+.ema-settings-pro[data-section="resources"] > .settings-layout > aside.settings-menu {
+  width: 16rem !important;
+  min-width: 16rem !important;
+  max-width: 16rem !important;
+}
+
+.ema-settings-pro[data-section="resources"] > .settings-layout > .settings-content {
+  min-width: 0 !important;
+  width: 100% !important;
+}
