@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Eye, Gauge, Pencil, Plus, RefreshCw, Save, Search, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
+import { Clock3, DollarSign, Eye, Gauge, PackageCheck, Pencil, Plus, RefreshCw, Save, Search, ShieldAlert, ShieldCheck, SlidersHorizontal, Trash2 } from "lucide-react";
 
 import LegacySettings from "./Settings";
 import NotificationChannelsSettings from "../components/settings/NotificationChannelsSettings";
@@ -133,7 +133,7 @@ function readInitialView(): SettingsView {
 }
 
 function readManagementSection(): ManagementSection {
-  if (typeof window === "undefined") return "aging";
+  if (typeof window === "undefined") return "pricing";
   const text = `${new URLSearchParams(window.location.search).get("section") || ""} ${window.location.hash || ""}`.toLowerCase();
   if (text.includes("software-registry") || text.includes("software-policy") || text.includes("softwarepolicy")) return "softwarePolicy";
   if (text.includes("pricing")) return "pricing";
@@ -143,6 +143,17 @@ function readManagementSection(): ManagementSection {
 
 function getManagementHash(section: ManagementSection) {
   return section === "softwarePolicy" ? "#management-control-software-registry" : `#management-control-${section}`;
+}
+
+function ManagementControlIcon({ section }: { section: ManagementSection }) {
+  const size = 17;
+
+  if (section === "pricing") return <DollarSign size={size} strokeWidth={2.35} />;
+  if (section === "aging") return <Clock3 size={size} strokeWidth={2.35} />;
+  if (section === "policy") return <SlidersHorizontal size={size} strokeWidth={2.35} />;
+  if (section === "softwarePolicy") return <PackageCheck size={size} strokeWidth={2.35} />;
+
+  return <Gauge size={size} strokeWidth={2.35} />;
 }
 
 function getCategoryName(categories: CategoryRow[], categoryId: string) {
@@ -703,7 +714,7 @@ export default function SettingsWithNotifications() {
               <div className="management-control-nav-list">
                 {MANAGEMENT_ITEMS.map((item) => (
                   <button key={item.key} type="button" className={`management-control-nav-btn ${managementSection === item.key ? "active" : ""}`} onClick={() => switchManagementSection(item.key)} data-section={item.key}>
-                    <span className="management-control-nav-icon"><Gauge size={17} /></span>
+                    <span className="management-control-nav-icon"><ManagementControlIcon section={item.key} /></span>
                     <span>{item.title}</span>
                   </button>
                 ))}

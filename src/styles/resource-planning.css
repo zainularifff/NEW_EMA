@@ -429,3 +429,197 @@
   min-width: 0 !important;
   width: 100% !important;
 }
+
+/* =========================================================
+   SETTINGS STANDARDIZATION
+   Same sidebar system for Settings Console + Management Control
+   Same stable topbar tone while inside Settings page
+========================================================= */
+
+/* Stable Settings page topbar */
+body.ema-settings-page-active .ema-topbar {
+  background: #3f4a57 !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.18) !important;
+  box-shadow: none !important;
+}
+
+body.ema-settings-page-active .ema-topbar-title h1 {
+  color: #ffffff !important;
+}
+
+body.ema-settings-page-active .ema-topbar-title p {
+  color: #cbd5e1 !important;
+}
+
+body.ema-settings-page-active .ema-global-search {
+  background: #2f3847 !important;
+  border: 1px solid rgba(226, 232, 240, 0.14) !important;
+}
+
+body.ema-settings-page-active .ema-global-search input {
+  color: #e5edf8 !important;
+}
+
+body.ema-settings-page-active .ema-global-search input::placeholder {
+  color: #94a3b8 !important;
+}
+
+body.ema-settings-page-active .ema-icon-btn {
+  background: #2f3847 !important;
+  border-color: rgba(226, 232, 240, 0.14) !important;
+  color: #e5edf8 !important;
+}
+
+/* One sidebar width for Settings Console + Management Control */
+body.ema-settings-page-active .settings-view-settings .settings-layout,
+body.ema-settings-page-active .management-control-wrapper.settings-management-shell {
+  display: grid !important;
+  grid-template-columns: 16rem minmax(0, 1fr) !important;
+  gap: 0.9rem !important;
+  align-items: stretch !important;
+}
+
+body.ema-settings-page-active .settings-menu,
+body.ema-settings-page-active .management-control-sidebar {
+  width: 16rem !important;
+  min-width: 16rem !important;
+  max-width: 16rem !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  border: 1px solid #dbe7fb !important;
+  border-radius: 1.15rem !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+/* Same sidebar header */
+body.ema-settings-page-active .settings-menu .panel-head,
+body.ema-settings-page-active .management-control-sidebar-head {
+  min-height: 6.35rem !important;
+  padding: 1rem 1.1rem !important;
+  border-bottom: 1px solid #e5edf8 !important;
+  background: #ffffff !important;
+}
+
+body.ema-settings-page-active .settings-menu .panel-head span,
+body.ema-settings-page-active .management-control-sidebar-head span {
+  display: block !important;
+  color: #2563eb !important;
+  font-size: 0.66rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+}
+
+body.ema-settings-page-active .settings-menu .panel-head strong,
+body.ema-settings-page-active .management-control-sidebar-head strong {
+  display: block !important;
+  margin-top: 0.42rem !important;
+  color: #0f2746 !important;
+  font-size: 1rem !important;
+  font-weight: 950 !important;
+  line-height: 1.12 !important;
+}
+
+body.ema-settings-page-active .settings-menu .panel-head small,
+body.ema-settings-page-active .management-control-sidebar-head small {
+  display: block !important;
+  margin-top: 0.32rem !important;
+  color: #64748b !important;
+  font-size: 0.72rem !important;
+  font-weight: 750 !important;
+}
+
+/* Same nav list spacing */
+body.ema-settings-page-active .settings-menu-list,
+body.ema-settings-page-active .management-control-nav-list {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  display: grid !important;
+  align-content: start !important;
+  gap: 0.62rem !important;
+  padding: 1rem 0.78rem !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Same nav button */
+body.ema-settings-page-active .setting-btn,
+body.ema-settings-page-active .management-control-nav-btn {
+  width: 100% !important;
+  min-height: 3.55rem !important;
+  display: grid !important;
+  grid-template-columns: 2.35rem minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 0.76rem !important;
+  padding: 0.62rem 0.82rem !important;
+  border: 0 !important;
+  border-radius: 0.95rem !important;
+  background: transparent !important;
+  color: #0f2746 !important;
+  text-align: left !important;
+  font-size: 0.78rem !important;
+  font-weight: 900 !important;
+  line-height: 1.14 !important;
+  box-shadow: none !important;
+}
+
+body.ema-settings-page-active .setting-btn span:last-child,
+body.ema-settings-page-active .management-control-nav-btn span:last-child {
+  min-width: 0 !important;
+}
+
+body.ema-settings-page-active .setting-btn strong,
+body.ema-settings-page-active .management-control-nav-btn span:last-child {
+  color: inherit !important;
+  font-size: 0.78rem !important;
+  font-weight: 900 !important;
+  line-height: 1.14 !important;
+}
+
+body.ema-settings-page-active .setting-btn small {
+  display: none !important;
+}
+
+/* Same icon shell */
+body.ema-settings-page-active .setting-icon,
+body.ema-settings-page-active .management-control-nav-icon {
+  width: 2.35rem !important;
+  height: 2.35rem !important;
+  min-width: 2.35rem !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 0.78rem !important;
+  color: #2563eb !important;
+  background: #eef4ff !important;
+}
+
+/* Same active state */
+body.ema-settings-page-active .setting-btn.active,
+body.ema-settings-page-active .management-control-nav-btn.active {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #2563eb, #087ea4) !important;
+}
+
+body.ema-settings-page-active .setting-btn.active .setting-icon,
+body.ema-settings-page-active .management-control-nav-btn.active .management-control-nav-icon {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Main content should respect same sidebar width */
+body.ema-settings-page-active .settings-content,
+body.ema-settings-page-active .management-control-content {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+/* Prevent Management inline CSS from forcing old 292px sidebar */
+body.ema-settings-page-active .management-control-wrapper.settings-management-shell {
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+}

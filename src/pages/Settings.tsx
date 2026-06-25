@@ -1,5 +1,17 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
+import {
+  CalendarDays,
+  Clock3,
+  DollarSign,
+  FileText,
+  Grid3X3,
+  ShieldCheck,
+  SlidersHorizontal,
+  TicketCheck,
+  UserCog,
+  UsersRound,
+} from "lucide-react";
 import "../styles/resource-planning.css";
 import {
   accessControls as settingsAccessControls,
@@ -159,7 +171,7 @@ type SectionItem = {
   subtitle: string;
 };
 
-type IconName = "role" | "matrix" | "access" | "audit" | "price" | "aging" | "risk";
+type IconName = "role" | "user" | "matrix" | "shield" | "ticket" | "audit" | "price" | "aging" | "sliders" | "risk" | "calendar";
 
 type UserAccess = {
   id?: number | string;
@@ -1591,6 +1603,23 @@ function normalizePcAgingRule(rule: Partial<PcAgingRule> = {}): PcAgingRule {
 
 function formatAgeSourceLabel(value: string) {
   return AGE_SOURCE_OPTIONS.find((item) => item.value === value)?.label || value || "Registration Date";
+}
+
+function SettingsMenuIcon({ name }: { name: IconName }) {
+  const size = 16;
+
+  if (name === "role") return <UsersRound size={size} strokeWidth={2.35} />;
+  if (name === "user") return <UserCog size={size} strokeWidth={2.35} />;
+  if (name === "matrix") return <Grid3X3 size={size} strokeWidth={2.35} />;
+  if (name === "shield") return <ShieldCheck size={size} strokeWidth={2.35} />;
+  if (name === "ticket") return <TicketCheck size={size} strokeWidth={2.35} />;
+  if (name === "audit") return <FileText size={size} strokeWidth={2.35} />;
+  if (name === "price") return <DollarSign size={size} strokeWidth={2.35} />;
+  if (name === "aging") return <Clock3 size={size} strokeWidth={2.35} />;
+  if (name === "sliders") return <SlidersHorizontal size={size} strokeWidth={2.35} />;
+  if (name === "calendar") return <CalendarDays size={size} strokeWidth={2.35} />;
+
+  return <ShieldCheck size={size} strokeWidth={2.35} />;
 }
 
 export default function Settings() {
@@ -3159,7 +3188,7 @@ export default function Settings() {
                     setSectionSearch("");
                   }}
                 >
-                  <span className="setting-icon"><Icon name={item.icon} /></span>
+                  <span className="setting-icon"><SettingsMenuIcon name={item.icon} /></span>
                   <span><strong>{item.title}</strong><small>{item.desc}</small></span>
                 </button>
               );
