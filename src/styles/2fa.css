@@ -1,311 +1,428 @@
 /* =========================================================
-   EMA Login 2FA Styles
-   File name: 2fa.css
-
-   Use this single file for Login.tsx 2FA styles.
-   This file targets the working Login.tsx classes:
-   - .login-2fa-setup
-   - .login-2fa-qr
-   - .login-2fa-secret
-   - .login-secondary-btn
-   - .login-authenticator-panel
-
-   Safe to use with existing app-global.css.
+   EMA Login + 2FA
+   Clean reference layout
+   Font: Segoe UI Variable / Segoe UI
 ========================================================= */
 
-/* =========================================================
-   Login 2FA / Authenticator UI Polish
-   File: src/styles/login-2fa-append.css
-
-   IMPORTANT:
-   - CSS only.
-   - No Login.tsx function/API/token logic changed.
-   - Keep your existing working Login.tsx.
-   - Import this file OR paste it at the bottom of src/styles/app-global.css.
-========================================================= */
-
-/* =========================================================
-   2FA Setup Block
-========================================================= */
-
-.login-2fa-setup {
-  display: grid;
-  gap: 0.95rem;
-  margin: 0 0 1.15rem;
-  padding: 1.1rem;
-  border: 1px solid #dbe4f0;
-  border-radius: 1.35rem;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(37, 99, 235, 0.07), transparent 16rem),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.96));
-  box-shadow:
-    0 18px 34px rgba(15, 23, 42, 0.055),
-    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+:root {
+  --login-font: "Segoe UI Variable Text", "Segoe UI Variable Display", "Segoe UI", Arial, sans-serif;
+  --login-blue: #2337f4;
+  --login-blue-dark: #1222c8;
+  --login-black: #151519;
+  --login-text: #111827;
+  --login-muted: #707782;
+  --login-line: #d9dde5;
+  --login-soft: #f8fafc;
 }
 
-.login-page-dark .login-2fa-setup {
-  border-color: rgba(148, 163, 184, 0.14);
-  background:
-    radial-gradient(circle at 100% 0%, rgba(37, 99, 235, 0.12), transparent 16rem),
-    linear-gradient(180deg, rgba(15, 23, 42, 0.72), rgba(10, 18, 34, 0.82));
-  box-shadow:
-    0 22px 40px rgba(2, 6, 23, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+.login-page,
+.login-page * {
+  box-sizing: border-box;
+  font-family: var(--login-font) !important;
 }
 
-.login-2fa-text {
+.login-page {
+  width: 100%;
+  min-height: 100vh;
   margin: 0;
-  color: #64748b;
-  font-size: 0.92rem;
-  font-weight: 700;
-  line-height: 1.62;
+  padding: 0;
+  overflow: hidden;
+  display: grid;
+  background: #ffffff;
+  color: var(--login-text);
 }
 
-.login-2fa-text:first-child {
-  position: relative;
-  padding-left: 0.95rem;
+.login-page-dark {
+  background: #ffffff;
+  color: var(--login-text);
 }
 
-.login-2fa-text:first-child::before {
-  position: absolute;
-  top: 0.38rem;
-  left: 0;
-  width: 4px;
-  height: calc(100% - 0.72rem);
-  min-height: 28px;
-  content: "";
+.login-bg-orb,
+.login-bg-grid,
+.login-bg-glass {
+  display: none !important;
+}
+
+.login-theme-toggle {
+  position: fixed;
+  top: 20px;
+  right: 22px;
+  z-index: 20;
+  width: 42px;
+  height: 42px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #2563eb, #38bdf8);
-}
-
-.login-page-dark .login-2fa-text {
-  color: #94a3b8;
-}
-
-/* =========================================================
-   QR Card
-========================================================= */
-
-.login-2fa-qr {
-  width: fit-content;
-  min-width: 204px;
-  min-height: 204px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
   display: grid;
   place-items: center;
-  margin: 0.15rem auto 0.05rem;
-  padding: 0.85rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 1.25rem;
-  background:
-    linear-gradient(180deg, #ffffff, #f8fafc);
-  box-shadow:
-    0 18px 36px rgba(15, 23, 42, 0.075),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
 }
 
-.login-2fa-qr img {
-  width: 180px;
-  height: 180px;
-  display: block;
-  object-fit: contain;
-  border-radius: 0.55rem;
-}
-
-.login-page-dark .login-2fa-qr {
-  border-color: rgba(148, 163, 184, 0.18);
+.login-shell {
+  width: 100%;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 59.5% 40.5%;
   background: #ffffff;
-  box-shadow:
-    0 20px 38px rgba(2, 6, 23, 0.35),
-    0 0 0 1px rgba(37, 99, 235, 0.08);
 }
 
-/* =========================================================
-   Manual Secret / Manual Key
-========================================================= */
-
-.login-2fa-secret {
-  margin: 0;
-  padding: 0.85rem 0.95rem;
-  border: 1px dashed #bfdbfe;
-  border-radius: 1rem;
-  color: #334155;
+/* LEFT PANEL */
+.login-visual-panel {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  padding: 74px 78px 54px;
+  display: flex;
+  color: #ffffff;
   background:
-    radial-gradient(circle at 100% 0%, rgba(37, 99, 235, 0.08), transparent 14rem),
-    #f8fafc;
-  font-family:
-    "SFMono-Regular",
-    Consolas,
-    "Liberation Mono",
-    monospace;
-  font-size: 0.78rem;
-  font-weight: 800;
-  line-height: 1.55;
-  word-break: break-all;
+    radial-gradient(circle at 22% 18%, rgba(255, 255, 255, 0.13), transparent 24%),
+    linear-gradient(145deg, #3347ff 0%, #2433ef 45%, #1223cc 100%);
 }
 
-.login-2fa-secret strong,
-.login-2fa-secret b {
-  display: block;
-  margin-bottom: 0.35rem;
-  color: #64748b;
-  font-family:
-    Manrope,
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-  font-size: 0.7rem;
+.login-visual-panel::before {
+  content: "";
+  position: absolute;
+  inset: -10%;
+  background:
+    linear-gradient(110deg, transparent 0 30%, rgba(9, 18, 110, 0.22) 30.2% 30.65%, transparent 30.85%),
+    linear-gradient(110deg, transparent 0 40%, rgba(9, 18, 110, 0.18) 40.2% 40.65%, transparent 40.85%),
+    linear-gradient(110deg, transparent 0 50%, rgba(9, 18, 110, 0.15) 50.2% 50.65%, transparent 50.85%),
+    linear-gradient(110deg, transparent 0 60%, rgba(9, 18, 110, 0.12) 60.2% 60.65%, transparent 60.85%);
+  transform: rotate(-8deg);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.login-visual-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.16) 0.7px, transparent 0.7px);
+  background-size: 3px 3px;
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+.login-visual-frame {
+  position: relative;
+  z-index: 2;
+  width: min(650px, 100%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.login-brand-mark {
+  width: 86px;
+  height: 86px;
+  margin-bottom: 92px;
+  border-radius: 26px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.11);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.14);
+}
+
+.login-brand-mark::before {
+  content: "EMA";
+  color: #ffffff;
+  font-size: 22px;
   font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: -0.04em;
 }
 
-.login-page-dark .login-2fa-secret {
-  border-color: rgba(96, 165, 250, 0.26);
-  background:
-    radial-gradient(circle at 100% 0%, rgba(37, 99, 235, 0.12), transparent 14rem),
-    rgba(15, 23, 42, 0.58);
-  color: #e2e8f0;
+.login-brand-mark > svg,
+.login-brand-orbit {
+  display: none !important;
 }
 
-.login-page-dark .login-2fa-secret strong,
-.login-page-dark .login-2fa-secret b {
-  color: #94a3b8;
+.login-eyebrow {
+  display: none !important;
 }
 
-/* =========================================================
-   2FA Code Input Support
-   These selectors are broad but only affect login panel numeric OTP inputs.
-========================================================= */
-
-.login-form-panel input[inputmode="numeric"],
-.login-form-panel input[autocomplete="one-time-code"] {
-  letter-spacing: 0.08em;
-  font-weight: 850;
+.login-visual-content {
+  max-width: 610px;
 }
 
-.login-form-panel input[inputmode="numeric"]::placeholder,
-.login-form-panel input[autocomplete="one-time-code"]::placeholder {
-  letter-spacing: normal;
+.login-visual-content h1 {
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(58px, 5.4vw, 88px);
+  line-height: 1.03;
+  font-weight: 900;
+  letter-spacing: -0.072em;
 }
 
-/* =========================================================
-   Secondary / Back Button
-   Converts ugly default button into clean text action.
-========================================================= */
+.login-visual-content p {
+  margin: 48px 0 0;
+  max-width: 600px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: clamp(21px, 1.68vw, 27px);
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
 
-.login-secondary-btn {
-  width: fit-content;
-  min-height: auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  margin: 0.75rem auto 0;
+.login-visual-footer {
+  margin-top: auto;
+  display: block;
+}
+
+.login-visual-footer::before {
+  content: "2026 EMA System. All rights reserved.";
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.login-visual-footer > div {
+  display: none !important;
+}
+
+/* RIGHT PANEL */
+.login-form-panel {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 52px 78px;
+  background: #ffffff;
+}
+
+.login-card {
+  width: min(470px, 100%);
   padding: 0;
   border: 0;
   border-radius: 0;
-  color: #2563eb;
-  background: transparent;
+  background: #ffffff;
   box-shadow: none;
-  font-size: 0.92rem;
+}
+
+.login-card-header {
+  display: block;
+  margin: 0 0 38px;
+}
+
+.login-card-icon {
+  display: none !important;
+}
+
+.login-card-header::before {
+  content: "EMA System";
+  display: block;
+  margin-bottom: 108px;
+  color: #111111;
+  font-size: 30px;
+  line-height: 1;
   font-weight: 850;
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    color 0.18s ease,
-    transform 0.18s ease;
+  letter-spacing: -0.045em;
 }
 
-.login-secondary-btn:hover {
-  color: #1d4ed8;
-  text-decoration: underline;
-  transform: translateY(-1px);
+.login-card-header h2 {
+  margin: 0;
+  color: #111111;
+  font-size: 36px;
+  line-height: 1.05;
+  font-weight: 850;
+  letter-spacing: -0.05em;
 }
 
-.login-secondary-btn:active {
-  transform: translateY(0);
+.login-card-header p {
+  margin: 10px 0 0;
+  max-width: 390px;
+  color: #72747a;
+  font-size: 15px;
+  line-height: 1.38;
+  font-weight: 500;
 }
 
-.login-page-dark .login-secondary-btn {
-  color: #93c5fd;
-  background: transparent;
+.login-field {
+  display: grid;
+  gap: 0;
+  margin-bottom: 22px;
+}
+
+.login-field label {
+  display: none;
+}
+
+.login-input {
+  height: 56px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   border: 0;
+  border-bottom: 2px solid #d3d3d3;
+  border-radius: 0;
+  background: linear-gradient(180deg, #fbfbfb 0%, #ffffff 100%);
+  padding: 0;
+  color: #111111;
 }
 
-.login-page-dark .login-secondary-btn:hover {
-  color: #bfdbfe;
+.login-input:focus-within {
+  border-bottom-color: #111111;
+  background: #ffffff;
+  box-shadow: none;
 }
 
-/* In case browser/default CSS still leaks into the back button */
-button.login-secondary-btn {
-  appearance: none;
-  -webkit-appearance: none;
+.login-input > svg {
+  display: none;
 }
 
-/* =========================================================
-   Authenticator Info Panel
-========================================================= */
-
-.login-authenticator-panel {
-  margin-top: 1.35rem;
-  text-align: center;
-}
-
-.login-authenticator-divider {
+.login-input input {
   width: 100%;
-  height: 1px;
-  margin-bottom: 1.2rem;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(148, 163, 184, 0.32),
-    transparent
-  );
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #111111;
+  font-size: 16px;
+  font-weight: 650;
+  padding: 0 0 0 12px;
 }
 
-.login-authenticator-title {
-  margin-bottom: 0.8rem;
-  color: #94a3b8;
-  font-size: 0.74rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.11em;
+.login-input input::placeholder {
+  color: #a1a1aa;
+  font-weight: 500;
 }
 
-.login-authenticator-row {
+.login-input button {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #6b7280;
+  display: grid;
+  place-items: center;
+}
+
+.login-form-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.9rem;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 4px 0 28px;
 }
 
-.login-authenticator-brand {
+.login-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 520;
+}
+
+.login-check input {
+  width: 15px;
+  height: 15px;
+  accent-color: #111111;
+}
+
+.login-link-btn {
+  border: 0;
+  background: transparent;
+  color: #111111;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.login-submit-btn {
+  width: 100%;
+  min-height: 58px;
+  border: 0;
+  border-radius: 9px;
+  background: #151519;
+  color: #ffffff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.55rem;
-  border: 0;
-  padding: 0;
-  color: #334155;
-  background: transparent;
-  font-size: 0.9rem;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 760;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.16);
+  transition: 120ms ease;
+}
+
+.login-submit-btn:hover {
+  background: #000000;
+  transform: translateY(-1px);
+}
+
+.login-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.login-secondary-btn {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #111111;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 720;
+}
+
+/* SECURED BY - KEEP */
+.login-authenticator-panel {
+  margin-top: 22px;
+  padding-top: 22px;
+  display: grid;
+  gap: 14px;
+}
+
+.login-authenticator-divider {
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.login-authenticator-title {
+  text-align: center;
+  color: #7b8798;
+  font-size: 12px;
   font-weight: 850;
-  cursor: default;
-  opacity: 1;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
 }
 
-.login-authenticator-brand:disabled {
-  cursor: default;
-  opacity: 1;
+.login-authenticator-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
 }
 
-.login-provider-logo,
-.login-authenticator-brand svg {
+.login-authenticator-brand {
+  min-height: 48px;
+  border-radius: 16px;
+  border: 1px solid #d7e2f3;
+  background: #ffffff;
+  color: #66758a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0 14px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.login-provider-logo {
   width: 20px;
   height: 20px;
   flex: 0 0 auto;
@@ -313,101 +430,166 @@ button.login-secondary-btn {
 
 .login-authenticator-separator {
   width: 1px;
-  height: 22px;
-  background: #dbe3ef;
+  height: 32px;
+  background: #d7e2f3;
 }
 
 .login-authenticator-badge {
-  width: fit-content;
+  width: 100%;
+  min-height: 42px;
+  border-radius: 999px;
   display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  background: #eef5ff;
+  color: #1d4ed8;
+  border: 1px solid #bcd3ff;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.login-security-note {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.42rem;
-  margin-top: 0.85rem;
-  padding: 0.35rem 0.7rem;
-  border: 1px solid #bfdbfe;
-  border-radius: 999px;
-  color: #2563eb;
-  background: #eff6ff;
-  font-size: 0.74rem;
-  font-weight: 900;
+  gap: 9px;
+  color: #66758a;
+  font-size: 14px;
+  font-weight: 720;
 }
 
-.login-page-dark .login-authenticator-divider {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(148, 163, 184, 0.18),
-    transparent
-  );
+/* 2FA */
+.login-2fa-setup {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 22px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid #bcd3ff;
+  background: #eef5ff;
 }
 
-.login-page-dark .login-authenticator-brand {
-  color: #e2e8f0;
+.login-2fa-text {
+  margin: 0;
+  color: #66758a;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
-.login-page-dark .login-authenticator-separator {
-  background: rgba(148, 163, 184, 0.22);
+.login-2fa-qr {
+  padding: 14px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid #d7e2f3;
+  display: grid;
+  place-items: center;
 }
 
-.login-page-dark .login-authenticator-badge {
-  border-color: rgba(96, 165, 250, 0.32);
-  color: #93c5fd;
-  background: rgba(37, 99, 235, 0.12);
+.login-2fa-qr img {
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
 }
 
-/* =========================================================
-   Verify-only state polish
-   Works even when there is no QR.
-========================================================= */
-
-.login-form-panel:not(:has(.login-2fa-qr)) .login-secondary-btn {
-  margin-top: 0.25rem;
+.login-2fa-secret {
+  margin: 0;
+  color: #66758a;
+  font-size: 12px;
+  font-weight: 600;
+  word-break: break-all;
 }
 
-.login-form-panel:has(.login-2fa-setup) .login-security-note {
-  margin-top: 1rem;
+.login-2fa-secret strong {
+  color: #111111;
 }
 
-/* Add breathing room around MFA form area without changing markup */
-.login-2fa-setup + .login-field,
-.login-2fa-setup + .login-field-group,
-.login-2fa-setup + form,
-.login-2fa-setup ~ .login-field,
-.login-2fa-setup ~ .login-field-group {
-  margin-top: 1rem;
+.login-alert {
+  border: 1px solid #fecaca !important;
+  border-radius: 12px !important;
+  background: #fff1f2 !important;
+  color: #b91c1c !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  padding: 12px 14px !important;
+  margin-bottom: 18px !important;
 }
 
-/* =========================================================
-   Responsive
-========================================================= */
+.spinner-border {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 0.15em solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: login-spin 0.75s linear infinite;
+}
 
-@media (max-width: 575.98px) {
-  .login-2fa-setup {
-    padding: 1rem;
-    border-radius: 1.15rem;
+.spinner-border-sm {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-width: 0.13em;
+}
+
+@keyframes login-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 980px) {
+  .login-shell {
+    grid-template-columns: 1fr;
   }
 
-  .login-2fa-qr {
-    min-width: 176px;
-    min-height: 176px;
-    padding: 0.75rem;
+  .login-visual-panel {
+    min-height: 420px;
+    padding: 54px 34px;
   }
 
-  .login-2fa-qr img {
-    width: 152px;
-    height: 152px;
+  .login-brand-mark {
+    margin-bottom: 56px;
+  }
+
+  .login-form-panel {
+    min-height: auto;
+    padding: 44px 24px;
+  }
+
+  .login-card-header::before {
+    margin-bottom: 54px;
+  }
+}
+
+@media (max-width: 560px) {
+  .login-visual-panel {
+    display: none;
+  }
+
+  .login-form-panel {
+    min-height: 100vh;
+    padding: 28px 20px;
+  }
+
+  .login-card-header::before {
+    margin-bottom: 58px;
+    font-size: 26px;
+  }
+
+  .login-card-header h2 {
+    font-size: 32px;
   }
 
   .login-authenticator-row {
-    gap: 0.65rem;
+    grid-template-columns: 1fr;
   }
 
   .login-authenticator-separator {
     display: none;
-  }
-
-  .login-authenticator-brand {
-    width: 100%;
   }
 }

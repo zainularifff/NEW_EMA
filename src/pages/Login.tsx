@@ -608,11 +608,10 @@ export default function Login() {
             <div className="login-visual-content">
               <span className="login-eyebrow">EMA System</span>
 
-              <h1>Endpoint operations made cleaner.</h1>
+              <h1>Hello EMA System!</h1>
 
               <p>
-                A focused workspace for hardware inventory, access control and
-                system operations.
+                Manage IT operations, incidents, assets and reports in one unified workspace.
               </p>
             </div>
 
