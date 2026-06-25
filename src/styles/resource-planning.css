@@ -99,3 +99,41 @@
   width: 100% !important;
   min-width: 0 !important;
 }
+
+/* Fix duplicate sidebar in Management Control */
+.ema-settings-pro[data-section="pricing"] .settings-layout > aside.settings-menu:nth-of-type(2),
+.ema-settings-pro[data-section="aging"] .settings-layout > aside.settings-menu:nth-of-type(2),
+.ema-settings-pro[data-section="policy"] .settings-layout > aside.settings-menu:nth-of-type(2),
+.ema-settings-pro[data-section="resources"] .settings-layout > aside.settings-menu:nth-of-type(2) {
+  display: none !important;
+}
+
+.ema-settings-pro[data-section="pricing"] .settings-layout > .settings-menu + .settings-menu,
+.ema-settings-pro[data-section="aging"] .settings-layout > .settings-menu + .settings-menu,
+.ema-settings-pro[data-section="policy"] .settings-layout > .settings-menu + .settings-menu,
+.ema-settings-pro[data-section="resources"] .settings-layout > .settings-menu + .settings-menu {
+  display: none !important;
+}
+
+/* Force hide old inner Settings sidebar inside Management Control */
+.ema-settings-pro[data-section="pricing"] > .settings-layout > aside.settings-menu,
+.ema-settings-pro[data-section="aging"] > .settings-layout > aside.settings-menu,
+.ema-settings-pro[data-section="policy"] > .settings-layout > aside.settings-menu,
+.ema-settings-pro[data-section="resources"] > .settings-layout > aside.settings-menu {
+  display: none !important;
+}
+
+.ema-settings-pro[data-section="pricing"] > .settings-layout,
+.ema-settings-pro[data-section="aging"] > .settings-layout,
+.ema-settings-pro[data-section="policy"] > .settings-layout,
+.ema-settings-pro[data-section="resources"] > .settings-layout {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.ema-settings-pro[data-section="pricing"] > .settings-layout > .settings-content,
+.ema-settings-pro[data-section="aging"] > .settings-layout > .settings-content,
+.ema-settings-pro[data-section="policy"] > .settings-layout > .settings-content,
+.ema-settings-pro[data-section="resources"] > .settings-layout > .settings-content {
+  width: 100% !important;
+  min-width: 0 !important;
+}

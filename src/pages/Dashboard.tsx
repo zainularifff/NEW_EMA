@@ -1847,19 +1847,19 @@ export default function ITOperationsDashboard() {
       status: riskStatus(serviceDesk.overdueTickets, 1, 5),
       view: 'serviceDesk',
     },
-    {
-      id: 'patch',
-      label: 'Security Updates',
-      value: hasSecurityUpdateScore ? formatPercent(securityUpdateScore, 0) : 'Not Checked',
-      note: hasSecurityUpdateScore
-        ? `${formatNumber(securityUpdatedDevices)} updated • ${formatNumber(securityNeedUpdateDevices)} need update`
-        : `${formatNumber(securityUpdateTotalDevices)} devices not checked`,
-      icon: ShieldCheck,
-      tone: 'green',
-      progress: hasSecurityUpdateScore ? securityUpdateScore : 0,
-      status: hasSecurityUpdateScore ? healthStatus(securityUpdateScore) : 'Action',
-      view: 'patch',
-    },
+    // {
+    //   id: 'patch',
+    //   label: 'Security Updates',
+    //   value: hasSecurityUpdateScore ? formatPercent(securityUpdateScore, 0) : 'Not Checked',
+    //   note: hasSecurityUpdateScore
+    //     ? `${formatNumber(securityUpdatedDevices)} updated • ${formatNumber(securityNeedUpdateDevices)} need update`
+    //     : `${formatNumber(securityUpdateTotalDevices)} devices not checked`,
+    //   icon: ShieldCheck,
+    //   tone: 'green',
+    //   progress: hasSecurityUpdateScore ? securityUpdateScore : 0,
+    //   status: hasSecurityUpdateScore ? healthStatus(securityUpdateScore) : 'Action',
+    //   view: 'patch',
+    // },
     {
       id: 'software',
       label: 'Software',

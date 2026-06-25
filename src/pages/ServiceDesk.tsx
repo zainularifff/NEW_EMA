@@ -59,14 +59,12 @@ type ViewMode = 'list' | 'form' | 'kb';
 type FormMode = 'create' | 'edit';
 type QueueKey =
   | 'all'
-  | 'my'
   | 'sla-risk'
-  | 'unassigned'
   | 'awaiting'
+  | 'assigned'
   | 'in-progress'
   | 'pending-approval'
   | 'resolved'
-  | 'rejected'
   | 'knowledge';
 
 type ToastState = {
@@ -367,9 +365,8 @@ const STATUS_OPTIONS = [
   'Awaiting',
   'Assigned',
   'In Progress',
-  'Pending Approval',
   'Resolved',
-  'Rejected',
+  'Closed',
 ];
 
 const PRIORITY_OPTIONS = ['Critical', 'High', 'Medium', 'Low'];
@@ -385,7 +382,6 @@ const urgencyToSlaPriority: Record<string, string> = {
   Low: 'P4',
 };
 
-const SLA_PAUSED_STATUSES = new Set(['pending approval', 'pending user', 'pending vendor']);
 
 function getSlaPriorityCode(priority: string) {
   return urgencyToSlaPriority[String(priority || '').trim()] || 'P3';
@@ -1352,13 +1348,16 @@ function normalizeStatus(value: any) {
 
 function standardizeIncidentStatus(value: any) {
   const text = String(value || '').trim();
-  if (text.toLowerCase() === 'solved') return 'Resolved';
+  const normalized = text.toLowerCase();
+  if (normalized === 'solved') return 'Closed';
+  if (normalized === 'pending approval') return 'Resolved';
+  if (normalized === 're-open' || normalized === 'reopen') return 'In Progress';
   return text;
 }
 
 function isDeleteLockedStatus(status: any) {
   const normalized = normalizeStatus(status);
-  return normalized === 'closed' || normalized === 'resolved';
+  return normalized === 'closed';
 }
 
 function getOperationalReason(data: any) {
@@ -1381,9 +1380,8 @@ function statusRank(status: string) {
     Awaiting: 1,
     Assigned: 2,
     'In Progress': 3,
-    'Pending Approval': 4,
-    Resolved: 6,
-    Rejected: 7,
+    Resolved: 4,
+    Closed: 6,
   };
   return map[status] || 99;
 }
@@ -1392,20 +1390,18 @@ function getWorkflowStatusOptions(status: any, isEngineerUser = false, isAdminUs
   const normalized = normalizeStatus(status);
 
   if (isEngineerUser) {
-    if (normalized === 'in progress') return ['In Progress', 'Pending Approval'];
-    if (normalized === 'pending approval') return ['Pending Approval'];
-    if (normalized === 'assigned') return ['Assigned'];
+    if (normalized === 'in progress') return ['In Progress', 'Resolved'];
     if (normalized === 'resolved') return ['Resolved'];
-    if (normalized === 'rejected') return ['Rejected'];
+    if (normalized === 'closed') return ['Closed'];
+    if (normalized === 'assigned') return ['Assigned'];
     return ['Awaiting'];
   }
 
   if (isAdminUser) {
-    if (normalized === 'assigned') return ['Assigned', 'Rejected'];
-    if (normalized === 'in progress') return ['In Progress', 'Pending Approval', 'Resolved', 'Rejected'];
-    if (normalized === 'pending approval') return ['Pending Approval', 'Resolved', 'Rejected'];
-    if (normalized === 'resolved') return ['Resolved'];
-    if (normalized === 'rejected') return ['Rejected'];
+    if (normalized === 'assigned') return ['Assigned'];
+    if (normalized === 'in progress') return ['In Progress', 'Resolved'];
+    if (normalized === 'resolved') return ['Resolved', 'Closed', 'Re-open'];
+    if (normalized === 'closed') return ['Closed'];
   }
 
   return [standardizeIncidentStatus(status || 'Awaiting')];
@@ -1424,27 +1420,17 @@ function priorityRank(priority: string) {
 function getSlaMeta(incident: any, now: Date) {
   const normalizedStatus = normalizeStatus(incident?.status);
 
-  if (normalizedStatus === 'resolved' || normalizedStatus === 'rejected') {
+  if (normalizedStatus === 'closed' || normalizedStatus === 'rejected') {
     return {
-      label: 'Resolved',
+      label: normalizedStatus === 'closed' ? 'Closed' : 'Rejected',
       detail: incident?.resolvedAt ? normalizeDateTime(incident.resolvedAt) : 'Completed',
       className: 'resolved',
-      statusKey: 'Resolved',
+      statusKey: normalizedStatus === 'closed' ? 'Closed' : 'Rejected',
       minutes: 0,
       dueText: incident?.slaDue ? normalizeDateTime(incident.slaDue) : '—',
     };
   }
 
-  if (SLA_PAUSED_STATUSES.has(normalizedStatus)) {
-    return {
-      label: 'SLA Paused',
-      detail: incident?.status || 'Pending',
-      className: 'paused',
-      statusKey: 'Paused',
-      minutes: Infinity,
-      dueText: incident?.slaDue ? normalizeDateTime(incident.slaDue) : '—',
-    };
-  }
 
   if (!incident?.slaDue) {
     return { label: 'No SLA', detail: 'Not calculated', className: 'unknown', statusKey: 'Unknown', minutes: Infinity, dueText: '—' };
@@ -1468,6 +1454,10 @@ function getSlaMeta(incident: any, now: Date) {
   }
 
   return { label: 'On Time', detail: `Due in ${duration}`, className: 'ontrack', statusKey: 'On Time', minutes: diffMinutes, dueText };
+}
+
+function isTicketSlaOverdue(incident: any, now: Date) {
+  return getSlaMeta(incident, now).className === 'overdue';
 }
 
 
@@ -1558,6 +1548,7 @@ export default function ServiceDesk() {
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>(null);
   const [confirmReason, setConfirmReason] = useState('');
   const [acknowledgedUnavailableEngineerKey, setAcknowledgedUnavailableEngineerKey] = useState('');
+  const [acknowledgedSlaOverdueTicketKey, setAcknowledgedSlaOverdueTicketKey] = useState('');
 
   const [incidents, setIncidents] = useState<any[]>([]);
   const [slaConfigs, setSlaConfigs] = useState<SlaConfig[]>([]);
@@ -1638,12 +1629,14 @@ export default function ServiceDesk() {
   const canUploadIncidentAttachments = canEditResolutionFields;
   const currentUserIdentityValues = getServiceDeskUserIdentityValues(currentUser);
   const isRequesterAssetLocked = formMode === 'edit';
+  const savedWorkflowStatus = formData._originalStatus || formData.status;
+  const savedWorkflowStatusKey = normalizeStatus(savedWorkflowStatus);
   const statusWorkflowOptions = useMemo(
-    () => getWorkflowStatusOptions(formData.status, canEngineerWorkTickets, canAdminManageTickets),
-    [formData.status, canEngineerWorkTickets, canAdminManageTickets]
+    () => getWorkflowStatusOptions(savedWorkflowStatus, canEngineerWorkTickets, canAdminManageTickets),
+    [savedWorkflowStatus, canEngineerWorkTickets, canAdminManageTickets]
   );
-  const canChangeTicketStatus = canUpdateStatus || (canEngineerWorkTickets && ['in progress', 'pending approval'].includes(normalizeStatus(formData.status)));
-  const requiresEngineerResolutionFields = formMode === 'edit' && canEngineerWorkTickets && ['in progress', 'pending approval'].includes(normalizeStatus(formData.status));
+  const canChangeTicketStatus = canUpdateStatus || (canEngineerWorkTickets && ['in progress', 'resolved'].includes(savedWorkflowStatusKey));
+  const requiresEngineerResolutionFields = formMode === 'edit' && canEngineerWorkTickets && ['in progress', 'resolved'].includes(normalizeStatus(formData.status));
 
   const supportRoles = useMemo(() => {
     const roleNames = new Set<string>();
@@ -2256,7 +2249,7 @@ export default function ServiceDesk() {
 
   function getSlaPreview(data: any) {
     const config = getSlaConfigForPriority(data.priority);
-    const due = calculateSlaDue({ ...data, slaDue: '' }, { force: true });
+    const due = calculateSlaDue(data);
 
     return {
       code: getSlaPriorityCode(data.priority),
@@ -2451,7 +2444,12 @@ export default function ServiceDesk() {
       }
 
       await loadIncidentAttachments(incidentId);
-      if (viewMode === 'form' && normalizeStatus(formData.status) === 'pending approval') {
+      await createServiceDeskAuditLog({
+        action: 'Upload attachment',
+        details: `Attachment ${file.name} uploaded to ticket ${incidentId} by ${getCurrentLoginName(currentUser)}.`,
+        entityID: incidentId,
+      });
+      if (viewMode === 'form' && normalizeStatus(formData.status) === 'resolved') {
         setApprovalFeedbackUploaded(true);
       }
       setToast({ message: 'Attachment uploaded successfully.', type: 'success' });
@@ -2480,6 +2478,12 @@ export default function ServiceDesk() {
       if (!response.ok) throw new Error(`Attachment delete failed with status ${response.status}`);
 
       await loadIncidentAttachments(incidentId);
+      await createServiceDeskAuditLog({
+        action: 'Delete attachment',
+        severity: 'Warning',
+        details: `Attachment ${safeFilename} deleted from ticket ${incidentId} by ${getCurrentLoginName(currentUser)}.`,
+        entityID: incidentId,
+      });
       setToast({ message: 'Attachment deleted.', type: 'success' });
     } catch (error) {
       console.error('Failed to delete incident attachment', error);
@@ -2629,6 +2633,23 @@ export default function ServiceDesk() {
     }
   }
 
+  function showSlaOverdueWarning(incident: any) {
+    const incidentId = getId(incident);
+    if (!incidentId || acknowledgedSlaOverdueTicketKey === incidentId) return;
+    if (!isTicketSlaOverdue(incident, now)) return;
+
+    setAcknowledgedSlaOverdueTicketKey(incidentId);
+    setConfirmDialog({
+      tone: 'warning',
+      title: 'SLA Overdue',
+      message: 'This ticket has exceeded the SLA due time. Please review and take the required action.',
+      meta: `Ticket ${incidentId}`,
+      confirmLabel: 'OK',
+      cancelLabel: 'Close',
+      onConfirm: () => undefined,
+    });
+  }
+
   async function openCreateForm() {
     if (!canCreate) {
       setToast({ message: 'You do not have permission to create a ticket.', type: 'warning' });
@@ -2665,6 +2686,7 @@ export default function ServiceDesk() {
     }
 
     const incidentStatus = normalizeStatus(incident?.status);
+    showSlaOverdueWarning(incident);
     if (canEngineerWorkTickets && incidentStatus === 'assigned' && isIncidentAssignedToCurrentUser(incident)) {
       const incidentId = getId(incident);
       setConfirmReason('');
@@ -2689,6 +2711,11 @@ export default function ServiceDesk() {
           };
 
           await incidentsService.update(startedIncident);
+          await createServiceDeskAuditLog({
+            action: 'Engineer respond',
+            details: `Ticket ${incidentId} changed from Assigned to In Progress by ${getCurrentLoginName(currentUser)}.`,
+            entityID: incidentId,
+          });
           await loadData(true);
           await openEditForm(startedIncident);
         },
@@ -2739,6 +2766,41 @@ export default function ServiceDesk() {
     setGenerateApprovalJobsheet(false);
     setAssetSearchTerm('');
     setShowAssetDropdown(false);
+  }
+
+  async function createServiceDeskAuditLog(params: {
+    action: string;
+    severity?: 'Success' | 'Info' | 'Warning' | 'Error';
+    details: string;
+    entityID?: string;
+    entityType?: string;
+  }) {
+    try {
+      const token = getStoredAuthToken();
+      const response = await fetch(getServiceDeskApiUrl('/api/settings/audit-logs'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          module: 'Service Desk',
+          action: params.action,
+          severity: params.severity || 'Success',
+          details: params.details,
+          entityType: params.entityType || 'Incident',
+          entityID: params.entityID || '',
+        }),
+      });
+
+      if (!response.ok) {
+        const message = await response.text().catch(() => '');
+        throw new Error(message || `Audit log failed with status ${response.status}`);
+      }
+    } catch (error) {
+      console.warn('Service Desk audit log failed', error);
+    }
   }
 
   function isIncidentAssignedToCurrentUser(incident: any) {
@@ -2870,11 +2932,11 @@ export default function ServiceDesk() {
       return;
     }
 
-    if (normalizeStatus(formData.status) === 'rejected' && !getOperationalReason(formData)) {
+    if (normalizeStatus(formData.status) === 're-open' && !getOperationalReason(formData)) {
       rejectReasonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       rejectReasonRef.current?.focus();
       setToast({
-        message: 'Reject reason is required. Fill in the highlighted Reject Reason / Remarks field.',
+        message: 'Re-open reason is required. Fill in the highlighted Re-open Reason / Remarks field.',
         type: 'error',
       });
       return;
@@ -2883,9 +2945,7 @@ export default function ServiceDesk() {
     const shouldGenerateApprovalJobsheet =
       formMode === 'edit' &&
       generateApprovalJobsheet &&
-      normalizeStatus(formData.status) === 'pending approval';
-
-    const preparedJobsheetWindow = null;
+      normalizeStatus(formData.status) === 'resolved';
 
     if (formData.assignedTo) {
       await checkEngineerAvailability(formData.assignedTo);
@@ -2916,20 +2976,32 @@ export default function ServiceDesk() {
       };
 
       if (formMode === 'create') {
-        saveData.status = 'Awaiting';
+        saveData.status = String(saveData.assignedTo || '').trim() ? 'Assigned' : 'Awaiting';
         saveData.createdAt = new Date().toISOString();
         await incidentsService.create(saveData);
+        await createServiceDeskAuditLog({
+          action: 'Ticket created',
+          details: `Ticket ${saveData.id} created by ${getCurrentLoginName(currentUser)} with status ${saveData.status}.`,
+          entityID: saveData.id,
+        });
+        if (String(saveData.assignedTo || '').trim()) {
+          await createServiceDeskAuditLog({
+            action: 'Assign engineer',
+            details: `Ticket ${saveData.id} assigned to ${saveData.assignedTo} during ticket creation by ${getCurrentLoginName(currentUser)}.`,
+            entityID: saveData.id,
+          });
+        }
         setToast({ message: `Ticket ${saveData.id} created successfully.`, type: 'success' });
       } else {
         const engineerRequestedPendingApproval =
           canEngineerWorkTickets &&
           normalizeStatus(previousStatus) === 'in progress' &&
-          normalizeStatus(saveData.status) === 'pending approval';
+          normalizeStatus(saveData.status) === 'resolved';
 
         const lockedSourceIncident = selectedIncident || formData;
 
         if (!canEditMainTicketFields && canEditResolutionFields && lockedSourceIncident) {
-          saveData.status = engineerRequestedPendingApproval ? 'Pending Approval' : (lockedSourceIncident.status || saveData.status);
+          saveData.status = engineerRequestedPendingApproval ? 'Resolved' : (lockedSourceIncident.status || saveData.status);
           saveData.category = lockedSourceIncident.category || saveData.category;
           saveData.subcategory = lockedSourceIncident.subcategory || saveData.subcategory;
           saveData.incidentDetail = lockedSourceIncident.incidentDetail || saveData.incidentDetail;
@@ -2942,21 +3014,66 @@ export default function ServiceDesk() {
           saveData.assignedTo = lockedSourceIncident.assignedTo || lockedSourceIncident._originalAssignedTo || saveData.assignedTo;
           saveData.slaDue = toIsoDateOrEmpty(lockedSourceIncident.slaDue) || saveData.slaDue;
         }
-        if (saveData.status === 'Solved') saveData.status = 'Resolved';
+        if (saveData.status === 'Solved') saveData.status = 'Closed';
+        saveData.status = standardizeIncidentStatus(saveData.status);
         if (canAssignEngineer && !previousAssignedTo && String(saveData.assignedTo || '').trim() && normalizeStatus(previousStatus) === 'awaiting') saveData.status = 'Assigned';
         if (saveData.status === 'In Progress' && !saveData.firstResponseAt) saveData.firstResponseAt = new Date().toISOString();
-        if (saveData.status === 'Resolved' && !saveData.resolvedAt) saveData.resolvedAt = new Date().toISOString();
+        if (['Resolved', 'Closed'].includes(saveData.status) && !saveData.resolvedAt) saveData.resolvedAt = new Date().toISOString();
         await incidentsService.update(saveData);
-        if (shouldGenerateApprovalJobsheet && normalizeStatus(saveData.status) === 'pending approval') {
-          const jobsheetData = { ...saveData };
-          window.setTimeout(() => {
-            try {
-              printApprovalJobsheet(jobsheetData, preparedJobsheetWindow);
-            } catch (printError) {
-              console.error('Jobsheet print failed', printError);
-              setToast({ message: 'Ticket updated, but the jobsheet could not be opened. Please allow popups and try again.', type: 'warning' });
-            }
-          }, 0);
+
+        const previousStatusText = standardizeIncidentStatus(previousStatus);
+        const newStatusText = standardizeIncidentStatus(saveData.status);
+        if (normalizeStatus(previousStatusText) === 'resolved' && normalizeStatus(formData.status) === 're-open') {
+          await createServiceDeskAuditLog({
+            action: 'Re-open ticket',
+            severity: 'Warning',
+            details: `Ticket ${saveData.id} re-opened from Resolved to In Progress by ${getCurrentLoginName(currentUser)}. Reason: ${operationalReason || '-'}`,
+            entityID: saveData.id,
+          });
+        } else if (normalizeStatus(previousStatusText) === 'resolved' && normalizeStatus(newStatusText) === 'closed') {
+          await createServiceDeskAuditLog({
+            action: 'Close ticket',
+            details: `Ticket ${saveData.id} closed by ${getCurrentLoginName(currentUser)}.`,
+            entityID: saveData.id,
+          });
+        } else if (canAssignEngineer && previousAssignedTo !== String(saveData.assignedTo || '').trim() && String(saveData.assignedTo || '').trim()) {
+          await createServiceDeskAuditLog({
+            action: 'Assign engineer',
+            details: `Ticket ${saveData.id} assigned to ${saveData.assignedTo} by ${getCurrentLoginName(currentUser)}.`,
+            entityID: saveData.id,
+          });
+        } else if (canEngineerWorkTickets && normalizeStatus(previousStatusText) === 'in progress' && normalizeStatus(newStatusText) === 'resolved') {
+          await createServiceDeskAuditLog({
+            action: 'Submit as Resolved',
+            details: `Ticket ${saveData.id} submitted as Resolved by ${getCurrentLoginName(currentUser)}.`,
+            entityID: saveData.id,
+          });
+        } else if (normalizeStatus(previousStatusText) !== normalizeStatus(newStatusText)) {
+          await createServiceDeskAuditLog({
+            action: 'Ticket status changed',
+            details: `Ticket ${saveData.id} status changed from ${previousStatusText || '-'} to ${newStatusText || '-'} by ${getCurrentLoginName(currentUser)}.`,
+            entityID: saveData.id,
+          });
+        } else {
+          await createServiceDeskAuditLog({
+            action: 'Ticket updated',
+            details: `Ticket ${saveData.id} updated by ${getCurrentLoginName(currentUser)}.`,
+            entityID: saveData.id,
+          });
+        }
+
+        if (shouldGenerateApprovalJobsheet && normalizeStatus(saveData.status) === 'resolved') {
+          try {
+            await downloadApprovalJobsheetPdf({ ...saveData });
+            await createServiceDeskAuditLog({
+              action: 'Generate jobsheet',
+              details: `Approval jobsheet PDF generated for ticket ${saveData.id} by ${getCurrentLoginName(currentUser)}.`,
+              entityID: saveData.id,
+            });
+          } catch (pdfError) {
+            console.error('Jobsheet PDF download failed', pdfError);
+            setToast({ message: 'Ticket updated, but the jobsheet PDF could not be downloaded. Please ensure jsPDF is installed.', type: 'warning' });
+          }
         }
         setToast({ message: `Ticket ${saveData.id} updated successfully.`, type: 'success' });
       }
@@ -2964,9 +3081,6 @@ export default function ServiceDesk() {
       await loadData(true);
       closeForm();
     } catch (error) {
-      if (preparedJobsheetWindow && !preparedJobsheetWindow.closed) {
-        preparedJobsheetWindow.close();
-      }
       console.error('Save failed', error);
       setToast({ message: 'Failed to save incident.', type: 'error' });
     } finally {
@@ -2992,7 +3106,7 @@ export default function ServiceDesk() {
         ...incident,
         id: incidentId,
         IncidentID: incidentId,
-        status: 'Resolved',
+        status: 'Closed',
         resolvedAt: nowIso,
         firstResponseAt: toIsoDateOrEmpty(incident.firstResponseAt) || nowIso,
         createdAt: toIsoDateOrEmpty(incident.createdAt) || nowIso,
@@ -3000,15 +3114,20 @@ export default function ServiceDesk() {
       };
 
       await incidentsService.update(resolvedData);
+      await createServiceDeskAuditLog({
+        action: 'Close ticket',
+        details: `Ticket ${incidentId} closed by ${getCurrentLoginName(currentUser)}.`,
+        entityID: incidentId,
+      });
       await loadData(true);
 
       // Close any open edit drawer and right-side detail panel after resolve.
-      // The success toast is enough confirmation; reopening the resolved detail
+      // The success toast is enough confirmation; reopening the closed detail
       // panel makes the UI feel stuck behind the overlay.
       closeForm();
       setSelectedIncidentId('');
 
-      setToast({ message: `Ticket ${incidentId} resolved successfully.`, type: 'success' });
+      setToast({ message: `Ticket ${incidentId} closed successfully.`, type: 'success' });
     } catch (error) {
       console.error('Resolve failed', error);
       setToast({ message: 'Failed to resolve incident.', type: 'error' });
@@ -3028,7 +3147,7 @@ export default function ServiceDesk() {
     }
 
     if (isDeleteLockedStatus(incident.status)) {
-      setToast({ message: `Ticket ${incidentId} is ${incident.status}. Delete is disabled for closed or resolved tickets.`, type: 'warning' });
+      setToast({ message: `Ticket ${incidentId} is ${incident.status}. Delete is disabled for closed tickets.`, type: 'warning' });
       return;
     }
 
@@ -3050,6 +3169,12 @@ export default function ServiceDesk() {
           // keep this reason ready for backend audit logging if/when /api/incidents DELETE supports request body.
           console.info(`Deleting ticket ${incidentId}. Reason:`, reason);
           await incidentsService.delete(incidentId);
+          await createServiceDeskAuditLog({
+            action: 'Delete ticket',
+            severity: 'Warning',
+            details: `Ticket ${incidentId} deleted by ${getCurrentLoginName(currentUser)}. Reason: ${reason || '-'}`,
+            entityID: incidentId,
+          });
           await loadData(true);
           setSelectedIncidentId((current) => (current === incidentId ? '' : current));
           if (getId(formData) === incidentId) closeForm();
@@ -3079,20 +3204,18 @@ export default function ServiceDesk() {
   }, [incidents, canViewAssignedTicketsOnly, currentUserIdentityValues.join('|')]);
 
   const queueCounts = useMemo(() => {
-    const open = scopedIncidents.filter((item) => !['Resolved', 'Rejected'].includes(item.status));
+    const open = scopedIncidents.filter((item) => standardizeIncidentStatus(item.status) !== 'Closed');
     return {
       all: scopedIncidents.length,
-      my: scopedIncidents.filter((item) => isIncidentAssignedToCurrentUser(item)).length,
       slaRisk: scopedIncidents.filter((item) => {
         const sla = getSlaMeta(item, now);
-        return ['overdue', 'near'].includes(sla.className) && !['Resolved', 'Rejected'].includes(item.status);
+        return ['overdue', 'near'].includes(sla.className) && standardizeIncidentStatus(item.status) !== 'Closed';
       }).length,
-      unassigned: open.filter((item) => !item.assignedTo).length,
       awaiting: scopedIncidents.filter((item) => item.status === 'Awaiting').length,
+      assigned: open.filter((item) => Boolean(item.assignedTo) && standardizeIncidentStatus(item.status) === 'Assigned').length,
       inProgress: scopedIncidents.filter((item) => item.status === 'In Progress').length,
-      pendingApproval: scopedIncidents.filter((item) => item.status === 'Pending Approval').length,
-      resolved: scopedIncidents.filter((item) => item.status === 'Resolved').length,
-      rejected: scopedIncidents.filter((item) => item.status === 'Rejected').length,
+      pendingApproval: scopedIncidents.filter((item) => standardizeIncidentStatus(item.status) === 'Resolved').length,
+      resolved: scopedIncidents.filter((item) => standardizeIncidentStatus(item.status) === 'Closed').length,
       kb: knowledgeBaseEntries.length,
       open: open.length,
     };
@@ -3106,14 +3229,12 @@ export default function ServiceDesk() {
 
       const queueMatch =
         activeQueue === 'all' ||
-        (activeQueue === 'my' && isIncidentAssignedToCurrentUser(incident)) ||
-        (activeQueue === 'sla-risk' && ['overdue', 'near'].includes(sla.className) && !['Resolved', 'Rejected'].includes(incident.status)) ||
-        (activeQueue === 'unassigned' && !incident.assignedTo && !['Resolved', 'Rejected'].includes(incident.status)) ||
+        (activeQueue === 'sla-risk' && ['overdue', 'near'].includes(sla.className) && standardizeIncidentStatus(incident.status) !== 'Closed') ||
         (activeQueue === 'awaiting' && incident.status === 'Awaiting') ||
+        (activeQueue === 'assigned' && Boolean(incident.assignedTo) && standardizeIncidentStatus(incident.status) === 'Assigned') ||
         (activeQueue === 'in-progress' && incident.status === 'In Progress') ||
-        (activeQueue === 'pending-approval' && incident.status === 'Pending Approval') ||
-        (activeQueue === 'resolved' && incident.status === 'Resolved') ||
-        (activeQueue === 'rejected' && incident.status === 'Rejected') ||
+        (activeQueue === 'pending-approval' && standardizeIncidentStatus(incident.status) === 'Resolved') ||
+        (activeQueue === 'resolved' && standardizeIncidentStatus(incident.status) === 'Closed') ||
         activeQueue === 'knowledge';
 
       if (!queueMatch) return false;
@@ -3337,7 +3458,7 @@ export default function ServiceDesk() {
       ['SLA Due', normalizeDateTime(incident.slaDue)],
       ['SLA Status', `${sla.label} (${sla.detail})`],
       ['First Response', normalizeDateTime(incident.firstResponseAt)],
-      ['Resolved At', normalizeDateTime(incident.resolvedAt)],
+      ['Closed/Resolved At', normalizeDateTime(incident.resolvedAt)],
     ];
 
     const printHtml = `
@@ -3534,6 +3655,150 @@ export default function ServiceDesk() {
   }
 
 
+  async function downloadApprovalJobsheetPdf(incident: any) {
+    const { default: JsPDF } = await import('jspdf');
+    const doc = new JsPDF({ unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 14;
+    const contentWidth = pageWidth - margin * 2;
+    const incidentId = getId(incident) || incident.id || incident.IncidentID || 'ticket';
+    const safeIncidentId = String(incidentId).replace(/[^a-z0-9_-]+/gi, '_');
+    const generatedAt = normalizeDateTime(new Date().toISOString());
+    const primaryColor = [15, 38, 77] as [number, number, number];
+    const accentColor = [46, 99, 240] as [number, number, number];
+    const lightBlue = [239, 246, 255] as [number, number, number];
+    const lineColor = [210, 224, 245] as [number, number, number];
+    let y = 14;
+
+    const ensureSpace = (height: number) => {
+      if (y + height <= pageHeight - 16) return;
+      doc.addPage();
+      y = 16;
+    };
+
+    const safeText = (value: any) => String(value || '-');
+    const drawSectionTitle = (title: string) => {
+      ensureSpace(14);
+      doc.setFillColor(...lightBlue);
+      doc.setDrawColor(...lineColor);
+      doc.roundedRect(margin, y, contentWidth, 10, 2, 2, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(...primaryColor);
+      doc.text(title, margin + 4, y + 6.5);
+      y += 12;
+    };
+
+    const drawKeyValueRows = (rows: Array<[string, any]>) => {
+      rows.forEach(([label, rawValue]) => {
+        const value = safeText(rawValue);
+        const wrappedValue = doc.splitTextToSize(value, contentWidth - 58);
+        const rowHeight = Math.max(10, wrappedValue.length * 5 + 4);
+        ensureSpace(rowHeight + 2);
+        doc.setDrawColor(231, 238, 249);
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(margin, y, contentWidth, rowHeight, 1.5, 1.5, 'S');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(96, 121, 166);
+        doc.text(String(label).toUpperCase(), margin + 4, y + 6);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(...primaryColor);
+        doc.text(wrappedValue, margin + 58, y + 6);
+        y += rowHeight + 2;
+      });
+    };
+
+    const drawTextBox = (title: string, value: any, minHeight = 24) => {
+      drawSectionTitle(title);
+      const wrappedValue = doc.splitTextToSize(safeText(value), contentWidth - 8);
+      const boxHeight = Math.max(minHeight, wrappedValue.length * 5 + 10);
+      ensureSpace(boxHeight + 2);
+      doc.setDrawColor(...lineColor);
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(margin, y, contentWidth, boxHeight, 3, 3, 'S');
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(...primaryColor);
+      doc.text(wrappedValue, margin + 4, y + 7);
+      y += boxHeight + 4;
+    };
+
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, 0, pageWidth, 34, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('EMA Unified System', margin, 12);
+    doc.setFontSize(20);
+    doc.text('Approval Jobsheet', margin, 23);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('Service Desk ticket resolution approval record', margin, 30);
+
+    doc.setFillColor(...accentColor);
+    doc.roundedRect(pageWidth - margin - 45, 10, 45, 14, 3, 3, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text(String(incidentId), pageWidth - margin - 42, 19);
+
+    y = 44;
+    drawSectionTitle('Ticket Information');
+    drawKeyValueRows([
+      ['Ticket ID', incidentId],
+      ['Status', standardizeIncidentStatus(incident.status || 'Resolved')],
+      ['Requester / PIC', incident.requesterName || incident.requesterId || incident.reporterId || '-'],
+      ['Submitted Date', normalizeDateTime(incident.createdAt)],
+      ['Generated At', generatedAt],
+    ]);
+
+    drawSectionTitle('Asset & Classification');
+    drawKeyValueRows([
+      ['Asset ID', incident.assetId || '-'],
+      ['Device Type', incident.deviceType || '-'],
+      ['Category', incident.category || '-'],
+      ['Subcategory', incident.subcategory || '-'],
+      ['Problem Detail', incident.incidentDetail || '-'],
+      ['Urgency / Priority', incident.priority || '-'],
+      ['Engineer', incident.assignedTo || '-'],
+    ]);
+
+    drawTextBox('Issue Description', incident.description || '-', 24);
+    drawTextBox('Root Cause', incident.rootCause || '-', 24);
+    drawTextBox('Action Plan / Resolution', incident.actionPlan || '-', 28);
+
+    drawSectionTitle('Approval & Sign-Off');
+    ensureSpace(52);
+    const boxGap = 8;
+    const boxWidth = (contentWidth - boxGap) / 2;
+    doc.setDrawColor(159, 180, 216);
+    doc.setFillColor(252, 254, 255);
+    doc.roundedRect(margin, y, boxWidth, 42, 3, 3, 'S');
+    doc.roundedRect(margin + boxWidth + boxGap, y, boxWidth, 42, 3, 3, 'S');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...primaryColor);
+    doc.text('Requester / PIC Approval', margin + 5, y + 8);
+    doc.text('Engineer Confirmation', margin + boxWidth + boxGap + 5, y + 8);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(96, 121, 166);
+    doc.line(margin + 5, y + 28, margin + boxWidth - 5, y + 28);
+    doc.line(margin + boxWidth + boxGap + 5, y + 28, margin + contentWidth - 5, y + 28);
+    doc.text('Name, Signature & Date', margin + 5, y + 34);
+    doc.text('Name, Signature & Date', margin + boxWidth + boxGap + 5, y + 34);
+
+    doc.setFontSize(8);
+    doc.setTextColor(120, 140, 170);
+    doc.text('Generated from EMA Unified System', margin, pageHeight - 8);
+    doc.text(generatedAt, pageWidth - margin - 38, pageHeight - 8);
+
+    doc.save(`Approval_Jobsheet_${safeIncidentId}.pdf`);
+  }
+
   function printApprovalJobsheet(incident: any, targetWindow?: Window | null) {
     if (!incident) return;
 
@@ -3556,7 +3821,7 @@ export default function ServiceDesk() {
       ['Problem Detail', incident.incidentDetail || '—'],
       ['Urgency Level', incident.priority || 'Medium'],
       ['Engineer', incident.assignedTo || getCurrentLoginName(currentUser) || '—'],
-      ['Status', incident.status || 'Pending Approval'],
+      ['Status', standardizeIncidentStatus(incident.status || 'Resolved')],
       ['Generated At', new Date().toLocaleString('en-GB')],
     ];
 
@@ -4006,14 +4271,12 @@ export default function ServiceDesk() {
 
   const queueItems = [
     { key: 'all' as QueueKey, label: 'All Tickets', sub: 'Complete service queue', count: queueCounts.all, icon: Ticket },
-    { key: 'my' as QueueKey, label: 'My Assigned', sub: 'Owned by current agent', count: queueCounts.my, icon: User },
     { key: 'sla-risk' as QueueKey, label: 'SLA Risk', sub: 'Near due or breached', count: queueCounts.slaRisk, icon: ShieldAlert },
-    { key: 'unassigned' as QueueKey, label: 'Unassigned', sub: 'Needs ownership', count: queueCounts.unassigned, icon: Users },
     { key: 'awaiting' as QueueKey, label: 'Awaiting', sub: 'New requests', count: queueCounts.awaiting, icon: Clock },
+    { key: 'assigned' as QueueKey, label: 'Assigned', sub: 'Assigned tickets', count: queueCounts.assigned, icon: User },
     { key: 'in-progress' as QueueKey, label: 'In Progress', sub: 'Active work', count: queueCounts.inProgress, icon: ArrowRightLeft },
-    { key: 'pending-approval' as QueueKey, label: 'Pending Approval', sub: 'Waiting approval', count: queueCounts.pendingApproval, icon: Settings },
-    { key: 'resolved' as QueueKey, label: 'Resolved', sub: 'Completed tickets', count: queueCounts.resolved, icon: CheckCircle2 },
-    { key: 'rejected' as QueueKey, label: 'Rejected', sub: 'Rejected tickets', count: queueCounts.rejected, icon: X },
+    { key: 'pending-approval' as QueueKey, label: 'Resolved', sub: 'Waiting closure', count: queueCounts.pendingApproval, icon: Settings },
+    { key: 'resolved' as QueueKey, label: 'Closed', sub: 'Completed tickets', count: queueCounts.resolved, icon: CheckCircle2 },
     { key: 'knowledge' as QueueKey, label: 'Knowledge Base', sub: hasLoadedKb ? 'Resolution articles' : 'Loading articles...', count: queueCounts.kb, icon: BookOpen },
   ];
 
@@ -4022,8 +4285,8 @@ export default function ServiceDesk() {
     { label: 'SLA Risk', value: queueCounts.slaRisk, note: 'near due / breached', className: 'risk', icon: ShieldAlert },
     { label: 'Awaiting', value: queueCounts.awaiting, note: 'new request queue', className: 'awaiting', icon: Clock },
     { label: 'In Progress', value: queueCounts.inProgress, note: 'active handling', className: 'progress', icon: ArrowRightLeft },
-    { label: 'Resolved', value: queueCounts.resolved, note: 'completed records', className: 'resolved', icon: CheckCircle2 },
-    { label: 'Unassigned', value: queueCounts.unassigned, note: 'needs ownership', className: 'unassigned', icon: Users },
+    { label: 'Closed', value: queueCounts.resolved, note: 'completed records', className: 'resolved', icon: CheckCircle2 },
+    { label: 'Assigned', value: queueCounts.assigned, note: 'assigned tickets', className: 'assigned', icon: User },
   ];
 
   useEffect(() => {
@@ -5031,6 +5294,62 @@ export default function ServiceDesk() {
           background: rgba(239, 68, 68, 0.14) !important;
         }
 
+        main[data-section="service-desk"] .role-info-cell.ontrack strong,
+        main[data-section="service-desk"] .role-info-cell.ontrack small {
+          color: #0f172a !important;
+        }
+
+        main[data-section="service-desk"] .role-info-cell.near strong,
+        main[data-section="service-desk"] .role-info-cell.near small {
+          color: #0f172a !important;
+        }
+
+        main[data-section="service-desk"] .role-info-cell.overdue strong,
+        main[data-section="service-desk"] .role-info-cell.overdue small {
+          color: #dc2626 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-jobsheet-checkbox-row {
+          margin-top: 8px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          width: fit-content !important;
+          color: #6079a6 !important;
+          font-size: 11px !important;
+          font-weight: 800 !important;
+          line-height: 1 !important;
+          cursor: pointer !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-jobsheet-checkbox-row .service-desk-jobsheet-checkbox {
+          width: 14px !important;
+          min-width: 14px !important;
+          max-width: 14px !important;
+          height: 14px !important;
+          min-height: 14px !important;
+          max-height: 14px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          flex: 0 0 14px !important;
+          display: inline-block !important;
+          cursor: pointer !important;
+          transform: none !important;
+          appearance: auto !important;
+          -webkit-appearance: checkbox !important;
+          accent-color: #2563eb !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-jobsheet-checkbox-row .service-desk-jobsheet-checkbox-text {
+          display: inline-flex !important;
+          align-items: center !important;
+          width: auto !important;
+          margin: 0 !important;
+          white-space: nowrap !important;
+          line-height: 1 !important;
+        }
+
+
         @media (max-width: 820px) {
           main[data-section="service-desk"] .service-desk-attachment-layout {
             grid-template-columns: 1fr !important;
@@ -5550,7 +5869,7 @@ export default function ServiceDesk() {
                       value={advancedFilters.slaStatus}
                       placeholder="All SLA Status"
                       onChange={(value) => setAdvancedFilters((p) => ({ ...p, slaStatus: value }))}
-                      options={['All', 'On Time', 'Near Due', 'Overdue', 'Resolved'].map((status) => ({ value: status, label: status }))}
+                      options={['All', 'On Time', 'Near Due', 'Overdue', 'Closed'].map((status) => ({ value: status, label: status }))}
                     />
                   </div>
 
@@ -5694,7 +6013,10 @@ export default function ServiceDesk() {
                         data-ticket-row="true"
                         className={cn('user-row advanced clean-table-row', isSelected && 'is-selected')}
                         style={{ gridTemplateColumns: ticketTableColumns, minWidth: ticketTableMinWidth, width: '100%' }}
-                        onClick={() => setSelectedIncidentId(getId(incident))}
+                        onClick={() => {
+                          setSelectedIncidentId(getId(incident));
+                          showSlaOverdueWarning(incident);
+                        }}
                       >
                         <div className="user-cell row-number">
                           <span className="row-index-pill">{String(runningNo).padStart(2, '0')}</span>
@@ -5772,8 +6094,8 @@ export default function ServiceDesk() {
                               <button
                                 type="button"
                                 className="mini-btn icon-only delete"
-                                title={isDeleteLockedStatus(incident.status) ? 'Delete disabled for closed or resolved tickets' : 'Delete ticket'}
-                                aria-label={isDeleteLockedStatus(incident.status) ? 'Delete disabled for closed or resolved tickets' : 'Delete ticket'}
+                                title={isDeleteLockedStatus(incident.status) ? 'Delete disabled for closed tickets' : 'Delete ticket'}
+                                aria-label={isDeleteLockedStatus(incident.status) ? 'Delete disabled for closed tickets' : 'Delete ticket'}
                                 disabled={isDeleteLockedStatus(incident.status)}
                                 onClick={() => deleteIncident(incident)}
                               >
@@ -6113,9 +6435,9 @@ export default function ServiceDesk() {
                   type="button"
                   onClick={() => resolveIncident(selectedIncident)}
                   disabled={isDeleteLockedStatus(selectedIncident.status)}
-                  title={isDeleteLockedStatus(selectedIncident.status) ? 'Ticket already closed or resolved' : 'Submit and resolve ticket'}
+                  title={isDeleteLockedStatus(selectedIncident.status) ? 'Ticket already closed' : 'Submit and close ticket'}
                 >
-                  <CheckCircle2 size={15} /> Submit & Resolve
+                  <CheckCircle2 size={15} /> Submit & Close
                 </button>
               )}
               <button type="button" onClick={() => printTicket(selectedIncident)}>
@@ -6153,7 +6475,7 @@ export default function ServiceDesk() {
                 <div className="summary-row is-active">
                   <i />
                   <div>
-                    <strong>Resolved</strong>
+                    <strong>Closed</strong>
                     <p>{selectedIncident.rootCause || selectedIncident.actionPlan || 'Resolution completed.'}</p>
                     <span>{normalizeDateTime(selectedIncident.resolvedAt)}</span>
                   </div>
@@ -6503,7 +6825,7 @@ export default function ServiceDesk() {
                     <span>
                       Status
                       {formMode === 'edit' && <em className="service-desk-required-mark">*</em>}
-                      {normalizeStatus(formData.status) === 'rejected' && (
+                      {normalizeStatus(formData.status) === 're-open' && (
                         <em
                           style={{
                             color: '#dc2626',
@@ -6512,7 +6834,7 @@ export default function ServiceDesk() {
                             fontWeight: 950,
                           }}
                         >
-                          Reject reason required
+                          Re-open reason required
                         </em>
                       )}
                     </span>
@@ -6522,38 +6844,47 @@ export default function ServiceDesk() {
                       placeholder="Select Status"
                       onChange={(value) => {
                         updateFormField('status', value);
-                        if (normalizeStatus(value) !== 'pending approval') setGenerateApprovalJobsheet(false);
+                        if (normalizeStatus(value) !== 'resolved') setGenerateApprovalJobsheet(false);
                       }}
                       options={statusWorkflowOptions.map((status) => ({ value: status, label: status }))}
                     />
-                    {formMode === 'edit' && (canUpdateStatus || canEngineerWorkTickets) && normalizeStatus(formData.status) === 'pending approval' && normalizeStatus(formData._originalStatus || '') !== 'pending approval' && (
-                      <label
-                        style={{
-                          marginTop: 10,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          color: '#6079a6',
-                          fontSize: 11,
-                          fontWeight: 800,
-                          lineHeight: 1.2,
-                          cursor: 'pointer',
-                        }}
-                      >
+                    {formMode === 'edit' && (canUpdateStatus || canEngineerWorkTickets) && normalizeStatus(formData.status) === 'resolved' && normalizeStatus(formData._originalStatus || '') !== 'resolved' && (
+                      <div className="service-desk-jobsheet-checkbox-row">
                         <input
+                          className="service-desk-jobsheet-checkbox"
                           type="checkbox"
                           checked={generateApprovalJobsheet}
                           onChange={(event) => setGenerateApprovalJobsheet(event.target.checked)}
-                          style={{
-                            width: 14,
-                            height: 14,
-                            margin: 0,
-                            flexShrink: 0,
-                            cursor: 'pointer',
-                          }}
                         />
-                        <span>Generate approval jobsheet</span>
-                      </label>
+                        <span className="service-desk-jobsheet-checkbox-text">Generate approval jobsheet</span>
+                      </div>
+                    )}
+                    {formMode === 'edit' && normalizeStatus(formData._originalStatus || '') === 'resolved' && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await downloadApprovalJobsheetPdf(formData);
+                          } catch (pdfError) {
+                            console.error('Jobsheet PDF download failed', pdfError);
+                            setToast({ message: 'Jobsheet PDF could not be downloaded. Please ensure jsPDF is installed.', type: 'warning' });
+                          }
+                        }}
+                        style={{
+                          marginTop: 8,
+                          padding: 0,
+                          border: 0,
+                          background: 'transparent',
+                          color: '#2563eb',
+                          fontSize: 12,
+                          fontWeight: 800,
+                          textDecoration: 'underline',
+                          cursor: 'pointer',
+                          width: 'fit-content',
+                        }}
+                      >
+                        Generate approval jobsheet
+                      </button>
                     )}
                   </label>
 
@@ -6658,7 +6989,7 @@ export default function ServiceDesk() {
                   <label
                     className="form-field"
                     style={
-                      normalizeStatus(formData.status) === 'rejected'
+                      normalizeStatus(formData.status) === 're-open'
                         ? {
                             padding: 12,
                             borderRadius: 18,
@@ -6675,7 +7006,7 @@ export default function ServiceDesk() {
                   >
                     <span
                       style={
-                        normalizeStatus(formData.status) === 'rejected'
+                        normalizeStatus(formData.status) === 're-open'
                           ? {
                               display: 'flex',
                               alignItems: 'center',
@@ -6686,11 +7017,11 @@ export default function ServiceDesk() {
                           : undefined
                       }
                     >
-                      {normalizeStatus(formData.status) === 'rejected'
-                        ? 'Reject Reason / Remarks *'
+                      {normalizeStatus(formData.status) === 're-open'
+                        ? 'Re-open Reason / Remarks *'
                         : 'Additional Memo / Remarks'}
 
-                      {normalizeStatus(formData.status) === 'rejected' && (
+                      {normalizeStatus(formData.status) === 're-open' && (
                         <em
                           style={{
                             color: '#dc2626',
@@ -6709,20 +7040,20 @@ export default function ServiceDesk() {
                     <textarea
                       ref={rejectReasonRef}
                       disabled={!canEditResolutionFields}
-                      aria-required={normalizeStatus(formData.status) === 'rejected'}
-                      aria-invalid={normalizeStatus(formData.status) === 'rejected' && !getOperationalReason(formData)}
+                      aria-required={normalizeStatus(formData.status) === 're-open'}
+                      aria-invalid={normalizeStatus(formData.status) === 're-open' && !getOperationalReason(formData)}
                       value={formData.additionalMemo || formData.remarks || ''}
                       onChange={(e) => {
                         updateFormField('additionalMemo', e.target.value);
                         updateFormField('remarks', e.target.value);
                       }}
                       placeholder={
-                        normalizeStatus(formData.status) === 'rejected'
-                          ? 'Required: explain why this ticket is rejected'
+                        normalizeStatus(formData.status) === 're-open'
+                          ? 'Required: explain why this ticket is re-opened'
                           : 'Internal note or requester remarks'
                       }
                       style={
-                        normalizeStatus(formData.status) === 'rejected' && !getOperationalReason(formData)
+                        normalizeStatus(formData.status) === 're-open' && !getOperationalReason(formData)
                           ? {
                               borderColor: '#ef4444',
                               boxShadow: '0 0 0 3px rgba(239, 68, 68, 0.12)',
@@ -6731,7 +7062,7 @@ export default function ServiceDesk() {
                       }
                     />
 
-                    {normalizeStatus(formData.status) === 'rejected' && (
+                    {normalizeStatus(formData.status) === 're-open' && (
                       <small
                         style={{
                           marginTop: 8,
@@ -6742,8 +7073,8 @@ export default function ServiceDesk() {
                         }}
                       >
                         {getOperationalReason(formData)
-                          ? 'Reject reason captured.'
-                          : 'This field is required before a ticket can be saved as Rejected.'}
+                          ? 'Re-open reason captured.'
+                          : 'This field is required before a ticket can be re-opened.'}
                       </small>
                     )}
                   </label>
@@ -6815,12 +7146,12 @@ export default function ServiceDesk() {
               </section>
             )}
 
-              {formMode === 'edit' && normalizeStatus(formData._originalStatus || selectedIncident?.status || '') === 'pending approval' && canUploadIncidentAttachments && (
+              {formMode === 'edit' && normalizeStatus(standardizeIncidentStatus(formData._originalStatus || selectedIncident?.status || '')) === 'resolved' && canUploadIncidentAttachments && (
                 <section className="settings-helper-card service-desk-attachment-card service-desk-attachment-form-card">
                   <div className="service-desk-attachment-form-head">
                     <div>
                       <h3>Approval Feedback</h3>
-                      <p>Attach the signed approval jobsheet or user feedback while the ticket is Pending Approval. Admin can review it and resolve the ticket manually.</p>
+                      <p>Attach the signed approval jobsheet or user feedback while the ticket is Resolved. Admin can review it and close the ticket manually.</p>
                     </div>
                     <span>{approvalFeedbackUploaded ? 'Feedback attached' : 'Awaiting feedback attachment'}</span>
                   </div>
@@ -6846,9 +7177,9 @@ export default function ServiceDesk() {
                   variant="warning"
                   onClick={() => resolveIncident(formData)}
                   disabled={isSaving || isDeleteLockedStatus(formData.status)}
-                  title={isDeleteLockedStatus(formData.status) ? 'Ticket already closed or resolved' : 'Submit and resolve ticket'}
+                  title={isDeleteLockedStatus(formData.status) ? 'Ticket already closed' : 'Submit and close ticket'}
                 >
-                  Submit & Resolve
+                  Submit & Close
                 </AppButton>
               )}
 
