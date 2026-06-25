@@ -5830,23 +5830,28 @@ function ResourceDeleteModal({ target, loading, onClose, onConfirm }: { target: 
 function SettingsToast({ toast, onClose }: { toast: SettingsToastState; onClose: () => void }) {
   if (!toast) return null;
 
+  const icon =
+    toast.tone === "success"
+      ? "\u2713"
+      : toast.tone === "error"
+        ? "!"
+        : toast.tone === "warning"
+          ? "!"
+          : "i";
+
   const toastNode = (
-    <div
-      className="settings-toast-layer"
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 2147483647,
-        pointerEvents: "none"
-      }}
-    >
-      <div className={`settings-toast settings-toast-${toast.tone}`}>
-        <div className="settings-toast-icon">{toast.tone === "success" ? "✓" : toast.tone === "error" ? "!" : toast.tone === "warning" ? "!" : "i"}</div>
-        <div>
+    <div className="ema-notify-host" role="status" aria-live="polite">
+      <div className={"ema-notify-card ema-notify-" + toast.tone}>
+        <div className="ema-notify-icon">{icon}</div>
+
+        <div className="ema-notify-copy">
           <strong>{toast.title}</strong>
           <span>{toast.message}</span>
         </div>
-        <button type="button" onClick={onClose} aria-label="Close notification">×</button>
+
+        <button className="ema-notify-close" type="button" onClick={onClose} aria-label="Close notification">
+          x
+        </button>
       </div>
     </div>
   );
