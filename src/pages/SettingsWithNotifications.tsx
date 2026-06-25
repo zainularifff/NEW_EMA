@@ -138,7 +138,7 @@ function readManagementSection(): ManagementSection {
   if (text.includes("software-registry") || text.includes("software-policy") || text.includes("softwarepolicy")) return "softwarePolicy";
   if (text.includes("pricing")) return "pricing";
   if (text.includes("policy")) return "policy";
-  return "aging";
+  return "pricing";
 }
 
 function getManagementHash(section: ManagementSection) {
