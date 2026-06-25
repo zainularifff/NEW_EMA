@@ -623,3 +623,183 @@ body.ema-settings-page-active .management-control-wrapper.settings-management-sh
   background: transparent !important;
   border: 0 !important;
 }
+
+/* =========================================================
+   Notification Channels - standard Settings UI
+========================================================= */
+
+body.ema-settings-page-active .settings-view-notifications .settings-view-host {
+  min-height: 0 !important;
+}
+
+body.ema-settings-page-active .settings-notification-shell {
+  min-height: 0 !important;
+  display: grid !important;
+  gap: 0.85rem !important;
+}
+
+body.ema-settings-page-active .settings-notification-shell .notification-topbar {
+  min-height: 7rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 1rem !important;
+  padding: 1.25rem 1.35rem !important;
+  border: 1px solid #dbe7fb !important;
+  border-radius: 1.15rem !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+body.ema-settings-page-active .settings-notification-shell .notification-topbar h2 {
+  margin: 0 !important;
+  color: #0f2746 !important;
+  font-size: 1.55rem !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.045em !important;
+  line-height: 1.05 !important;
+}
+
+body.ema-settings-page-active .settings-notification-shell .notification-topbar p {
+  margin: 0.35rem 0 0 !important;
+  color: #64748b !important;
+  font-size: 0.78rem !important;
+  font-weight: 750 !important;
+  line-height: 1.35 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+body.ema-settings-page-active .settings-notification-shell .notification-tabs {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 0.45rem !important;
+  flex-wrap: wrap !important;
+}
+
+body.ema-settings-page-active .settings-notification-shell .notification-tab,
+body.ema-settings-page-active .settings-notification-shell .notification-btn {
+  min-height: 2.45rem !important;
+  padding: 0 0.85rem !important;
+  border: 1px solid #bfd2f3 !important;
+  border-radius: 0.85rem !important;
+  background: #ffffff !important;
+  color: #1d4ed8 !important;
+  font-size: 0.74rem !important;
+  font-weight: 900 !important;
+  box-shadow: none !important;
+}
+
+body.ema-settings-page-active .settings-notification-shell .notification-tab.active {
+  border-color: transparent !important;
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #2563eb, #087ea4) !important;
+}
+
+/* Keep Settings top navbar stable and readable */
+body.ema-settings-page-active .ema-topbar {
+  background: #3f4a57 !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.18) !important;
+  box-shadow: none !important;
+}
+
+body.ema-settings-page-active .ema-topbar-title h1 {
+  color: #ffffff !important;
+}
+
+body.ema-settings-page-active .ema-topbar-title p {
+  color: #cbd5e1 !important;
+}
+
+body.ema-settings-page-active .ema-global-search {
+  background: #2f3847 !important;
+  border: 1px solid rgba(226, 232, 240, 0.14) !important;
+}
+
+body.ema-settings-page-active .ema-global-search input {
+  color: #e5edf8 !important;
+}
+
+body.ema-settings-page-active .ema-global-search input::placeholder {
+  color: #94a3b8 !important;
+}
+
+body.ema-settings-page-active .ema-icon-btn {
+  background: #2f3847 !important;
+  border-color: rgba(226, 232, 240, 0.14) !important;
+  color: #e5edf8 !important;
+}
+
+/* =========================================================
+   Notification Channels - clean standard header
+========================================================= */
+
+body.ema-settings-page-active .settings-notification-shell .notification-topbar {
+  min-height: 7rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 1rem !important;
+  padding: 1.25rem 1.35rem !important;
+  border: 1px solid #dbe7fb !important;
+  border-radius: 1.15rem !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+body.ema-settings-page-active .settings-notification-shell .notification-eyebrow {
+  display: block !important;
+  margin-bottom: 0.35rem !important;
+  color: #2563eb !important;
+  font-size: 0.68rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+}
+
+body.ema-settings-page-active .settings-notification-shell .notification-topbar h2 {
+  margin: 0 !important;
+  color: #0f2746 !important;
+  font-size: 1.55rem !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.045em !important;
+  line-height: 1.05 !important;
+}
+
+body.ema-settings-page-active .settings-notification-shell .notification-topbar p {
+  margin: 0.35rem 0 0 !important;
+  color: #64748b !important;
+  font-size: 0.78rem !important;
+  font-weight: 750 !important;
+  line-height: 1.35 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+body.ema-settings-page-active .settings-notification-shell .notification-tabs {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 0.45rem !important;
+  flex-wrap: wrap !important;
+}
+
+body.ema-settings-page-active .settings-notification-shell .notification-tab,
+body.ema-settings-page-active .settings-notification-shell .notification-btn {
+  min-height: 2.45rem !important;
+  padding: 0 0.85rem !important;
+  border: 1px solid #bfd2f3 !important;
+  border-radius: 0.85rem !important;
+  background: #ffffff !important;
+  color: #1d4ed8 !important;
+  font-size: 0.74rem !important;
+  font-weight: 900 !important;
+  box-shadow: none !important;
+}
+
+body.ema-settings-page-active .settings-notification-shell .notification-tab.active {
+  border-color: transparent !important;
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #2563eb, #087ea4) !important;
+}

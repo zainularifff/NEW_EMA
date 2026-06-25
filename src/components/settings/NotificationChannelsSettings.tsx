@@ -333,7 +333,7 @@ export default function NotificationChannelsSettings() {
 
   return (
     <div className="settings-notification-shell">
-      {typeof document !== "undefined" && toast ? createPortal(
+{typeof document !== "undefined" && toast ? createPortal(
         <div className="settings-toast-layer" aria-live="polite">
           <div className={`settings-toast settings-toast-${toast.tone}`}>
             <div className="settings-toast-icon">{toast.tone === "error" ? "!" : toast.tone === "info" ? "i" : "✓"}</div>
@@ -350,7 +350,7 @@ export default function NotificationChannelsSettings() {
       <div className="notification-topbar">
         <div>
           <h2>Notification Channels</h2>
-          <p>Email, WhatsApp, receivers and event trigger delivery settings for EMA alerts.</p>
+          <p>Configure Email, WhatsApp, receivers and event trigger delivery settings for EMA alerts.</p>
         </div>
         <div className="notification-tabs">
           <button className={`notification-tab ${activeTab === "email" ? "active" : ""}`} onClick={() => setActiveTab("email")}><Mail size={15} /> Email</button>

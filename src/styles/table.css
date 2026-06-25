@@ -1161,3 +1161,41 @@
   overflow-x: auto !important;
   overflow-y: visible !important;
 }
+
+/* =========================================================
+   FINAL - Role/User remove inner scroll container
+   Table wrapper expands naturally, only outer page/card scroll remains.
+========================================================= */
+
+.ema-settings-pro[data-section="roles"] .role-control-panel,
+.ema-settings-pro[data-section="roles"] .role-control-table,
+.ema-settings-pro[data-section="roles"] .role-standard-table,
+.ema-settings-pro[data-section="roles"] .user-access-table,
+.ema-settings-pro[data-section="roles"] .clean-table,
+.ema-settings-pro[data-section="roles"] .advanced,
+.ema-settings-pro[data-section="users"] .uam-panel,
+.ema-settings-pro[data-section="users"] .user-access-table,
+.ema-settings-pro[data-section="users"] .clean-table,
+.ema-settings-pro[data-section="users"] .advanced {
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+.ema-settings-pro[data-section="roles"] .content-body,
+.ema-settings-pro[data-section="users"] .content-body {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.ema-settings-pro[data-section="roles"] .role-control-panel::-webkit-scrollbar,
+.ema-settings-pro[data-section="roles"] .role-control-table::-webkit-scrollbar,
+.ema-settings-pro[data-section="roles"] .role-standard-table::-webkit-scrollbar,
+.ema-settings-pro[data-section="roles"] .user-access-table::-webkit-scrollbar,
+.ema-settings-pro[data-section="roles"] .clean-table::-webkit-scrollbar,
+.ema-settings-pro[data-section="users"] .uam-panel::-webkit-scrollbar,
+.ema-settings-pro[data-section="users"] .user-access-table::-webkit-scrollbar,
+.ema-settings-pro[data-section="users"] .clean-table::-webkit-scrollbar {
+  display: none !important;
+}

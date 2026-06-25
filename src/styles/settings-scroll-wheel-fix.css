@@ -102,3 +102,62 @@ body.ema-settings-page-active .ema-settings-pro[data-section="users"] .clean-tab
   width: 0 !important;
   height: 8px !important;
 }
+
+/* =========================================================
+   Role/User pages - hide inner table scrollbar, keep outer content scrollbar
+========================================================= */
+
+body.ema-settings-page-active .ema-settings-pro[data-section="roles"] .user-access-table,
+body.ema-settings-page-active .ema-settings-pro[data-section="roles"] .role-standard-table,
+body.ema-settings-page-active .ema-settings-pro[data-section="users"] .user-access-table,
+body.ema-settings-page-active .ema-settings-pro[data-section="users"] .clean-table {
+  overflow-y: hidden !important;
+  overflow-x: auto !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+body.ema-settings-page-active .ema-settings-pro[data-section="roles"] .user-access-table::-webkit-scrollbar,
+body.ema-settings-page-active .ema-settings-pro[data-section="roles"] .role-standard-table::-webkit-scrollbar,
+body.ema-settings-page-active .ema-settings-pro[data-section="users"] .user-access-table::-webkit-scrollbar,
+body.ema-settings-page-active .ema-settings-pro[data-section="users"] .clean-table::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+body.ema-settings-page-active .ema-settings-pro[data-section="roles"] .content-body,
+body.ema-settings-page-active .ema-settings-pro[data-section="users"] .content-body {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-gutter: stable !important;
+}
+
+/* =========================================================
+   FINAL EXACT FIX - Role/User inner table scrollbar
+========================================================= */
+
+body.ema-settings-page-active main.ema-settings-pro[data-section="roles"] div#contentBody.content-body .user-access-table.advanced.clean-table.role-standard-table,
+body.ema-settings-page-active main.ema-settings-pro[data-section="users"] div#contentBody.content-body .user-access-table.advanced.clean-table {
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow-y: visible !important;
+  overflow-x: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+body.ema-settings-page-active main.ema-settings-pro[data-section="roles"] div#contentBody.content-body .user-access-table.advanced.clean-table.role-standard-table::-webkit-scrollbar,
+body.ema-settings-page-active main.ema-settings-pro[data-section="users"] div#contentBody.content-body .user-access-table.advanced.clean-table::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+body.ema-settings-page-active main.ema-settings-pro[data-section="roles"] div#contentBody.content-body,
+body.ema-settings-page-active main.ema-settings-pro[data-section="users"] div#contentBody.content-body {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-gutter: stable !important;
+}
