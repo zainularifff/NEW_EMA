@@ -97,8 +97,7 @@ const EMPTY_RULE: RuleForm = {
   utilizedHours: "2",
   underUtilizedHours: "1",
   notUsedHours: "0",
-  openCountThreshold: "1",
-};
+  openCountThreshold: "1"};
 
 const EMPTY_SOFTWARE_FORM: SoftwareForm = {
   classification: "Legal",
@@ -107,15 +106,13 @@ const EMPTY_SOFTWARE_FORM: SoftwareForm = {
   licenseStartDate: "",
   licenseEndDate: "",
   unitPrice: "",
-  currency: "RM",
-};
+  currency: "RM"};
 
 const MANAGEMENT_ITEMS: Array<{ key: ManagementSection; title: string }> = [
   { key: "pricing", title: "Device Pricing" },
   { key: "aging", title: "Aging PC Rule" },
   { key: "policy", title: "Management Policy" },
-  { key: "softwarePolicy", title: "Software Registry" },
-];
+  { key: "softwarePolicy", title: "Software Registry" }];
 
 const INLINE_CSS = `
 .management-control-wrapper.settings-management-shell{height:100%;min-height:0;display:grid!important;grid-template-columns:292px minmax(0,1fr)!important;gap:12px!important;overflow:hidden!important;padding:0!important;background:transparent!important;border:0!important}.management-control-sidebar{height:100%;display:flex;flex-direction:column;overflow:hidden;border:1px solid #dbe7fb;border-radius:20px;background:#fff}.management-control-sidebar-head{padding:16px 18px;border-bottom:1px solid #e5edf8}.management-control-sidebar-head span,.sp-chip{display:block;color:#2563eb;font-size:.64rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.management-control-sidebar-head strong{display:block;margin-top:6px;color:#0f2746;font-size:1.02rem;font-weight:900}.management-control-sidebar-head small{display:block;margin-top:4px;color:#64748b;font-size:.72rem;font-weight:700}.management-control-nav-list{flex:1;display:grid;align-content:start;gap:8px;overflow:auto;padding:14px 12px}.management-control-nav-btn{width:100%;min-height:56px;display:grid;grid-template-columns:38px minmax(0,1fr);align-items:center;gap:12px;padding:10px 13px;border:0;border-radius:16px;background:transparent;color:#0f2746;text-align:left;font-weight:900}.management-control-nav-btn.active{color:#fff;background:linear-gradient(135deg,#2563eb,#087ea4)}.management-control-nav-icon{width:38px;height:38px;display:grid;place-items:center;border-radius:13px;color:#2563eb;background:#eef4ff}.management-control-nav-btn.active .management-control-nav-icon{color:#fff;background:rgba(255,255,255,.2)}.management-control-content,.management-legacy-content{min-height:0;height:100%;overflow:hidden}.management-legacy-content>.settings-module-root{height:100%!important;max-height:100%!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}.management-legacy-content .settings-layout{height:100%!important;grid-template-columns:1fr!important;padding:0!important}.management-legacy-content .settings-menu{display:none!important}.management-legacy-content .settings-content{height:100%!important;min-height:0!important}
@@ -225,8 +222,7 @@ function SoftwareRegistryManagement() {
       Publisher: ruleForm.publisher,
       Version: edition || undefined,
       InstalledCount: 0,
-      InstalledDeviceCount: 0,
-    };
+      InstalledDeviceCount: 0};
   }, [currentCategoryName, ruleForm.categoryId, ruleForm.policyName, ruleForm.publisher, selectedSoftware, subSoftwareName]);
 
   const loadPolicies = useCallback(async () => {
@@ -242,8 +238,7 @@ function SoftwareRegistryManagement() {
     try {
       const [categoryPayload] = await Promise.all([
         api.get(`${API_ROOT}/categories`, { forceRefresh: true }),
-        loadPolicies(),
-      ]);
+        loadPolicies()]);
       setCategories(unwrapArray<CategoryRow>(categoryPayload));
     } catch (error) {
       setMessage({ type: "error", text: pickErrorMessage(error, "Failed to load software registry setup.") });
@@ -282,8 +277,7 @@ function SoftwareRegistryManagement() {
         categoryId: ruleForm.categoryId,
         publisher: ruleForm.publisher,
         search: softwareSearch,
-        limit: "200",
-      });
+        limit: "200"});
       const payload = await api.get(`${API_ROOT}/software?${query.toString()}`, { forceRefresh: true });
       setSoftwareRows(unwrapArray<SoftwareRow>(payload));
     } catch (error) {
@@ -308,8 +302,7 @@ function SoftwareRegistryManagement() {
       workingEndTime: normalizeTime(activePolicy.WorkingEndTime) || "17:00",
       utilizedHours: String(activePolicy.UtilizedHours ?? 2),
       underUtilizedHours: String(activePolicy.UnderUtilizedHours ?? 1),
-      openCountThreshold: String(activePolicy.OpenCountThreshold ?? 1),
-    });
+      openCountThreshold: String(activePolicy.OpenCountThreshold ?? 1)});
     setCustomCategoryName(activePolicy.CategoryID ? "" : activePolicy.CategoryName || "");
     setSubSoftwareName("");
     setSelectedSoftware(null);
@@ -330,8 +323,7 @@ function SoftwareRegistryManagement() {
       Publisher: item.Publisher,
       Version: item.Version,
       InstalledCount: item.InstalledCount,
-      InstalledDeviceCount: item.InstalledDeviceCount,
-    });
+      InstalledDeviceCount: item.InstalledDeviceCount});
     setSoftwareForm({
       classification: item.ComplianceStatus || item.Classification || "Legal",
       licenseCount: String(item.LicenseCount ?? ""),
@@ -339,8 +331,7 @@ function SoftwareRegistryManagement() {
       licenseStartDate: dateOnly(item.LicenseStartDate),
       licenseEndDate: dateOnly(item.LicenseEndDate),
       unitPrice: String(item.UnitPrice ?? ""),
-      currency: item.Currency || "RM",
-    });
+      currency: item.Currency || "RM"});
     setRuleForm((current) => ({
       ...current,
       categoryId: item.CategoryID ? String(item.CategoryID) : current.categoryId,
@@ -351,8 +342,7 @@ function SoftwareRegistryManagement() {
       underUtilizedHours: String(item.UnderUtilizedHours ?? current.underUtilizedHours),
       notUsedHours: String(item.NotUsedHours ?? current.notUsedHours),
       openCountThreshold: String(item.OpenCountThreshold ?? current.openCountThreshold),
-      description: item.Notes || current.description,
-    }));
+      description: item.Notes || current.description}));
   }, [uiMode, policyItems]);
 
   useEffect(() => {
@@ -393,8 +383,7 @@ function SoftwareRegistryManagement() {
     WorkDays: "Mon-Fri",
     UtilizedHours: Number(ruleForm.utilizedHours) || 2,
     UnderUtilizedHours: Number(ruleForm.underUtilizedHours) || 1,
-    OpenCountThreshold: Number(ruleForm.openCountThreshold) || 1,
-  });
+    OpenCountThreshold: Number(ruleForm.openCountThreshold) || 1});
 
   const validateRegistry = () => {
     if (!ruleForm.policyName.trim()) return "Software name is required.";
@@ -485,9 +474,7 @@ function SoftwareRegistryManagement() {
           LicenseEndDate: softwareForm.licenseEndDate || null,
           UnitPrice: Number(softwareForm.unitPrice) || 0,
           Currency: softwareForm.currency || "RM",
-          Notes: ruleForm.description,
-        }],
-      });
+          Notes: ruleForm.description}]});
       await loadPolicyItems(policyId);
       await loadPolicies();
       setUiMode("list");
@@ -513,45 +500,45 @@ function SoftwareRegistryManagement() {
   };
 
   return (
-    <section className="software-policy-module">
-      <header className="sp-top">
+    <section >
+      <header >
         <div>
-          <span className="sp-chip">Settings</span>
+          <span >Settings</span>
           <h2>Software Registry</h2>
           <p>Register purchased software, classify legal status, license cost and usage rules.</p>
         </div>
-        {uiMode === "list" ? <button className="sp-btn primary" type="button" onClick={startNewRegistry}><Plus size={16} /> Register Software</button> : null}
+        {uiMode === "list" ? <button  type="button" onClick={startNewRegistry}><Plus size={16} /> Register Software</button> : null}
       </header>
 
-      <main className="sp-work">
+      <main >
         {uiMode === "list" ? (
-          <div className="sp-policy-table-screen">
-            {message && <div className={`sp-alert ${message.type}`}>{message.text}</div>}
-            <section className="sp-section sp-policy-table-card">
-              <div className="sp-section-title">
+          <div >
+            {message && <div >{message.text}</div>}
+            <section >
+              <div >
                 <strong>Software Registry</strong>
                 <small>Each registration can apply to a parent software or one inventory child software.</small>
               </div>
-              <div className="sp-section-body">
-                <div className="sp-action-row" style={{ marginTop: 0, marginBottom: 12, justifyContent: "space-between" }}>
-                  <span className="sp-help">{loading ? "Loading entries..." : `${policies.length} registry entrie(s) configured`}</span>
-                  <button className="sp-icon" type="button" onClick={loadBase} disabled={loading} title="Refresh"><RefreshCw size={15} /></button>
+              <div >
+                <div  >
+                  <span >{loading ? "Loading entries..." : `${policies.length} registry entrie(s) configured`}</span>
+                  <button  type="button" onClick={loadBase} disabled={loading} title="Refresh"><RefreshCw size={15} /></button>
                 </div>
-                <div className="sp-policy-table-wrap">
-                  <div className="sp-policy-table-row head"><span>Registry Name</span><span>Category</span><span>Software</span><span>Legal</span><span>Illegal</span><span>License</span><span>Work hours</span><span>Action</span></div>
-                  {loading ? <div className="sp-empty">Loading software registry...</div> : policies.length === 0 ? <div className="sp-empty">No software registry found. Click Register Software to create the first entry.</div> : policies.map((policy) => (
-                    <div key={policy.PolicyID} className="sp-policy-table-row">
+                <div >
+                  <div ><span>Registry Name</span><span>Category</span><span>Software</span><span>Legal</span><span>Illegal</span><span>License</span><span>Work hours</span><span>Action</span></div>
+                  {loading ? <div >Loading software registry...</div> : policies.length === 0 ? <div >No software registry found. Click Register Software to create the first entry.</div> : policies.map((policy) => (
+                    <div key={policy.PolicyID} >
                       <span><strong>{policy.PolicyName}</strong><small>{policy.Description || "No note"}</small></span>
                       <span>{policy.CategoryName || "No category"}</span>
                       <span>{policy.TotalItems || 0}</span>
-                      <span><b className="sp-badge legal">{policy.LegalCount || 0}</b></span>
-                      <span><b className="sp-badge illegal">{policy.IllegalCount || 0}</b></span>
+                      <span><b >{policy.LegalCount || 0}</b></span>
+                      <span><b >{policy.IllegalCount || 0}</b></span>
                       <span>{policy.LicenseTotal || 0}</span>
                       <span>{normalizeTime(policy.WorkingStartTime) || "09:00"} - {normalizeTime(policy.WorkingEndTime) || "17:00"}</span>
-                      <span className="sp-policy-table-actions">
-                        <button className="sp-icon" type="button" title="View" aria-label="View registry" onClick={() => openRegistry(policy.PolicyID)}><Eye size={14} /></button>
-                        <button className="sp-icon" type="button" title="Edit" aria-label="Edit registry" onClick={() => openRegistry(policy.PolicyID)}><Pencil size={14} /></button>
-                        <button className="sp-danger" type="button" title="Delete" aria-label="Delete registry" onClick={() => deleteRegistryPolicy(policy)}><Trash2 size={14} /></button>
+                      <span >
+                        <button  type="button" title="View" aria-label="View registry" onClick={() => openRegistry(policy.PolicyID)}><Eye size={14} /></button>
+                        <button  type="button" title="Edit" aria-label="Edit registry" onClick={() => openRegistry(policy.PolicyID)}><Pencil size={14} /></button>
+                        <button  type="button" title="Delete" aria-label="Delete registry" onClick={() => deleteRegistryPolicy(policy)}><Trash2 size={14} /></button>
                       </span>
                     </div>
                   ))}
@@ -560,78 +547,78 @@ function SoftwareRegistryManagement() {
             </section>
           </div>
         ) : (
-          <div className="sp-policy-modal-backdrop">
-            <div className="sp-policy-modal">
-              <div className="sp-policy-modal-head">
+          <div >
+            <div >
+              <div >
                 <div><strong>{activePolicy ? "Edit Software Registry" : "Register Software"}</strong><small>Inventory child selection is optional.</small></div>
-                <div className="sp-top-actions"><button className="sp-btn secondary" type="button" onClick={() => setUiMode("list")}>Back to List</button><button className="sp-btn primary" type="button" onClick={saveRegistry} disabled={saving}><Save size={15} /> Save Registry</button></div>
+                <div ><button  type="button" onClick={() => setUiMode("list")}>Back to List</button><button  type="button" onClick={saveRegistry} disabled={saving}><Save size={15} /> Save Registry</button></div>
               </div>
-              <div className="sp-policy-modal-body">
-                {message && <div className={`sp-alert ${message.type}`}>{message.text}</div>}
-                <div className="sp-story">Flow: key in software name → choose category → choose publisher → choose inventory child only when available → set license, price and usage rules.</div>
-                <div className="sp-flow-tabs"><span><b>1</b> Software name</span><span><b>2</b> Category & publisher</span><span><b>3</b> Optional inventory child</span><span><b>4</b> License & usage</span></div>
+              <div >
+                {message && <div >{message.text}</div>}
+                <div >Flow: key in software name → choose category → choose publisher → choose inventory child only when available → set license, price and usage rules.</div>
+                <div ><span><b>1</b> Software name</span><span><b>2</b> Category & publisher</span><span><b>3</b> Optional inventory child</span><span><b>4</b> License & usage</span></div>
 
-                <div className="sp-register-stack">
-                  <section className="sp-section">
-                    <div className="sp-section-title"><strong>1. Software registration</strong><small>Start with purchased software name, then choose category and publisher.</small></div>
-                    <div className="sp-section-body">
-                      <div className="sp-form-grid">
-                        <label className="sp-field full"><span>Software name</span><input value={ruleForm.policyName} onChange={(e) => setRuleForm((c) => ({ ...c, policyName: e.target.value }))} placeholder="Example: Microsoft Office" /></label>
-                        <label className="sp-field"><span>Software category</span><select value={ruleForm.categoryId} onChange={(e) => handleCategoryChange(e.target.value)}><option value="">Select category</option>{categories.map((row) => <option key={row.CategoryID} value={row.CategoryID}>{row.CategoryName}</option>)}<option value="__other__">Other / create custom category</option></select></label>
-                        {ruleForm.categoryId === "__other__" && <label className="sp-field"><span>Custom category name</span><input value={customCategoryName} onChange={(e) => setCustomCategoryName(e.target.value)} placeholder="Example: Design Tool" /></label>}
-                        <label className="sp-field"><span>Sub software / edition</span><input value={subSoftwareName} onChange={(e) => setSubSoftwareName(e.target.value)} placeholder="Optional, example: Pro / Enterprise / Add-on" /></label>
-                        <label className="sp-field"><span>Publisher</span><select value={ruleForm.publisher} onChange={(e) => handlePublisherChange(e.target.value)} disabled={!ruleForm.categoryId || ruleForm.categoryId === "__other__"}><option value="">Select publisher after category</option>{publishers.map((row) => <option key={row.Publisher} value={row.Publisher}>{row.Publisher}</option>)}</select></label>
+                <div >
+                  <section >
+                    <div ><strong>1. Software registration</strong><small>Start with purchased software name, then choose category and publisher.</small></div>
+                    <div >
+                      <div >
+                        <label ><span>Software name</span><input value={ruleForm.policyName} onChange={(e) => setRuleForm((c) => ({ ...c, policyName: e.target.value }))} placeholder="Example: Microsoft Office" /></label>
+                        <label ><span>Software category</span><select value={ruleForm.categoryId} onChange={(e) => handleCategoryChange(e.target.value)}><option value="">Select category</option>{categories.map((row) => <option key={row.CategoryID} value={row.CategoryID}>{row.CategoryName}</option>)}<option value="__other__">Other / create custom category</option></select></label>
+                        {ruleForm.categoryId === "__other__" && <label ><span>Custom category name</span><input value={customCategoryName} onChange={(e) => setCustomCategoryName(e.target.value)} placeholder="Example: Design Tool" /></label>}
+                        <label ><span>Sub software / edition</span><input value={subSoftwareName} onChange={(e) => setSubSoftwareName(e.target.value)} placeholder="Optional, example: Pro / Enterprise / Add-on" /></label>
+                        <label ><span>Publisher</span><select value={ruleForm.publisher} onChange={(e) => handlePublisherChange(e.target.value)} disabled={!ruleForm.categoryId || ruleForm.categoryId === "__other__"}><option value="">Select publisher after category</option>{publishers.map((row) => <option key={row.Publisher} value={row.Publisher}>{row.Publisher}</option>)}</select></label>
                       </div>
 
-                      <div className="sp-map-panel">
-                        <div className="sp-map-panel-head">
+                      <div >
+                        <div >
                           <div><strong>Inventory software list</strong><small>If this publisher has child software, select one. If not, save as parent software only.</small></div>
-                          <label className="sp-search"><Search size={15} /><input value={softwareSearch} onChange={(e) => setSoftwareSearch(e.target.value)} placeholder="Search software..." disabled={!ruleForm.publisher} /></label>
+                          <label ><Search size={15} /><input value={softwareSearch} onChange={(e) => setSoftwareSearch(e.target.value)} placeholder="Search software..." disabled={!ruleForm.publisher} /></label>
                         </div>
-                        <div className="sp-table">
-                          <div className="sp-row head"><span></span><span>Software</span><span>Publisher</span><span>Installed</span></div>
-                          {!ruleForm.categoryId ? <div className="sp-empty">Select software category first.</div> : !ruleForm.publisher ? <div className="sp-empty">Select publisher to display available child software.</div> : softwareLoading ? <div className="sp-empty">Loading software...</div> : softwareRows.length === 0 ? <div className="sp-empty">No child software found for this category and publisher. This registry can still be saved as parent software.</div> : softwareRows.map((row) => { const key = getSoftwareKey(row); const selected = selectedSoftwareKey === key; return (
-                            <label key={key} className={`sp-row ${selected ? "selected" : ""}`}><span><input type="radio" name="software-registry-map" checked={selected} onChange={() => setSelectedSoftware(row)} /></span><span><strong>{row.SoftwareName}</strong><small>{row.Version || "No version"}</small></span><span>{row.Publisher || "Unknown"}</span><span>{row.InstalledCount ?? row.InstalledDeviceCount ?? 0}</span></label>
+                        <div >
+                          <div ><span></span><span>Software</span><span>Publisher</span><span>Installed</span></div>
+                          {!ruleForm.categoryId ? <div >Select software category first.</div> : !ruleForm.publisher ? <div >Select publisher to display available child software.</div> : softwareLoading ? <div >Loading software...</div> : softwareRows.length === 0 ? <div >No child software found for this category and publisher. This registry can still be saved as parent software.</div> : softwareRows.map((row) => { const key = getSoftwareKey(row); const selected = selectedSoftwareKey === key; return (
+                            <label key={key} ><span><input type="radio" name="software-registry-map" checked={selected} onChange={() => setSelectedSoftware(row)} /></span><span><strong>{row.SoftwareName}</strong><small>{row.Version || "No version"}</small></span><span>{row.Publisher || "Unknown"}</span><span>{row.InstalledCount ?? row.InstalledDeviceCount ?? 0}</span></label>
                           ); })}
                         </div>
-                        <div className={`sp-selected-box ${!selectedSoftware ? "warning" : ""}`}>{selectedSoftware ? `Selected child software: ${selectedSoftware.SoftwareName}` : `No child selected. Registry will apply to parent software: ${subSoftwareName.trim() || ruleForm.policyName.trim() || "software name above"}`}</div>
+                        <div >{selectedSoftware ? `Selected child software: ${selectedSoftware.SoftwareName}` : `No child selected. Registry will apply to parent software: ${subSoftwareName.trim() || ruleForm.policyName.trim() || "software name above"}`}</div>
                       </div>
                     </div>
                   </section>
 
-                  <section className="sp-section">
-                    <div className="sp-section-title"><strong>2. Classification, license & cost</strong><small>Classify the software and enter license cost for ROI calculation.</small></div>
-                    <div className="sp-section-body">
-                      <div className="sp-class-grid">
-                        <button type="button" className={`sp-class-btn ${softwareForm.classification === "Legal" ? "active legal" : ""}`} onClick={() => setSoftwareForm((c) => ({ ...c, classification: "Legal" }))}><ShieldCheck size={18} /> Legal</button>
-                        <button type="button" className={`sp-class-btn ${softwareForm.classification === "Illegal" ? "active illegal" : ""}`} onClick={() => setSoftwareForm((c) => ({ ...c, classification: "Illegal" }))}><ShieldAlert size={18} /> Illegal</button>
+                  <section >
+                    <div ><strong>2. Classification, license & cost</strong><small>Classify the software and enter license cost for ROI calculation.</small></div>
+                    <div >
+                      <div >
+                        <button type="button"  onClick={() => setSoftwareForm((c) => ({ ...c, classification: "Legal" }))}><ShieldCheck size={18} /> Legal</button>
+                        <button type="button"  onClick={() => setSoftwareForm((c) => ({ ...c, classification: "Illegal" }))}><ShieldAlert size={18} /> Illegal</button>
                       </div>
-                      <div className="sp-selected-box">This registry applies to: {resolvedRegistrySoftware?.SoftwareName || "software name above"}</div>
-                      <div className="sp-cost-grid">
-                        <label className="sp-field"><span>Total license</span><input type="number" min="0" value={softwareForm.licenseCount} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseCount: e.target.value }))} /></label>
-                        <label className="sp-field"><span>Currency</span><select value={softwareForm.currency} onChange={(e) => setSoftwareForm((c) => ({ ...c, currency: e.target.value }))}><option value="RM">RM</option><option value="USD">USD</option><option value="SGD">SGD</option></select></label>
-                        <label className="sp-field"><span>Price per license</span><input type="number" min="0" step="0.01" value={softwareForm.unitPrice} onChange={(e) => setSoftwareForm((c) => ({ ...c, unitPrice: e.target.value }))} placeholder="0.00" /></label>
-                        <label className="sp-field"><span>Total cost</span><input value={formatMoney(String(licenseTotalCost), softwareForm.currency)} readOnly /></label>
-                        <label className="sp-field"><span>License key/ref</span><input value={softwareForm.licenseKey} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseKey: e.target.value }))} /></label>
-                        <label className="sp-field"><span>Start date</span><input type="date" value={softwareForm.licenseStartDate} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseStartDate: e.target.value }))} /></label>
-                        <label className="sp-field"><span>Expiry date</span><input type="date" value={softwareForm.licenseEndDate} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseEndDate: e.target.value }))} /></label>
+                      <div >This registry applies to: {resolvedRegistrySoftware?.SoftwareName || "software name above"}</div>
+                      <div >
+                        <label ><span>Total license</span><input type="number" min="0" value={softwareForm.licenseCount} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseCount: e.target.value }))} /></label>
+                        <label ><span>Currency</span><select value={softwareForm.currency} onChange={(e) => setSoftwareForm((c) => ({ ...c, currency: e.target.value }))}><option value="RM">RM</option><option value="USD">USD</option><option value="SGD">SGD</option></select></label>
+                        <label ><span>Price per license</span><input type="number" min="0" step="0.01" value={softwareForm.unitPrice} onChange={(e) => setSoftwareForm((c) => ({ ...c, unitPrice: e.target.value }))} placeholder="0.00" /></label>
+                        <label ><span>Total cost</span><input value={formatMoney(String(licenseTotalCost), softwareForm.currency)} readOnly /></label>
+                        <label ><span>License key/ref</span><input value={softwareForm.licenseKey} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseKey: e.target.value }))} /></label>
+                        <label ><span>Start date</span><input type="date" value={softwareForm.licenseStartDate} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseStartDate: e.target.value }))} /></label>
+                        <label ><span>Expiry date</span><input type="date" value={softwareForm.licenseEndDate} onChange={(e) => setSoftwareForm((c) => ({ ...c, licenseEndDate: e.target.value }))} /></label>
                       </div>
                     </div>
                   </section>
 
-                  <section className="sp-section">
-                    <div className="sp-section-title"><strong>3. Usage rule</strong><small>Set working hours and usage thresholds for utilization analysis.</small></div>
-                    <div className="sp-section-body">
-                      <div className="sp-form-grid">
-                        <label className="sp-field"><span>Work start</span><input type="time" value={ruleForm.workingStartTime} onChange={(e) => setRuleForm((c) => ({ ...c, workingStartTime: e.target.value }))} /></label>
-                        <label className="sp-field"><span>Work end</span><input type="time" value={ruleForm.workingEndTime} onChange={(e) => setRuleForm((c) => ({ ...c, workingEndTime: e.target.value }))} /></label>
-                        <label className="sp-field"><span>Utilized if at least hour/day</span><input type="number" min="0" step="0.25" value={ruleForm.utilizedHours} onChange={(e) => setRuleForm((c) => ({ ...c, utilizedHours: e.target.value }))} /></label>
-                        <label className="sp-field"><span>Underutilized if below hour/day</span><input type="number" min="0" step="0.25" value={ruleForm.underUtilizedHours} onChange={(e) => setRuleForm((c) => ({ ...c, underUtilizedHours: e.target.value }))} /></label>
-                        <label className="sp-field"><span>Not used if hour/day</span><input type="number" min="0" step="0.25" value={ruleForm.notUsedHours} onChange={(e) => setRuleForm((c) => ({ ...c, notUsedHours: e.target.value }))} /></label>
-                        <label className="sp-field"><span>Open count/day</span><input type="number" min="0" value={ruleForm.openCountThreshold} onChange={(e) => setRuleForm((c) => ({ ...c, openCountThreshold: e.target.value }))} /></label>
-                        <label className="sp-field full"><span>Note</span><textarea value={ruleForm.description} onChange={(e) => setRuleForm((c) => ({ ...c, description: e.target.value }))} placeholder="Optional note" /></label>
+                  <section >
+                    <div ><strong>3. Usage rule</strong><small>Set working hours and usage thresholds for utilization analysis.</small></div>
+                    <div >
+                      <div >
+                        <label ><span>Work start</span><input type="time" value={ruleForm.workingStartTime} onChange={(e) => setRuleForm((c) => ({ ...c, workingStartTime: e.target.value }))} /></label>
+                        <label ><span>Work end</span><input type="time" value={ruleForm.workingEndTime} onChange={(e) => setRuleForm((c) => ({ ...c, workingEndTime: e.target.value }))} /></label>
+                        <label ><span>Utilized if at least hour/day</span><input type="number" min="0" step="0.25" value={ruleForm.utilizedHours} onChange={(e) => setRuleForm((c) => ({ ...c, utilizedHours: e.target.value }))} /></label>
+                        <label ><span>Underutilized if below hour/day</span><input type="number" min="0" step="0.25" value={ruleForm.underUtilizedHours} onChange={(e) => setRuleForm((c) => ({ ...c, underUtilizedHours: e.target.value }))} /></label>
+                        <label ><span>Not used if hour/day</span><input type="number" min="0" step="0.25" value={ruleForm.notUsedHours} onChange={(e) => setRuleForm((c) => ({ ...c, notUsedHours: e.target.value }))} /></label>
+                        <label ><span>Open count/day</span><input type="number" min="0" value={ruleForm.openCountThreshold} onChange={(e) => setRuleForm((c) => ({ ...c, openCountThreshold: e.target.value }))} /></label>
+                        <label ><span>Note</span><textarea value={ruleForm.description} onChange={(e) => setRuleForm((c) => ({ ...c, description: e.target.value }))} placeholder="Optional note" /></label>
                       </div>
-                      <div className="sp-usage-note">Monday to Friday. ≥ {ruleForm.utilizedHours || 2} hour/day = utilized. Below {ruleForm.underUtilizedHours || 1} hour/day = underutilized. ≤ {ruleForm.notUsedHours || 0} hour/day = not used.</div>
+                      <div >Monday to Friday. ≥ {ruleForm.utilizedHours || 2} hour/day = utilized. Below {ruleForm.underUtilizedHours || 1} hour/day = underutilized. ≤ {ruleForm.notUsedHours || 0} hour/day = not used.</div>
                     </div>
                   </section>
                 </div>
@@ -692,36 +679,36 @@ export default function SettingsWithNotifications() {
   };
 
   return (
-    <div className={`settings-with-notifications settings-view-${view}`} data-settings-view={view}>
+    <div  data-settings-view={view}>
       <style>{INLINE_CSS}</style>
-      <div className="settings-notification-page-tabs">
-        <button className={`notification-tab ${view === "settings" ? "active" : ""}`} onClick={() => switchView("settings")}>Settings Console</button>
-        <button className={`notification-tab ${view === "management" ? "active" : ""}`} onClick={() => switchView("management")}>Management Control</button>
-        <button className={`notification-tab ${view === "notifications" ? "active" : ""}`} onClick={() => switchView("notifications")}>Notification Channels</button>
+      <div >
+        <button  onClick={() => switchView("settings")}>Settings Console</button>
+        <button  onClick={() => switchView("management")}>Management Control</button>
+        <button  onClick={() => switchView("notifications")}>Notification Channels</button>
       </div>
 
-      <div className="settings-view-host">
+      <div >
         {view === "notifications" ? (
           <NotificationChannelsSettings />
         ) : view === "management" ? (
-          <div className="management-control-wrapper settings-management-shell" data-management-section={managementSection}>
-            <aside className="management-control-sidebar">
-              <div className="management-control-sidebar-head">
+          <div  data-management-section={managementSection}>
+            <aside >
+              <div >
                 <span>Settings Center</span>
                 <strong>Configuration Area</strong>
                 <small>Select system setup domain</small>
               </div>
-              <div className="management-control-nav-list">
+              <div >
                 {MANAGEMENT_ITEMS.map((item) => (
-                  <button key={item.key} type="button" className={`management-control-nav-btn ${managementSection === item.key ? "active" : ""}`} onClick={() => switchManagementSection(item.key)} data-section={item.key}>
-                    <span className="management-control-nav-icon"><ManagementControlIcon section={item.key} /></span>
+                  <button key={item.key} type="button"  onClick={() => switchManagementSection(item.key)} data-section={item.key}>
+                    <span ><ManagementControlIcon section={item.key} /></span>
                     <span>{item.title}</span>
                   </button>
                 ))}
               </div>
             </aside>
-            <main className="management-control-content">
-              {managementSection === "softwarePolicy" ? <SoftwareRegistryManagement /> : <div className="management-legacy-content"><LegacySettings key={`management-${managementSection}`} /></div>}
+            <main >
+              {managementSection === "softwarePolicy" ? <SoftwareRegistryManagement /> : <div ><LegacySettings key={`management-${managementSection}`} /></div>}
             </main>
           </div>
         ) : (
