@@ -1,0 +1,265 @@
+/* =========================================================
+   EMA Global Confirmation Modal
+   Use these classes for all confirmation boxes:
+   ema-confirm-backdrop, ema-confirm-modal, ema-confirm-icon,
+   ema-confirm-kicker, ema-confirm-alert, ema-confirm-actions
+========================================================= */
+
+.ema-confirm-backdrop,
+.settings-confirm-backdrop.open,
+.settings-confirm-backdrop,
+.pricing-confirm-backdrop.open,
+.pricing-confirm-backdrop,
+.role-delete-backdrop.open,
+.role-delete-backdrop,
+.user-delete-backdrop.open,
+.user-delete-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
+  margin: 0 !important;
+  background: rgba(15, 23, 42, 0.58) !important;
+  backdrop-filter: blur(10px) saturate(115%) !important;
+  z-index: 2147483000 !important;
+  pointer-events: auto !important;
+}
+
+.ema-confirm-modal,
+.settings-confirm-modal,
+.pricing-confirm-modal,
+.role-delete-modal,
+.user-delete-modal {
+  position: relative !important;
+  width: min(520px, calc(100vw - 48px)) !important;
+  max-height: min(88dvh, 720px) !important;
+  overflow: hidden !important;
+  display: grid !important;
+  gap: 12px !important;
+  padding: 22px !important;
+  border: 1px solid rgba(203, 213, 225, 0.85) !important;
+  border-radius: 22px !important;
+  background: #ffffff !important;
+  color: #0f2746 !important;
+  box-shadow:
+    0 32px 90px rgba(15, 23, 42, 0.34),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset !important;
+  z-index: 2147483001 !important;
+  transform: translateZ(0) !important;
+}
+
+.ema-confirm-modal .modal-close,
+.settings-confirm-modal .modal-close,
+.pricing-confirm-modal .modal-close,
+.role-delete-modal .modal-close,
+.user-delete-modal .modal-close {
+  position: absolute !important;
+  top: 14px !important;
+  right: 14px !important;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  padding: 0 !important;
+  border-radius: 12px !important;
+  border: 1px solid #d8e4f5 !important;
+  background: #f7fbff !important;
+  color: #2563eb !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: none !important;
+}
+
+.ema-confirm-icon,
+.settings-confirm-modal .settings-toast-icon,
+.pricing-confirm-icon,
+.role-delete-icon,
+.user-delete-icon {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 16px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  background: #eef5ff !important;
+  border: 1px solid #c9dbff !important;
+  color: #2563eb !important;
+  box-shadow: 0 10px 26px rgba(37, 99, 235, 0.12) !important;
+}
+
+.ema-confirm-modal.is-danger .ema-confirm-icon,
+.settings-confirm-modal.is-danger .settings-toast-icon,
+.pricing-confirm-modal.is-danger .pricing-confirm-icon,
+.role-delete-modal.is-danger .role-delete-icon,
+.user-delete-modal.is-danger .user-delete-icon {
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+  color: #e11d48 !important;
+  box-shadow: 0 10px 26px rgba(225, 29, 72, 0.12) !important;
+}
+
+.ema-confirm-modal.is-warning .ema-confirm-icon,
+.settings-confirm-modal.is-warning .settings-toast-icon {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #d97706 !important;
+  box-shadow: 0 10px 26px rgba(217, 119, 6, 0.12) !important;
+}
+
+.ema-confirm-kicker,
+.settings-confirm-modal .section-tag {
+  width: fit-content !important;
+  margin: 2px 0 -4px !important;
+  padding: 5px 10px !important;
+  border-radius: 999px !important;
+  background: #eef5ff !important;
+  border: 1px solid #c9dbff !important;
+  color: #2563eb !important;
+  font-size: 10px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  line-height: 1 !important;
+}
+
+.ema-confirm-modal h2,
+.ema-confirm-modal h3,
+.settings-confirm-modal h2,
+.settings-confirm-modal h3,
+.pricing-confirm-modal h2,
+.pricing-confirm-modal h3,
+.role-delete-modal h2,
+.role-delete-modal h3,
+.user-delete-modal h2,
+.user-delete-modal h3 {
+  margin: 0 !important;
+  padding-right: 42px !important;
+  color: #0f2746 !important;
+  font-size: clamp(20px, 2vw, 28px) !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.045em !important;
+  line-height: 1.05 !important;
+}
+
+.ema-confirm-modal p,
+.settings-confirm-modal p,
+.pricing-confirm-modal p,
+.role-delete-modal p,
+.user-delete-modal p {
+  margin: 0 !important;
+  color: #64748b !important;
+  font-size: 13px !important;
+  font-weight: 760 !important;
+  line-height: 1.55 !important;
+}
+
+.ema-confirm-alert,
+.settings-confirm-modal .settings-inline-alert {
+  width: 100% !important;
+  margin: 2px 0 0 !important;
+  padding: 11px 13px !important;
+  border-radius: 14px !important;
+  border: 1px solid #fecaca !important;
+  background: #fff1f2 !important;
+  color: #be123c !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  line-height: 1.45 !important;
+  text-align: left !important;
+}
+
+.ema-confirm-modal textarea,
+.settings-confirm-modal textarea {
+  width: 100% !important;
+  min-height: 92px !important;
+  resize: vertical !important;
+  border: 1px solid #d7e3f4 !important;
+  border-radius: 14px !important;
+  padding: 12px 14px !important;
+  background: #f8fbff !important;
+  color: #12284f !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  line-height: 1.5 !important;
+  outline: none !important;
+}
+
+.ema-confirm-modal textarea:focus,
+.settings-confirm-modal textarea:focus {
+  border-color: rgba(37, 99, 235, 0.55) !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.09) !important;
+}
+
+.ema-confirm-actions,
+.settings-confirm-modal .content-actions,
+.pricing-confirm-actions,
+.settings-confirm-actions,
+.role-delete-actions,
+.user-delete-actions {
+  width: 100% !important;
+  margin-top: 4px !important;
+  padding-top: 12px !important;
+  border-top: 1px solid rgba(226, 232, 240, 0.92) !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.service-desk-confirm-portal-root {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  z-index: 2147482999 !important;
+  pointer-events: none !important;
+}
+
+.service-desk-confirm-portal-root .ema-confirm-backdrop,
+.service-desk-confirm-portal-root .settings-confirm-backdrop {
+  pointer-events: auto !important;
+}
+
+@media (max-width: 640px) {
+  .ema-confirm-backdrop,
+  .settings-confirm-backdrop.open,
+  .settings-confirm-backdrop,
+  .pricing-confirm-backdrop.open,
+  .pricing-confirm-backdrop,
+  .role-delete-backdrop.open,
+  .role-delete-backdrop,
+  .user-delete-backdrop.open,
+  .user-delete-backdrop {
+    padding: 14px !important;
+    align-items: center !important;
+  }
+
+  .ema-confirm-modal,
+  .settings-confirm-modal,
+  .pricing-confirm-modal,
+  .role-delete-modal,
+  .user-delete-modal {
+    width: calc(100vw - 28px) !important;
+    padding: 18px !important;
+    border-radius: 20px !important;
+  }
+
+  .ema-confirm-actions,
+  .settings-confirm-modal .content-actions,
+  .pricing-confirm-actions,
+  .settings-confirm-actions,
+  .role-delete-actions,
+  .user-delete-actions {
+    flex-direction: column-reverse !important;
+    align-items: stretch !important;
+  }
+}

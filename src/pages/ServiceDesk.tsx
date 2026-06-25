@@ -1934,7 +1934,7 @@ export default function ServiceDesk() {
       if (detailPanelRef.current?.contains(target)) return;
       if (target.closest('[data-ticket-row="true"]')) return;
       if (target.closest('.settings-confirm-backdrop')) return;
-      if (target.closest('.settings-confirm-modal')) return;
+      if (target.closest('.ema-confirm-modal')) return;
       if (target.closest('.setting-select-menu')) return;
       if (target.closest('.uam-filter-menu')) return;
       if (target.closest('.service-desk-asset-dropdown')) return;
@@ -5021,7 +5021,7 @@ export default function ServiceDesk() {
           box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035) !important;
         }
 
-        main[data-section="service-desk"] .service-desk-kb-detail-block .section-tag {
+        main[data-section="service-desk"] .service-desk-kb-detail-block .ema-confirm-kicker {
           display: inline-flex !important;
           margin-bottom: .45rem !important;
           color: #1d4ed8 !important;
@@ -5452,6 +5452,109 @@ export default function ServiceDesk() {
           z-index: 1 !important;
         }
 
+
+        /* FINAL: Service Desk modal standard blur and bottom action spacing */
+        main[data-section="service-desk"].service-desk-modal-portal-root {
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: transparent !important;
+          z-index: 2147482999 !important;
+          pointer-events: none !important;
+        }
+
+        main[data-section="service-desk"].service-desk-modal-portal-root .settings-confirm-backdrop.open {
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 24px !important;
+          background: rgba(15, 23, 42, 0.42) !important;
+          backdrop-filter: blur(12px) saturate(112%) !important;
+          -webkit-backdrop-filter: blur(12px) saturate(112%) !important;
+          pointer-events: auto !important;
+          contain: none !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-ticket-modal {
+          width: min(1160px, calc(100vw - 64px)) !important;
+          max-height: calc(100dvh - 56px) !important;
+          display: flex !important;
+          flex-direction: column !important;
+          overflow: hidden !important;
+          border-radius: 24px !important;
+          background: #ffffff !important;
+          box-shadow: 0 34px 90px rgba(15, 23, 42, 0.32) !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-ticket-form-body {
+          flex: 1 1 auto !important;
+          min-height: 0 !important;
+          max-height: none !important;
+          overflow-y: auto !important;
+          padding-bottom: 26px !important;
+          scroll-padding-bottom: 96px !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-ticket-modal .content-actions.service-desk-row-actions {
+          flex: 0 0 auto !important;
+          min-height: 68px !important;
+          margin: 0 !important;
+          padding: 14px 24px !important;
+          border-top: 1px solid rgba(226, 232, 240, 0.92) !important;
+          background:
+            linear-gradient(180deg, rgba(248, 251, 255, 0.94), rgba(255, 255, 255, 0.98)) !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-end !important;
+          gap: 10px !important;
+          position: sticky !important;
+          bottom: 0 !important;
+          z-index: 20 !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-ticket-modal .content-actions.service-desk-row-actions button {
+          white-space: nowrap !important;
+        }
+
+        @media (max-width: 760px) {
+          main[data-section="service-desk"].service-desk-modal-portal-root .settings-confirm-backdrop.open {
+            padding: 14px !important;
+          }
+
+          main[data-section="service-desk"] .service-desk-ticket-modal {
+            width: calc(100vw - 28px) !important;
+            max-height: calc(100dvh - 28px) !important;
+          }
+
+          main[data-section="service-desk"] .service-desk-ticket-modal .content-actions.service-desk-row-actions {
+            padding: 12px 16px !important;
+            justify-content: stretch !important;
+            flex-wrap: wrap !important;
+          }
+        }
+
+
+        /* FINAL: Service Desk modal footer bottom breathing space */
+        main[data-section="service-desk"] .service-desk-ticket-modal .content-actions.service-desk-row-actions {
+          min-height: 82px !important;
+          padding-top: 14px !important;
+          padding-right: 24px !important;
+          padding-bottom: 26px !important;
+          padding-left: 24px !important;
+          align-items: center !important;
+        }
+
+        main[data-section="service-desk"] .service-desk-ticket-modal {
+          padding-bottom: 0 !important;
+        }
+
 `}</style>
 
       {toast && (
@@ -5487,11 +5590,11 @@ export default function ServiceDesk() {
           className="settings-module-root ema-settings-pro service-desk-confirm-portal-root"
         >
           <div
-            className="settings-confirm-backdrop open service-desk-confirm-backdrop"
+            className="ema-confirm-backdrop service-desk-confirm-backdrop"
             onClick={(event) => event.stopPropagation()}
           >
           <section
-            className={cn('settings-confirm-modal', `is-${confirmDialog.tone || 'danger'}`)}
+            className={cn('ema-confirm-modal', `is-${confirmDialog.tone || 'danger'}`)}
             role="dialog"
             aria-modal="true"
             aria-labelledby="service-desk-confirm-title"
@@ -5507,15 +5610,15 @@ export default function ServiceDesk() {
               disabled={confirmDialog.loading}
             />
 
-            <div className="settings-toast-icon">
+            <div className="ema-confirm-icon">
               {confirmDialog.tone === 'warning' ? <ShieldAlert size={24} /> : <Trash2 size={24} />}
             </div>
 
-            <span className="section-tag">Confirmation required</span>
+            <span className="ema-confirm-kicker">Confirmation required</span>
             <h2 id="service-desk-confirm-title">{confirmDialog.title}</h2>
             <p>{confirmDialog.message}</p>
 
-            {confirmDialog.meta && <div className="settings-inline-alert">{confirmDialog.meta}</div>}
+            {confirmDialog.meta && <div className="ema-confirm-alert">{confirmDialog.meta}</div>}
 
             {confirmDialog.requiresReason && (
               <label
@@ -5551,7 +5654,7 @@ export default function ServiceDesk() {
               </label>
             )}
 
-            <footer className="content-actions service-desk-row-actions">
+            <footer className="ema-confirm-actions service-desk-row-actions">
               <AppButton
                 type="button"
                 variant="outline-secondary"
@@ -6134,7 +6237,7 @@ export default function ServiceDesk() {
                 <h2>Knowledge Base</h2>
                 <p>Manage and reference previous incident resolutions</p>
               </div>
-              <div className="content-actions service-desk-row-actions">
+              <div className="ema-confirm-actions service-desk-row-actions">
                 {canCreate && (
                   <button
                     type="button"
@@ -6159,7 +6262,7 @@ export default function ServiceDesk() {
             </header>
 
             {!hasLoadedKb && (
-              <div className="settings-inline-alert">
+              <div className="ema-confirm-alert">
                 <Loader2 size={14} className="ema-spin" />
                 <span>Loading knowledge base...</span>
               </div>
@@ -6267,7 +6370,7 @@ export default function ServiceDesk() {
 
       {selectedKbArticle && (
         <div className="settings-confirm-backdrop open" onClick={() => setSelectedKbArticle(null)}>
-          <section className="settings-confirm-modal service-desk-kb-modal service-desk-kb-view-modal" onClick={(event) => event.stopPropagation()}>
+          <section className="ema-confirm-modal service-desk-kb-modal service-desk-kb-view-modal" onClick={(event) => event.stopPropagation()}>
             <header className="content-head service-desk-kb-modal-head">
               <div>
                 <span>Knowledge Article</span>
@@ -6281,12 +6384,12 @@ export default function ServiceDesk() {
 
             <div className="content-body service-desk-kb-modal-body">
               <section className="service-desk-kb-detail-block">
-                <span className="section-tag">Incident Details</span>
+                <span className="ema-confirm-kicker">Incident Details</span>
                 <p>{selectedKbArticle.incidentDetails || 'No incident details provided.'}</p>
               </section>
 
               <section className="service-desk-kb-detail-block">
-                <span className="section-tag">Resolution</span>
+                <span className="ema-confirm-kicker">Resolution</span>
                 {splitKnowledgeSteps(selectedKbArticle.resolution).length > 1 ? (
                   <div className="policy-list">
                     {splitKnowledgeSteps(selectedKbArticle.resolution).map((step, index) => (
@@ -6301,7 +6404,7 @@ export default function ServiceDesk() {
               </section>
             </div>
 
-            <footer className="content-actions service-desk-row-actions service-desk-kb-modal-actions">
+            <footer className="ema-confirm-actions service-desk-row-actions service-desk-kb-modal-actions">
               <AppButton
                 type="button"
                 variant="outline-secondary"
@@ -6403,7 +6506,7 @@ export default function ServiceDesk() {
               </div>
 
               {isLoadingAttachments ? (
-                <div className="settings-inline-alert">
+                <div className="ema-confirm-alert">
                   <Loader2 size={14} className="ema-spin" />
                   Loading attachments...
                 </div>
@@ -6433,7 +6536,7 @@ export default function ServiceDesk() {
               )}
             </div>
 
-            <div className="content-actions service-desk-row-actions">
+            <div className="ema-confirm-actions service-desk-row-actions">
               {canEditIncident(selectedIncident) && (
                 <button
                   type="button"
@@ -6496,7 +6599,7 @@ export default function ServiceDesk() {
           className="settings-module-root ema-settings-pro service-desk-modal-portal-root"
         >
           <div className="settings-confirm-backdrop open" aria-modal="true" role="dialog">
-          <form className="settings-confirm-modal user-modal service-desk-ticket-modal" onSubmit={saveIncident} onClick={(event) => event.stopPropagation()}>
+          <form className="ema-confirm-modal user-modal service-desk-ticket-modal" onSubmit={saveIncident} onClick={(event) => event.stopPropagation()}>
             <header className="content-head">
               <div>
                 <span>{formMode === 'create' ? 'New Incident' : formData.id || 'Edit Incident'}</span>
@@ -6510,7 +6613,7 @@ export default function ServiceDesk() {
 
             <div className="content-body service-desk-ticket-form-body">
               {isLoadingLookups && (
-                <div className="settings-inline-alert">
+                <div className="ema-confirm-alert">
                   <Loader2 size={14} className="ema-spin" />
                   <span>Loading creator, category and assignment options...</span>
                 </div>
@@ -6660,12 +6763,12 @@ export default function ServiceDesk() {
                           style={assetDropdownStyle}
                         >
                           {isLoadingAssets ? (
-                            <div className="settings-inline-alert">
+                            <div className="ema-confirm-alert">
                               <Loader2 size={14} className="ema-spin" />
                               Loading assets...
                             </div>
                           ) : filteredClientAssets.length === 0 ? (
-                            <div className="settings-inline-alert">No asset found from API. Check /api/assets response or try another keyword.</div>
+                            <div className="ema-confirm-alert">No asset found from API. Check /api/assets response or try another keyword.</div>
                           ) : (
                             filteredClientAssets.map((asset) => {
                               const value = getAssetValue(asset);
@@ -7117,7 +7220,7 @@ export default function ServiceDesk() {
                   <div className="service-desk-uploaded-box">
                     <span className="service-desk-uploaded-title">Uploaded Files</span>
                     {isLoadingAttachments ? (
-                      <div className="settings-inline-alert">
+                      <div className="ema-confirm-alert">
                         <Loader2 size={14} className="ema-spin" />
                         Loading attachments...
                       </div>
@@ -7159,14 +7262,26 @@ export default function ServiceDesk() {
                     </div>
                     <span>{approvalFeedbackUploaded ? 'Feedback attached' : 'Awaiting feedback attachment'}</span>
                   </div>
-                  <div className="settings-inline-alert">
+                  <div className="ema-confirm-alert">
                     Use the Incident Attachments upload above to add the signed approval jobsheet or feedback file before admin review.
                   </div>
                 </section>
               )}
             </div>
 
-            <footer className="content-actions service-desk-row-actions">
+            <footer
+                className="content-actions service-desk-row-actions service-desk-ticket-footer-actions"
+                style={{
+                  minHeight: 112,
+                  padding: "18px 28px 46px",
+                  alignItems: "flex-start",
+                  justifyContent: "flex-end",
+                  gap: 10,
+                  borderTop: "1px solid rgba(226, 232, 240, 0.92)",
+                  background: "linear-gradient(180deg, rgba(248, 251, 255, 0.96), rgba(255, 255, 255, 1))",
+                  boxSizing: "border-box",
+                }}
+              >
               <AppButton
                 type="button"
                 variant="outline-secondary"
@@ -7204,7 +7319,7 @@ export default function ServiceDesk() {
 
       {kbFormOpen && (
         <div className="settings-confirm-backdrop open" onClick={() => setKbFormOpen(false)}>
-          <form className="settings-confirm-modal user-modal service-desk-kb-modal service-desk-kb-form-modal" onSubmit={saveKb} onClick={(event) => event.stopPropagation()}>
+          <form className="ema-confirm-modal user-modal service-desk-kb-modal service-desk-kb-form-modal" onSubmit={saveKb} onClick={(event) => event.stopPropagation()}>
             <header className="content-head service-desk-kb-modal-head">
               <div>
                 <span>Knowledge Base</span>
@@ -7238,7 +7353,7 @@ export default function ServiceDesk() {
               </section>
             </div>
 
-            <footer className="content-actions service-desk-row-actions service-desk-kb-modal-actions">
+            <footer className="ema-confirm-actions service-desk-row-actions service-desk-kb-modal-actions">
               <AppButton
                 type="button"
                 variant="outline-secondary"

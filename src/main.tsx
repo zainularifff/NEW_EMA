@@ -24,6 +24,8 @@ import "./styles/management-control-settings.css";
 import "./styles/notification-channels.css";
 import "./styles/ema-system-shell.css";
 import "./styles/module-ui-fixes.css";
+import "./styles/confirmation.css";
+import "./styles/global-modal.css";
 
 import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
