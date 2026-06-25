@@ -49,9 +49,9 @@ function readUtilizedHours(body, fallback = 2) {
 
 async function ensureSoftwarePolicyTables(pool) {
   await pool.request().query(`
-    IF OBJECT_ID('dbo.EMA_SoftwarePolicy', 'U') IS NULL
+    IF OBJECT_ID('EMA_SoftwarePolicy', 'U') IS NULL
     BEGIN
-      CREATE TABLE dbo.EMA_SoftwarePolicy (
+      CREATE TABLE EMA_SoftwarePolicy (
         PolicyID INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
         PolicyName NVARCHAR(200) NOT NULL,
         Description NVARCHAR(1000) NULL,
@@ -70,9 +70,9 @@ async function ensureSoftwarePolicyTables(pool) {
       );
     END;
 
-    IF OBJECT_ID('dbo.EMA_SoftwarePolicyItem', 'U') IS NULL
+    IF OBJECT_ID('EMA_SoftwarePolicyItem', 'U') IS NULL
     BEGIN
-      CREATE TABLE dbo.EMA_SoftwarePolicyItem (
+      CREATE TABLE EMA_SoftwarePolicyItem (
         PolicyItemID INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
         PolicyID INT NOT NULL,
         SWUNI_Idn INT NULL,
@@ -101,31 +101,31 @@ async function ensureSoftwarePolicyTables(pool) {
       );
     END;
 
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'WorkingStartTime') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD WorkingStartTime NVARCHAR(5) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'WorkingEndTime') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD WorkingEndTime NVARCHAR(5) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'WorkDays') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD WorkDays NVARCHAR(40) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'UtilizedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD UtilizedHours DECIMAL(8,2) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'UnderUtilizedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD UnderUtilizedHours DECIMAL(8,2) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'OpenCountThreshold') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD OpenCountThreshold INT NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'IsActive') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD IsActive BIT NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicy', 'WorkingStartTime') IS NULL ALTER TABLE EMA_SoftwarePolicy ADD WorkingStartTime NVARCHAR(5) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicy', 'WorkingEndTime') IS NULL ALTER TABLE EMA_SoftwarePolicy ADD WorkingEndTime NVARCHAR(5) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicy', 'WorkDays') IS NULL ALTER TABLE EMA_SoftwarePolicy ADD WorkDays NVARCHAR(40) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicy', 'UtilizedHours') IS NULL ALTER TABLE EMA_SoftwarePolicy ADD UtilizedHours DECIMAL(8,2) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicy', 'UnderUtilizedHours') IS NULL ALTER TABLE EMA_SoftwarePolicy ADD UnderUtilizedHours DECIMAL(8,2) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicy', 'OpenCountThreshold') IS NULL ALTER TABLE EMA_SoftwarePolicy ADD OpenCountThreshold INT NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicy', 'IsActive') IS NULL ALTER TABLE EMA_SoftwarePolicy ADD IsActive BIT NULL;
 
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'SWUNI_Idn') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD SWUNI_Idn INT NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'CategoryID') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD CategoryID INT NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'WorkingStartTime') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD WorkingStartTime NVARCHAR(5) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'WorkingEndTime') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD WorkingEndTime NVARCHAR(5) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'WorkDays') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD WorkDays NVARCHAR(40) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'UtilizedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD UtilizedHours DECIMAL(8,2) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'UnderUtilizedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD UnderUtilizedHours DECIMAL(8,2) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'NotUsedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD NotUsedHours DECIMAL(8,2) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'OpenCountThreshold') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD OpenCountThreshold INT NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseKey') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseKey NVARCHAR(500) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseCount') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseCount INT NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseStartDate') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseStartDate DATE NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseEndDate') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseEndDate DATE NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'UnitPrice') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD UnitPrice DECIMAL(18,2) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'Currency') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD Currency NVARCHAR(10) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'SWUNI_Idn') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD SWUNI_Idn INT NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'CategoryID') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD CategoryID INT NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'WorkingStartTime') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD WorkingStartTime NVARCHAR(5) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'WorkingEndTime') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD WorkingEndTime NVARCHAR(5) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'WorkDays') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD WorkDays NVARCHAR(40) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'UtilizedHours') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD UtilizedHours DECIMAL(8,2) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'UnderUtilizedHours') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD UnderUtilizedHours DECIMAL(8,2) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'NotUsedHours') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD NotUsedHours DECIMAL(8,2) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'OpenCountThreshold') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD OpenCountThreshold INT NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'LicenseKey') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD LicenseKey NVARCHAR(500) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'LicenseCount') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD LicenseCount INT NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'LicenseStartDate') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD LicenseStartDate DATE NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'LicenseEndDate') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD LicenseEndDate DATE NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'UnitPrice') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD UnitPrice DECIMAL(18,2) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'Currency') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD Currency NVARCHAR(10) NULL;
 
-    UPDATE dbo.EMA_SoftwarePolicy
+    UPDATE EMA_SoftwarePolicy
     SET
       IsActive = COALESCE(IsActive, 1),
       WorkingStartTime = COALESCE(NULLIF(WorkingStartTime, ''), '09:00'),
@@ -134,11 +134,11 @@ async function ensureSoftwarePolicyTables(pool) {
       UtilizedHours = COALESCE(UtilizedHours, 2.00),
       UnderUtilizedHours = COALESCE(UnderUtilizedHours, 0.01);
 
-    UPDATE dbo.EMA_SoftwarePolicyItem
+    UPDATE EMA_SoftwarePolicyItem
     SET ComplianceStatus = 'Illegal'
     WHERE LOWER(ISNULL(ComplianceStatus, '')) IN ('restricted', 'blocked', 'unauthorized', 'unapproved');
 
-    UPDATE dbo.EMA_SoftwarePolicyItem
+    UPDATE EMA_SoftwarePolicyItem
     SET
       ComplianceStatus = CASE WHEN LOWER(ISNULL(ComplianceStatus, '')) = 'illegal' THEN 'Illegal' ELSE 'Legal' END,
       WorkingStartTime = COALESCE(NULLIF(WorkingStartTime, ''), '09:00'),
@@ -159,7 +159,7 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
       const pool = await sql.connect(dbConfig);
       const result = await pool.request().query(`
         SELECT TOP (1000) CategoryID, CategoryName
-        FROM [TCO2].[dbo].[TS_SW_CATEGORY]
+        FROM TS_SW_CATEGORY
         WHERE CategoryName IS NOT NULL AND LTRIM(RTRIM(CategoryName)) <> ''
         ORDER BY CategoryName ASC
       `);
@@ -188,8 +188,8 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
       const result = await request.query(`
         ;WITH category_software AS (
           SELECT d.SWUNI_Idn
-          FROM [TCO2].[dbo].[TS_SWUNI_LIST] d WITH (NOLOCK)
-          INNER JOIN [TCO2].[dbo].[TS_SW_CATEGORY] e WITH (NOLOCK)
+          FROM TS_SWUNI_LIST d WITH (NOLOCK)
+          INNER JOIN TS_SW_CATEGORY e WITH (NOLOCK)
             ON e.CategoryID = d.SWUNI_Catg
           WHERE (@categoryId <= 0 OR e.CategoryID = @categoryId)
             AND (@categoryName = '' OR e.CategoryName = @categoryName)
@@ -198,7 +198,7 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
           NULLIF(LTRIM(RTRIM(c.Publisher)), '') AS Publisher,
           COUNT_BIG(DISTINCT c.SWUNI_Idn) AS SoftwareCount,
           CAST(0 AS BIGINT) AS InstalledCount
-        FROM [TCO2].[dbo].[TSSI_SWUNI_ATTR] c WITH (NOLOCK)
+        FROM TSSI_SWUNI_ATTR c WITH (NOLOCK)
         INNER JOIN category_software cs
           ON cs.SWUNI_Idn = c.SWUNI_Idn
         WHERE NULLIF(LTRIM(RTRIM(c.Publisher)), '') IS NOT NULL
@@ -237,10 +237,10 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
             e.CategoryID,
             e.CategoryName,
             NULLIF(LTRIM(RTRIM(c.Publisher)), '') AS Publisher
-          FROM [TCO2].[dbo].[TS_SWUNI_LIST] d WITH (NOLOCK)
-          INNER JOIN [TCO2].[dbo].[TS_SW_CATEGORY] e WITH (NOLOCK)
+          FROM TS_SWUNI_LIST d WITH (NOLOCK)
+          INNER JOIN TS_SW_CATEGORY e WITH (NOLOCK)
             ON e.CategoryID = d.SWUNI_Catg
-          INNER JOIN [TCO2].[dbo].[TSSI_SWUNI_ATTR] c WITH (NOLOCK)
+          INNER JOIN TSSI_SWUNI_ATTR c WITH (NOLOCK)
             ON c.SWUNI_Idn = d.SWUNI_Idn
           WHERE (@categoryId <= 0 OR e.CategoryID = @categoryId)
             AND (@categoryName = '' OR e.CategoryName = @categoryName)
@@ -307,8 +307,8 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
           SUM(CASE WHEN i.ComplianceStatus = 'Illegal' THEN 1 ELSE 0 END) AS IllegalCount,
           SUM(ISNULL(i.LicenseCount, 0)) AS LicenseTotal,
           SUM(ISNULL(i.LicenseCount, 0) * ISNULL(i.UnitPrice, 0)) AS TotalCost
-        FROM dbo.EMA_SoftwarePolicy p
-        LEFT JOIN dbo.EMA_SoftwarePolicyItem i ON i.PolicyID = p.PolicyID
+        FROM EMA_SoftwarePolicy p
+        LEFT JOIN EMA_SoftwarePolicyItem i ON i.PolicyID = p.PolicyID
         OUTER APPLY (
           SELECT TOP (1)
             pi.PolicyItemID,
@@ -320,7 +320,7 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
             pi.NotUsedHours,
             pi.UnitPrice,
             pi.Currency
-          FROM dbo.EMA_SoftwarePolicyItem pi
+          FROM EMA_SoftwarePolicyItem pi
           WHERE pi.PolicyID = p.PolicyID
           ORDER BY ISNULL(pi.UpdatedAt, pi.CreatedAt) DESC, pi.PolicyItemID DESC
         ) primaryItem
@@ -359,7 +359,7 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
         .input('IsActive', sql.Bit, toBit(req.body.IsActive ?? req.body.isActive, true))
         .input('CreatedBy', sql.NVarChar(200), toText(req.user?.username || req.user?.email || req.user?.name))
         .query(`
-          INSERT INTO dbo.EMA_SoftwarePolicy (
+          INSERT INTO EMA_SoftwarePolicy (
             PolicyName, Description, CategoryID, CategoryName, WorkingStartTime, WorkingEndTime,
             WorkDays, UtilizedHours, UnderUtilizedHours, OpenCountThreshold, IsActive, CreatedBy, UpdatedAt
           )
@@ -395,7 +395,7 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
         .input('UnderUtilizedHours', sql.Decimal(8, 2), toNumber(req.body.UnderUtilizedHours ?? req.body.underUtilizedHours))
         .input('OpenCountThreshold', sql.Int, toNumber(req.body.OpenCountThreshold ?? req.body.openCountThreshold))
         .query(`
-          UPDATE dbo.EMA_SoftwarePolicy
+          UPDATE EMA_SoftwarePolicy
           SET
             PolicyName = COALESCE(NULLIF(@PolicyName, ''), PolicyName),
             Description = COALESCE(NULLIF(@Description, ''), Description),
@@ -425,7 +425,7 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
       const pool = await sql.connect(dbConfig);
       await ensureSoftwarePolicyTables(pool);
       await pool.request().input('PolicyID', sql.Int, policyId).query(`
-        UPDATE dbo.EMA_SoftwarePolicy
+        UPDATE EMA_SoftwarePolicy
         SET IsActive = 0, UpdatedAt = SYSUTCDATETIME()
         WHERE PolicyID = @PolicyID
       `);
@@ -447,7 +447,7 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
           ComplianceStatus AS Classification, ComplianceStatus, WorkingStartTime, WorkingEndTime, WorkDays,
           UtilizedHours, UnderUtilizedHours, NotUsedHours, OpenCountThreshold, LicenseKey, LicenseCount,
           LicenseStartDate, LicenseEndDate, UnitPrice, Currency, Notes, CreatedAt, UpdatedAt
-        FROM dbo.EMA_SoftwarePolicyItem
+        FROM EMA_SoftwarePolicyItem
         WHERE PolicyID = @PolicyID
         ORDER BY SoftwareName ASC
       `);
@@ -497,9 +497,9 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
             .input('Currency', sql.NVarChar(10), toText(item.Currency || item.currency) || 'RM')
             .input('Notes', sql.NVarChar(1000), toText(item.Notes || item.notes))
             .query(`
-              DELETE FROM dbo.EMA_SoftwarePolicyItem WHERE PolicyID = @PolicyID;
+              DELETE FROM EMA_SoftwarePolicyItem WHERE PolicyID = @PolicyID;
 
-              INSERT INTO dbo.EMA_SoftwarePolicyItem (
+              INSERT INTO EMA_SoftwarePolicyItem (
                 PolicyID, SWUNI_Idn, SoftwareName, CategoryID, CategoryName, Publisher, Version,
                 ComplianceStatus, WorkingStartTime, WorkingEndTime, WorkDays, UtilizedHours, UnderUtilizedHours,
                 NotUsedHours, OpenCountThreshold, LicenseKey, LicenseCount, LicenseStartDate, LicenseEndDate,
@@ -515,7 +515,7 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
         }
         await new sql.Request(transaction)
           .input('PolicyID', sql.Int, policyId)
-          .query('UPDATE dbo.EMA_SoftwarePolicy SET UpdatedAt = SYSUTCDATETIME() WHERE PolicyID = @PolicyID');
+          .query('UPDATE EMA_SoftwarePolicy SET UpdatedAt = SYSUTCDATETIME() WHERE PolicyID = @PolicyID');
         await transaction.commit();
       } catch (error) {
         await transaction.rollback();
@@ -533,7 +533,7 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
       const itemId = toInt(req.params.itemId);
       const pool = await sql.connect(dbConfig);
       await ensureSoftwarePolicyTables(pool);
-      await pool.request().input('PolicyItemID', sql.Int, itemId).query('DELETE FROM dbo.EMA_SoftwarePolicyItem WHERE PolicyItemID = @PolicyItemID');
+      await pool.request().input('PolicyItemID', sql.Int, itemId).query('DELETE FROM EMA_SoftwarePolicyItem WHERE PolicyItemID = @PolicyItemID');
       res.json({ success: true });
     } catch (error) {
       console.error('Software policy item delete failed:', error);
@@ -559,9 +559,9 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
               CAST(h.App_StartTime AS DATE) AS UsageDate,
               SUM(CASE WHEN ISNULL(h.ActiveTime, 0) > 86400 THEN ISNULL(h.ActiveTime, 0) / 3600000.0 ELSE ISNULL(h.ActiveTime, 0) / 3600.0 END) AS UsedHours,
               COUNT(*) AS OpenCount
-            FROM dbo.EMA_SoftwarePolicyItem i
-            LEFT JOIN [TCO2].[dbo].[TS_SW_INFO] s ON s.SW_FileName = i.SoftwareName OR s.SW_ProductName = i.SoftwareName
-            LEFT JOIN [TCO2].[dbo].[TSSM_MONITOR_HISTORY] h ON h.SW_Idn = s.SW_Idn
+            FROM EMA_SoftwarePolicyItem i
+            LEFT JOIN TS_SW_INFO s ON s.SW_FileName = i.SoftwareName OR s.SW_ProductName = i.SoftwareName
+            LEFT JOIN TSSM_MONITOR_HISTORY h ON h.SW_Idn = s.SW_Idn
               AND (@DateFrom IS NULL OR CAST(h.App_StartTime AS DATE) >= @DateFrom)
               AND (@DateTo IS NULL OR CAST(h.App_StartTime AS DATE) <= @DateTo)
               AND DATENAME(WEEKDAY, h.App_StartTime) IN ('Monday','Tuesday','Wednesday','Thursday','Friday')
@@ -594,7 +594,7 @@ function registerSoftwarePolicyRoutes(app, { authenticateToken, dbConfig, sql })
               WHEN i.LicenseEndDate IS NOT NULL AND i.LicenseEndDate <= DATEADD(DAY, 30, CAST(GETDATE() AS DATE)) THEN 'Expiring Soon'
               ELSE 'Valid'
             END AS LicenseStatus
-          FROM dbo.EMA_SoftwarePolicyItem i
+          FROM EMA_SoftwarePolicyItem i
           LEFT JOIN usage_data u ON u.PolicyItemID = i.PolicyItemID
           WHERE i.PolicyID = @PolicyID
           ORDER BY i.SoftwareName ASC, u.UsageDate DESC

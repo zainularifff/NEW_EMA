@@ -59,13 +59,13 @@ function registerFastSoftwareRegistryListRoute(app) {
       const pool = await sql.connect(dbConfig);
 
       await pool.request().query(`
-        IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'UnitPrice') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD UnitPrice DECIMAL(18,2) NULL;
-        IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'Currency') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD Currency NVARCHAR(10) NULL;
-        IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'NotUsedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD NotUsedHours DECIMAL(8,2) NULL;
-        IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'IsActive') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD IsActive BIT NULL;
+        IF COL_LENGTH('EMA_SoftwarePolicyItem', 'UnitPrice') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD UnitPrice DECIMAL(18,2) NULL;
+        IF COL_LENGTH('EMA_SoftwarePolicyItem', 'Currency') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD Currency NVARCHAR(10) NULL;
+        IF COL_LENGTH('EMA_SoftwarePolicyItem', 'NotUsedHours') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD NotUsedHours DECIMAL(8,2) NULL;
+        IF COL_LENGTH('EMA_SoftwarePolicy', 'IsActive') IS NULL ALTER TABLE EMA_SoftwarePolicy ADD IsActive BIT NULL;
 
-        UPDATE dbo.EMA_SoftwarePolicy SET IsActive = 1 WHERE IsActive IS NULL;
-        UPDATE dbo.EMA_SoftwarePolicyItem SET Currency = 'RM' WHERE Currency IS NULL OR LTRIM(RTRIM(Currency)) = '';
+        UPDATE EMA_SoftwarePolicy SET IsActive = 1 WHERE IsActive IS NULL;
+        UPDATE EMA_SoftwarePolicyItem SET Currency = 'RM' WHERE Currency IS NULL OR LTRIM(RTRIM(Currency)) = '';
       `);
 
       const result = await pool.request().query(`
@@ -97,8 +97,8 @@ function registerFastSoftwareRegistryListRoute(app) {
           ISNULL(SUM(CASE WHEN i.ComplianceStatus = 'Illegal' THEN 1 ELSE 0 END), 0) AS IllegalCount,
           ISNULL(SUM(ISNULL(i.LicenseCount, 0)), 0) AS LicenseTotal,
           ISNULL(SUM(ISNULL(i.LicenseCount, 0) * ISNULL(i.UnitPrice, 0)), 0) AS TotalCost
-        FROM dbo.EMA_SoftwarePolicy p
-        LEFT JOIN dbo.EMA_SoftwarePolicyItem i
+        FROM EMA_SoftwarePolicy p
+        LEFT JOIN EMA_SoftwarePolicyItem i
           ON i.PolicyID = p.PolicyID
         OUTER APPLY (
           SELECT TOP (1)
@@ -120,7 +120,7 @@ function registerFastSoftwareRegistryListRoute(app) {
             pi.Notes,
             pi.CreatedAt,
             pi.UpdatedAt
-          FROM dbo.EMA_SoftwarePolicyItem pi
+          FROM EMA_SoftwarePolicyItem pi
           WHERE pi.PolicyID = p.PolicyID
           ORDER BY COALESCE(pi.UpdatedAt, pi.CreatedAt) DESC, pi.PolicyItemID DESC
         ) primaryItem
@@ -194,10 +194,10 @@ function registerFastSoftwarePublishersRoute(app) {
         ;WITH publisher_rows AS (
           SELECT DISTINCT TOP (500)
             NULLIF(LTRIM(RTRIM(c.Publisher)), '') AS Publisher
-          FROM [TCO2].[dbo].[TS_SWUNI_LIST] d WITH (NOLOCK)
-          INNER JOIN [TCO2].[dbo].[TS_SW_CATEGORY] e WITH (NOLOCK)
+          FROM TS_SWUNI_LIST d WITH (NOLOCK)
+          INNER JOIN TS_SW_CATEGORY e WITH (NOLOCK)
             ON e.CategoryID = d.SWUNI_Catg
-          INNER JOIN [TCO2].[dbo].[TSSI_SWUNI_ATTR] c WITH (NOLOCK)
+          INNER JOIN TSSI_SWUNI_ATTR c WITH (NOLOCK)
             ON c.SWUNI_Idn = d.SWUNI_Idn
           WHERE (@categoryId <= 0 OR e.CategoryID = @categoryId)
             AND (@categoryName = '' OR e.CategoryName = @categoryName)
@@ -256,8 +256,8 @@ function registerFastSoftwareInventoryRoute(app) {
           CAST(NULL AS NVARCHAR(255)) AS Version,
           CAST(0 AS INT) AS InstalledCount,
           CAST(0 AS INT) AS InstalledDeviceCount
-        FROM [TCO2].[dbo].[TS_SWUNI_LIST] d WITH (NOLOCK)
-        INNER JOIN [TCO2].[dbo].[TS_SW_CATEGORY] e WITH (NOLOCK)
+        FROM TS_SWUNI_LIST d WITH (NOLOCK)
+        INNER JOIN TS_SW_CATEGORY e WITH (NOLOCK)
           ON e.CategoryID = d.SWUNI_Catg
         WHERE (@categoryId <= 0 OR e.CategoryID = @categoryId)
           AND (@categoryName = '' OR e.CategoryName = @categoryName)
@@ -266,7 +266,7 @@ function registerFastSoftwareInventoryRoute(app) {
             @publisher = ''
             OR EXISTS (
               SELECT 1
-              FROM [TCO2].[dbo].[TSSI_SWUNI_ATTR] c WITH (NOLOCK)
+              FROM TSSI_SWUNI_ATTR c WITH (NOLOCK)
               WHERE c.SWUNI_Idn = d.SWUNI_Idn
                 AND c.Publisher = @publisher
             )

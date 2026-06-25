@@ -40,9 +40,9 @@ function bypassCache(req) {
 
 async function ensureSoftwareComplianceColumns(pool) {
   await pool.request().query(`
-    IF OBJECT_ID('dbo.EMA_SoftwarePolicy', 'U') IS NULL
+    IF OBJECT_ID('EMA_SoftwarePolicy', 'U') IS NULL
     BEGIN
-      CREATE TABLE dbo.EMA_SoftwarePolicy (
+      CREATE TABLE EMA_SoftwarePolicy (
         PolicyID INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
         PolicyName NVARCHAR(200) NOT NULL,
         Description NVARCHAR(1000) NULL,
@@ -55,9 +55,9 @@ async function ensureSoftwareComplianceColumns(pool) {
       );
     END;
 
-    IF OBJECT_ID('dbo.EMA_SoftwarePolicyItem', 'U') IS NULL
+    IF OBJECT_ID('EMA_SoftwarePolicyItem', 'U') IS NULL
     BEGIN
-      CREATE TABLE dbo.EMA_SoftwarePolicyItem (
+      CREATE TABLE EMA_SoftwarePolicyItem (
         PolicyItemID INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
         PolicyID INT NOT NULL,
         SWUNI_Idn INT NULL,
@@ -78,18 +78,18 @@ async function ensureSoftwareComplianceColumns(pool) {
       );
     END;
 
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'IsActive') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD IsActive BIT NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'SWUNI_Idn') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD SWUNI_Idn INT NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'CategoryID') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD CategoryID INT NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'CategoryName') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD CategoryName NVARCHAR(255) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'Publisher') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD Publisher NVARCHAR(255) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'ComplianceStatus') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD ComplianceStatus NVARCHAR(20) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseCount') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseCount INT NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseEndDate') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseEndDate DATE NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicy', 'IsActive') IS NULL ALTER TABLE EMA_SoftwarePolicy ADD IsActive BIT NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'SWUNI_Idn') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD SWUNI_Idn INT NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'CategoryID') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD CategoryID INT NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'CategoryName') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD CategoryName NVARCHAR(255) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'Publisher') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD Publisher NVARCHAR(255) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'ComplianceStatus') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD ComplianceStatus NVARCHAR(20) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'LicenseCount') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD LicenseCount INT NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'LicenseEndDate') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD LicenseEndDate DATE NULL;
 
-    UPDATE dbo.EMA_SoftwarePolicy SET IsActive = 1 WHERE IsActive IS NULL;
+    UPDATE EMA_SoftwarePolicy SET IsActive = 1 WHERE IsActive IS NULL;
 
-    UPDATE dbo.EMA_SoftwarePolicyItem
+    UPDATE EMA_SoftwarePolicyItem
     SET ComplianceStatus = CASE WHEN LOWER(ISNULL(ComplianceStatus, '')) IN ('illegal', 'restricted', 'blocked', 'unauthorized', 'unapproved') THEN 'Illegal' ELSE 'Legal' END
     WHERE ComplianceStatus IS NULL
        OR LOWER(ISNULL(ComplianceStatus, '')) IN ('illegal', 'restricted', 'blocked', 'unauthorized', 'unapproved', 'legal', 'allowed', 'approved');
@@ -119,8 +119,8 @@ function registerSoftwareComplianceDashboardRoutes(app, { authenticateToken, dbC
             pi.PolicyItemID,
             CASE WHEN LOWER(ISNULL(pi.ComplianceStatus, 'Legal')) = 'illegal' THEN 'Illegal' ELSE 'Legal' END AS ComplianceStatus,
             ISNULL(pi.LicenseCount, 0) AS LicenseCount
-          FROM dbo.EMA_SoftwarePolicyItem pi WITH (NOLOCK)
-          INNER JOIN dbo.EMA_SoftwarePolicy p WITH (NOLOCK)
+          FROM EMA_SoftwarePolicyItem pi WITH (NOLOCK)
+          INNER JOIN EMA_SoftwarePolicy p WITH (NOLOCK)
             ON p.PolicyID = pi.PolicyID
           WHERE ISNULL(p.IsActive, 1) = 1
             AND NULLIF(LTRIM(RTRIM(pi.SoftwareName)), '') IS NOT NULL
@@ -136,7 +136,7 @@ function registerSoftwareComplianceDashboardRoutes(app, { authenticateToken, dbC
         inventory_unique AS (
           SELECT
             CAST(ISNULL(COUNT_BIG(DISTINCT mh.SW_Idn), 0) AS INT) AS UniqueSoftware
-          FROM [TCO2].[dbo].[TSSM_MONITOR_HISTORY] mh WITH (NOLOCK)
+          FROM TSSM_MONITOR_HISTORY mh WITH (NOLOCK)
           WHERE mh.SW_Idn IS NOT NULL
         )
         SELECT
@@ -219,8 +219,8 @@ function registerSoftwareComplianceDashboardRoutes(app, { authenticateToken, dbC
             CASE WHEN LOWER(ISNULL(pi.ComplianceStatus, 'Legal')) = 'illegal' THEN 'Illegal' ELSE 'Legal' END AS ComplianceStatus,
             ISNULL(pi.LicenseCount, 0) AS TotalLicense,
             pi.LicenseEndDate
-          FROM dbo.EMA_SoftwarePolicyItem pi WITH (NOLOCK)
-          INNER JOIN dbo.EMA_SoftwarePolicy p WITH (NOLOCK)
+          FROM EMA_SoftwarePolicyItem pi WITH (NOLOCK)
+          INNER JOIN EMA_SoftwarePolicy p WITH (NOLOCK)
             ON p.PolicyID = pi.PolicyID
           WHERE ISNULL(p.IsActive, 1) = 1
             AND NULLIF(LTRIM(RTRIM(pi.SoftwareName)), '') IS NOT NULL
@@ -235,7 +235,7 @@ function registerSoftwareComplianceDashboardRoutes(app, { authenticateToken, dbC
             pi.PolicyItemID,
             si.SW_Idn
           FROM selected_policy_items pi
-          LEFT JOIN [TCO2].[dbo].[TS_SW_INFO] si WITH (NOLOCK)
+          LEFT JOIN TS_SW_INFO si WITH (NOLOCK)
             ON (pi.SWUNI_Idn IS NOT NULL AND pi.SWUNI_Idn = si.SW_Pkg_Idn)
             OR LOWER(LTRIM(RTRIM(ISNULL(si.SW_ProductName, '')))) = pi.SoftwareKey
             OR LOWER(LTRIM(RTRIM(ISNULL(si.SW_FileName, '')))) = pi.SoftwareKey
@@ -248,7 +248,7 @@ function registerSoftwareComplianceDashboardRoutes(app, { authenticateToken, dbC
             COUNT_BIG(DISTINCT CONCAT(CONVERT(NVARCHAR(50), mh.Object_Root_Idn), ':', CONVERT(NVARCHAR(50), sm.SW_Idn))) AS TotalInstall,
             COUNT_BIG(DISTINCT mh.Object_Root_Idn) AS InstalledPC
           FROM policy_software_match sm
-          LEFT JOIN [TCO2].[dbo].[TSSM_MONITOR_HISTORY] mh WITH (NOLOCK)
+          LEFT JOIN TSSM_MONITOR_HISTORY mh WITH (NOLOCK)
             ON mh.SW_Idn = sm.SW_Idn
           WHERE sm.SW_Idn IS NOT NULL
           GROUP BY sm.PolicyItemID
@@ -291,8 +291,8 @@ function registerSoftwareComplianceDashboardRoutes(app, { authenticateToken, dbC
             COALESCE(NULLIF(LTRIM(RTRIM(CONVERT(NVARCHAR(255), si.SW_Category))), ''), 'Unclassified') AS CategoryName,
             COUNT_BIG(DISTINCT CONCAT(CONVERT(NVARCHAR(50), mh.Object_Root_Idn), ':', CONVERT(NVARCHAR(50), si.SW_Idn))) AS TotalInstall,
             COUNT_BIG(DISTINCT mh.Object_Root_Idn) AS InstalledPC
-          FROM [TCO2].[dbo].[TSSM_MONITOR_HISTORY] mh WITH (NOLOCK)
-          INNER JOIN [TCO2].[dbo].[TS_SW_INFO] si WITH (NOLOCK)
+          FROM TSSM_MONITOR_HISTORY mh WITH (NOLOCK)
+          INNER JOIN TS_SW_INFO si WITH (NOLOCK)
             ON si.SW_Idn = mh.SW_Idn
           WHERE mh.SW_Idn IS NOT NULL
           GROUP BY
@@ -327,7 +327,7 @@ function registerSoftwareComplianceDashboardRoutes(app, { authenticateToken, dbC
               FROM all_policy_items pi
               WHERE (pi.SWUNI_Idn IS NOT NULL AND EXISTS (
                       SELECT 1
-                      FROM [TCO2].[dbo].[TS_SW_INFO] sx WITH (NOLOCK)
+                      FROM TS_SW_INFO sx WITH (NOLOCK)
                       WHERE sx.SW_Idn = inv.SW_Idn
                         AND sx.SW_Pkg_Idn = pi.SWUNI_Idn
                     ))

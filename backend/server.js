@@ -678,7 +678,7 @@ async function lookupConsoleIdByUserKey(dbContext, userKey) {
             .input("LoginKey", sql.VarChar(255), login)
             .query(`
                 SELECT TOP 1 Console_Idn
-                FROM dbo.TS_CONSOLE WITH (NOLOCK)
+                FROM TS_CONSOLE WITH (NOLOCK)
                 WHERE ISNULL(Console_Idn, 0) > 0
                   AND ISNULL(IsDeleted, 0) = 0
                   AND (
@@ -702,12 +702,12 @@ async function lookupConsoleIdByEmaUser(dbContext, emaUserID) {
         const result = await new sql.Request(dbContext)
             .input("UserID", sql.Int, userIdn)
             .query(`
-                IF OBJECT_ID(N'dbo.EMA_Users', N'U') IS NOT NULL
+                IF OBJECT_ID(N'EMA_Users', N'U') IS NOT NULL
                 BEGIN
                     SELECT TOP 1
                         Username,
                         Email
-                    FROM dbo.EMA_Users WITH (NOLOCK)
+                    FROM EMA_Users WITH (NOLOCK)
                     WHERE UserID = @UserID;
                 END
             `);
@@ -991,7 +991,7 @@ async function getAccessControlPolicies(pool, forceRefresh = false) {
                 SortOrder,
                 CreatedAt,
                 UpdatedAt
-            FROM dbo.EMA_AccessControls WITH (NOLOCK)
+            FROM EMA_AccessControls WITH (NOLOCK)
             ORDER BY ISNULL(SortOrder, 9999), PolicyName;
         `);
 
@@ -1185,8 +1185,8 @@ async function getEmaUserAccessContext(pool, emaUserID) {
                 r.RoleKey,
                 ISNULL(r.IsSystemRole, 0) AS IsSystemRole,
                 ISNULL(ur.IsPrimary, 0) AS IsPrimary
-            FROM dbo.EMA_UserRoles ur WITH (NOLOCK)
-            INNER JOIN dbo.EMA_Roles r WITH (NOLOCK)
+            FROM EMA_UserRoles ur WITH (NOLOCK)
+            INNER JOIN EMA_Roles r WITH (NOLOCK)
                 ON r.RoleID = ur.RoleID
             WHERE ur.UserID = @UserID
               AND ISNULL(r.Status, 'Active') = 'Active'
@@ -1215,7 +1215,7 @@ async function getEmaUserAccessContext(pool, emaUserID) {
                 m.ModuleKey,
                 m.ModuleName,
                 m.RoutePath
-            FROM dbo.EMA_Modules m WITH (NOLOCK)
+            FROM EMA_Modules m WITH (NOLOCK)
             WHERE ISNULL(m.IsActive, 1) = 1
             ORDER BY m.ModuleName ASC;
         `)
@@ -1227,15 +1227,15 @@ async function getEmaUserAccessContext(pool, emaUserID) {
                     m.ModuleKey,
                     m.ModuleName,
                     m.RoutePath
-                FROM dbo.EMA_UserRoles ur WITH (NOLOCK)
-                INNER JOIN dbo.EMA_Roles r WITH (NOLOCK)
+                FROM EMA_UserRoles ur WITH (NOLOCK)
+                INNER JOIN EMA_Roles r WITH (NOLOCK)
                     ON r.RoleID = ur.RoleID
                    AND ISNULL(r.Status, 'Active') = 'Active'
-                INNER JOIN dbo.EMA_RoleModulePermissions p WITH (NOLOCK)
+                INNER JOIN EMA_RoleModulePermissions p WITH (NOLOCK)
                     ON p.RoleID = r.RoleID
                    AND ISNULL(p.CanView, 0) = 1
                    AND ISNULL(p.IsEnabled, 1) = 1
-                INNER JOIN dbo.EMA_Modules m WITH (NOLOCK)
+                INNER JOIN EMA_Modules m WITH (NOLOCK)
                     ON m.ModuleID = p.ModuleID
                    AND ISNULL(m.IsActive, 1) = 1
                 WHERE ur.UserID = @UserID
@@ -1290,7 +1290,7 @@ async function getEmaLoginUser(pool, loginName) {
                 AccessStartDate,
                 AccessEndDate,
                 LoginFailCount
-            FROM dbo.EMA_Users WITH (NOLOCK)
+            FROM EMA_Users WITH (NOLOCK)
             WHERE Username = @LoginName
                OR Email = @LoginName
             ORDER BY UserID DESC;
@@ -1359,7 +1359,7 @@ async function updateEmaLoginSuccess(pool, userID) {
         await pool.request()
             .input("UserID", sql.Int, userID)
             .query(`
-                UPDATE dbo.EMA_Users
+                UPDATE EMA_Users
                 SET LastLoginAt = GETDATE(),
                     LoginFailCount = 0,
                     UpdatedAt = GETDATE()
@@ -1375,7 +1375,7 @@ async function updateEmaLoginFailure(pool, userID) {
         await pool.request()
             .input("UserID", sql.Int, userID)
             .query(`
-                UPDATE dbo.EMA_Users
+                UPDATE EMA_Users
                 SET LoginFailCount = ISNULL(LoginFailCount, 0) + 1,
                     UpdatedAt = GETDATE()
                 WHERE UserID = @UserID;
@@ -1428,20 +1428,20 @@ async function ensureEmaUsers2faColumns(pool) {
     if (!hasEmaUsers) return false;
 
     await pool.request().query(`
-        IF COL_LENGTH('dbo.EMA_Users', 'RequireMFA') IS NULL
-            ALTER TABLE dbo.EMA_Users ADD RequireMFA BIT NOT NULL CONSTRAINT DF_EMA_Users_RequireMFA DEFAULT 0;
+        IF COL_LENGTH('EMA_Users', 'RequireMFA') IS NULL
+            ALTER TABLE EMA_Users ADD RequireMFA BIT NOT NULL CONSTRAINT DF_EMA_Users_RequireMFA DEFAULT 0;
 
-        IF COL_LENGTH('dbo.EMA_Users', 'TwoFactorEnabled') IS NULL
-            ALTER TABLE dbo.EMA_Users ADD TwoFactorEnabled BIT NOT NULL CONSTRAINT DF_EMA_Users_TwoFactorEnabled DEFAULT 0;
+        IF COL_LENGTH('EMA_Users', 'TwoFactorEnabled') IS NULL
+            ALTER TABLE EMA_Users ADD TwoFactorEnabled BIT NOT NULL CONSTRAINT DF_EMA_Users_TwoFactorEnabled DEFAULT 0;
 
-        IF COL_LENGTH('dbo.EMA_Users', 'TwoFactorSecret') IS NULL
-            ALTER TABLE dbo.EMA_Users ADD TwoFactorSecret NVARCHAR(255) NULL;
+        IF COL_LENGTH('EMA_Users', 'TwoFactorSecret') IS NULL
+            ALTER TABLE EMA_Users ADD TwoFactorSecret NVARCHAR(255) NULL;
 
-        IF COL_LENGTH('dbo.EMA_Users', 'TwoFactorVerifiedAt') IS NULL
-            ALTER TABLE dbo.EMA_Users ADD TwoFactorVerifiedAt DATETIME NULL;
+        IF COL_LENGTH('EMA_Users', 'TwoFactorVerifiedAt') IS NULL
+            ALTER TABLE EMA_Users ADD TwoFactorVerifiedAt DATETIME NULL;
 
-        IF COL_LENGTH('dbo.EMA_Users', 'TwoFactorResetAt') IS NULL
-            ALTER TABLE dbo.EMA_Users ADD TwoFactorResetAt DATETIME NULL;
+        IF COL_LENGTH('EMA_Users', 'TwoFactorResetAt') IS NULL
+            ALTER TABLE EMA_Users ADD TwoFactorResetAt DATETIME NULL;
     `);
 
     return true;
@@ -1731,7 +1731,7 @@ app.post("/api/auth/2fa/setup", async (req, res) => {
                     RequireMFA,
                     TwoFactorEnabled,
                     TwoFactorSecret
-                FROM dbo.EMA_Users WITH (NOLOCK)
+                FROM EMA_Users WITH (NOLOCK)
                 WHERE UserID = @UserID;
             `);
 
@@ -1817,7 +1817,7 @@ app.post("/api/auth/2fa/verify", async (req, res) => {
                     AccessStartDate,
                     AccessEndDate,
                     LoginFailCount
-                FROM dbo.EMA_Users WITH (NOLOCK)
+                FROM EMA_Users WITH (NOLOCK)
                 WHERE UserID = @UserID;
             `);
 
@@ -1845,7 +1845,7 @@ app.post("/api/auth/2fa/verify", async (req, res) => {
                 .input("UserID", sql.Int, userID)
                 .input("TwoFactorSecret", sql.NVarChar, secretToVerify)
                 .query(`
-                    UPDATE dbo.EMA_Users
+                    UPDATE EMA_Users
                     SET RequireMFA = 1,
                         TwoFactorEnabled = 1,
                         TwoFactorSecret = @TwoFactorSecret,
@@ -1857,7 +1857,7 @@ app.post("/api/auth/2fa/verify", async (req, res) => {
             await pool.request()
                 .input("UserID", sql.Int, userID)
                 .query(`
-                    UPDATE dbo.EMA_Users
+                    UPDATE EMA_Users
                     SET TwoFactorEnabled = 1,
                         TwoFactorVerifiedAt = GETDATE(),
                         UpdatedAt = GETDATE()
@@ -1888,7 +1888,7 @@ app.post("/api/auth/2fa/verify", async (req, res) => {
                     AccessStartDate,
                     AccessEndDate,
                     LoginFailCount
-                FROM dbo.EMA_Users WITH (NOLOCK)
+                FROM EMA_Users WITH (NOLOCK)
                 WHERE UserID = @UserID;
             `);
 
@@ -2071,7 +2071,7 @@ app.get("/api/auth/me", authenticateToken, async (req, res) => {
                         AccessStartDate,
                         AccessEndDate,
                         LoginFailCount
-                    FROM dbo.EMA_Users WITH (NOLOCK)
+                    FROM EMA_Users WITH (NOLOCK)
                     WHERE UserID = @UserID;
                 `);
 
@@ -2596,7 +2596,7 @@ async function getDepartmentTableColumns(pool) {
             ON c.user_type_id = t.user_type_id
         LEFT JOIN sys.default_constraints dc
             ON c.default_object_id = dc.object_id
-        WHERE c.object_id = OBJECT_ID(N'dbo.TS_OBJECT_RELATION')
+        WHERE c.object_id = OBJECT_ID(N'TS_OBJECT_RELATION')
         ORDER BY c.column_id;
     `);
 
@@ -4070,7 +4070,7 @@ app.delete('/api/incidents/:id', authenticateToken, async (req, res) => {
         const attachmentResult = await pool.request()
             .input('id', sql.NVarChar, id)
             .query(`
-                IF OBJECT_ID('dbo.EMA_IncidentAttachments', 'U') IS NOT NULL
+                IF OBJECT_ID('EMA_IncidentAttachments', 'U') IS NOT NULL
                 BEGIN
                     SELECT FilePath
                     FROM EMA_IncidentAttachments
@@ -4086,7 +4086,7 @@ app.delete('/api/incidents/:id', authenticateToken, async (req, res) => {
         await pool.request()
             .input('id', sql.NVarChar, id)
             .query(`
-                IF OBJECT_ID('dbo.EMA_IncidentAttachments', 'U') IS NOT NULL
+                IF OBJECT_ID('EMA_IncidentAttachments', 'U') IS NOT NULL
                 BEGIN
                     DELETE FROM EMA_IncidentAttachments
                     WHERE IncidentID = @id;
@@ -4724,9 +4724,9 @@ async function ensureEmaEngineerAvailabilityTable(pool) {
     await assertEmaUsersTable(pool);
 
     await pool.request().query(`
-        IF OBJECT_ID('dbo.EMA_EngineerAvailability', 'U') IS NULL
+        IF OBJECT_ID('EMA_EngineerAvailability', 'U') IS NULL
         BEGIN
-            CREATE TABLE dbo.EMA_EngineerAvailability (
+            CREATE TABLE EMA_EngineerAvailability (
                 Id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
                 UserID INT NOT NULL,
                 StartDate DATE NOT NULL,
@@ -4741,7 +4741,7 @@ async function ensureEmaEngineerAvailabilityTable(pool) {
             );
 
             CREATE INDEX IX_EMA_EngineerAvailability_UserDate
-            ON dbo.EMA_EngineerAvailability (UserID, StartDate, EndDate, IsActive);
+            ON EMA_EngineerAvailability (UserID, StartDate, EndDate, IsActive);
         END
     `);
 }
@@ -5334,9 +5334,9 @@ async function upsertSettingValue(pool, key, value, updatedBy) {
 
 async function ensureEmaAuditLogsTable(pool) {
     await pool.request().query(`
-        IF OBJECT_ID('dbo.EMA_AuditLogs', 'U') IS NULL
+        IF OBJECT_ID('EMA_AuditLogs', 'U') IS NULL
         BEGIN
-            CREATE TABLE dbo.EMA_AuditLogs (
+            CREATE TABLE EMA_AuditLogs (
                 LogID INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
                 UserName NVARCHAR(200) NULL,
                 Module NVARCHAR(200) NULL,
@@ -5351,45 +5351,45 @@ async function ensureEmaAuditLogsTable(pool) {
             );
         END;
 
-        IF COL_LENGTH('dbo.EMA_AuditLogs', 'UserName') IS NULL
-            ALTER TABLE dbo.EMA_AuditLogs ADD UserName NVARCHAR(200) NULL;
+        IF COL_LENGTH('EMA_AuditLogs', 'UserName') IS NULL
+            ALTER TABLE EMA_AuditLogs ADD UserName NVARCHAR(200) NULL;
 
-        IF COL_LENGTH('dbo.EMA_AuditLogs', 'Module') IS NULL
-            ALTER TABLE dbo.EMA_AuditLogs ADD Module NVARCHAR(200) NULL;
+        IF COL_LENGTH('EMA_AuditLogs', 'Module') IS NULL
+            ALTER TABLE EMA_AuditLogs ADD Module NVARCHAR(200) NULL;
 
-        IF COL_LENGTH('dbo.EMA_AuditLogs', 'Action') IS NULL
-            ALTER TABLE dbo.EMA_AuditLogs ADD Action NVARCHAR(300) NULL;
+        IF COL_LENGTH('EMA_AuditLogs', 'Action') IS NULL
+            ALTER TABLE EMA_AuditLogs ADD Action NVARCHAR(300) NULL;
 
-        IF COL_LENGTH('dbo.EMA_AuditLogs', 'Severity') IS NULL
-            ALTER TABLE dbo.EMA_AuditLogs ADD Severity NVARCHAR(50) NULL;
+        IF COL_LENGTH('EMA_AuditLogs', 'Severity') IS NULL
+            ALTER TABLE EMA_AuditLogs ADD Severity NVARCHAR(50) NULL;
 
-        IF COL_LENGTH('dbo.EMA_AuditLogs', 'Details') IS NULL
-            ALTER TABLE dbo.EMA_AuditLogs ADD Details NVARCHAR(MAX) NULL;
+        IF COL_LENGTH('EMA_AuditLogs', 'Details') IS NULL
+            ALTER TABLE EMA_AuditLogs ADD Details NVARCHAR(MAX) NULL;
 
-        IF COL_LENGTH('dbo.EMA_AuditLogs', 'EntityType') IS NULL
-            ALTER TABLE dbo.EMA_AuditLogs ADD EntityType NVARCHAR(150) NULL;
+        IF COL_LENGTH('EMA_AuditLogs', 'EntityType') IS NULL
+            ALTER TABLE EMA_AuditLogs ADD EntityType NVARCHAR(150) NULL;
 
-        IF COL_LENGTH('dbo.EMA_AuditLogs', 'EntityID') IS NULL
-            ALTER TABLE dbo.EMA_AuditLogs ADD EntityID NVARCHAR(150) NULL;
+        IF COL_LENGTH('EMA_AuditLogs', 'EntityID') IS NULL
+            ALTER TABLE EMA_AuditLogs ADD EntityID NVARCHAR(150) NULL;
 
-        IF COL_LENGTH('dbo.EMA_AuditLogs', 'IpAddress') IS NULL
-            ALTER TABLE dbo.EMA_AuditLogs ADD IpAddress NVARCHAR(100) NULL;
+        IF COL_LENGTH('EMA_AuditLogs', 'IpAddress') IS NULL
+            ALTER TABLE EMA_AuditLogs ADD IpAddress NVARCHAR(100) NULL;
 
-        IF COL_LENGTH('dbo.EMA_AuditLogs', 'UserAgent') IS NULL
-            ALTER TABLE dbo.EMA_AuditLogs ADD UserAgent NVARCHAR(600) NULL;
+        IF COL_LENGTH('EMA_AuditLogs', 'UserAgent') IS NULL
+            ALTER TABLE EMA_AuditLogs ADD UserAgent NVARCHAR(600) NULL;
 
-        IF COL_LENGTH('dbo.EMA_AuditLogs', 'CreatedAt') IS NULL
-            ALTER TABLE dbo.EMA_AuditLogs ADD CreatedAt DATETIME NULL;
+        IF COL_LENGTH('EMA_AuditLogs', 'CreatedAt') IS NULL
+            ALTER TABLE EMA_AuditLogs ADD CreatedAt DATETIME NULL;
 
-        UPDATE dbo.EMA_AuditLogs
+        UPDATE EMA_AuditLogs
         SET Severity = 'Info'
         WHERE Severity IS NULL OR LTRIM(RTRIM(Severity)) = '';
 
-        UPDATE dbo.EMA_AuditLogs
+        UPDATE EMA_AuditLogs
         SET CreatedAt = GETDATE()
         WHERE CreatedAt IS NULL;
 
-        UPDATE dbo.EMA_AuditLogs
+        UPDATE EMA_AuditLogs
         SET Action = 'Audit event'
         WHERE Action IS NULL OR LTRIM(RTRIM(Action)) = '';
     `);
@@ -5399,20 +5399,20 @@ async function ensureEmaAuditLogsTable(pool) {
             SELECT 1
             FROM sys.indexes
             WHERE name = 'IX_EMA_AuditLogs_CreatedAt'
-              AND object_id = OBJECT_ID('dbo.EMA_AuditLogs')
+              AND object_id = OBJECT_ID('EMA_AuditLogs')
         )
         BEGIN
-            CREATE INDEX IX_EMA_AuditLogs_CreatedAt ON dbo.EMA_AuditLogs(CreatedAt DESC);
+            CREATE INDEX IX_EMA_AuditLogs_CreatedAt ON EMA_AuditLogs(CreatedAt DESC);
         END;
 
         IF NOT EXISTS (
             SELECT 1
             FROM sys.indexes
             WHERE name = 'IX_EMA_AuditLogs_Module_Severity'
-              AND object_id = OBJECT_ID('dbo.EMA_AuditLogs')
+              AND object_id = OBJECT_ID('EMA_AuditLogs')
         )
         BEGIN
-            CREATE INDEX IX_EMA_AuditLogs_Module_Severity ON dbo.EMA_AuditLogs(Module, Severity, CreatedAt DESC);
+            CREATE INDEX IX_EMA_AuditLogs_Module_Severity ON EMA_AuditLogs(Module, Severity, CreatedAt DESC);
         END;
     `);
 }
@@ -5468,7 +5468,7 @@ async function logEmaAudit(pool, req, action, moduleName, severity = 'Info', det
             .input('IpAddress', sql.NVarChar(100), ipAddress)
             .input('UserAgent', sql.NVarChar(600), userAgent)
             .query(`
-                INSERT INTO dbo.EMA_AuditLogs
+                INSERT INTO EMA_AuditLogs
                 (
                     UserName,
                     Module,
@@ -5852,11 +5852,11 @@ async function ensureEmaUsersPasswordColumns(pool) {
     if (!hasEmaUsers) return false;
 
     await pool.request().query(`
-        IF COL_LENGTH('dbo.EMA_Users', 'PasswordHash') IS NULL
-            ALTER TABLE dbo.EMA_Users ADD PasswordHash NVARCHAR(255) NULL;
+        IF COL_LENGTH('EMA_Users', 'PasswordHash') IS NULL
+            ALTER TABLE EMA_Users ADD PasswordHash NVARCHAR(255) NULL;
 
-        IF COL_LENGTH('dbo.EMA_Users', 'PasswordChangedAt') IS NULL
-            ALTER TABLE dbo.EMA_Users ADD PasswordChangedAt DATETIME NULL;
+        IF COL_LENGTH('EMA_Users', 'PasswordChangedAt') IS NULL
+            ALTER TABLE EMA_Users ADD PasswordChangedAt DATETIME NULL;
     `);
 
     return true;
@@ -6512,13 +6512,13 @@ app.delete("/api/settings/users/:id", authenticateToken, async (req, res) => {
         const result = await pool.request()
             .input("UserID", sql.Int, userID)
             .query(`
-                IF OBJECT_ID('dbo.EMA_UserRoles', 'U') IS NOT NULL
+                IF OBJECT_ID('EMA_UserRoles', 'U') IS NOT NULL
                 BEGIN
                     DELETE FROM EMA_UserRoles
                     WHERE UserID = @UserID;
                 END;
 
-                IF OBJECT_ID('dbo.EMA_UserAccessPolicies', 'U') IS NOT NULL
+                IF OBJECT_ID('EMA_UserAccessPolicies', 'U') IS NOT NULL
                 BEGIN
                     DELETE FROM EMA_UserAccessPolicies
                     WHERE UserID = @UserID;
@@ -7945,13 +7945,13 @@ function getTwilioErrorMessage(err) {
 
 async function normalizeNotificationRules(pool) {
     await pool.request().query(`
-        DELETE FROM dbo.EMA_NotificationRules
+        DELETE FROM EMA_NotificationRules
         WHERE RuleKey = 'CRM_CREATED';
 
-        IF EXISTS (SELECT 1 FROM dbo.EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_3M')
+        IF EXISTS (SELECT 1 FROM EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_3M')
         BEGIN
-            IF NOT EXISTS (SELECT 1 FROM dbo.EMA_NotificationRules WHERE RuleKey = 'SYSTEM_LICENSE_EXPIRY_3M')
-                UPDATE dbo.EMA_NotificationRules
+            IF NOT EXISTS (SELECT 1 FROM EMA_NotificationRules WHERE RuleKey = 'SYSTEM_LICENSE_EXPIRY_3M')
+                UPDATE EMA_NotificationRules
                 SET RuleKey = 'SYSTEM_LICENSE_EXPIRY_3M',
                     RuleName = 'System License Expiry 3m',
                     Description = 'System license expiring in 3 months',
@@ -7962,18 +7962,18 @@ async function normalizeNotificationRules(pool) {
                 UPDATE target
                 SET WhatsAppContentSID = COALESCE(NULLIF(target.WhatsAppContentSID, ''), NULLIF(source.WhatsAppContentSID, '')),
                     UpdatedAt = GETDATE()
-                FROM dbo.EMA_NotificationRules target
-                CROSS JOIN dbo.EMA_NotificationRules source
+                FROM EMA_NotificationRules target
+                CROSS JOIN EMA_NotificationRules source
                 WHERE target.RuleKey = 'SYSTEM_LICENSE_EXPIRY_3M'
                   AND source.RuleKey = 'LEASE_EXPIRY_3M';
-                DELETE FROM dbo.EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_3M';
+                DELETE FROM EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_3M';
             END
         END;
 
-        IF EXISTS (SELECT 1 FROM dbo.EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_1M')
+        IF EXISTS (SELECT 1 FROM EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_1M')
         BEGIN
-            IF NOT EXISTS (SELECT 1 FROM dbo.EMA_NotificationRules WHERE RuleKey = 'SYSTEM_LICENSE_EXPIRY_1M')
-                UPDATE dbo.EMA_NotificationRules
+            IF NOT EXISTS (SELECT 1 FROM EMA_NotificationRules WHERE RuleKey = 'SYSTEM_LICENSE_EXPIRY_1M')
+                UPDATE EMA_NotificationRules
                 SET RuleKey = 'SYSTEM_LICENSE_EXPIRY_1M',
                     RuleName = 'System License Expiry 1m',
                     Description = 'System license expiring in 1 month',
@@ -7984,18 +7984,18 @@ async function normalizeNotificationRules(pool) {
                 UPDATE target
                 SET WhatsAppContentSID = COALESCE(NULLIF(target.WhatsAppContentSID, ''), NULLIF(source.WhatsAppContentSID, '')),
                     UpdatedAt = GETDATE()
-                FROM dbo.EMA_NotificationRules target
-                CROSS JOIN dbo.EMA_NotificationRules source
+                FROM EMA_NotificationRules target
+                CROSS JOIN EMA_NotificationRules source
                 WHERE target.RuleKey = 'SYSTEM_LICENSE_EXPIRY_1M'
                   AND source.RuleKey = 'LEASE_EXPIRY_1M';
-                DELETE FROM dbo.EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_1M';
+                DELETE FROM EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_1M';
             END
         END;
 
-        IF EXISTS (SELECT 1 FROM dbo.EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_1W')
+        IF EXISTS (SELECT 1 FROM EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_1W')
         BEGIN
-            IF NOT EXISTS (SELECT 1 FROM dbo.EMA_NotificationRules WHERE RuleKey = 'SYSTEM_LICENSE_EXPIRY_1W')
-                UPDATE dbo.EMA_NotificationRules
+            IF NOT EXISTS (SELECT 1 FROM EMA_NotificationRules WHERE RuleKey = 'SYSTEM_LICENSE_EXPIRY_1W')
+                UPDATE EMA_NotificationRules
                 SET RuleKey = 'SYSTEM_LICENSE_EXPIRY_1W',
                     RuleName = 'System License Expiry 1w',
                     Description = 'System license expiring in 1 week',
@@ -8006,36 +8006,36 @@ async function normalizeNotificationRules(pool) {
                 UPDATE target
                 SET WhatsAppContentSID = COALESCE(NULLIF(target.WhatsAppContentSID, ''), NULLIF(source.WhatsAppContentSID, '')),
                     UpdatedAt = GETDATE()
-                FROM dbo.EMA_NotificationRules target
-                CROSS JOIN dbo.EMA_NotificationRules source
+                FROM EMA_NotificationRules target
+                CROSS JOIN EMA_NotificationRules source
                 WHERE target.RuleKey = 'SYSTEM_LICENSE_EXPIRY_1W'
                   AND source.RuleKey = 'LEASE_EXPIRY_1W';
-                DELETE FROM dbo.EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_1W';
+                DELETE FROM EMA_NotificationRules WHERE RuleKey = 'LEASE_EXPIRY_1W';
             END
         END;
 
-        UPDATE dbo.EMA_NotificationRules
+        UPDATE EMA_NotificationRules
         SET RuleKey = 'SYSTEM_LICENSE_EXPIRY_3M',
             RuleName = 'System License Expiry 3m',
             Description = 'System license expiring in 3 months',
             UpdatedAt = GETDATE()
         WHERE RuleKey = 'LICENSE_EXPIRY_3M';
 
-        UPDATE dbo.EMA_NotificationRules
+        UPDATE EMA_NotificationRules
         SET RuleKey = 'SYSTEM_LICENSE_EXPIRY_1M',
             RuleName = 'System License Expiry 1m',
             Description = 'System license expiring in 1 month',
             UpdatedAt = GETDATE()
         WHERE RuleKey = 'LICENSE_EXPIRY_1M';
 
-        UPDATE dbo.EMA_NotificationRules
+        UPDATE EMA_NotificationRules
         SET RuleKey = 'SYSTEM_LICENSE_EXPIRY_1W',
             RuleName = 'System License Expiry 1w',
             Description = 'System license expiring in 1 week',
             UpdatedAt = GETDATE()
         WHERE RuleKey = 'LICENSE_EXPIRY_1W';
 
-        UPDATE dbo.EMA_NotificationRules
+        UPDATE EMA_NotificationRules
         SET WhatsAppContentSID = NULL,
             UpdatedAt = GETDATE()
         WHERE WhatsAppContentSID IN (
@@ -8068,7 +8068,7 @@ async function readNotificationRule(pool, ruleKey = "INCIDENT_CREATED") {
                 WhatsAppEnabled,
                 IsEnabled,
                 WhatsAppContentSID
-            FROM dbo.EMA_NotificationRules WITH (NOLOCK)
+            FROM EMA_NotificationRules WITH (NOLOCK)
             WHERE RuleKey = @RuleKey
               AND ISNULL(IsEnabled, 1) = 1;
         `);
@@ -8191,7 +8191,7 @@ async function readNotificationRecipients(pool, ruleKey = "") {
             IsEnabled,
             CreatedAt,
             UpdatedAt
-        FROM dbo.EMA_NotificationRecipients WITH (NOLOCK)
+        FROM EMA_NotificationRecipients WITH (NOLOCK)
         WHERE ISNULL(IsEnabled, 1) = 1
         ORDER BY RecipientName ASC, RecipientID ASC;
     `);
@@ -8328,9 +8328,9 @@ async function triggerIncidentNotification(pool, ruleKey, incident = {}, req = n
 
 async function ensureNotificationSettingsTables(pool) {
     await pool.request().query(`
-        IF OBJECT_ID('dbo.EMA_EmailSettings', 'U') IS NULL
+        IF OBJECT_ID('EMA_EmailSettings', 'U') IS NULL
         BEGIN
-            CREATE TABLE dbo.EMA_EmailSettings (
+            CREATE TABLE EMA_EmailSettings (
                 SettingID INT IDENTITY(1,1) PRIMARY KEY,
                 Provider NVARCHAR(50) NOT NULL DEFAULT 'SMTP',
                 SmtpHost NVARCHAR(255) NULL,
@@ -8346,18 +8346,18 @@ async function ensureNotificationSettingsTables(pool) {
             );
         END;
 
-        IF COL_LENGTH('dbo.EMA_EmailSettings', 'FromEmail') IS NULL
-            ALTER TABLE dbo.EMA_EmailSettings ADD FromEmail NVARCHAR(255) NULL;
-        IF COL_LENGTH('dbo.EMA_EmailSettings', 'FromName') IS NULL
-            ALTER TABLE dbo.EMA_EmailSettings ADD FromName NVARCHAR(255) NULL;
-        IF COL_LENGTH('dbo.EMA_EmailSettings', 'UseTLS') IS NULL
-            ALTER TABLE dbo.EMA_EmailSettings ADD UseTLS BIT NOT NULL CONSTRAINT DF_EMA_EmailSettings_UseTLS DEFAULT 1;
-        IF COL_LENGTH('dbo.EMA_EmailSettings', 'IsEnabled') IS NULL
-            ALTER TABLE dbo.EMA_EmailSettings ADD IsEnabled BIT NOT NULL CONSTRAINT DF_EMA_EmailSettings_IsEnabled DEFAULT 1;
+        IF COL_LENGTH('EMA_EmailSettings', 'FromEmail') IS NULL
+            ALTER TABLE EMA_EmailSettings ADD FromEmail NVARCHAR(255) NULL;
+        IF COL_LENGTH('EMA_EmailSettings', 'FromName') IS NULL
+            ALTER TABLE EMA_EmailSettings ADD FromName NVARCHAR(255) NULL;
+        IF COL_LENGTH('EMA_EmailSettings', 'UseTLS') IS NULL
+            ALTER TABLE EMA_EmailSettings ADD UseTLS BIT NOT NULL CONSTRAINT DF_EMA_EmailSettings_UseTLS DEFAULT 1;
+        IF COL_LENGTH('EMA_EmailSettings', 'IsEnabled') IS NULL
+            ALTER TABLE EMA_EmailSettings ADD IsEnabled BIT NOT NULL CONSTRAINT DF_EMA_EmailSettings_IsEnabled DEFAULT 1;
 
-        IF OBJECT_ID('dbo.EMA_WhatsAppSettings', 'U') IS NULL
+        IF OBJECT_ID('EMA_WhatsAppSettings', 'U') IS NULL
         BEGIN
-            CREATE TABLE dbo.EMA_WhatsAppSettings (
+            CREATE TABLE EMA_WhatsAppSettings (
                 SettingID INT IDENTITY(1,1) PRIMARY KEY,
                 Provider NVARCHAR(50) NOT NULL DEFAULT 'Twilio',
                 AccountSID NVARCHAR(255) NULL,
@@ -8370,14 +8370,14 @@ async function ensureNotificationSettingsTables(pool) {
             );
         END;
 
-        IF COL_LENGTH('dbo.EMA_WhatsAppSettings', 'AccountSID') IS NULL
-            ALTER TABLE dbo.EMA_WhatsAppSettings ADD AccountSID NVARCHAR(255) NULL;
-        IF COL_LENGTH('dbo.EMA_WhatsAppSettings', 'MonthlyLimit') IS NULL
-            ALTER TABLE dbo.EMA_WhatsAppSettings ADD MonthlyLimit INT NOT NULL CONSTRAINT DF_EMA_WhatsAppSettings_MonthlyLimit DEFAULT 200;
+        IF COL_LENGTH('EMA_WhatsAppSettings', 'AccountSID') IS NULL
+            ALTER TABLE EMA_WhatsAppSettings ADD AccountSID NVARCHAR(255) NULL;
+        IF COL_LENGTH('EMA_WhatsAppSettings', 'MonthlyLimit') IS NULL
+            ALTER TABLE EMA_WhatsAppSettings ADD MonthlyLimit INT NOT NULL CONSTRAINT DF_EMA_WhatsAppSettings_MonthlyLimit DEFAULT 200;
 
-        IF OBJECT_ID('dbo.EMA_NotificationRules', 'U') IS NULL
+        IF OBJECT_ID('EMA_NotificationRules', 'U') IS NULL
         BEGIN
-            CREATE TABLE dbo.EMA_NotificationRules (
+            CREATE TABLE EMA_NotificationRules (
                 RuleID INT IDENTITY(1,1) PRIMARY KEY,
                 RuleKey NVARCHAR(100) NOT NULL UNIQUE,
                 RuleName NVARCHAR(150) NULL,
@@ -8391,20 +8391,20 @@ async function ensureNotificationSettingsTables(pool) {
             );
         END;
 
-        IF COL_LENGTH('dbo.EMA_NotificationRules', 'RuleName') IS NULL
-            ALTER TABLE dbo.EMA_NotificationRules ADD RuleName NVARCHAR(150) NULL;
-        IF COL_LENGTH('dbo.EMA_NotificationRules', 'EmailEnabled') IS NULL
-            ALTER TABLE dbo.EMA_NotificationRules ADD EmailEnabled BIT NOT NULL CONSTRAINT DF_EMA_NotificationRules_EmailEnabled DEFAULT 0;
-        IF COL_LENGTH('dbo.EMA_NotificationRules', 'WhatsAppEnabled') IS NULL
-            ALTER TABLE dbo.EMA_NotificationRules ADD WhatsAppEnabled BIT NOT NULL CONSTRAINT DF_EMA_NotificationRules_WhatsAppEnabled DEFAULT 0;
-        IF COL_LENGTH('dbo.EMA_NotificationRules', 'WhatsAppContentSID') IS NULL
-            ALTER TABLE dbo.EMA_NotificationRules ADD WhatsAppContentSID NVARCHAR(80) NULL;
-        IF COL_LENGTH('dbo.EMA_NotificationRules', 'IsEnabled') IS NULL
-            ALTER TABLE dbo.EMA_NotificationRules ADD IsEnabled BIT NOT NULL CONSTRAINT DF_EMA_NotificationRules_IsEnabled DEFAULT 1;
+        IF COL_LENGTH('EMA_NotificationRules', 'RuleName') IS NULL
+            ALTER TABLE EMA_NotificationRules ADD RuleName NVARCHAR(150) NULL;
+        IF COL_LENGTH('EMA_NotificationRules', 'EmailEnabled') IS NULL
+            ALTER TABLE EMA_NotificationRules ADD EmailEnabled BIT NOT NULL CONSTRAINT DF_EMA_NotificationRules_EmailEnabled DEFAULT 0;
+        IF COL_LENGTH('EMA_NotificationRules', 'WhatsAppEnabled') IS NULL
+            ALTER TABLE EMA_NotificationRules ADD WhatsAppEnabled BIT NOT NULL CONSTRAINT DF_EMA_NotificationRules_WhatsAppEnabled DEFAULT 0;
+        IF COL_LENGTH('EMA_NotificationRules', 'WhatsAppContentSID') IS NULL
+            ALTER TABLE EMA_NotificationRules ADD WhatsAppContentSID NVARCHAR(80) NULL;
+        IF COL_LENGTH('EMA_NotificationRules', 'IsEnabled') IS NULL
+            ALTER TABLE EMA_NotificationRules ADD IsEnabled BIT NOT NULL CONSTRAINT DF_EMA_NotificationRules_IsEnabled DEFAULT 1;
 
-        IF OBJECT_ID('dbo.EMA_NotificationStats', 'U') IS NULL
+        IF OBJECT_ID('EMA_NotificationStats', 'U') IS NULL
         BEGIN
-            CREATE TABLE dbo.EMA_NotificationStats (
+            CREATE TABLE EMA_NotificationStats (
                 StatID INT IDENTITY(1,1) PRIMARY KEY,
                 Channel NVARCHAR(50) NOT NULL,
                 PeriodKey NVARCHAR(20) NOT NULL,
@@ -8418,17 +8418,17 @@ async function ensureNotificationSettingsTables(pool) {
             SELECT 1
             FROM sys.indexes
             WHERE name = 'UQ_EMA_NotificationStats_Channel_Period'
-              AND object_id = OBJECT_ID('dbo.EMA_NotificationStats')
+              AND object_id = OBJECT_ID('EMA_NotificationStats')
         )
         BEGIN
             CREATE UNIQUE INDEX UQ_EMA_NotificationStats_Channel_Period
-                ON dbo.EMA_NotificationStats (Channel, PeriodKey);
+                ON EMA_NotificationStats (Channel, PeriodKey);
         END;
 
 
-        IF OBJECT_ID('dbo.EMA_NotificationRecipients', 'U') IS NULL
+        IF OBJECT_ID('EMA_NotificationRecipients', 'U') IS NULL
         BEGIN
-            CREATE TABLE dbo.EMA_NotificationRecipients (
+            CREATE TABLE EMA_NotificationRecipients (
                 RecipientID INT IDENTITY(1,1) PRIMARY KEY,
                 RecipientName NVARCHAR(150) NULL,
                 RecipientRole NVARCHAR(100) NULL,
@@ -8445,26 +8445,26 @@ async function ensureNotificationSettingsTables(pool) {
             );
         END;
 
-        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'RecipientName') IS NULL
-            ALTER TABLE dbo.EMA_NotificationRecipients ADD RecipientName NVARCHAR(150) NULL;
-        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'RecipientRole') IS NULL
-            ALTER TABLE dbo.EMA_NotificationRecipients ADD RecipientRole NVARCHAR(100) NULL;
-        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'Email') IS NULL
-            ALTER TABLE dbo.EMA_NotificationRecipients ADD Email NVARCHAR(255) NULL;
-        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'WhatsAppNumber') IS NULL
-            ALTER TABLE dbo.EMA_NotificationRecipients ADD WhatsAppNumber NVARCHAR(50) NULL;
-        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'ReceiveIncidentCreated') IS NULL
-            ALTER TABLE dbo.EMA_NotificationRecipients ADD ReceiveIncidentCreated BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_ReceiveIncidentCreated DEFAULT 1;
-        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'ReceiveIncidentUpdated') IS NULL
-            ALTER TABLE dbo.EMA_NotificationRecipients ADD ReceiveIncidentUpdated BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_ReceiveIncidentUpdated DEFAULT 1;
-        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'ReceiveIncidentResolved') IS NULL
-            ALTER TABLE dbo.EMA_NotificationRecipients ADD ReceiveIncidentResolved BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_ReceiveIncidentResolved DEFAULT 1;
-        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'ReceiveSystemLicense') IS NULL
-            ALTER TABLE dbo.EMA_NotificationRecipients ADD ReceiveSystemLicense BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_ReceiveSystemLicense DEFAULT 1;
-        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'ReceiveLicenseExceeded') IS NULL
-            ALTER TABLE dbo.EMA_NotificationRecipients ADD ReceiveLicenseExceeded BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_ReceiveLicenseExceeded DEFAULT 1;
-        IF COL_LENGTH('dbo.EMA_NotificationRecipients', 'IsEnabled') IS NULL
-            ALTER TABLE dbo.EMA_NotificationRecipients ADD IsEnabled BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_IsEnabled DEFAULT 1;
+        IF COL_LENGTH('EMA_NotificationRecipients', 'RecipientName') IS NULL
+            ALTER TABLE EMA_NotificationRecipients ADD RecipientName NVARCHAR(150) NULL;
+        IF COL_LENGTH('EMA_NotificationRecipients', 'RecipientRole') IS NULL
+            ALTER TABLE EMA_NotificationRecipients ADD RecipientRole NVARCHAR(100) NULL;
+        IF COL_LENGTH('EMA_NotificationRecipients', 'Email') IS NULL
+            ALTER TABLE EMA_NotificationRecipients ADD Email NVARCHAR(255) NULL;
+        IF COL_LENGTH('EMA_NotificationRecipients', 'WhatsAppNumber') IS NULL
+            ALTER TABLE EMA_NotificationRecipients ADD WhatsAppNumber NVARCHAR(50) NULL;
+        IF COL_LENGTH('EMA_NotificationRecipients', 'ReceiveIncidentCreated') IS NULL
+            ALTER TABLE EMA_NotificationRecipients ADD ReceiveIncidentCreated BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_ReceiveIncidentCreated DEFAULT 1;
+        IF COL_LENGTH('EMA_NotificationRecipients', 'ReceiveIncidentUpdated') IS NULL
+            ALTER TABLE EMA_NotificationRecipients ADD ReceiveIncidentUpdated BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_ReceiveIncidentUpdated DEFAULT 1;
+        IF COL_LENGTH('EMA_NotificationRecipients', 'ReceiveIncidentResolved') IS NULL
+            ALTER TABLE EMA_NotificationRecipients ADD ReceiveIncidentResolved BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_ReceiveIncidentResolved DEFAULT 1;
+        IF COL_LENGTH('EMA_NotificationRecipients', 'ReceiveSystemLicense') IS NULL
+            ALTER TABLE EMA_NotificationRecipients ADD ReceiveSystemLicense BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_ReceiveSystemLicense DEFAULT 1;
+        IF COL_LENGTH('EMA_NotificationRecipients', 'ReceiveLicenseExceeded') IS NULL
+            ALTER TABLE EMA_NotificationRecipients ADD ReceiveLicenseExceeded BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_ReceiveLicenseExceeded DEFAULT 1;
+        IF COL_LENGTH('EMA_NotificationRecipients', 'IsEnabled') IS NULL
+            ALTER TABLE EMA_NotificationRecipients ADD IsEnabled BIT NOT NULL CONSTRAINT DF_EMA_NotificationRecipients_IsEnabled DEFAULT 1;
     `);
 
     await normalizeNotificationRules(pool);
@@ -8484,16 +8484,16 @@ async function ensureNotificationSettingsTables(pool) {
             .input("WhatsAppEnabled", sql.Bit, notificationBool(rule.WhatsAppEnabled))
             .input("Description", sql.NVarChar(500), rule.Description)
             .query(`
-                IF NOT EXISTS (SELECT 1 FROM dbo.EMA_NotificationRules WHERE RuleKey = @RuleKey)
+                IF NOT EXISTS (SELECT 1 FROM EMA_NotificationRules WHERE RuleKey = @RuleKey)
                 BEGIN
-                    INSERT INTO dbo.EMA_NotificationRules
+                    INSERT INTO EMA_NotificationRules
                         (RuleKey, RuleName, Description, EmailEnabled, WhatsAppEnabled, IsEnabled)
                     VALUES
                         (@RuleKey, @RuleName, @Description, @EmailEnabled, @WhatsAppEnabled, 1);
                 END
                 ELSE
                 BEGIN
-                    UPDATE dbo.EMA_NotificationRules
+                    UPDATE EMA_NotificationRules
                     SET RuleName = @RuleName,
                         Description = @Description,
                         UpdatedAt = GETDATE()
@@ -8528,7 +8528,7 @@ function mapWhatsappSetting(row = {}) {
 
 async function readWhatsappSettingRow(pool) {
     await ensureNotificationSettingsTables(pool);
-    const result = await pool.request().query(`SELECT TOP 1 * FROM dbo.EMA_WhatsAppSettings ORDER BY SettingID DESC;`);
+    const result = await pool.request().query(`SELECT TOP 1 * FROM EMA_WhatsAppSettings ORDER BY SettingID DESC;`);
     return result.recordset?.[0] || null;
 }
 
@@ -8538,7 +8538,7 @@ async function readWhatsappUsage(pool) {
     const statResult = await pool.request()
         .input("Channel", sql.NVarChar(50), "whatsapp")
         .input("PeriodKey", sql.NVarChar(20), periodKey)
-        .query(`SELECT TOP 1 SentCount FROM dbo.EMA_NotificationStats WHERE Channel = @Channel AND PeriodKey = @PeriodKey;`);
+        .query(`SELECT TOP 1 SentCount FROM EMA_NotificationStats WHERE Channel = @Channel AND PeriodKey = @PeriodKey;`);
 
     const setting = await readWhatsappSettingRow(pool);
     const limit = Number(setting?.MonthlyLimit || NOTIFICATION_WHATSAPP_MONTHLY_LIMIT) || NOTIFICATION_WHATSAPP_MONTHLY_LIMIT;
@@ -8558,7 +8558,7 @@ async function incrementWhatsappUsage(pool) {
         .input("Channel", sql.NVarChar(50), "whatsapp")
         .input("PeriodKey", sql.NVarChar(20), periodKey)
         .query(`
-            MERGE dbo.EMA_NotificationStats AS target
+            MERGE EMA_NotificationStats AS target
             USING (SELECT @Channel AS Channel, @PeriodKey AS PeriodKey) AS source
             ON target.Channel = source.Channel AND target.PeriodKey = source.PeriodKey
             WHEN MATCHED THEN
@@ -8573,7 +8573,7 @@ app.get("/api/settings/email", authenticateToken, async (req, res) => {
     try {
         const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureNotificationSettingsTables(pool);
-        const result = await pool.request().query(`SELECT * FROM dbo.EMA_EmailSettings ORDER BY Provider ASC, SettingID ASC;`);
+        const result = await pool.request().query(`SELECT * FROM EMA_EmailSettings ORDER BY Provider ASC, SettingID ASC;`);
         const rows = result.recordset?.length ? result.recordset.map(mapEmailSetting) : [{ provider: "SMTP", host: "", port: 587, user: "", pass: "", ssl: true, isActive: true }];
         return res.json({ success: true, data: rows });
     } catch (err) {
@@ -8587,7 +8587,7 @@ async function saveEmailSetting(pool, body = {}, req) {
     const provider = String(body.provider || body.Provider || "SMTP").trim() || "SMTP";
     const existing = await pool.request()
         .input("Provider", sql.NVarChar(50), provider)
-        .query(`SELECT TOP 1 * FROM dbo.EMA_EmailSettings WHERE Provider = @Provider ORDER BY SettingID DESC;`);
+        .query(`SELECT TOP 1 * FROM EMA_EmailSettings WHERE Provider = @Provider ORDER BY SettingID DESC;`);
     const existingRow = existing.recordset?.[0] || {};
 
     const smtpUser = String(body.user ?? body.SmtpUser ?? existingRow.SmtpUser ?? "").trim();
@@ -8605,9 +8605,9 @@ async function saveEmailSetting(pool, body = {}, req) {
         .input("UseTLS", sql.Bit, notificationBool(body.ssl ?? body.UseTLS ?? body.SslTls, notificationBool(existingRow.UseTLS ?? existingRow.SslTls, true)))
         .input("IsEnabled", sql.Bit, notificationBool(body.isActive ?? body.isEnabled ?? body.IsEnabled ?? body.IsActive, notificationBool(existingRow.IsEnabled ?? existingRow.IsActive, true)))
         .query(`
-            IF EXISTS (SELECT 1 FROM dbo.EMA_EmailSettings WHERE Provider = @Provider)
+            IF EXISTS (SELECT 1 FROM EMA_EmailSettings WHERE Provider = @Provider)
             BEGIN
-                UPDATE dbo.EMA_EmailSettings
+                UPDATE EMA_EmailSettings
                 SET SmtpHost = @SmtpHost,
                     SmtpPort = @SmtpPort,
                     SmtpUser = @SmtpUser,
@@ -8621,7 +8621,7 @@ async function saveEmailSetting(pool, body = {}, req) {
             END
             ELSE
             BEGIN
-                INSERT INTO dbo.EMA_EmailSettings
+                INSERT INTO EMA_EmailSettings
                     (Provider, SmtpHost, SmtpPort, SmtpUser, SmtpPassword, FromEmail, FromName, UseTLS, IsEnabled)
                 VALUES
                     (@Provider, @SmtpHost, @SmtpPort, @SmtpUser, @SmtpPassword, @FromEmail, @FromName, @UseTLS, @IsEnabled);
@@ -8693,9 +8693,9 @@ async function saveWhatsappSetting(pool, body = {}, req) {
         .input("IsEnabled", sql.Bit, isEnabled)
         .input("MonthlyLimit", sql.Int, monthlyLimit)
         .query(`
-            IF EXISTS (SELECT 1 FROM dbo.EMA_WhatsAppSettings)
+            IF EXISTS (SELECT 1 FROM EMA_WhatsAppSettings)
             BEGIN
-                UPDATE dbo.EMA_WhatsAppSettings
+                UPDATE EMA_WhatsAppSettings
                 SET AccountSID = @AccountSID,
                     AuthToken = CASE WHEN @AuthToken = '' THEN AuthToken ELSE @AuthToken END,
                     FromNumber = @FromNumber,
@@ -8705,7 +8705,7 @@ async function saveWhatsappSetting(pool, body = {}, req) {
             END
             ELSE
             BEGIN
-                INSERT INTO dbo.EMA_WhatsAppSettings (Provider, AccountSID, AuthToken, FromNumber, IsEnabled, MonthlyLimit)
+                INSERT INTO EMA_WhatsAppSettings (Provider, AccountSID, AuthToken, FromNumber, IsEnabled, MonthlyLimit)
                 VALUES ('Twilio', @AccountSID, @AuthToken, @FromNumber, @IsEnabled, @MonthlyLimit);
             END;
         `);
@@ -8767,7 +8767,7 @@ app.get("/api/settings/notification-recipients", authenticateToken, async (req, 
                 IsEnabled,
                 CreatedAt,
                 UpdatedAt
-            FROM dbo.EMA_NotificationRecipients WITH (NOLOCK)
+            FROM EMA_NotificationRecipients WITH (NOLOCK)
             ORDER BY ISNULL(IsEnabled, 1) DESC, RecipientName ASC, RecipientID ASC;
         `);
         return res.json({ success: true, data: (result.recordset || []).map(mapNotificationRecipient) });
@@ -8810,9 +8810,9 @@ async function saveNotificationRecipient(pool, body = {}, recipientId = 0) {
         .input("IsEnabled", sql.Bit, notificationBool(body.isEnabled ?? body.IsEnabled, true));
 
     const result = await request.query(`
-        IF @RecipientID > 0 AND EXISTS (SELECT 1 FROM dbo.EMA_NotificationRecipients WHERE RecipientID = @RecipientID)
+        IF @RecipientID > 0 AND EXISTS (SELECT 1 FROM EMA_NotificationRecipients WHERE RecipientID = @RecipientID)
         BEGIN
-            UPDATE dbo.EMA_NotificationRecipients
+            UPDATE EMA_NotificationRecipients
             SET RecipientName = @RecipientName,
                 RecipientRole = @RecipientRole,
                 Email = @Email,
@@ -8826,11 +8826,11 @@ async function saveNotificationRecipient(pool, body = {}, recipientId = 0) {
                 UpdatedAt = GETDATE()
             WHERE RecipientID = @RecipientID;
 
-            SELECT TOP 1 * FROM dbo.EMA_NotificationRecipients WHERE RecipientID = @RecipientID;
+            SELECT TOP 1 * FROM EMA_NotificationRecipients WHERE RecipientID = @RecipientID;
         END
         ELSE
         BEGIN
-            INSERT INTO dbo.EMA_NotificationRecipients
+            INSERT INTO EMA_NotificationRecipients
                 (RecipientName, RecipientRole, Email, WhatsAppNumber, ReceiveIncidentCreated, ReceiveIncidentUpdated, ReceiveIncidentResolved, ReceiveSystemLicense, ReceiveLicenseExceeded, IsEnabled)
             OUTPUT INSERTED.*
             VALUES
@@ -8872,7 +8872,7 @@ app.delete("/api/settings/notification-recipients/:id", authenticateToken, async
         const id = Number(req.params.id || 0) || 0;
         await pool.request()
             .input("RecipientID", sql.Int, id)
-            .query(`DELETE FROM dbo.EMA_NotificationRecipients WHERE RecipientID = @RecipientID;`);
+            .query(`DELETE FROM EMA_NotificationRecipients WHERE RecipientID = @RecipientID;`);
         await logEmaAudit(pool, req, "Deleted Notification Recipient", "Notification Channels", "Warning", { recipientID: id });
         return res.json({ success: true, data: { recipientID: id } });
     } catch (err) {
@@ -8889,14 +8889,14 @@ app.get("/api/settings/notification-diagnostics", authenticateToken, async (req,
         const usage = await readWhatsappUsage(pool);
         const rulesResult = await pool.request().query(`
             SELECT RuleKey, RuleName, EmailEnabled, WhatsAppEnabled, IsEnabled, WhatsAppContentSID
-            FROM dbo.EMA_NotificationRules WITH (NOLOCK)
+            FROM EMA_NotificationRules WITH (NOLOCK)
             ORDER BY RuleID;
         `);
         const recipientsResult = await pool.request().query(`
             SELECT RecipientID, RecipientName, RecipientRole, Email, WhatsAppNumber,
                    ReceiveIncidentCreated, ReceiveIncidentUpdated, ReceiveIncidentResolved,
                    ReceiveSystemLicense, ReceiveLicenseExceeded, IsEnabled
-            FROM dbo.EMA_NotificationRecipients WITH (NOLOCK)
+            FROM EMA_NotificationRecipients WITH (NOLOCK)
             ORDER BY RecipientID;
         `);
 
@@ -9023,7 +9023,7 @@ app.get("/api/settings/notification-rules", authenticateToken, async (req, res) 
                 WhatsAppEnabled,
                 IsEnabled,
                 WhatsAppContentSID
-            FROM dbo.EMA_NotificationRules
+            FROM EMA_NotificationRules
             WHERE ISNULL(IsEnabled, 1) = 1
             ORDER BY RuleID ASC;
         `);
@@ -9056,7 +9056,7 @@ app.put("/api/settings/notification-rules", authenticateToken, async (req, res) 
                 .input("WhatsAppContentSID", sql.NVarChar(80), String(rule.WhatsAppContentSID || rule.whatsAppContentSID || rule.contentSid || "").trim() || null)
                 .input("IsEnabled", sql.Bit, notificationBool(rule.IsEnabled ?? rule.isEnabled, true))
                 .query(`
-                    MERGE dbo.EMA_NotificationRules AS target
+                    MERGE EMA_NotificationRules AS target
                     USING (SELECT @RuleKey AS RuleKey) AS source
                     ON target.RuleKey = source.RuleKey
                     WHEN MATCHED THEN
@@ -9086,7 +9086,7 @@ app.put("/api/settings/notification-rules", authenticateToken, async (req, res) 
                 WhatsAppEnabled,
                 IsEnabled,
                 WhatsAppContentSID
-            FROM dbo.EMA_NotificationRules
+            FROM EMA_NotificationRules
             WHERE ISNULL(IsEnabled, 1) = 1
             ORDER BY RuleID ASC;
         `);
@@ -9105,7 +9105,7 @@ app.get("/api/settings/notifications", authenticateToken, async (req, res) => {
         const [emailResult, whatsappRow, usage, rulesResult] = await Promise.all([
             (async () => {
                 await ensureNotificationSettingsTables(pool);
-                return pool.request().query(`SELECT * FROM dbo.EMA_EmailSettings ORDER BY Provider ASC, SettingID ASC;`);
+                return pool.request().query(`SELECT * FROM EMA_EmailSettings ORDER BY Provider ASC, SettingID ASC;`);
             })(),
             readWhatsappSettingRow(pool),
             readWhatsappUsage(pool),
@@ -9120,7 +9120,7 @@ app.get("/api/settings/notifications", authenticateToken, async (req, res) => {
                         EmailEnabled,
                         WhatsAppEnabled,
                         IsEnabled
-                    FROM dbo.EMA_NotificationRules
+                    FROM EMA_NotificationRules
                     WHERE ISNULL(IsEnabled, 1) = 1
                     ORDER BY RuleID ASC;
                 `);
@@ -9279,7 +9279,7 @@ app.get('/api/settings/audit-logs', authenticateToken, async (req, res) => {
                 ISNULL(EntityID, '') AS EntityID,
                 ISNULL(IpAddress, '') AS IpAddress,
                 COUNT(1) OVER() AS TotalRecords
-            FROM dbo.EMA_AuditLogs WITH (NOLOCK)
+            FROM EMA_AuditLogs WITH (NOLOCK)
             ${whereSql}
             ORDER BY CreatedAt DESC, LogID DESC
             OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;
@@ -9324,7 +9324,7 @@ app.post('/api/settings/audit-logs', authenticateToken, async (req, res) => {
             .input('IpAddress', sql.NVarChar(100), normalizeAuthValue(req.headers['x-forwarded-for'] || req.ip || '', ''))
             .input('UserAgent', sql.NVarChar(600), normalizeAuthValue(req.headers['user-agent'] || '', ''))
             .query(`
-                INSERT INTO dbo.EMA_AuditLogs
+                INSERT INTO EMA_AuditLogs
                 (
                     UserName,
                     Module,
@@ -9403,7 +9403,7 @@ app.delete('/api/settings/audit-logs', authenticateToken, async (req, res) => {
     try {
         const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         await ensureEmaAuditLogsTable(pool);
-        await pool.request().query('DELETE FROM dbo.EMA_AuditLogs;');
+        await pool.request().query('DELETE FROM EMA_AuditLogs;');
         await logEmaAudit(pool, req, 'Cleared Audit Logs', 'Audit Logs', 'Warning', {});
         return res.json({ success: true });
     } catch (err) {
@@ -9827,7 +9827,7 @@ async function getMdmAssetTableColumns(pool, forceRefresh = false) {
         FROM sys.columns c
         INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
         LEFT JOIN sys.default_constraints dc ON c.default_object_id = dc.object_id
-        WHERE c.object_id = OBJECT_ID(N'dbo.TSMDM_ASSET')
+        WHERE c.object_id = OBJECT_ID(N'TSMDM_ASSET')
         ORDER BY c.column_id;
     `);
 
@@ -19238,15 +19238,15 @@ async function sendTaskActionResponse(req, res) {
                     DECLARE @affectedJobRows int = 0;
                     DECLARE @affectedHistoryRows int = 0;
 
-                    UPDATE dbo.TS_JOB
+                    UPDATE TS_JOB
                     SET Job_Status = @Job_Status
                     WHERE Job_Idn = @Job_Idn;
 
                     SET @affectedJobRows = @@ROWCOUNT;
 
-                    IF OBJECT_ID(N'dbo.TS_JOB_HISTORY', N'U') IS NOT NULL
+                    IF OBJECT_ID(N'TS_JOB_HISTORY', N'U') IS NOT NULL
                     BEGIN
-                        UPDATE dbo.TS_JOB_HISTORY
+                        UPDATE TS_JOB_HISTORY
                         SET Job_Status = @Job_Status,
                             LastChangedTime = GETDATE()
                         WHERE Job_Idn = @Job_Idn;
@@ -19296,7 +19296,7 @@ async function sendTaskActionResponse(req, res) {
                 DECLARE @deletedHistory int = 0;
                 DECLARE @deletedJob int = 0;
 
-                IF NOT EXISTS (SELECT 1 FROM dbo.TS_JOB WHERE Job_Idn = @Job_Idn)
+                IF NOT EXISTS (SELECT 1 FROM TS_JOB WHERE Job_Idn = @Job_Idn)
                 BEGIN
                     SELECT
                         @archivedJob AS archivedJob,
@@ -19309,9 +19309,9 @@ async function sendTaskActionResponse(req, res) {
                     RETURN;
                 END
 
-                IF OBJECT_ID(N'dbo.TS_JOB_DELHISTORY', N'U') IS NOT NULL
+                IF OBJECT_ID(N'TS_JOB_DELHISTORY', N'U') IS NOT NULL
                 BEGIN
-                    INSERT INTO dbo.TS_JOB_DELHISTORY
+                    INSERT INTO TS_JOB_DELHISTORY
                     (
                         Job_Idn,
                         Console_Idn,
@@ -19351,21 +19351,21 @@ async function sendTaskActionResponse(req, res) {
                         Job_Description,
                         @DeleteConsole_Idn,
                         GETDATE()
-                    FROM dbo.TS_JOB j
+                    FROM TS_JOB j
                     WHERE j.Job_Idn = @Job_Idn
                       AND NOT EXISTS (
                             SELECT 1
-                            FROM dbo.TS_JOB_DELHISTORY dh
+                            FROM TS_JOB_DELHISTORY dh
                             WHERE dh.Job_Idn = j.Job_Idn
                         );
 
                     SET @archivedJob = @@ROWCOUNT;
                 END
 
-                IF OBJECT_ID(N'dbo.TS_JOB_DEST_DELHISTORY', N'U') IS NOT NULL
-                   AND OBJECT_ID(N'dbo.TS_JOB_DEST', N'U') IS NOT NULL
+                IF OBJECT_ID(N'TS_JOB_DEST_DELHISTORY', N'U') IS NOT NULL
+                   AND OBJECT_ID(N'TS_JOB_DEST', N'U') IS NOT NULL
                 BEGIN
-                    INSERT INTO dbo.TS_JOB_DEST_DELHISTORY
+                    INSERT INTO TS_JOB_DEST_DELHISTORY
                     (
                         Job_Idn,
                         Object_Root_Idn,
@@ -19387,11 +19387,11 @@ async function sendTaskActionResponse(req, res) {
                         d.Dest_Option1,
                         d.Dest_Option2,
                         d.Dest_Option3
-                    FROM dbo.TS_JOB_DEST d
+                    FROM TS_JOB_DEST d
                     WHERE d.Job_Idn = @Job_Idn
                       AND NOT EXISTS (
                             SELECT 1
-                            FROM dbo.TS_JOB_DEST_DELHISTORY ddh
+                            FROM TS_JOB_DEST_DELHISTORY ddh
                             WHERE ddh.Job_Idn = d.Job_Idn
                               AND ISNULL(ddh.Object_Root_Idn, -1) = ISNULL(d.Object_Root_Idn, -1)
                               AND ISNULL(ddh.Object_Rel_Idn, -1) = ISNULL(d.Object_Rel_Idn, -1)
@@ -19402,25 +19402,25 @@ async function sendTaskActionResponse(req, res) {
                     SET @archivedDest = @@ROWCOUNT;
                 END
 
-                IF OBJECT_ID(N'dbo.TS_JOB_DEST', N'U') IS NOT NULL
+                IF OBJECT_ID(N'TS_JOB_DEST', N'U') IS NOT NULL
                 BEGIN
-                    DELETE FROM dbo.TS_JOB_DEST WHERE Job_Idn = @Job_Idn;
+                    DELETE FROM TS_JOB_DEST WHERE Job_Idn = @Job_Idn;
                     SET @deletedDest = @@ROWCOUNT;
                 END
 
-                IF OBJECT_ID(N'dbo.TS_PKGJOB', N'U') IS NOT NULL
+                IF OBJECT_ID(N'TS_PKGJOB', N'U') IS NOT NULL
                 BEGIN
-                    DELETE FROM dbo.TS_PKGJOB WHERE Job_Idn = @Job_Idn;
+                    DELETE FROM TS_PKGJOB WHERE Job_Idn = @Job_Idn;
                     SET @deletedPkgJob = @@ROWCOUNT;
                 END
 
-                IF OBJECT_ID(N'dbo.TS_JOB_HISTORY', N'U') IS NOT NULL
+                IF OBJECT_ID(N'TS_JOB_HISTORY', N'U') IS NOT NULL
                 BEGIN
-                    DELETE FROM dbo.TS_JOB_HISTORY WHERE Job_Idn = @Job_Idn;
+                    DELETE FROM TS_JOB_HISTORY WHERE Job_Idn = @Job_Idn;
                     SET @deletedHistory = @@ROWCOUNT;
                 END
 
-                DELETE FROM dbo.TS_JOB WHERE Job_Idn = @Job_Idn;
+                DELETE FROM TS_JOB WHERE Job_Idn = @Job_Idn;
                 SET @deletedJob = @@ROWCOUNT;
 
                 SELECT
@@ -20473,7 +20473,7 @@ async function getNetworkLastSearchDate(pool) {
     const query = `
         DECLARE @return_value int, @LastSearchDateStr varchar(50);
         SELECT @LastSearchDateStr = N'';
-        EXEC @return_value = [dbo].[spGetNILastSearchDate]
+        EXEC @return_value = spGetNILastSearchDate
             @LastSearchDateStr = @LastSearchDateStr OUTPUT;
         SELECT @LastSearchDateStr as LastSearchDateStr;
     `;
@@ -20934,7 +20934,7 @@ async function resolveNetworkScanTargetFromObjectRoot(pool, target) {
                 SELECT TOP 1
                     Object_Root_Idn,
                     Object_DeviceID
-                FROM dbo.TS_OBJECT_ROOT WITH (NOLOCK)
+                FROM TS_OBJECT_ROOT WITH (NOLOCK)
                 WHERE ISNULL(Object_Root_Idn, 0) > 0
                   AND (
                         LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), IP), ''))) = @IP
@@ -21227,7 +21227,7 @@ async function createNetworkInventoryScanJob(req, res) {
                         SELECT TOP 1
                             r.Object_Root_Idn,
                             r.Object_DeviceID
-                        FROM [dbo].[TS_OBJECT_ROOT] r WITH (NOLOCK)
+                        FROM TS_OBJECT_ROOT r WITH (NOLOCK)
                         WHERE ISNULL(r.Object_Root_Idn, 0) > 0
                           AND (
                                 LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.IP), ''))) = @IP
@@ -25144,9 +25144,9 @@ function mdRiskSeverity(score, policy = null) {
 
 async function ensureManagementPolicyTables(pool) {
     await pool.request().query(`
-        IF OBJECT_ID('dbo.EMA_ManagementPolicyProfiles', 'U') IS NULL
+        IF OBJECT_ID('EMA_ManagementPolicyProfiles', 'U') IS NULL
         BEGIN
-            CREATE TABLE dbo.EMA_ManagementPolicyProfiles (
+            CREATE TABLE EMA_ManagementPolicyProfiles (
                 ProfileID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_EMA_ManagementPolicyProfiles PRIMARY KEY,
                 ProfileKey NVARCHAR(100) NOT NULL CONSTRAINT UQ_EMA_ManagementPolicyProfiles_ProfileKey UNIQUE,
                 ProfileName NVARCHAR(200) NOT NULL,
@@ -25159,9 +25159,9 @@ async function ensureManagementPolicyTables(pool) {
             );
         END;
 
-        IF OBJECT_ID('dbo.EMA_ManagementPolicyValues', 'U') IS NULL
+        IF OBJECT_ID('EMA_ManagementPolicyValues', 'U') IS NULL
         BEGIN
-            CREATE TABLE dbo.EMA_ManagementPolicyValues (
+            CREATE TABLE EMA_ManagementPolicyValues (
                 ValueID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_EMA_ManagementPolicyValues PRIMARY KEY,
                 ProfileID INT NOT NULL,
                 AssumptionKey NVARCHAR(150) NOT NULL,
@@ -25173,14 +25173,14 @@ async function ensureManagementPolicyTables(pool) {
                 CreatedAt DATETIME NOT NULL CONSTRAINT DF_EMA_ManagementPolicyValues_CreatedAt DEFAULT GETDATE(),
                 UpdatedAt DATETIME NOT NULL CONSTRAINT DF_EMA_ManagementPolicyValues_UpdatedAt DEFAULT GETDATE(),
                 CONSTRAINT FK_EMA_ManagementPolicyValues_Profile FOREIGN KEY (ProfileID)
-                    REFERENCES dbo.EMA_ManagementPolicyProfiles(ProfileID),
+                    REFERENCES EMA_ManagementPolicyProfiles(ProfileID),
                 CONSTRAINT UQ_EMA_ManagementPolicyValues_Profile_Key UNIQUE (ProfileID, AssumptionKey)
             );
         END;
 
-        IF OBJECT_ID('dbo.EMA_ClientManagementPolicies', 'U') IS NULL
+        IF OBJECT_ID('EMA_ClientManagementPolicies', 'U') IS NULL
         BEGIN
-            CREATE TABLE dbo.EMA_ClientManagementPolicies (
+            CREATE TABLE EMA_ClientManagementPolicies (
                 ClientPolicyID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_EMA_ClientManagementPolicies PRIMARY KEY,
                 ScopeType NVARCHAR(50) NOT NULL,
                 ScopeKey NVARCHAR(200) NOT NULL,
@@ -25191,27 +25191,27 @@ async function ensureManagementPolicyTables(pool) {
                 CreatedAt DATETIME NOT NULL CONSTRAINT DF_EMA_ClientManagementPolicies_CreatedAt DEFAULT GETDATE(),
                 UpdatedAt DATETIME NOT NULL CONSTRAINT DF_EMA_ClientManagementPolicies_UpdatedAt DEFAULT GETDATE(),
                 CONSTRAINT FK_EMA_ClientManagementPolicies_Profile FOREIGN KEY (ProfileID)
-                    REFERENCES dbo.EMA_ManagementPolicyProfiles(ProfileID)
+                    REFERENCES EMA_ManagementPolicyProfiles(ProfileID)
             );
 
             CREATE INDEX IX_EMA_ClientManagementPolicies_Scope
-                ON dbo.EMA_ClientManagementPolicies (ScopeType, ScopeKey, IsActive);
+                ON EMA_ClientManagementPolicies (ScopeType, ScopeKey, IsActive);
         END;
     `);
 
     const profileResult = await pool.request()
         .input("ProfileKey", sql.NVarChar(100), MANAGEMENT_POLICY_DEFAULT_PROFILE_KEY)
         .query(`
-            IF NOT EXISTS (SELECT 1 FROM dbo.EMA_ManagementPolicyProfiles WHERE ProfileKey = @ProfileKey)
+            IF NOT EXISTS (SELECT 1 FROM EMA_ManagementPolicyProfiles WHERE ProfileKey = @ProfileKey)
             BEGIN
-                INSERT INTO dbo.EMA_ManagementPolicyProfiles
+                INSERT INTO EMA_ManagementPolicyProfiles
                     (ProfileKey, ProfileName, ScopeType, ScopeKey, IsDefault, IsActive, CreatedAt, UpdatedAt)
                 VALUES
                     (@ProfileKey, 'Default EMA Management Policy', 'GLOBAL', 'DEFAULT', 1, 1, GETDATE(), GETDATE());
             END;
 
             SELECT TOP 1 *
-            FROM dbo.EMA_ManagementPolicyProfiles
+            FROM EMA_ManagementPolicyProfiles
             WHERE ProfileKey = @ProfileKey;
         `);
 
@@ -25229,12 +25229,12 @@ async function ensureManagementPolicyTables(pool) {
             .query(`
                 IF NOT EXISTS (
                     SELECT 1
-                    FROM dbo.EMA_ManagementPolicyValues
+                    FROM EMA_ManagementPolicyValues
                     WHERE ProfileID = @ProfileID
                       AND AssumptionKey = @AssumptionKey
                 )
                 BEGIN
-                    INSERT INTO dbo.EMA_ManagementPolicyValues
+                    INSERT INTO EMA_ManagementPolicyValues
                         (ProfileID, AssumptionKey, ValueNumber, Unit, Description, IsActive, CreatedAt, UpdatedAt)
                     VALUES
                         (@ProfileID, @AssumptionKey, @ValueNumber, @Unit, @Description, 1, GETDATE(), GETDATE());
@@ -25261,7 +25261,7 @@ async function mdLoadManagementPolicy(pool) {
                     IsDefault,
                     IsActive,
                     UpdatedAt
-                FROM dbo.EMA_ManagementPolicyProfiles WITH (NOLOCK)
+                FROM EMA_ManagementPolicyProfiles WITH (NOLOCK)
                 WHERE ProfileKey = @ProfileKey
                   AND IsActive = 1
                 ORDER BY IsDefault DESC, ProfileID ASC;
@@ -25294,7 +25294,7 @@ async function mdLoadManagementPolicy(pool) {
                     Unit,
                     Description,
                     UpdatedAt
-                FROM dbo.EMA_ManagementPolicyValues WITH (NOLOCK)
+                FROM EMA_ManagementPolicyValues WITH (NOLOCK)
                 WHERE ProfileID = @ProfileID
                   AND IsActive = 1;
             `);
@@ -25380,12 +25380,12 @@ async function saveManagementPolicyHandler(req, res) {
                 .query(`
                     IF EXISTS (
                         SELECT 1
-                        FROM dbo.EMA_ManagementPolicyValues
+                        FROM EMA_ManagementPolicyValues
                         WHERE ProfileID = @ProfileID
                           AND AssumptionKey = @AssumptionKey
                     )
                     BEGIN
-                        UPDATE dbo.EMA_ManagementPolicyValues
+                        UPDATE EMA_ManagementPolicyValues
                         SET ValueNumber = @ValueNumber,
                             Unit = @Unit,
                             Description = @Description,
@@ -25396,7 +25396,7 @@ async function saveManagementPolicyHandler(req, res) {
                     END
                     ELSE
                     BEGIN
-                        INSERT INTO dbo.EMA_ManagementPolicyValues
+                        INSERT INTO EMA_ManagementPolicyValues
                             (ProfileID, AssumptionKey, ValueNumber, Unit, Description, IsActive, CreatedAt, UpdatedAt)
                         VALUES
                             (@ProfileID, @AssumptionKey, @ValueNumber, @Unit, @Description, 1, GETDATE(), GETDATE());
@@ -25407,7 +25407,7 @@ async function saveManagementPolicyHandler(req, res) {
         await new sql.Request(transaction)
             .input("ProfileID", sql.Int, profile.ProfileID)
             .query(`
-                UPDATE dbo.EMA_ManagementPolicyProfiles
+                UPDATE EMA_ManagementPolicyProfiles
                 SET UpdatedAt = GETDATE()
                 WHERE ProfileID = @ProfileID;
             `);
@@ -25746,7 +25746,7 @@ async function getOnlinePatchMasterColumns(pool) {
     const result = await pool.request().query(`
         SELECT name
         FROM sys.columns
-        WHERE object_id = OBJECT_ID('dbo.TS_UPDATE_ONLINE_MASTER')
+        WHERE object_id = OBJECT_ID('TS_UPDATE_ONLINE_MASTER')
            OR object_id = OBJECT_ID('TS_UPDATE_ONLINE_MASTER');
     `);
 
@@ -25970,7 +25970,7 @@ async function insertOnlinePatchInstallSelection(transaction, jobIdn, selectedUp
         .input("Job_Idn", sql.Int, jobIdn)
         .input("selectedUpdates", sql.NVarChar(sql.MAX), JSON.stringify(selectedUpdates))
         .query(`
-            IF OBJECT_ID('dbo.TS_UPDATE_ONLINE_INSTALL_JOB', 'U') IS NULL
+            IF OBJECT_ID('TS_UPDATE_ONLINE_INSTALL_JOB', 'U') IS NULL
                AND OBJECT_ID('TS_UPDATE_ONLINE_INSTALL_JOB', 'U') IS NULL
             BEGIN
                 RAISERROR('TS_UPDATE_ONLINE_INSTALL_JOB table does not exist.', 16, 1);
@@ -30637,7 +30637,7 @@ app.get('/api/settings/module-access', authenticateToken, async (req, res) => {
                 SortOrder,
                 CreatedAt,
                 UpdatedAt
-            FROM dbo.EMA_Roles
+            FROM EMA_Roles
             WHERE ISNULL(Status, 'Active') = 'Active'
             ORDER BY
                 CASE
@@ -30663,7 +30663,7 @@ app.get('/api/settings/module-access', authenticateToken, async (req, res) => {
                 SortOrder,
                 CreatedAt,
                 UpdatedAt
-            FROM dbo.EMA_Modules
+            FROM EMA_Modules
             WHERE ISNULL(IsActive, 1) = 1
             ORDER BY ISNULL(SortOrder, 0), ModuleName
         `);
@@ -30676,11 +30676,11 @@ app.get('/api/settings/module-access', authenticateToken, async (req, res) => {
                 p.CanView,
                 p.CreatedAt,
                 p.UpdatedAt
-            FROM dbo.EMA_RoleModulePermissions p WITH (NOLOCK)
-            INNER JOIN dbo.EMA_Roles r WITH (NOLOCK)
+            FROM EMA_RoleModulePermissions p WITH (NOLOCK)
+            INNER JOIN EMA_Roles r WITH (NOLOCK)
                 ON r.RoleID = p.RoleID
                AND ISNULL(r.Status, 'Active') = 'Active'
-            INNER JOIN dbo.EMA_Modules m WITH (NOLOCK)
+            INNER JOIN EMA_Modules m WITH (NOLOCK)
                 ON m.ModuleID = p.ModuleID
                AND ISNULL(m.IsActive, 1) = 1
         `);
@@ -30723,12 +30723,12 @@ app.put('/api/settings/module-access', authenticateToken, async (req, res) => {
             .query(`
                 IF EXISTS (
                     SELECT 1
-                    FROM dbo.EMA_RoleModulePermissions
+                    FROM EMA_RoleModulePermissions
                     WHERE RoleID = @RoleID
                       AND ModuleID = @ModuleID
                 )
                 BEGIN
-                    UPDATE dbo.EMA_RoleModulePermissions
+                    UPDATE EMA_RoleModulePermissions
                     SET CanView = @CanView,
                         UpdatedAt = GETDATE()
                     WHERE RoleID = @RoleID
@@ -30736,7 +30736,7 @@ app.put('/api/settings/module-access', authenticateToken, async (req, res) => {
                 END
                 ELSE
                 BEGIN
-                    INSERT INTO dbo.EMA_RoleModulePermissions
+                    INSERT INTO EMA_RoleModulePermissions
                         (RoleID, ModuleID, CanView, CreatedAt)
                     VALUES
                         (@RoleID, @ModuleID, @CanView, GETDATE());
@@ -30751,8 +30751,8 @@ app.put('/api/settings/module-access', authenticateToken, async (req, res) => {
                     COALESCE(NULLIF(r.RoleName, ''), r.Name, CONCAT('Role ', r.RoleID)) AS RoleName,
                     COALESCE(NULLIF(m.ModuleName, ''), m.ModuleKey, CONCAT('Module ', m.ModuleID)) AS ModuleName,
                     m.ModuleKey
-                FROM dbo.EMA_Roles r WITH (NOLOCK)
-                CROSS JOIN dbo.EMA_Modules m WITH (NOLOCK)
+                FROM EMA_Roles r WITH (NOLOCK)
+                CROSS JOIN EMA_Modules m WITH (NOLOCK)
                 WHERE r.RoleID = @RoleID
                   AND m.ModuleID = @ModuleID;
             `);
@@ -30797,7 +30797,7 @@ app.get('/api/settings/access-controls', authenticateToken, async (req, res) => 
     try {
         const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
         const result = await pool.request().query(`
-            IF OBJECT_ID('dbo.EMA_AccessControls', 'U') IS NULL
+            IF OBJECT_ID('EMA_AccessControls', 'U') IS NULL
             BEGIN
                 SELECT TOP 0
                     CAST(NULL AS INT) AS ControlID,
@@ -30828,7 +30828,7 @@ app.get('/api/settings/access-controls', authenticateToken, async (req, res) => 
                     SortOrder,
                     CreatedAt,
                     UpdatedAt
-                FROM dbo.EMA_AccessControls WITH (NOLOCK)
+                FROM EMA_AccessControls WITH (NOLOCK)
                 ORDER BY ISNULL(SortOrder, 9999), PolicyName;
             END
         `);
@@ -30862,7 +30862,7 @@ app.post('/api/settings/access-controls', authenticateToken, async (req, res) =>
             .input('Status', sql.NVarChar(50), String(req.body?.status || req.body?.Status || 'Active').trim() === 'Inactive' ? 'Inactive' : 'Active')
             .input('SortOrder', sql.Int, Number(req.body?.sortOrder || req.body?.SortOrder || 0) || 0)
             .query(`
-                INSERT INTO dbo.EMA_AccessControls
+                INSERT INTO EMA_AccessControls
                     (PolicyKey, PolicyName, Description, Scope, Enforcement, ReviewCycle, Status, IsSystemPolicy, SortOrder, CreatedAt, CreatedBy)
                 OUTPUT INSERTED.*
                 VALUES
@@ -30906,7 +30906,7 @@ app.put('/api/settings/access-controls/:id', authenticateToken, async (req, res)
             .input('ControlID', sql.Int, controlId)
             .query(`
                 SELECT TOP 1 *
-                FROM dbo.EMA_AccessControls WITH (NOLOCK)
+                FROM EMA_AccessControls WITH (NOLOCK)
                 WHERE ControlID = @ControlID;
             `);
         const beforeRow = beforeResult.recordset?.[0] || null;
@@ -30922,7 +30922,7 @@ app.put('/api/settings/access-controls/:id', authenticateToken, async (req, res)
             .input('Status', sql.NVarChar(50), String(req.body?.status || req.body?.Status || 'Active').trim() === 'Inactive' ? 'Inactive' : 'Active')
             .input('SortOrder', sql.Int, Number(req.body?.sortOrder || req.body?.SortOrder || 0) || 0)
             .query(`
-                UPDATE dbo.EMA_AccessControls
+                UPDATE EMA_AccessControls
                 SET PolicyKey = @PolicyKey,
                     PolicyName = @PolicyName,
                     Description = @Description,
@@ -30975,7 +30975,7 @@ app.delete('/api/settings/access-controls/:id', authenticateToken, async (req, r
         const result = await pool.request()
             .input('ControlID', sql.Int, controlId)
             .query(`
-                DELETE FROM dbo.EMA_AccessControls
+                DELETE FROM EMA_AccessControls
                 OUTPUT DELETED.*
                 WHERE ControlID = @ControlID;
             `);
@@ -32619,9 +32619,9 @@ function mdStoryDecorate(payload = {}, meta = {}) {
 
 async function mdEnsureStoryCacheTable(pool) {
     await pool.request().query(`
-        IF OBJECT_ID('dbo.EMA_AI_Insight_Cache', 'U') IS NULL
+        IF OBJECT_ID('EMA_AI_Insight_Cache', 'U') IS NULL
         BEGIN
-            CREATE TABLE dbo.EMA_AI_Insight_Cache (
+            CREATE TABLE EMA_AI_Insight_Cache (
                 InsightID INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
                 ModuleKey NVARCHAR(100) NOT NULL,
                 InsightDate DATE NOT NULL,
@@ -32638,7 +32638,7 @@ async function mdEnsureStoryCacheTable(pool) {
             );
 
             CREATE UNIQUE INDEX UX_EMA_AI_Insight_Cache_Module_Date
-                ON dbo.EMA_AI_Insight_Cache (ModuleKey, InsightDate);
+                ON EMA_AI_Insight_Cache (ModuleKey, InsightDate);
         END
     `);
 }
@@ -32680,7 +32680,7 @@ async function mdGetCachedStory(pool, moduleKey = MD_STORY_MODULE_KEY) {
                     GeneratedAt,
                     NextRefreshAt,
                     CASE WHEN InsightDate = @Today THEN 0 ELSE 1 END AS IsStale
-                FROM dbo.EMA_AI_Insight_Cache WITH (NOLOCK)
+                FROM EMA_AI_Insight_Cache WITH (NOLOCK)
                 WHERE ModuleKey = @ModuleKey
                 ORDER BY
                     CASE WHEN InsightDate = @Today THEN 0 ELSE 1 END ASC,
@@ -32739,7 +32739,7 @@ async function mdSaveCachedStory(pool, moduleKey, payload, meta = {}) {
             .input("GeneratedAt", sql.DateTime2, new Date(decorated.generatedAt || now))
             .input("NextRefreshAt", sql.DateTime2, new Date(decorated.nextRefreshAt || mdStoryTomorrowRefreshAt(now)))
             .query(`
-                MERGE dbo.EMA_AI_Insight_Cache WITH (HOLDLOCK) AS target
+                MERGE EMA_AI_Insight_Cache WITH (HOLDLOCK) AS target
                 USING (SELECT @ModuleKey AS ModuleKey, @InsightDate AS InsightDate) AS source
                     ON target.ModuleKey = source.ModuleKey
                    AND target.InsightDate = source.InsightDate
@@ -32774,12 +32774,12 @@ async function mdMarkStoryCacheError(pool, moduleKey, error) {
             .input("ErrorMessage", sql.NVarChar(sql.MAX), error?.message || String(error || "Unknown AI refresh error"))
             .query(`
                 IF EXISTS (
-                    SELECT 1 FROM dbo.EMA_AI_Insight_Cache
+                    SELECT 1 FROM EMA_AI_Insight_Cache
                     WHERE ModuleKey = @ModuleKey
                       AND InsightDate = @InsightDate
                 )
                 BEGIN
-                    UPDATE dbo.EMA_AI_Insight_Cache
+                    UPDATE EMA_AI_Insight_Cache
                     SET Status = 'error',
                         ErrorMessage = @ErrorMessage,
                         UpdatedAt = SYSUTCDATETIME()
@@ -35553,7 +35553,7 @@ async function handleSendSoftwareDistributionPackage(req, res) {
             .input("Job_Idn", sql.Int, jobIdn)
             .input("Job_Status", sql.Int, 2200)
             .query(`
-                UPDATE dbo.TS_JOB_HISTORY
+                UPDATE TS_JOB_HISTORY
                 SET Job_Status = @Job_Status,
                     LastChangedTime = GETDATE()
                 WHERE Job_Idn = @Job_Idn
@@ -35740,14 +35740,14 @@ app.post("/api/software-distribution/job-status", authenticateToken, async (req,
                     SELECT TOP 1
                         @Object_Root_Idn = Object_Root_Idn,
                         @IP = ISNULL(IP, '')
-                    FROM dbo.TS_OBJECT_ROOT
+                    FROM TS_OBJECT_ROOT
                     WHERE Object_DeviceID = @Object_DeviceID;
 
-                    UPDATE dbo.TS_JOB
+                    UPDATE TS_JOB
                     SET Job_Status = @Job_Status
                     WHERE Job_Idn = @Job_Idn;
 
-                    UPDATE dbo.TS_JOB_HISTORY
+                    UPDATE TS_JOB_HISTORY
                     SET Job_Status = @Job_Status,
                         LastChangedTime = GETDATE(),
                         Object_DeviceID = CASE
@@ -35766,7 +35766,7 @@ app.post("/api/software-distribution/job-status", authenticateToken, async (req,
 
                     IF @@ROWCOUNT = 0
                     BEGIN
-                        INSERT INTO dbo.TS_JOB_HISTORY
+                        INSERT INTO TS_JOB_HISTORY
                         (
                             Job_Idn,
                             Object_Root_Idn,
@@ -38473,15 +38473,15 @@ async function sendTaskActionResponse(req, res) {
                     DECLARE @affectedJobRows int = 0;
                     DECLARE @affectedHistoryRows int = 0;
 
-                    UPDATE dbo.TS_JOB
+                    UPDATE TS_JOB
                     SET Job_Status = @Job_Status
                     WHERE Job_Idn = @Job_Idn;
 
                     SET @affectedJobRows = @@ROWCOUNT;
 
-                    IF OBJECT_ID(N'dbo.TS_JOB_HISTORY', N'U') IS NOT NULL
+                    IF OBJECT_ID(N'TS_JOB_HISTORY', N'U') IS NOT NULL
                     BEGIN
-                        UPDATE dbo.TS_JOB_HISTORY
+                        UPDATE TS_JOB_HISTORY
                         SET Job_Status = @Job_Status,
                             LastChangedTime = GETDATE()
                         WHERE Job_Idn = @Job_Idn;
@@ -38530,7 +38530,7 @@ async function sendTaskActionResponse(req, res) {
                 DECLARE @deletedPkgJob int = 0;
                 DECLARE @deletedJob int = 0;
 
-                IF NOT EXISTS (SELECT 1 FROM dbo.TS_JOB WHERE Job_Idn = @Job_Idn)
+                IF NOT EXISTS (SELECT 1 FROM TS_JOB WHERE Job_Idn = @Job_Idn)
                 BEGIN
                     SELECT
                         @archivedJob AS archivedJob,
@@ -38542,9 +38542,9 @@ async function sendTaskActionResponse(req, res) {
                     RETURN;
                 END
 
-                IF OBJECT_ID(N'dbo.TS_JOB_DELHISTORY', N'U') IS NOT NULL
+                IF OBJECT_ID(N'TS_JOB_DELHISTORY', N'U') IS NOT NULL
                 BEGIN
-                    INSERT INTO dbo.TS_JOB_DELHISTORY
+                    INSERT INTO TS_JOB_DELHISTORY
                     (
                         Job_Idn,
                         Console_Idn,
@@ -38584,21 +38584,21 @@ async function sendTaskActionResponse(req, res) {
                         Job_Description,
                         @DeleteConsole_Idn,
                         GETDATE()
-                    FROM dbo.TS_JOB j
+                    FROM TS_JOB j
                     WHERE j.Job_Idn = @Job_Idn
                       AND NOT EXISTS (
                             SELECT 1
-                            FROM dbo.TS_JOB_DELHISTORY dh
+                            FROM TS_JOB_DELHISTORY dh
                             WHERE dh.Job_Idn = j.Job_Idn
                         );
 
                     SET @archivedJob = @@ROWCOUNT;
                 END
 
-                IF OBJECT_ID(N'dbo.TS_JOB_DEST_DELHISTORY', N'U') IS NOT NULL
-                   AND OBJECT_ID(N'dbo.TS_JOB_DEST', N'U') IS NOT NULL
+                IF OBJECT_ID(N'TS_JOB_DEST_DELHISTORY', N'U') IS NOT NULL
+                   AND OBJECT_ID(N'TS_JOB_DEST', N'U') IS NOT NULL
                 BEGIN
-                    INSERT INTO dbo.TS_JOB_DEST_DELHISTORY
+                    INSERT INTO TS_JOB_DEST_DELHISTORY
                     (
                         Job_Idn,
                         Object_Root_Idn,
@@ -38620,11 +38620,11 @@ async function sendTaskActionResponse(req, res) {
                         d.Dest_Option1,
                         d.Dest_Option2,
                         d.Dest_Option3
-                    FROM dbo.TS_JOB_DEST d
+                    FROM TS_JOB_DEST d
                     WHERE d.Job_Idn = @Job_Idn
                       AND NOT EXISTS (
                             SELECT 1
-                            FROM dbo.TS_JOB_DEST_DELHISTORY ddh
+                            FROM TS_JOB_DEST_DELHISTORY ddh
                             WHERE ddh.Job_Idn = d.Job_Idn
                               AND ISNULL(ddh.Object_Root_Idn, -1) = ISNULL(d.Object_Root_Idn, -1)
                               AND ISNULL(ddh.Object_Rel_Idn, -1) = ISNULL(d.Object_Rel_Idn, -1)
@@ -38635,19 +38635,19 @@ async function sendTaskActionResponse(req, res) {
                     SET @archivedDest = @@ROWCOUNT;
                 END
 
-                IF OBJECT_ID(N'dbo.TS_JOB_DEST', N'U') IS NOT NULL
+                IF OBJECT_ID(N'TS_JOB_DEST', N'U') IS NOT NULL
                 BEGIN
-                    DELETE FROM dbo.TS_JOB_DEST WHERE Job_Idn = @Job_Idn;
+                    DELETE FROM TS_JOB_DEST WHERE Job_Idn = @Job_Idn;
                     SET @deletedDest = @@ROWCOUNT;
                 END
 
-                IF OBJECT_ID(N'dbo.TS_PKGJOB', N'U') IS NOT NULL
+                IF OBJECT_ID(N'TS_PKGJOB', N'U') IS NOT NULL
                 BEGIN
-                    DELETE FROM dbo.TS_PKGJOB WHERE Job_Idn = @Job_Idn;
+                    DELETE FROM TS_PKGJOB WHERE Job_Idn = @Job_Idn;
                     SET @deletedPkgJob = @@ROWCOUNT;
                 END
 
-                DELETE FROM dbo.TS_JOB WHERE Job_Idn = @Job_Idn;
+                DELETE FROM TS_JOB WHERE Job_Idn = @Job_Idn;
                 SET @deletedJob = @@ROWCOUNT;
 
                 SELECT
@@ -39942,7 +39942,7 @@ async function getNetworkLastSearchDate(pool) {
     const query = `
         DECLARE @return_value int, @LastSearchDateStr varchar(50);
         SELECT @LastSearchDateStr = N'';
-        EXEC @return_value = [dbo].[spGetNILastSearchDate]
+        EXEC @return_value = spGetNILastSearchDate
             @LastSearchDateStr = @LastSearchDateStr OUTPUT;
         SELECT @LastSearchDateStr as LastSearchDateStr;
     `;
@@ -40705,7 +40705,7 @@ async function resolveNetworkScanTargetFromTsObjectRootByIp(pool, ip) {
                     r.Object_Root_Idn,
                     r.Object_DeviceID,
                     r.IP
-                FROM [dbo].[TS_OBJECT_ROOT] r WITH (NOLOCK)
+                FROM TS_OBJECT_ROOT r WITH (NOLOCK)
                 WHERE ISNULL(r.Object_Root_Idn, 0) > 0
                   AND LTRIM(RTRIM(CONVERT(varchar(255), ISNULL(r.IP, '')))) = @IP
                 ORDER BY
@@ -41081,7 +41081,7 @@ async function lookupNetworkScanIdentityFromObjectRoot(pool, ip) {
     // Direct lookup from the real EM/KANA endpoint table.
     // Network Inventory scan only sends an IP, so the missing identity must be
     // resolved from TS_Object_Root before TS_JOB_HISTORY is created.
-    const tableCandidates = ["dbo.TS_Object_Root", "dbo.TS_OBJECT_ROOT"];
+    const tableCandidates = ["TS_Object_Root", "TS_OBJECT_ROOT"];
 
     for (const tableName of tableCandidates) {
         try {
@@ -41201,7 +41201,7 @@ async function lookupNetworkScanIdentityFromObjectRootByRootId(pool, rootId, req
                     r.Object_Root_Idn,
                     ${deviceIdSelect},
                     ${ipSelect}
-                FROM dbo.TS_OBJECT_ROOT r WITH (NOLOCK)
+                FROM TS_OBJECT_ROOT r WITH (NOLOCK)
                 WHERE r.Object_Root_Idn = @Object_Root_Idn;
             `);
 
@@ -41283,7 +41283,7 @@ async function lookupNetworkScanIdentityFromObjectRootByDeviceHint(pool, ip, dev
                     r.Object_Root_Idn,
                     ${deviceIdSelect},
                     ${ipSelect}
-                FROM dbo.TS_OBJECT_ROOT r WITH (NOLOCK)
+                FROM TS_OBJECT_ROOT r WITH (NOLOCK)
                 WHERE ISNULL(r.Object_Root_Idn, 0) > 0
                   AND (${predicates.join(" OR ")})
                 ORDER BY
@@ -41367,7 +41367,7 @@ async function lookupNetworkScanIdentityFromTsniObjectTable(pool, ip) {
                     ${inventorySelect},
                     ${deviceSelect},
                     ${ipExpr} AS IP
-                FROM dbo.TSNI_OBJECT o WITH (NOLOCK)
+                FROM TSNI_OBJECT o WITH (NOLOCK)
                 WHERE LTRIM(RTRIM(ISNULL(${ipExpr}, ''))) = @IP
                    OR ',' + REPLACE(REPLACE(LTRIM(RTRIM(ISNULL(${ipExpr}, ''))), ';', ','), ' ', '') + ',' LIKE '%,' + REPLACE(@IP, ' ', '') + ',%'
                    OR LTRIM(RTRIM(ISNULL(${ipExpr}, ''))) LIKE '%' + @IP + '%'
@@ -41463,7 +41463,7 @@ async function hydrateNetworkScanTargetsWithDeviceIdentity(pool, targets = []) {
 // OPTION 2 COMPATIBILITY FIX:
 // The React Network Inventory page sends ipAddress/ips only. The old Java flow
 // received a prepared target array, so Node must build the target identity here.
-// This maps IP -> dbo.TS_Object_Root.Object_Root_Idn/Object_DeviceID before
+// This maps IP -> TS_Object_Root.Object_Root_Idn/Object_DeviceID before
 // TS_JOB_HISTORY is inserted and before the preview response is returned.
 async function lookupNetworkScanTargetFromTsObjectRootStrict(pool, targetOrIp) {
     const normalized = normalizeNetworkScanTarget(targetOrIp) || (
@@ -41486,7 +41486,7 @@ async function lookupNetworkScanTargetFromTsObjectRootStrict(pool, targetOrIp) {
         };
     }
 
-    const tableCandidates = ["dbo.TS_Object_Root", "dbo.TS_OBJECT_ROOT"];
+    const tableCandidates = ["TS_Object_Root", "TS_OBJECT_ROOT"];
 
     for (const tableName of tableCandidates) {
         try {
@@ -41807,7 +41807,7 @@ async function createNetworkInventoryScanJob(req, res) {
                         SELECT TOP 1
                             r.Object_Root_Idn,
                             r.Object_DeviceID
-                        FROM [dbo].[TS_Object_Root] r WITH (NOLOCK)
+                        FROM TS_Object_Root r WITH (NOLOCK)
                         WHERE ISNULL(r.Object_Root_Idn, 0) > 0
                           AND (
                                 LTRIM(RTRIM(ISNULL(CONVERT(varchar(255), r.IP), ''))) = @IP
@@ -42194,7 +42194,7 @@ async function getOnlinePatchMasterColumns(pool) {
     const result = await pool.request().query(`
         SELECT name
         FROM sys.columns
-        WHERE object_id = OBJECT_ID('dbo.TS_UPDATE_ONLINE_MASTER')
+        WHERE object_id = OBJECT_ID('TS_UPDATE_ONLINE_MASTER')
            OR object_id = OBJECT_ID('TS_UPDATE_ONLINE_MASTER');
     `);
 
@@ -42730,7 +42730,7 @@ async function insertOnlinePatchInstallSelection(transaction, jobIdn, selectedUp
         .input("Job_Idn", sql.Int, jobIdn)
         .input("selectedUpdates", sql.NVarChar(sql.MAX), JSON.stringify(selectedUpdates))
         .query(`
-            IF OBJECT_ID('dbo.TS_UPDATE_ONLINE_INSTALL_JOB', 'U') IS NULL
+            IF OBJECT_ID('TS_UPDATE_ONLINE_INSTALL_JOB', 'U') IS NULL
                AND OBJECT_ID('TS_UPDATE_ONLINE_INSTALL_JOB', 'U') IS NULL
             BEGIN
                 RAISERROR('TS_UPDATE_ONLINE_INSTALL_JOB table does not exist.', 16, 1);
@@ -46641,9 +46641,9 @@ function spClassification(value) {
 
 async function ensureSoftwarePolicyTables(pool) {
   await pool.request().query(`
-    IF OBJECT_ID('dbo.EMA_SoftwarePolicy', 'U') IS NULL
+    IF OBJECT_ID('EMA_SoftwarePolicy', 'U') IS NULL
     BEGIN
-      CREATE TABLE dbo.EMA_SoftwarePolicy (
+      CREATE TABLE EMA_SoftwarePolicy (
         PolicyID INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
         PolicyName NVARCHAR(200) NOT NULL,
         Description NVARCHAR(1000) NULL,
@@ -46662,9 +46662,9 @@ async function ensureSoftwarePolicyTables(pool) {
       );
     END;
 
-    IF OBJECT_ID('dbo.EMA_SoftwarePolicyItem', 'U') IS NULL
+    IF OBJECT_ID('EMA_SoftwarePolicyItem', 'U') IS NULL
     BEGIN
-      CREATE TABLE dbo.EMA_SoftwarePolicyItem (
+      CREATE TABLE EMA_SoftwarePolicyItem (
         PolicyItemID INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
         PolicyID INT NOT NULL,
         SWUNI_Idn INT NULL,
@@ -46690,27 +46690,27 @@ async function ensureSoftwarePolicyTables(pool) {
       );
     END;
 
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'WorkingStartTime') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD WorkingStartTime NVARCHAR(5) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'WorkingEndTime') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD WorkingEndTime NVARCHAR(5) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'WorkDays') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD WorkDays NVARCHAR(40) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'UtilizedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD UtilizedHours DECIMAL(8,2) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'UnderUtilizedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD UnderUtilizedHours DECIMAL(8,2) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicy', 'OpenCountThreshold') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicy ADD OpenCountThreshold INT NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicy', 'WorkingStartTime') IS NULL ALTER TABLE EMA_SoftwarePolicy ADD WorkingStartTime NVARCHAR(5) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicy', 'WorkingEndTime') IS NULL ALTER TABLE EMA_SoftwarePolicy ADD WorkingEndTime NVARCHAR(5) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicy', 'WorkDays') IS NULL ALTER TABLE EMA_SoftwarePolicy ADD WorkDays NVARCHAR(40) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicy', 'UtilizedHours') IS NULL ALTER TABLE EMA_SoftwarePolicy ADD UtilizedHours DECIMAL(8,2) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicy', 'UnderUtilizedHours') IS NULL ALTER TABLE EMA_SoftwarePolicy ADD UnderUtilizedHours DECIMAL(8,2) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicy', 'OpenCountThreshold') IS NULL ALTER TABLE EMA_SoftwarePolicy ADD OpenCountThreshold INT NULL;
 
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'SWUNI_Idn') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD SWUNI_Idn INT NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'CategoryID') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD CategoryID INT NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'WorkingStartTime') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD WorkingStartTime NVARCHAR(5) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'WorkingEndTime') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD WorkingEndTime NVARCHAR(5) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'WorkDays') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD WorkDays NVARCHAR(40) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'UtilizedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD UtilizedHours DECIMAL(8,2) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'UnderUtilizedHours') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD UnderUtilizedHours DECIMAL(8,2) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'OpenCountThreshold') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD OpenCountThreshold INT NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseKey') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseKey NVARCHAR(500) NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseCount') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseCount INT NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseStartDate') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseStartDate DATE NULL;
-    IF COL_LENGTH('dbo.EMA_SoftwarePolicyItem', 'LicenseEndDate') IS NULL ALTER TABLE dbo.EMA_SoftwarePolicyItem ADD LicenseEndDate DATE NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'SWUNI_Idn') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD SWUNI_Idn INT NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'CategoryID') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD CategoryID INT NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'WorkingStartTime') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD WorkingStartTime NVARCHAR(5) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'WorkingEndTime') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD WorkingEndTime NVARCHAR(5) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'WorkDays') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD WorkDays NVARCHAR(40) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'UtilizedHours') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD UtilizedHours DECIMAL(8,2) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'UnderUtilizedHours') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD UnderUtilizedHours DECIMAL(8,2) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'OpenCountThreshold') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD OpenCountThreshold INT NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'LicenseKey') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD LicenseKey NVARCHAR(500) NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'LicenseCount') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD LicenseCount INT NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'LicenseStartDate') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD LicenseStartDate DATE NULL;
+    IF COL_LENGTH('EMA_SoftwarePolicyItem', 'LicenseEndDate') IS NULL ALTER TABLE EMA_SoftwarePolicyItem ADD LicenseEndDate DATE NULL;
 
-    UPDATE dbo.EMA_SoftwarePolicy
+    UPDATE EMA_SoftwarePolicy
     SET
       WorkingStartTime = COALESCE(NULLIF(WorkingStartTime, ''), '09:00'),
       WorkingEndTime = COALESCE(NULLIF(WorkingEndTime, ''), '17:00'),
@@ -46718,7 +46718,7 @@ async function ensureSoftwarePolicyTables(pool) {
       UtilizedHours = COALESCE(UtilizedHours, 2.00),
       UnderUtilizedHours = COALESCE(UnderUtilizedHours, 0.01);
 
-    UPDATE dbo.EMA_SoftwarePolicyItem
+    UPDATE EMA_SoftwarePolicyItem
     SET
       ComplianceStatus = CASE WHEN LOWER(ISNULL(ComplianceStatus, '')) = 'illegal' THEN 'Illegal' ELSE 'Legal' END,
       WorkingStartTime = COALESCE(NULLIF(WorkingStartTime, ''), '09:00'),
@@ -46737,7 +46737,7 @@ app.get("/api/settings/software-policy/categories", authenticateToken, async (re
       SELECT TOP (1000)
         CategoryID,
         CategoryName
-      FROM [TCO2].[dbo].[TS_SW_CATEGORY]
+      FROM TS_SW_CATEGORY
       WHERE CategoryName IS NOT NULL
         AND LTRIM(RTRIM(CategoryName)) <> ''
       ORDER BY CategoryName ASC;
@@ -46770,12 +46770,12 @@ app.get("/api/settings/software-policy/publishers", authenticateToken, async (re
           NULLIF(LTRIM(RTRIM(c.Publisher)), '') AS Publisher,
           COUNT(DISTINCT d.SWUNI_Idn) AS SoftwareCount,
           COUNT(DISTINCT a.Object_Root_Idn) AS InstalledCount
-        FROM [TCO2].[dbo].[TS_OBJECT_ROOT] a
-        INNER JOIN [TCO2].[dbo].[TSSI_SWUNI_ATTR] c
+        FROM TS_OBJECT_ROOT a
+        INNER JOIN TSSI_SWUNI_ATTR c
           ON a.Object_Root_Idn = c.Object_Root_Idn
-        INNER JOIN [TCO2].[dbo].[TS_SWUNI_LIST] d
+        INNER JOIN TS_SWUNI_LIST d
           ON c.SWUNI_Idn = d.SWUNI_Idn
-        INNER JOIN [TCO2].[dbo].[TS_SW_CATEGORY] e
+        INNER JOIN TS_SW_CATEGORY e
           ON e.CategoryID = d.SWUNI_Catg
         WHERE (@CategoryID <= 0 OR e.CategoryID = @CategoryID)
           AND NULLIF(LTRIM(RTRIM(c.Publisher)), '') IS NOT NULL
@@ -46823,12 +46823,12 @@ app.get("/api/settings/software-policy/software", authenticateToken, async (req,
           CAST(NULL AS NVARCHAR(255)) AS Version,
           COUNT(DISTINCT a.Object_Root_Idn) AS InstalledCount,
           COUNT(DISTINCT a.Object_Root_Idn) AS InstalledDeviceCount
-        FROM [TCO2].[dbo].[TS_OBJECT_ROOT] a
-        INNER JOIN [TCO2].[dbo].[TSSI_SWUNI_ATTR] c
+        FROM TS_OBJECT_ROOT a
+        INNER JOIN TSSI_SWUNI_ATTR c
           ON a.Object_Root_Idn = c.Object_Root_Idn
-        INNER JOIN [TCO2].[dbo].[TS_SWUNI_LIST] d
+        INNER JOIN TS_SWUNI_LIST d
           ON c.SWUNI_Idn = d.SWUNI_Idn
-        INNER JOIN [TCO2].[dbo].[TS_SW_CATEGORY] e
+        INNER JOIN TS_SW_CATEGORY e
           ON e.CategoryID = d.SWUNI_Catg
         WHERE (@CategoryID <= 0 OR e.CategoryID = @CategoryID)
           AND (@Publisher = '' OR c.Publisher = @Publisher)
@@ -46886,8 +46886,8 @@ app.get("/api/settings/software-policy/policies", authenticateToken, async (req,
         SUM(CASE WHEN i.ComplianceStatus = 'Legal' THEN 1 ELSE 0 END) AS LegalCount,
         SUM(CASE WHEN i.ComplianceStatus = 'Illegal' THEN 1 ELSE 0 END) AS IllegalCount,
         SUM(ISNULL(i.LicenseCount, 0)) AS LicenseTotal
-      FROM dbo.EMA_SoftwarePolicy p
-      LEFT JOIN dbo.EMA_SoftwarePolicyItem i
+      FROM EMA_SoftwarePolicy p
+      LEFT JOIN EMA_SoftwarePolicyItem i
         ON i.PolicyID = p.PolicyID
       WHERE ISNULL(p.IsActive, 1) = 1
       GROUP BY
@@ -46950,7 +46950,7 @@ app.post("/api/settings/software-policy/policies", authenticateToken, async (req
       .input("OpenCountThreshold", sql.Int, spInt(req.body.OpenCountThreshold ?? req.body.openCountThreshold, 1))
       .input("CreatedBy", sql.NVarChar(200), spText(req.user?.username || req.user?.email || req.user?.userID))
       .query(`
-        INSERT INTO dbo.EMA_SoftwarePolicy
+        INSERT INTO EMA_SoftwarePolicy
         (
           PolicyName,
           Description,
@@ -47027,7 +47027,7 @@ app.put("/api/settings/software-policy/policies/:id", authenticateToken, async (
       .input("UnderUtilizedHours", sql.Decimal(8, 2), spNumber(req.body.UnderUtilizedHours ?? req.body.underUtilizedHours, 0.01))
       .input("OpenCountThreshold", sql.Int, spInt(req.body.OpenCountThreshold ?? req.body.openCountThreshold, 1))
       .query(`
-        UPDATE dbo.EMA_SoftwarePolicy
+        UPDATE EMA_SoftwarePolicy
         SET
           PolicyName = COALESCE(NULLIF(@PolicyName, ''), PolicyName),
           Description = COALESCE(NULLIF(@Description, ''), Description),
@@ -47093,7 +47093,7 @@ app.get("/api/settings/software-policy/policies/:id/items", authenticateToken, a
           Notes,
           CreatedAt,
           UpdatedAt
-        FROM dbo.EMA_SoftwarePolicyItem
+        FROM EMA_SoftwarePolicyItem
         WHERE PolicyID = @PolicyID
         ORDER BY SoftwareName ASC;
       `);
@@ -47166,14 +47166,14 @@ app.post("/api/settings/software-policy/policies/:id/items", authenticateToken, 
           .query(`
             IF EXISTS (
               SELECT 1
-              FROM dbo.EMA_SoftwarePolicyItem
+              FROM EMA_SoftwarePolicyItem
               WHERE PolicyID = @PolicyID
                 AND SoftwareName = @SoftwareName
                 AND ISNULL(Publisher, '') = ISNULL(@Publisher, '')
                 AND ISNULL(Version, '') = ISNULL(@Version, '')
             )
             BEGIN
-              UPDATE dbo.EMA_SoftwarePolicyItem
+              UPDATE EMA_SoftwarePolicyItem
               SET
                 SWUNI_Idn = COALESCE(@SWUNI_Idn, SWUNI_Idn),
                 CategoryID = COALESCE(@CategoryID, CategoryID),
@@ -47198,7 +47198,7 @@ app.post("/api/settings/software-policy/policies/:id/items", authenticateToken, 
             END
             ELSE
             BEGIN
-              INSERT INTO dbo.EMA_SoftwarePolicyItem
+              INSERT INTO EMA_SoftwarePolicyItem
               (
                 PolicyID,
                 SWUNI_Idn,
@@ -47249,7 +47249,7 @@ app.post("/api/settings/software-policy/policies/:id/items", authenticateToken, 
       await new sql.Request(transaction)
         .input("PolicyID", sql.Int, policyId)
         .query(`
-          UPDATE dbo.EMA_SoftwarePolicy
+          UPDATE EMA_SoftwarePolicy
           SET UpdatedAt = SYSUTCDATETIME()
           WHERE PolicyID = @PolicyID;
         `);
@@ -47292,7 +47292,7 @@ app.delete("/api/settings/software-policy/policies/:id", authenticateToken, asyn
     const result = await pool.request()
       .input("PolicyID", sql.Int, policyId)
       .query(`
-        UPDATE dbo.EMA_SoftwarePolicy
+        UPDATE EMA_SoftwarePolicy
         SET
           IsActive = 0,
           UpdatedAt = SYSUTCDATETIME()
@@ -47336,7 +47336,7 @@ app.delete("/api/settings/software-policy/items/:itemId", authenticateToken, asy
     await pool.request()
       .input("PolicyItemID", sql.Int, itemId)
       .query(`
-        DELETE FROM dbo.EMA_SoftwarePolicyItem
+        DELETE FROM EMA_SoftwarePolicyItem
         WHERE PolicyItemID = @PolicyItemID;
       `);
 
@@ -47420,8 +47420,8 @@ console.log("Software Policy API registered");
               CAST(ISNULL(pi.LicenseCount, 0) AS INT) AS LicenseCount,
               CAST(ISNULL(pi.UnitPrice, 0) AS DECIMAL(18,2)) AS UnitPrice,
               COALESCE(NULLIF(pi.Currency, ''), 'RM') AS Currency
-            FROM [TCO2].[dbo].[EMA_SoftwarePolicyItem] pi WITH (NOLOCK)
-            LEFT JOIN [TCO2].[dbo].[EMA_SoftwarePolicy] p WITH (NOLOCK)
+            FROM EMA_SoftwarePolicyItem pi WITH (NOLOCK)
+            LEFT JOIN EMA_SoftwarePolicy p WITH (NOLOCK)
               ON p.PolicyID = pi.PolicyID
             WHERE NULLIF(LTRIM(RTRIM(pi.SoftwareName)), '') IS NOT NULL
               AND LOWER(LTRIM(RTRIM(ISNULL(pi.ComplianceStatus, 'Legal')))) NOT IN ('illegal', 'restricted', 'blocked', 'unauthorized', 'unapproved')
@@ -47432,7 +47432,7 @@ console.log("Software Policy API registered");
               pi.PolicyItemID,
               si.SW_Idn
             FROM policy_items pi
-            LEFT JOIN [TCO2].[dbo].[TS_SW_INFO] si WITH (NOLOCK)
+            LEFT JOIN TS_SW_INFO si WITH (NOLOCK)
               ON (pi.SWUNI_Idn IS NOT NULL AND pi.SWUNI_Idn = si.SW_Pkg_Idn)
               OR LOWER(LTRIM(RTRIM(ISNULL(si.SW_ProductName, '')))) = LOWER(LTRIM(RTRIM(pi.SoftwareName)))
               OR LOWER(LTRIM(RTRIM(ISNULL(si.SW_FileName, '')))) = LOWER(LTRIM(RTRIM(pi.SoftwareName)))
@@ -47453,7 +47453,7 @@ console.log("Software Policy API registered");
                 ELSE 0
               END AS UsageSeconds
             FROM policy_matches pm
-            INNER JOIN [TCO2].[dbo].[TSSM_MONITOR_HISTORY] mh WITH (NOLOCK)
+            INNER JOIN TSSM_MONITOR_HISTORY mh WITH (NOLOCK)
               ON mh.SW_Idn = pm.SW_Idn
             INNER JOIN policy_items pi
               ON pi.PolicyItemID = pm.PolicyItemID
