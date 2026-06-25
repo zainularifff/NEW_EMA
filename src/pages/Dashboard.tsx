@@ -555,7 +555,6 @@ function resolveApiBaseUrl() {
 
 const API_BASE_URL = resolveApiBaseUrl();
 const ITOPS_DASHBOARD_API_PATH = '/api/dashboard/it-operations';
-const ITOPS_DASHBOARD_DETAIL_API_PATH = '/api/dashboard/it-operations/details';
 
 function buildApiUrl(path: string, query?: Record<string, string | number | boolean | undefined>) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
@@ -573,8 +572,6 @@ function buildApiUrl(path: string, query?: Record<string, string | number | bool
 const ITOPS_DASHBOARD_CLIENT_CACHE_MS = 45000;
 const DRILLDOWN_TABLE_PAGE_SIZE = 10;
 let itopsDashboardClientCache: { at: number; data: ItOpsDashboardData } | null = null;
-const ITOPS_DASHBOARD_DETAIL_CLIENT_CACHE_MS = 300000;
-const itopsDashboardDetailClientCache = new Map<string, { at: number; data: Partial<ItOpsDashboardData> }>();
 
 function safeParseJson<T>(raw: string | null): T | null {
   if (!raw) return null;
@@ -1024,66 +1021,6 @@ async function fetchItOpsDashboardData(forceRefresh = false) {
 
   const data = normalizeDashboardData(payload.data);
   itopsDashboardClientCache = { at: Date.now(), data };
-  return data;
-}
-
-function normalizeItOpsDetailViewKey(view = '') {
-  const key = String(view || '').trim().toLowerCase();
-  if (key === 'servicedesk' || key === 'service-desk' || key === 'service_desk') return 'servicedesk';
-  if (key === 'securityupdates' || key === 'security-updates' || key === 'security_updates') return 'patch';
-  return key;
-}
-
-function shouldLoadItOpsDetailView(view = '') {
-  return ['hardware', 'software', 'geolocation', 'risk', 'patch', 'tasks', 'network', 'servicedesk', 'departments', 'attention'].includes(normalizeItOpsDetailViewKey(view));
-}
-
-function mergeItOpsDashboardDetailData(current: ItOpsDashboardData, detail: Partial<ItOpsDashboardData>) {
-  const merged: Partial<ItOpsDashboardData> = { ...current, ...detail };
-
-  if (detail.hardware) merged.hardware = { ...current.hardware, ...detail.hardware };
-  if (detail.software) merged.software = { ...current.software, ...detail.software };
-  if (detail.network) merged.network = { ...current.network, ...detail.network };
-  if (detail.geolocation) merged.geolocation = { ...current.geolocation, ...detail.geolocation };
-  if (detail.tasks) merged.tasks = { ...current.tasks, ...detail.tasks };
-  if (detail.risk) merged.risk = { ...current.risk, ...detail.risk };
-  if (detail.serviceDesk) merged.serviceDesk = { ...current.serviceDesk, ...detail.serviceDesk };
-  if (detail.security) merged.security = { ...current.security, ...detail.security };
-
-  return normalizeDashboardData(merged);
-}
-
-async function fetchItOpsDashboardDetailData(view: string, forceRefresh = false) {
-  const detailView = normalizeItOpsDetailViewKey(view);
-  const now = Date.now();
-  const cached = itopsDashboardDetailClientCache.get(detailView);
-  if (!forceRefresh && cached && now - cached.at < ITOPS_DASHBOARD_DETAIL_CLIENT_CACHE_MS) {
-    return cached.data;
-  }
-
-  const token = getStoredAccessToken();
-  const headers = new Headers({ Accept: 'application/json' });
-  if (token) headers.set('Authorization', `Bearer ${token}`);
-
-  const detailUrl = buildApiUrl(`${ITOPS_DASHBOARD_DETAIL_API_PATH}/${detailView}`, { refresh: forceRefresh ? 1 : undefined });
-  const response = await fetch(detailUrl, {
-    headers,
-    credentials: 'include',
-  });
-
-  const payload = (await response.json().catch(() => null)) as {
-    success?: boolean;
-    message?: string;
-    error?: string;
-    data?: Partial<ItOpsDashboardData>;
-  } | null;
-
-  if (!response.ok || payload?.success === false) {
-    throw new Error(payload?.error || payload?.message || `Dashboard detail failed: ${response.status} (${detailUrl})`);
-  }
-
-  const data = payload?.data || {};
-  itopsDashboardDetailClientCache.set(detailView, { at: Date.now(), data });
   return data;
 }
 
@@ -1618,8 +1555,6 @@ export default function ITOperationsDashboard() {
   const [securityUpdateDetailPage, setSecurityUpdateDetailPage] = useState(1);
   const [riskDetailPage, setRiskDetailPage] = useState(1);
   const [softwareDetailPage, setSoftwareDetailPage] = useState(1);
-  const [detailLoadingView, setDetailLoadingView] = useState('');
-  const [loadedDetailViews, setLoadedDetailViews] = useState<Set<string>>(() => new Set());
 
   const openDrilldownView = useCallback((nextView: string) => {
     setActiveView((currentView) => {
@@ -1666,12 +1601,6 @@ export default function ITOperationsDashboard() {
     setIsLoading(true);
     setError('');
 
-    if (forceRefresh) {
-      itopsDashboardDetailClientCache.clear();
-      setLoadedDetailViews(new Set());
-      setDetailLoadingView('');
-    }
-
     try {
       const data = await fetchItOpsDashboardData(forceRefresh);
       setDashboardData(data);
@@ -1708,39 +1637,6 @@ export default function ITOperationsDashboard() {
     setRiskDetailPage(1);
     setSoftwareDetailPage(1);
   }, [activeView]);
-
-  useEffect(() => {
-    if (!activeView) return;
-    const { view } = parseDrilldownKey(activeView);
-    const detailView = normalizeItOpsDetailViewKey(view);
-    if (!shouldLoadItOpsDetailView(detailView) || loadedDetailViews.has(detailView)) return;
-
-    let cancelled = false;
-    setDetailLoadingView(detailView);
-
-    fetchItOpsDashboardDetailData(detailView)
-      .then((detailData) => {
-        if (cancelled) return;
-        setDashboardData((currentData) => mergeItOpsDashboardDetailData(currentData, detailData));
-        setLoadedDetailViews((currentViews) => {
-          const nextViews = new Set(currentViews);
-          nextViews.add(detailView);
-          return nextViews;
-        });
-      })
-      .catch((detailError) => {
-        if (!cancelled) {
-          console.warn('Dashboard drilldown detail load failed:', detailError);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setDetailLoadingView('');
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeView, loadedDetailViews]);
 
   useEffect(() => {
     if (!activeView) return;
@@ -4607,12 +4503,7 @@ export default function ITOperationsDashboard() {
                 <button type="button" className="itops-pro-close" onClick={(event) => closeDrilldown(event)} aria-label="Close drilldown modal" title="Close drilldown modal"><X size={18} /> Close</button>
               </div>
             </div>
-            <div className="itops-pro-modal-body">
-              {detailLoadingView && normalizeItOpsDetailViewKey(parseDrilldownKey(activeView).view) === detailLoadingView && (
-                <div className="itops-detail-loading"><Loader2 size={15} className="itops-spin" /> Loading full detail records...</div>
-              )}
-              {renderDrawerContent()}
-            </div>
+            <div className="itops-pro-modal-body">{renderDrawerContent()}</div>
           </section>
         </div>
       )}
@@ -4621,20 +4512,6 @@ export default function ITOperationsDashboard() {
 }
 
 const ITOPS_PRO_STYLES = `
-.itops-detail-loading {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 12px;
-  padding: 9px 12px;
-  border: 1px solid rgba(14, 165, 233, .24);
-  border-radius: 999px;
-  background: #eff6ff;
-  color: #075985;
-  font-size: 11px;
-  font-weight: 900;
-}
-
 .itops-pro-page {
   width: 100%;
   max-width: none;
