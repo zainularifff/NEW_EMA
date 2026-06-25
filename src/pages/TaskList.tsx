@@ -153,27 +153,34 @@ type AppModalProps = {
 function AppModal({ show, size, onHide, eyebrow, title, footer, children }: AppModalProps) {
   if (!show) return null;
 
-  const sizeClass = size ? `modal-${size}` : "";
+  const sizeClass = size ? `task-action-modal-${size}` : "";
 
   return (
-    <>
-      <div className="modal-backdrop fade show" />
-      <div className="modal fade show d-block app-modal task-confirm-modal" role="dialog" aria-modal="true" tabIndex={-1}>
-        <div className={`modal-dialog modal-dialog-centered ${sizeClass}`.trim()}>
-          <div className="modal-content">
-            <div className="modal-header">
-              <div>
-                {eyebrow ? <div className="section-tag mb-1">{eyebrow}</div> : null}
-                <h5 className="modal-title mb-0">{title}</h5>
-              </div>
-              <button type="button" className="btn-close" aria-label="Close" onClick={onHide} />
-            </div>
-            <div className="modal-body">{children}</div>
-            {footer ? <div className="modal-footer">{footer}</div> : null}
-          </div>
+    <div className="ema-confirm-backdrop task-action-modal-backdrop" onClick={onHide} role="presentation">
+      <section
+        className={`ema-confirm-modal task-action-modal ${sizeClass}`.trim()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={typeof title === "string" ? title : "Task confirmation"}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button type="button" className="modal-close" aria-label="Close confirmation" onClick={onHide}>
+          <X size={16} />
+        </button>
+
+        <div className="ema-confirm-icon task-action-modal-icon" aria-hidden="true">
+          <AlertCircle size={22} />
         </div>
-      </div>
-    </>
+
+        {eyebrow ? <span className="ema-confirm-kicker">{eyebrow}</span> : null}
+
+        <h2 className="task-action-modal-title">{title}</h2>
+
+        <div className="task-action-modal-body">{children}</div>
+
+        {footer ? <footer className="ema-confirm-actions task-action-modal-actions">{footer}</footer> : null}
+      </section>
+    </div>
   );
 }
 

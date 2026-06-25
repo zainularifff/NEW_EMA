@@ -263,3 +263,101 @@
     align-items: stretch !important;
   }
 }
+\n
+/* FINAL: Task List confirmation modal */
+.task-action-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
+  background: rgba(15, 23, 42, 0.42) !important;
+  backdrop-filter: blur(12px) saturate(112%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(112%) !important;
+  z-index: 2147483000 !important;
+}
+
+.task-action-modal {
+  width: min(520px, calc(100vw - 48px)) !important;
+  padding: 22px !important;
+  border-radius: 22px !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(203, 213, 225, 0.85) !important;
+  box-shadow: 0 32px 90px rgba(15, 23, 42, 0.34) !important;
+  display: grid !important;
+  gap: 12px !important;
+}
+
+.task-action-modal-sm {
+  width: min(500px, calc(100vw - 48px)) !important;
+}
+
+.task-action-modal .modal-close {
+  position: absolute !important;
+  top: 14px !important;
+  right: 14px !important;
+}
+
+.task-action-modal-title {
+  margin: 0 !important;
+  padding-right: 42px !important;
+  color: #0f2746 !important;
+  font-size: 22px !important;
+  font-weight: 950 !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.04em !important;
+}
+
+.task-action-modal-title .task-modal-title-inline {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.task-action-modal-body {
+  display: grid !important;
+  gap: 12px !important;
+}
+
+.task-action-modal-body .task-confirm-copy {
+  margin: 0 !important;
+  color: #64748b !important;
+  font-size: 13px !important;
+  font-weight: 760 !important;
+  line-height: 1.55 !important;
+}
+
+.task-action-modal-body .task-note-box {
+  margin: 0 !important;
+  padding: 12px 14px !important;
+  border-radius: 15px !important;
+  border: 1px solid rgba(203, 213, 225, 0.85) !important;
+  background: #f8fbff !important;
+}
+
+.task-action-modal-body .task-note-box h4 {
+  margin: 0 0 4px !important;
+  color: #0f2746 !important;
+  font-size: 12px !important;
+  font-weight: 950 !important;
+}
+
+.task-action-modal-body .task-note-box p {
+  margin: 0 !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 760 !important;
+  line-height: 1.45 !important;
+}
+
+.task-action-modal-actions {
+  margin-top: 2px !important;
+  padding-top: 14px !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
