@@ -41,9 +41,17 @@ function rangeForPreset(preset: RangePreset): Range {
   start.setDate(end.getDate() - 29);
   return { preset: "last-30-days", from: iso(start), to: iso(end) };
 }
-function reportScope() { return { branchName: "All Branches", scope: "All Sites", relationID: 0, locationBranch: "All Branches" }; }
+function reportScope(branchName = "All Branches") {
+  const selectedBranch = branchName.trim() || "All Branches";
+  return {
+    branchName: selectedBranch,
+    scope: selectedBranch === "All Branches" ? "All Sites" : selectedBranch,
+    relationID: 0,
+    locationBranch: selectedBranch,
+  };
+}
 function isStandalone(pack: Pack | null) { return Boolean(pack?.standalone || pack?.id === "ai-executive-summary"); }
-function categoryLabel(pack: Pack) { return pack.category === "Dynamic" ? "AI Dynamic Reporting" : "Standard Report"; }
+function categoryLabel(pack: Pack) { return pack.category === "Dynamic" ? "AI Dynamic" : "Standard Report"; }
 function titleForSelection(packs: Pack[]) {
   if (packs.length === 0) return "Management Report Pack";
   if (packs.length === 1) return packs[0].title;
@@ -51,9 +59,9 @@ function titleForSelection(packs: Pack[]) {
   if (packs.every((pack) => pack.id.includes("metering"))) return "Metering Governance Pack";
   return "Combined Management Report Pack";
 }
-function baseFilters(range: Range, pack?: Pack) {
+function baseFilters(range: Range, pack?: Pack, branchName = "All Branches") {
   return {
-    ...reportScope(),
+    ...reportScope(branchName),
     dateRange: range.preset,
     dateRangeLabel: range.preset.replace(/-/g, " "),
     period: `${range.from} to ${range.to}`,
@@ -154,7 +162,8 @@ function openPdfReport(payload: any, range: Range) {
 
 export default function ReportBuilderRulesLive() {
   const [range, setRange] = useState<Range>(() => rangeForPreset("last-30-days"));
-  const [slots, setSlots] = useState<(Pack | null)[]>(() => Array.from({ length: 6 }, () => null));
+  const [branch, setBranch] = useState("All Branches");
+  const [slots, setSlots] = useState<(Pack | null)[]>(() => Array.from({ length: 9 }, () => null));
   const [tab, setTab] = useState<"packs" | "templates">("packs");
   const [filter, setFilter] = useState<"all" | Category>("all");
   const [search, setSearch] = useState("");
@@ -169,7 +178,7 @@ export default function ReportBuilderRulesLive() {
 
   const addPack = (pack: Pack, target?: number) => setSlots((current) => {
     if (isStandalone(pack)) {
-      const next = Array.from({ length: 6 }, () => null) as (Pack | null)[];
+      const next = Array.from({ length: 9 }, () => null) as (Pack | null)[];
       next[0] = pack;
       setError("AI Executive Summary is standalone and cannot be combined.");
       return next;
@@ -215,17 +224,19 @@ export default function ReportBuilderRulesLive() {
   return (
     <main className="builder-page">
       <section className="builder-top no-report-title">
-        <div className="auto-title-field"><span>Report Output</span><strong>{buildTitle}</strong></div>
-        <label className="field"><span>Location / Branch</span><select><option>All Branches</option></select></label>
+        <div className="auto-title-field">
+          <span>Report Output</span>
+          <strong>{buildTitle}</strong>
+        </div>
         <label className="field"><span>Date Range</span><select value={range.preset} onChange={(event) => setRange(rangeForPreset(event.target.value as RangePreset))}><option value="today">Today</option><option value="this-week">This Week</option><option value="this-month">This Month</option><option value="last-30-days">Last 30 Days</option><option value="custom">Custom Range</option></select></label>
         {range.preset === "custom" && <><label className="field compact-date"><span>From</span><input type="date" value={range.from} onChange={(event) => setRange((current) => ({ ...current, from: event.target.value }))} /></label><label className="field compact-date"><span>To</span><input type="date" value={range.to} onChange={(event) => setRange((current) => ({ ...current, to: event.target.value }))} /></label></>}
         <div className="actions"><button className="builder-btn" onClick={() => runReport("preview")} disabled={Boolean(loading)}>{loading === "preview" ? "Loading..." : "Preview"}</button><button className="builder-btn primary" onClick={() => runReport("generate")} disabled={Boolean(loading)}>{loading === "generate" ? "Opening PDF..." : "Generate PDF"}</button></div>
       </section>
       {error && <div className="error">{error}</div>}
       <section className="builder-layout">
-        <aside className="panel"><div className="head"><strong>Report Packs</strong><small>{PACKS.filter((p) => p.category === "Standard").length} standard · {PACKS.filter((p) => p.category === "Dynamic").length} AI dynamic reporting</small></div><div className="tabs"><button className={tab === "packs" ? "active" : ""} onClick={() => setTab("packs")}>Modules</button><button className={tab === "templates" ? "active" : ""} onClick={() => setTab("templates")}>Templates</button></div>{tab === "packs" ? <><div className="search"><input placeholder="Search report packs..." value={search} onChange={(event) => setSearch(event.target.value)} /></div><div className="filters"><button className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}>All</button><button className={filter === "Standard" ? "active" : ""} onClick={() => setFilter("Standard")}>Standard</button><button className={filter === "Dynamic" ? "active" : ""} onClick={() => setFilter("Dynamic")}>AI Dynamic Reporting</button></div><div className="pack-list">{packs.map((pack) => <button key={pack.id} className={`pack ${isStandalone(pack) ? "standalone" : ""}`} draggable onDragStart={(event) => event.dataTransfer.setData("text/report-pack", pack.id)} onClick={() => addPack(pack)} style={{ "--accent": pack.tone } as CSSProperties}><span className="ico">{pack.icon}</span><strong>{pack.title}</strong><small>{isStandalone(pack) ? "Standalone report" : pack.dynamic ? "AI Dynamic Reporting" : pack.subtitle}</small></button>)}</div></> : <div className="templates">{TEMPLATES.map((template) => <button key={template.title} className="builder-btn" onClick={() => setSlots(Array.from({ length: 6 }, (_, index) => PACKS.find((pack) => pack.id === template.packs[index]) || null))}>{template.title}</button>)}</div>}</aside>
-        <section className="canvas-wrap"><div className="canvas-head"><div><strong>Report Canvas</strong><small>{hasSummary ? "AI Executive Summary is standalone." : "Drag report packs here to combine them into one management report."}</small></div><button className="clear" onClick={() => setSlots(Array.from({ length: 6 }, () => null))}>Clear Canvas</button></div><div className="canvas">{slots.map((slot, index) => <div key={index} className="slot" onDragOver={(event) => event.preventDefault()} onDrop={(event) => dropPack(event, index)}>{slot ? <article className={`filled ${isStandalone(slot) ? "standalone" : ""}`} style={{ "--accent": slot.tone } as CSSProperties}><button className="remove" onClick={() => setSlots((current) => current.map((item, itemIndex) => itemIndex === index ? null : item))}>×</button><div><div className="filled-top"><span className="ico">{slot.icon}</span><em>{isStandalone(slot) ? "Standalone" : categoryLabel(slot)}</em></div><h3>{slot.title}</h3><p>{slot.subtitle}</p></div><small>Canvas Slot {index + 1}</small></article> : <div className="slot-empty"><strong>+</strong><span>Drop Report</span></div>}</div>)}</div></section>
-        <aside className="panel right"><div className="head"><strong>Build Summary</strong><small>{selected.length} selected report pack{selected.length === 1 ? "" : "s"}</small></div><div className="summary"><div className="metric"><span>Report Output</span><strong>{buildTitle}</strong></div><div className="metric"><span>Branch Scope</span><strong>All Branches</strong></div><div className="metric"><span>Period</span><strong>{range.from} → {range.to}</strong></div><div className="metric"><span>Output</span><strong>{selected.length > 1 ? "Combined PDF" : "Legacy PDF Design"}</strong></div><div className="rule-note">Report content is rendered from live backend payload. No UI fallback rows are generated.</div>{selected.map((pack, index) => <div className="selected-pill" key={`${pack.id}-${index}`}><span className="ico" style={{ "--accent": pack.tone } as CSSProperties}>{pack.icon}</span>{index + 1}. {pack.title}</div>)}</div></aside>
+        <aside className="panel"><div className="head"><strong>Report Packs</strong><small>{PACKS.filter((p) => p.category === "Standard").length} standard · {PACKS.filter((p) => p.category === "Dynamic").length} AI reports</small></div><div className="tabs"><button className={tab === "packs" ? "active" : ""} onClick={() => setTab("packs")}>Modules</button><button className={tab === "templates" ? "active" : ""} onClick={() => setTab("templates")}>Templates</button></div>{tab === "packs" ? <><div className="search"><input placeholder="Search report packs..." value={search} onChange={(event) => setSearch(event.target.value)} /></div><div className="filters"><button className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}>All</button><button className={filter === "Standard" ? "active" : ""} onClick={() => setFilter("Standard")}>Standard</button><button className={filter === "Dynamic" ? "active" : ""} onClick={() => setFilter("Dynamic")}>AI Dynamic</button></div><div className="pack-list">{packs.map((pack) => <button key={pack.id} className={`pack ${isStandalone(pack) ? "standalone" : ""}`} draggable onDragStart={(event) => event.dataTransfer.setData("text/report-pack", pack.id)} onClick={() => addPack(pack)} style={{ "--accent": pack.tone } as CSSProperties}><span className="ico">{pack.icon}</span><strong>{pack.title}</strong><small>{isStandalone(pack) ? "Standalone report" : pack.dynamic ? "AI Dynamic" : pack.subtitle}</small></button>)}</div></> : <div className="templates">{TEMPLATES.map((template) => <button key={template.title} className="builder-btn" onClick={() => setSlots(Array.from({ length: 9 }, (_, index) => PACKS.find((pack) => pack.id === template.packs[index]) || null))}>{template.title}</button>)}</div>}</aside>
+        <section className="canvas-wrap"><div className="canvas-head"><div><strong>Report Canvas</strong><small>{hasSummary ? "AI Executive Summary is standalone." : "Drag report packs here to combine them into one management report."}</small></div><button className="clear" onClick={() => setSlots(Array.from({ length: 9 }, () => null))}>Clear Canvas</button></div><div className="canvas">{slots.map((slot, index) => <div key={index} className="slot" onDragOver={(event) => event.preventDefault()} onDrop={(event) => dropPack(event, index)}>{slot ? <article className={`filled ${isStandalone(slot) ? "standalone" : ""}`} style={{ "--accent": slot.tone } as CSSProperties}><button className="remove" onClick={() => setSlots((current) => current.map((item, itemIndex) => itemIndex === index ? null : item))}>×</button><div><div className="filled-top"><span className="ico">{slot.icon}</span><em>{isStandalone(slot) ? "Standalone" : categoryLabel(slot)}</em></div><h3>{slot.title}</h3><p>{slot.subtitle}</p></div><small>Canvas Slot {index + 1}</small></article> : <div className="slot-empty"><strong>+</strong><span>Drop Report</span></div>}</div>)}</div></section>
+        <aside className="panel right"><div className="head"><strong>Build Summary</strong><small>{selected.length} selected report pack{selected.length === 1 ? "" : "s"}</small></div><div className="summary"><div className="metric"><span>Report Output</span><strong>{buildTitle}</strong></div><div className="metric"><span>Period</span><strong>{range.from} → {range.to}</strong></div><div className="metric"><span>Output</span><strong>{selected.length > 1 ? "Combined PDF" : "Legacy PDF Design"}</strong></div><div className="rule-note">Report content is rendered from live backend payload. No UI fallback rows are generated.</div>{selected.map((pack, index) => <div className="selected-pill" key={`${pack.id}-${index}`}><span className="ico" style={{ "--accent": pack.tone } as CSSProperties}>{pack.icon}</span>{index + 1}. {pack.title}</div>)}</div></aside>
       </section>
       {preview && <div className="backdrop" onClick={(event) => event.target === event.currentTarget && setPreview(null)}><section className="preview"><div className="preview-head"><div><strong>{preview.title}</strong><small>{range.from} to {range.to} · {preview.count} pack{preview.count === 1 ? "" : "s"}</small></div><button className="builder-btn" onClick={() => setPreview(null)}>Close</button></div><iframe className="preview-frame" title={`${preview.title} preview`} srcDoc={preview.html} /></section></div>}
     </main>

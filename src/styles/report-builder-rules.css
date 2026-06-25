@@ -256,3 +256,271 @@ body.ema-report-builder-active .ema-page { padding: 0 !important; }
   .pack-list,
   .canvas { grid-template-columns: 1fr; }
 }
+
+/* =========================================================
+   FINAL Report Builder UI Standardisation
+   - Report packs: 3 columns
+   - Canvas: 9 slots / 3 columns
+   - Light module background
+   - AI Dynamic button fit
+========================================================= */
+
+html.ema-report-builder-active,
+body.ema-report-builder-active {
+  background: #eef3f9 !important;
+  overflow: hidden !important;
+}
+
+body.ema-report-builder-active .ema-main,
+body.ema-report-builder-active .ema-page {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.055), transparent 24rem),
+    radial-gradient(circle at 100% 10%, rgba(8, 126, 164, 0.045), transparent 24rem),
+    linear-gradient(135deg, #eef3f9 0%, #f9fbfd 45%, #e8eff7 100%) !important;
+  overflow: hidden !important;
+}
+
+body.ema-report-builder-active .ema-page {
+  padding: 0 !important;
+}
+
+.builder-page {
+  height: calc(100dvh - 70px) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.045), transparent 26rem),
+    linear-gradient(135deg, #eef3f9 0%, #f8fbff 48%, #eaf1f8 100%) !important;
+  overflow: hidden !important;
+}
+
+.builder-top {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-bottom: 1px solid #d8e4f4 !important;
+  box-shadow: 0 10px 26px rgba(15, 35, 71, 0.045) !important;
+}
+
+.builder-layout {
+  grid-template-columns: 390px minmax(0, 1fr) 310px !important;
+  gap: 16px !important;
+  padding: 14px 18px 26px !important;
+  background: transparent !important;
+}
+
+/* Report Packs - 3 columns */
+.pack-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  padding: 0 10px 28px !important;
+}
+
+.pack {
+  height: 112px !important;
+  min-height: 112px !important;
+  max-height: 112px !important;
+  padding: 7px 5px !important;
+  grid-template-rows: 26px 30px 30px !important;
+  border-radius: 13px !important;
+}
+
+.pack .ico,
+.ico {
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 9px !important;
+  font-size: 9px !important;
+}
+
+.pack strong {
+  font-size: 9.2px !important;
+  line-height: 1.12 !important;
+  min-height: 25px !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+.pack small {
+  font-size: 7.6px !important;
+  line-height: 1.16 !important;
+  min-height: 24px !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+/* Filter buttons - fix AI Dynamic wording/container */
+.filters {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+}
+
+.filters button {
+  min-width: 0 !important;
+  height: 31px !important;
+  padding: 0 5px !important;
+  font-size: 9.2px !important;
+  line-height: 1.05 !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+}
+
+/* Canvas - 9 boxes, 3 columns */
+.canvas-head {
+  width: min(100%, 900px) !important;
+}
+
+.canvas {
+  width: min(100%, 900px) !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+}
+
+.slot {
+  min-height: 138px !important;
+}
+
+.filled {
+  min-height: 138px !important;
+}
+
+/* Right summary standard spacing */
+.panel.right {
+  min-width: 0 !important;
+}
+
+.summary {
+  padding: 12px 12px 24px !important;
+}
+
+/* Responsive */
+@media (max-width: 1480px) {
+  .builder-layout {
+    grid-template-columns: 360px minmax(0, 1fr) 290px !important;
+  }
+
+  .pack-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .canvas-head,
+  .canvas {
+    width: min(100%, 820px) !important;
+  }
+}
+
+@media (max-width: 1320px) {
+  .builder-layout {
+    grid-template-columns: 360px minmax(0, 1fr) !important;
+  }
+
+  .right.panel {
+    display: none !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .pack-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .canvas {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .pack-list,
+  .canvas {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* =========================================================
+   Report Header / Canvas Text Polish
+========================================================= */
+
+.builder-top {
+  grid-template-columns: minmax(300px, 1fr) 230px 210px auto !important;
+  align-items: end !important;
+}
+
+.auto-title-field {
+  display: grid !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+}
+
+.auto-title-field span {
+  display: block !important;
+  font-size: 10px !important;
+  font-weight: 950 !important;
+  color: #7a8ba8 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.12em !important;
+}
+
+.auto-title-field strong {
+  display: block !important;
+  color: #0b2447 !important;
+  font-size: 14px !important;
+  font-weight: 950 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.canvas-head {
+  align-items: center !important;
+}
+
+.canvas-head > div:first-child {
+  display: grid !important;
+  gap: 3px !important;
+  align-items: start !important;
+}
+
+.canvas-head strong {
+  display: block !important;
+  font-size: 18px !important;
+  line-height: 1.15 !important;
+}
+
+.canvas-head small {
+  display: block !important;
+  margin: 0 !important;
+  color: #7a8ba8 !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  line-height: 1.25 !important;
+}
+
+.clear {
+  height: 34px !important;
+  padding: 0 13px !important;
+  border: 1px solid #cfdced !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  color: #2563eb !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  box-shadow: 0 8px 18px rgba(15, 35, 71, 0.06) !important;
+}
+
+.clear:hover {
+  border-color: #2563eb !important;
+  background: #eef5ff !important;
+}
+
+.builder-top .field input {
+  width: 100% !important;
+  height: 34px !important;
+  border: 1px solid #cfdced !important;
+  border-radius: 10px !important;
+  background: #f9fbff !important;
+  padding: 6px 10px !important;
+  font-weight: 850 !important;
+  color: #0b2447 !important;
+}
+
+/* Report top filter after hiding Location / Branch */
+.builder-top {
+  grid-template-columns: minmax(300px, 1fr) 210px auto !important;
+}
