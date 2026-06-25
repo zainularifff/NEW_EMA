@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "./components/layout/AppShell";
@@ -16,11 +17,33 @@ import SoftwareDistribution from "./pages/SoftwareDistribution";
 import PatchManagement from "./pages/PatchManagement";
 import InternetMetering from "./pages/InternetMetering";
 import NetworkInventory from "./pages/NetworkInventory";
-import ManagementDashboard from "./pages/ManagementDashboard";
 //import ITOperationsDashboard from "./pages/ITOperationsDashboard";
 
-
 import ProtectedRoute from "./routes/ProtectedRoute";
+
+const ManagementDashboardFallback = () => (
+  <div style={{ padding: 24 }}>
+    Management Dashboard failed to load. Please check src/pages/ManagementDashboard.tsx export.
+  </div>
+);
+
+const ManagementDashboard = lazy(async () => {
+  const module = await import("./pages/ManagementDashboard");
+  const resolved =
+    (module as { default?: React.ComponentType; ManagementDashboard?: React.ComponentType }).default ||
+    (module as { default?: React.ComponentType; ManagementDashboard?: React.ComponentType }).ManagementDashboard ||
+    ManagementDashboardFallback;
+
+  return { default: resolved };
+});
+
+function ManagementDashboardRoute() {
+  return (
+    <Suspense fallback={<div style={{ padding: 24 }}>Loading Management Dashboard...</div>}>
+      <ManagementDashboard />
+    </Suspense>
+  );
+}
 
 export default function App() {
   return (
@@ -49,7 +72,7 @@ export default function App() {
         <Route path="/internet-metering" element={<InternetMetering />} />
         <Route path="/network-metering" element={<NetworkInventory />} />
         <Route path="/network-inventory" element={<NetworkInventory />} />
-        <Route path="/management-dashboard" element={<ManagementDashboard />} />
+        <Route path="/management-dashboard" element={<ManagementDashboardRoute />} />
         {/* <Route path="/itdashboard" element={<ITOperationsDashboard />} /> */}
       </Route>
 
