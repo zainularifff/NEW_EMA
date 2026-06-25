@@ -1719,6 +1719,7 @@ export default function Settings() {
   const [resourceDeleteTarget, setResourceDeleteTarget] = useState<ResourceDeleteTarget | null>(null);
   const [userDeleteTarget, setUserDeleteTarget] = useState<{ user: UserAccess; index: number } | null>(null);
   const [settingsToast, setSettingsToast] = useState<SettingsToastState>(null);
+  const settingsToastTimerRef = useRef<number | null>(null);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [brandOptionsByCategory, setBrandOptionsByCategory] = useState<Record<string, string[]>>({});
   const [modelOptionsByKey, setModelOptionsByKey] = useState<Record<string, string[]>>({});
@@ -1763,10 +1764,27 @@ export default function Settings() {
 
   const showToast = (tone: ToastTone, title: string, message: string) => {
     const toastId = Date.now();
-    setSettingsToast({ id: toastId, tone, title, message });
-    window.setTimeout(() => {
+    const safeTitle = String(title || "Update completed").trim();
+    const safeMessage = String(message || "")
+      .replace(/\s+/g, " ")
+      .replace(/\.+$/, ".")
+      .trim();
+
+    if (settingsToastTimerRef.current) {
+      window.clearTimeout(settingsToastTimerRef.current);
+    }
+
+    setSettingsToast({
+      id: toastId,
+      tone,
+      title: safeTitle,
+      message: safeMessage || (tone === "success" ? "Changes saved successfully." : "Please review the latest update."),
+    });
+
+    settingsToastTimerRef.current = window.setTimeout(() => {
       setSettingsToast((current) => (current?.id === toastId ? null : current));
-    }, 3600);
+      settingsToastTimerRef.current = null;
+    }, tone === "error" ? 5200 : 3200);
   };
 
   const loadUsers = async () => {
@@ -1824,15 +1842,13 @@ export default function Settings() {
       const payload = await settingsModuleAccess.get() as NonNullable<ModuleAccessApiResponse["data"]>;
       const modules = (payload.modules || []).map((row) => normalizeModuleRow(row));
       const permissions = (payload.permissions || []).map((row) => normalizeModulePermission(row));
-      const roles = payload.roles;
-
-      setModuleCatalog([...modules].sort((a, b) => (Number(a.sortOrder || 0) - Number(b.sortOrder || 0)) || a.moduleName.localeCompare(b.moduleName)));
+setModuleCatalog([...modules].sort((a, b) => (Number(a.sortOrder || 0) - Number(b.sortOrder || 0)) || a.moduleName.localeCompare(b.moduleName)));
       setModulePermissions(permissions);
-      if (Array.isArray(roles) && roles.length) {
-        setAccessRoles(sortAccessRoles(roles.map(normalizeAccessRole)));
-        setRolesLoaded(true);
-      }
-      setModuleLoaded(true);
+
+      // Do not overwrite Role Based Control state with roles from Module Control.
+      // Module Control can return active roles only, so inactive roles disappeared
+      // from Role Based Control until Refresh was clicked.
+setModuleLoaded(true);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load module role access.";
       setModuleError(message);
@@ -3156,6 +3172,11 @@ export default function Settings() {
       document.body.classList.remove("ema-settings-page-active");
     };
   }, []);
+
+  useEffect(() => {
+    if (activeSection !== "roles") return;
+    void loadAccessRoles();
+  }, [activeSection]);
 
   const visibleUsers = users.filter((user) => !filteredContentTerm || `${user.name} ${user.username || ""} ${user.email} ${user.role} ${user.status}`.toLowerCase().includes(filteredContentTerm));
 

@@ -523,3 +523,53 @@ body .software-inventory-module .software-device-table-row.software-dynamic-row 
     max-width: none !important;
   }
 }
+
+/* =========================================================
+   FINAL SAFE FIX - Settings sidebar brand white panel
+   Do not touch shell/sidebar layout. Only fix .ema-sidebar-brand.
+========================================================= */
+
+html.ema-settings-page-active body.ema-settings-page-active .ema-sidebar .ema-sidebar-brand,
+html.ema-settings-page-active body.ema-settings-page-active .ema-sidebar-brand {
+  position: relative !important;
+  inset: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: 72px !important;
+
+  margin: 0 0 1rem 0 !important;
+  padding: 0 !important;
+
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+
+  overflow: visible !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+html.ema-settings-page-active body.ema-settings-page-active .ema-sidebar-brand::before,
+html.ema-settings-page-active body.ema-settings-page-active .ema-sidebar-brand::after {
+  display: none !important;
+  content: none !important;
+}
+
+html.ema-settings-page-active body.ema-settings-page-active .ema-sidebar-brand *,
+html.ema-settings-page-active body.ema-settings-page-active .ema-sidebar .ema-sidebar-brand * {
+  position: relative !important;
+  max-width: 100% !important;
+  background: transparent !important;
+}
