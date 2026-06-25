@@ -341,23 +341,3 @@
     flex: 1 1 8rem;
   }
 }
-
-/* =========================================================
-   Management Control duplicate sidebar guard
-   The Management Control tab already renders its own left panel.
-   If the old Settings sidebar is nested again inside content, hide only
-   that nested copy and let the content fill the available width.
-========================================================= */
-
-.ema-settings-pro .settings-content .settings-menu {
-  display: none !important;
-}
-
-.ema-settings-pro .settings-content .settings-layout {
-  grid-template-columns: minmax(0, 1fr) !important;
-}
-
-.ema-settings-pro .settings-content .settings-layout > .settings-content {
-  width: 100% !important;
-  min-width: 0 !important;
-}
