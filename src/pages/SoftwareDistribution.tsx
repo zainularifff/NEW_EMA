@@ -25,7 +25,11 @@ import {
   X,
 } from "lucide-react";
 import softwareDistributionService from "../services/softwareDistributionService";
+import "../styles/software-distribution-v2.css";
 
+import "../styles/ema-standard-table.css";
+import "../styles/ema-standard-controls.css";
+import "../styles/ema-table-pagination-standard.css";
 type PackageStatus = "Ready" | "Draft" | "Deployed" | "Archived";
 type DeliveryMethod = "onprem" | "cloud" | "network";
 type SortKey =

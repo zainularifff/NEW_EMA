@@ -6507,7 +6507,7 @@ app.delete("/api/settings/users/:id", authenticateToken, async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid user ID." });
         }
 
-        const pool = await getDbPool(typeof req !== 'undefined' ? req : null);
+        const pool = await sql.connect(dbConfig);
         await assertEmaUsersTable(pool);
 
         const userResult = await pool.request()
@@ -6528,18 +6528,38 @@ app.delete("/api/settings/users/:id", authenticateToken, async (req, res) => {
 
         const userToDelete = userResult.recordset[0];
 
+        const assignedTicketResult = await pool.request()
+            .input("Username", sql.NVarChar, userToDelete.Username || "")
+            .input("FullName", sql.NVarChar, userToDelete.FullName || "")
+            .query(`
+                SELECT TOP 1 IncidentID
+                FROM EMA_Incidents WITH (NOLOCK)
+                WHERE LTRIM(RTRIM(ISNULL(AssignedTo, ''))) IN (
+                    LTRIM(RTRIM(@Username)),
+                    LTRIM(RTRIM(@FullName))
+                );
+            `);
+
+        if (assignedTicketResult.recordset.length > 0) {
+            return res.status(409).json({
+                success: false,
+                code: "USER_ASSIGNED_TO_SERVICE_DESK_TICKET",
+                message: "This user has been assigned to Service Desk tickets. To preserve ticket history, please set the user status to Inactive instead."
+            });
+        }
+
         // Hard delete for EMA v2 User Access Management.
         // Remove child rows first when the optional v2 access tables exist.
         const result = await pool.request()
             .input("UserID", sql.Int, userID)
             .query(`
-                IF OBJECT_ID('EMA_UserRoles', 'U') IS NOT NULL
+                IF OBJECT_ID('dbo.EMA_UserRoles', 'U') IS NOT NULL
                 BEGIN
                     DELETE FROM EMA_UserRoles
                     WHERE UserID = @UserID;
                 END;
 
-                IF OBJECT_ID('EMA_UserAccessPolicies', 'U') IS NOT NULL
+                IF OBJECT_ID('dbo.EMA_UserAccessPolicies', 'U') IS NOT NULL
                 BEGIN
                     DELETE FROM EMA_UserAccessPolicies
                     WHERE UserID = @UserID;

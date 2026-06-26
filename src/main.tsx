@@ -28,3 +28,11 @@ createRoot(document.getElementById("root")!).render(
 import "./styles/ema-layout.css";
 import "./styles/ema-action-buttons.css";
 import "./styles/ema-pagination.css";
+
+import "./styles/ema-module-sidebar.css";
+import "./styles/ema-standard-table.css";
+import "./styles/ema-standard-controls.css";
+import "./styles/ema-table-pagination-standard.css";
+import { installEmaTablePaginationFinal } from "./utils/emaTablePaginationFinal";
+
+installEmaTablePaginationFinal();

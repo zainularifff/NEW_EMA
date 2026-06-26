@@ -1,0 +1,1055 @@
+
+/* Hardware V2 - same sidebar panel + tree standard */
+body .hardware-module-root.settings-module-root {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: calc(100vh - 66px) !important;
+  min-height: calc(100vh - 66px) !important;
+  max-height: calc(100vh - 66px) !important;
+  padding: 12px !important;
+  margin: 0 !important;
+  background: #eef5f9 !important;
+  overflow: hidden !important;
+  color: #0f2746 !important;
+}
+
+body .hardware-module-root,
+body .hardware-module-root * {
+  box-sizing: border-box !important;
+  font-weight: 500 !important;
+}
+
+/* Force old inline style to use same standard sidebar width */
+body .hardware-module-root.settings-module-root .settings-layout.hardware-settings-layout,
+body .hardware-module-root.settings-module-root .settings-layout {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  display: grid !important;
+  grid-template-columns: 280px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  overflow: hidden !important;
+}
+
+body .hardware-module-root.settings-module-root .settings-menu.hardware-left-panel,
+body .hardware-module-root.settings-module-root .settings-menu {
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 280px !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+  display: grid !important;
+  grid-template-rows: 86px auto minmax(0, 1fr) !important;
+  overflow: hidden !important;
+}
+
+/* Sidebar header */
+body .hardware-module-root .panel-head {
+  height: 86px !important;
+  min-height: 86px !important;
+  padding: 16px !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.95) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.08), transparent 34%),
+    #ffffff !important;
+  display: grid !important;
+  gap: 4px !important;
+  align-content: center !important;
+  overflow: hidden !important;
+}
+
+body .hardware-module-root .panel-head span,
+body .hardware-module-root .eyebrow,
+body .hardware-module-root .section-tag {
+  width: fit-content !important;
+  max-width: 100% !important;
+  min-height: 22px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 0 9px !important;
+  border-radius: 999px !important;
+  background: #eef5ff !important;
+  border: 1px solid #c9dbff !important;
+  color: #2563eb !important;
+  font-size: 9.5px !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.075em !important;
+  text-transform: uppercase !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body .hardware-module-root .panel-head strong {
+  color: #0f2746 !important;
+  font-size: 15px !important;
+  font-weight: 650 !important;
+  line-height: 1.1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body .hardware-module-root .panel-head small {
+  color: #64748b !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Sidebar switcher */
+body .hardware-module-root .settings-menu-list.ema-module-sidebar-switcher,
+body .hardware-module-root .settings-menu > .ema-module-sidebar-switcher {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 12px !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.95) !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+  width: 100% !important;
+}
+
+body .hardware-module-root .setting-btn {
+  width: 100% !important;
+  min-height: 42px !important;
+  border: 1px solid rgba(226, 232, 240, 0.96) !important;
+  border-radius: 13px !important;
+  background: #ffffff !important;
+  color: #0f2746 !important;
+  padding: 8px 10px !important;
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+  gap: 9px !important;
+  align-items: center !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+}
+
+body .hardware-module-root .setting-btn:hover,
+body .hardware-module-root .setting-btn.active {
+  border-color: #c7d2fe !important;
+  background: #f8f7ff !important;
+  box-shadow: inset 3px 0 0 #4f46e5 !important;
+}
+
+body .hardware-module-root .setting-icon {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 11px !important;
+  background: #eef5ff !important;
+  color: #2563eb !important;
+  display: grid !important;
+  place-items: center !important;
+}
+
+body .hardware-module-root .setting-btn strong {
+  display: block !important;
+  color: #0f2746 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body .hardware-module-root .setting-btn small {
+  display: block !important;
+  margin-top: 2px !important;
+  color: #64748b !important;
+  font-size: 10.5px !important;
+  line-height: 1.2 !important;
+}
+
+/* Sidebar content + tree */
+body .hardware-module-root .ema-sidebar-content {
+  min-height: 0 !important;
+  height: 100% !important;
+  padding: 12px !important;
+  padding-top: 12px !important;
+  overflow: hidden !important;
+}
+
+body .hardware-module-root .ema-sidebar-subpanel {
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-rows: auto auto minmax(0, 1fr) !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+  align-content: start !important;
+  justify-content: stretch !important;
+}
+
+body .hardware-module-root .section-search {
+  width: 100% !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 10px !important;
+  color: #64748b !important;
+  box-shadow: none !important;
+}
+
+body .hardware-module-root .section-search input {
+  flex: 1 !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  color: #0f2746 !important;
+  font-size: 12px !important;
+  box-shadow: none !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree {
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: auto !important;
+  display: grid !important;
+  gap: 6px !important;
+  align-content: start !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-branch {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 4px !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-node {
+  min-height: 34px !important;
+  border-radius: 11px !important;
+  display: grid !important;
+  grid-template-columns: 26px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-node:hover,
+body .hardware-module-root .ema-sidebar-tree-node.is-selected,
+body .hardware-module-root .ema-sidebar-tree-node.is-active {
+  background: #f8f7ff !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-toggle {
+  width: 26px !important;
+  height: 26px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #64748b !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 0 !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-main {
+  min-width: 0 !important;
+  height: 34px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #0f2746 !important;
+  padding: 0 8px !important;
+  display: grid !important;
+  grid-template-columns: 26px minmax(0, 1fr) auto !important;
+  gap: 7px !important;
+  align-items: center !important;
+  text-align: left !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-icon {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 8px !important;
+  background: #eef5ff !important;
+  color: #2563eb !important;
+  display: grid !important;
+  place-items: center !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-label {
+  min-width: 0 !important;
+  color: #0f2746 !important;
+  font-size: 11.5px !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-count {
+  min-width: 20px !important;
+  height: 20px !important;
+  border-radius: 999px !important;
+  border: 1px solid #dbeafe !important;
+  background: #eff6ff !important;
+  color: #2563eb !important;
+  padding: 0 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 9.5px !important;
+  white-space: nowrap !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-children {
+  margin-left: 12px !important;
+  display: grid !important;
+  gap: 4px !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-menu-wrap {
+  position: relative !important;
+  width: 28px !important;
+  display: inline-flex !important;
+  justify-content: center !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-menu-btn {
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 8px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #64748b !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 0 !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-menu-btn:hover {
+  background: #eef5ff !important;
+  color: #2563eb !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-menu {
+  position: absolute !important;
+  right: 0 !important;
+  top: 30px !important;
+  z-index: 30 !important;
+  min-width: 150px !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 11px !important;
+  background: #ffffff !important;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.18) !important;
+  padding: 6px !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-menu button {
+  width: 100% !important;
+  min-height: 30px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  color: #0f2746 !important;
+  font-size: 11px !important;
+  text-align: left !important;
+  padding: 0 8px !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-menu button:hover {
+  background: #f8f7ff !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-menu button.danger {
+  color: #dc2626 !important;
+}
+
+body .hardware-module-root .ema-sidebar-empty {
+  border: 1px dashed rgba(148, 163, 184, 0.4) !important;
+  border-radius: 12px !important;
+  color: #64748b !important;
+  font-size: 11px !important;
+  padding: 10px !important;
+  background: #fbfdff !important;
+}
+
+/* Main content standard */
+body .hardware-module-root .settings-content,
+body .hardware-module-root .hardware-settings-content {
+  min-width: 0 !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  display: grid !important;
+  grid-template-rows: 132px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  overflow: hidden !important;
+}
+
+body .hardware-module-root .settings-hero,
+body .hardware-module-root .hardware-hero {
+  height: 132px !important;
+  min-height: 132px !important;
+  max-height: 132px !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 16px !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.08), transparent 32%),
+    #ffffff !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+  padding: 20px 22px !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(560px, 1.05fr) !important;
+  align-items: center !important;
+  gap: 18px !important;
+  overflow: hidden !important;
+}
+
+body .hardware-module-root .settings-hero h2,
+body .hardware-module-root .hardware-hero h2 {
+  margin: 9px 0 0 !important;
+  color: #0f2746 !important;
+  font-size: 28px !important;
+  line-height: 1.05 !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.055em !important;
+}
+
+body .hardware-module-root .settings-hero p,
+body .hardware-module-root .hardware-hero p {
+  margin: 8px 0 0 !important;
+  color: #64748b !important;
+  font-size: 12.5px !important;
+  line-height: 1.35 !important;
+  max-width: 760px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body .hardware-module-root .settings-score,
+body .hardware-module-root .users-hero-score,
+body .hardware-module-root .hardware-hero-score {
+  width: 100% !important;
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  overflow: hidden !important;
+}
+
+body .hardware-module-root .score-box,
+body .hardware-module-root .ema-kpi-card {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 78px !important;
+  min-height: 78px !important;
+  max-height: 78px !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  padding: 10px 12px !important;
+  display: grid !important;
+  gap: 3px !important;
+  overflow: hidden !important;
+  text-align: left !important;
+  box-shadow: none !important;
+}
+
+body .hardware-module-root .score-box:hover,
+body .hardware-module-root .ema-kpi-card:hover {
+  border-color: #c7d2fe !important;
+  background: #f8f7ff !important;
+  box-shadow: inset 3px 0 0 #4f46e5 !important;
+}
+
+body .hardware-module-root .score-box span,
+body .hardware-module-root .ema-kpi-card span {
+  color: #64748b !important;
+  font-size: 9.5px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  line-height: 1 !important;
+}
+
+body .hardware-module-root .score-box strong,
+body .hardware-module-root .ema-kpi-card strong {
+  color: #0f2746 !important;
+  font-size: 18px !important;
+  font-weight: 650 !important;
+  line-height: 1.05 !important;
+}
+
+body .hardware-module-root .score-box small,
+body .hardware-module-root .score-box span,
+body .hardware-module-root .score-box strong {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Content card */
+body .hardware-module-root .content-shell,
+body .hardware-module-root .hardware-registry-card {
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+  overflow: hidden !important;
+}
+
+/* Buttons */
+body .hardware-module-root .soft-btn,
+body .hardware-module-root .primary-btn,
+body .hardware-module-root .danger-btn,
+body .hardware-module-root .mini-btn,
+body .hardware-module-root .hardware-btn {
+  min-height: 34px !important;
+  border-radius: 10px !important;
+  padding: 0 12px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  font-size: 11.5px !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+}
+
+body .hardware-module-root .primary-btn,
+body .hardware-module-root .hardware-btn.primary {
+  border-color: #4f46e5 !important;
+  background: linear-gradient(135deg, #4f46e5, #2563eb) !important;
+  color: #ffffff !important;
+  box-shadow: 0 12px 24px rgba(79, 70, 229, 0.16) !important;
+}
+
+body .hardware-module-root .danger-btn {
+  border-color: #fecaca !important;
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+}
+
+/* Modal overlay */
+body .hardware-module-root .hardware-modal-overlay,
+body .hardware-module-root .hardware-detail-drawer-overlay,
+body .hardware-module-root .settings-confirm-backdrop,
+body .hardware-module-root .user-modal-backdrop.open {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147482500 !important;
+  background: rgba(8, 26, 55, 0.52) !important;
+  backdrop-filter: blur(10px) saturate(120%) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 22px !important;
+  overflow: hidden !important;
+}
+
+@media (max-width: 1320px) {
+  body .hardware-module-root .settings-hero,
+  body .hardware-module-root .hardware-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(480px, 0.95fr) !important;
+  }
+
+  body .hardware-module-root .score-box small {
+    display: none !important;
+  }
+}
+
+@media (max-width: 980px) {
+  body .hardware-module-root.settings-module-root {
+    height: auto !important;
+    max-height: none !important;
+    overflow: auto !important;
+  }
+
+  body .hardware-module-root.settings-module-root .settings-layout.hardware-settings-layout,
+  body .hardware-module-root.settings-module-root .settings-layout {
+    height: auto !important;
+    grid-template-columns: 1fr !important;
+    overflow: visible !important;
+  }
+
+  body .hardware-module-root.settings-module-root .settings-menu.hardware-left-panel,
+  body .hardware-module-root.settings-module-root .settings-menu {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 360px !important;
+  }
+
+  body .hardware-module-root .settings-content,
+  body .hardware-module-root .hardware-settings-content {
+    height: auto !important;
+    grid-template-rows: auto auto !important;
+    overflow: visible !important;
+  }
+
+  body .hardware-module-root .settings-hero,
+  body .hardware-module-root .hardware-hero {
+    height: auto !important;
+    max-height: none !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  body .hardware-module-root .settings-score,
+  body .hardware-module-root .users-hero-score,
+  body .hardware-module-root .hardware-hero-score {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+
+/* FINAL FIX: Hardware + Software KPI cards same standard */
+html body .hardware-module-root.settings-module-root .settings-hero.hardware-hero,
+html body .hardware-module-root.settings-module-root .settings-hero,
+html body .software-inventory-module.settings-module-root .settings-hero {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(560px, 1.05fr) !important;
+  align-items: center !important;
+  gap: 18px !important;
+  overflow: hidden !important;
+}
+
+html body .hardware-module-root.settings-module-root .hardware-hero-score,
+html body .hardware-module-root.settings-module-root .settings-score,
+html body .software-inventory-module.settings-module-root .settings-score,
+html body .software-inventory-module.settings-module-root .users-hero-score {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  align-items: stretch !important;
+  justify-items: stretch !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body .hardware-module-root.settings-module-root .hardware-hero-score .score-box,
+html body .hardware-module-root.settings-module-root .settings-score .score-box,
+html body .hardware-module-root.settings-module-root .hardware-hero-score button,
+html body .hardware-module-root.settings-module-root .settings-score button,
+html body .software-inventory-module.settings-module-root .settings-score .score-box,
+html body .software-inventory-module.settings-module-root .users-hero-score .score-box,
+html body .software-inventory-module.settings-module-root .settings-score button,
+html body .software-inventory-module.settings-module-root .users-hero-score button {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: 78px !important;
+  min-height: 78px !important;
+  max-height: 78px !important;
+  margin: 0 !important;
+  padding: 11px 12px !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: #0f2746 !important;
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+  grid-template-rows: 14px 24px 14px !important;
+  column-gap: 10px !important;
+  row-gap: 2px !important;
+  align-items: center !important;
+  justify-content: stretch !important;
+  text-align: left !important;
+  overflow: hidden !important;
+  cursor: pointer !important;
+  transform: none !important;
+}
+
+html body .hardware-module-root.settings-module-root .hardware-hero-score .score-box:hover,
+html body .hardware-module-root.settings-module-root .settings-score .score-box:hover,
+html body .hardware-module-root.settings-module-root .hardware-hero-score button:hover,
+html body .software-inventory-module.settings-module-root .settings-score .score-box:hover,
+html body .software-inventory-module.settings-module-root .users-hero-score .score-box:hover,
+html body .software-inventory-module.settings-module-root .settings-score button:hover {
+  border-color: #c7d2fe !important;
+  background: #f8f7ff !important;
+  box-shadow: inset 3px 0 0 #4f46e5 !important;
+}
+
+html body .hardware-module-root.settings-module-root .hardware-hero-score .score-box svg,
+html body .hardware-module-root.settings-module-root .settings-score .score-box svg,
+html body .hardware-module-root.settings-module-root .hardware-hero-score button svg,
+html body .hardware-module-root.settings-module-root .settings-score button svg,
+html body .software-inventory-module.settings-module-root .settings-score .score-box svg,
+html body .software-inventory-module.settings-module-root .users-hero-score .score-box svg,
+html body .software-inventory-module.settings-module-root .settings-score button svg,
+html body .software-inventory-module.settings-module-root .users-hero-score button svg {
+  grid-column: 1 !important;
+  grid-row: 1 / 4 !important;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  padding: 8px !important;
+  border-radius: 999px !important;
+  background: #eef5ff !important;
+  color: #2563eb !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  align-self: center !important;
+  justify-self: center !important;
+  display: block !important;
+}
+
+html body .hardware-module-root.settings-module-root .hardware-hero-score .score-box span,
+html body .hardware-module-root.settings-module-root .settings-score .score-box span,
+html body .hardware-module-root.settings-module-root .hardware-hero-score button span,
+html body .hardware-module-root.settings-module-root .settings-score button span,
+html body .software-inventory-module.settings-module-root .settings-score .score-box span,
+html body .software-inventory-module.settings-module-root .users-hero-score .score-box span,
+html body .software-inventory-module.settings-module-root .settings-score button span,
+html body .software-inventory-module.settings-module-root .users-hero-score button span {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  color: #64748b !important;
+  font-size: 9.5px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  letter-spacing: 0.055em !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+}
+
+html body .hardware-module-root.settings-module-root .hardware-hero-score .score-box strong,
+html body .hardware-module-root.settings-module-root .settings-score .score-box strong,
+html body .hardware-module-root.settings-module-root .hardware-hero-score button strong,
+html body .hardware-module-root.settings-module-root .settings-score button strong,
+html body .software-inventory-module.settings-module-root .settings-score .score-box strong,
+html body .software-inventory-module.settings-module-root .users-hero-score .score-box strong,
+html body .software-inventory-module.settings-module-root .settings-score button strong,
+html body .software-inventory-module.settings-module-root .users-hero-score button strong {
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  color: #0f2746 !important;
+  font-size: 18px !important;
+  font-weight: 650 !important;
+  line-height: 1.05 !important;
+  letter-spacing: -0.025em !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+}
+
+html body .hardware-module-root.settings-module-root .hardware-hero-score .score-box small,
+html body .hardware-module-root.settings-module-root .settings-score .score-box small,
+html body .hardware-module-root.settings-module-root .hardware-hero-score button small,
+html body .hardware-module-root.settings-module-root .settings-score button small,
+html body .software-inventory-module.settings-module-root .settings-score .score-box small,
+html body .software-inventory-module.settings-module-root .users-hero-score .score-box small,
+html body .software-inventory-module.settings-module-root .settings-score button small,
+html body .software-inventory-module.settings-module-root .users-hero-score button small {
+  grid-column: 2 !important;
+  grid-row: 3 !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  color: #64748b !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  line-height: 1.1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+}
+
+html body .hardware-module-root.settings-module-root .hardware-hero::before,
+html body .hardware-module-root.settings-module-root .settings-hero::before,
+html body .hardware-module-root.settings-module-root .hardware-hero::after,
+html body .hardware-module-root.settings-module-root .settings-hero::after,
+html body .software-inventory-module.settings-module-root .settings-hero::before,
+html body .software-inventory-module.settings-module-root .settings-hero::after {
+  display: none !important;
+  content: none !important;
+}
+
+@media (max-width: 1320px) {
+  html body .hardware-module-root.settings-module-root .settings-hero.hardware-hero,
+  html body .hardware-module-root.settings-module-root .settings-hero,
+  html body .software-inventory-module.settings-module-root .settings-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(480px, 0.95fr) !important;
+  }
+
+  html body .hardware-module-root.settings-module-root .hardware-hero-score .score-box small,
+  html body .hardware-module-root.settings-module-root .settings-score .score-box small,
+  html body .software-inventory-module.settings-module-root .settings-score .score-box small,
+  html body .software-inventory-module.settings-module-root .users-hero-score .score-box small {
+    display: none !important;
+  }
+}
+
+
+
+
+/* FINAL: Hardware hero KPI external fallback */
+html body .hardware-module-root.settings-module-root .hardware-hero-score {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  height: 78px !important;
+  overflow: hidden !important;
+}
+
+html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-card {
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+
+/* FINAL: use EMA shared table standard */
+@import "./ema-standard-table.css";
+
+
+
+
+/* FINAL: Hardware advanced modal fallback */
+html body .hardware-module-root .hardware-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147482600 !important;
+  background: rgba(15, 23, 42, 0.52) !important;
+  backdrop-filter: blur(10px) saturate(120%) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
+}
+
+html body .hardware-module-root .hardware-modal {
+  border-radius: 20px !important;
+  background: #ffffff !important;
+  box-shadow: 0 36px 90px rgba(8, 26, 55, 0.35) !important;
+  overflow: hidden !important;
+}
+
+
+
+
+/* FINAL: Hardware dropdown standard fallback */
+html body .hardware-module-root .hardware-dropdown-button,
+html body .hardware-module-root .hardware-select-button,
+html body .hardware-module-root .hardware-dropdown-trigger,
+html body .hardware-module-root .hardware-filter-group select,
+html body .hardware-module-root .hardware-registry-filters select {
+  height: 38px !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 12px !important;
+  background-color: #ffffff !important;
+  color: #0f2746 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+html body .hardware-module-root .hardware-filter-group select,
+html body .hardware-module-root .hardware-registry-filters select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+
+/* FINAL FIX: Hardware custom dropdown clean class */
+html body .hardware-module-root .ema-hw-select {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 38px !important;
+  position: relative !important;
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+html body .hardware-module-root .ema-hw-select-trigger {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  color: #0f2746 !important;
+  padding: 0 12px !important;
+  margin: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 16px !important;
+  gap: 8px !important;
+  align-items: center !important;
+  justify-content: stretch !important;
+  text-align: left !important;
+  font-size: 11.8px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  cursor: pointer !important;
+  overflow: hidden !important;
+}
+
+html body .hardware-module-root .ema-hw-select-trigger:hover {
+  border-color: #c9dbff !important;
+  background: #fbfdff !important;
+}
+
+html body .hardware-module-root .ema-hw-select-trigger:focus,
+html body .hardware-module-root .ema-hw-select-trigger:focus-visible,
+html body .hardware-module-root .ema-hw-select.is-open .ema-hw-select-trigger {
+  border-color: #93c5fd !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10) !important;
+  outline: none !important;
+}
+
+html body .hardware-module-root .ema-hw-select-trigger span {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  display: block !important;
+  color: #0f2746 !important;
+  font-size: 11.8px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+html body .hardware-module-root .ema-hw-select-trigger svg {
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
+  color: #64748b !important;
+  justify-self: end !important;
+  transition: transform 0.15s ease !important;
+}
+
+html body .hardware-module-root .ema-hw-select.is-open .ema-hw-select-trigger svg {
+  transform: rotate(180deg) !important;
+}
+
+html body .hardware-module-root .ema-hw-select.is-disabled .ema-hw-select-trigger,
+html body .hardware-module-root .ema-hw-select-trigger:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  background: #f8fafc !important;
+  color: #94a3b8 !important;
+  border-color: rgba(226, 232, 240, 0.96) !important;
+  box-shadow: none !important;
+}
+
+html body .hardware-module-root .ema-hw-select-menu {
+  position: absolute !important;
+  top: calc(100% + 6px) !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 2147482800 !important;
+  min-width: 100% !important;
+  max-height: 240px !important;
+  overflow: auto !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16) !important;
+  padding: 6px !important;
+}
+
+html body .hardware-module-root .ema-hw-select-option {
+  width: 100% !important;
+  min-height: 32px !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: #0f2746 !important;
+  padding: 0 10px !important;
+  margin: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 18px !important;
+  gap: 8px !important;
+  align-items: center !important;
+  text-align: left !important;
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+html body .hardware-module-root .ema-hw-select-option:hover,
+html body .hardware-module-root .ema-hw-select-option.is-selected {
+  background: #eef5ff !important;
+  color: #2563eb !important;
+}
+
+html body .hardware-module-root .ema-hw-select-option span:first-child {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+}
+
+html body .hardware-module-root .ema-hw-select-check {
+  justify-self: end !important;
+  color: #2563eb !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+
+/* Hard override old hardware dropdown black border */
+html body .hardware-module-root .hardware-filter-group .ema-hw-select-trigger,
+html body .hardware-module-root .hardware-registry-filters .ema-hw-select-trigger,
+html body .hardware-module-root .hardware-registry-filter-row .ema-hw-select-trigger {
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: #ffffff !important;
+}
+
+html body .hardware-module-root .hardware-filter-group .ema-hw-select.is-open .ema-hw-select-trigger,
+html body .hardware-module-root .hardware-registry-filters .ema-hw-select.is-open .ema-hw-select-trigger,
+html body .hardware-module-root .hardware-registry-filter-row .ema-hw-select.is-open .ema-hw-select-trigger {
+  border-color: #93c5fd !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10) !important;
+}

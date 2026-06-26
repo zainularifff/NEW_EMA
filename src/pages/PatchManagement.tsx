@@ -48,7 +48,11 @@ import {
   type OnlinePatchStatusFilter,
   type OnlinePatchSummary,
 } from '../services/patchService';
+import '../styles/patch-management-v2.css';
 
+import "../styles/ema-standard-table.css";
+import "../styles/ema-standard-controls.css";
+import "../styles/ema-table-pagination-standard.css";
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
 }

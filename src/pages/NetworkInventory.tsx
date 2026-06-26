@@ -30,7 +30,10 @@ import {
   X,
   Zap,
 } from "lucide-react";
+import "../styles/network-inventory-v2.css";
 
+import "../styles/ema-standard-controls.css";
+import "../styles/ema-table-pagination-standard.css";
 type CountKey = "registered" | "notRegistered" | "notInstalled" | "otherDevice";
 type DeviceStatusTab = "device" | "network";
 type NetworkTreeMode = "organization" | "statistics";

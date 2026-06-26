@@ -19,7 +19,11 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
+import "../styles/software-v2.css";
 
+import "../styles/ema-standard-table.css";
+import "../styles/ema-standard-controls.css";
+import "../styles/ema-table-pagination-standard.css";
 type ApiSoftwareRecord = {
   SoftwareID?: number | string | null;
   SoftwareName?: string | null;
@@ -1115,18 +1119,18 @@ export default function Software() {
     return (
       <div className="form-field software-filter-group">
         <label>{label}</label>
-        <div className={cx("setting-select-dropdown software-custom-select", isOpen && "open", isOpen && "is-open")}>
-          <button type="button" className={cx("setting-select-trigger software-custom-select-trigger", isOpen && "is-open")} onClick={() => setOpenSelect(isOpen ? null : selectKey)}>
+        <div className={cx("setting-select-dropdown ema-sw-select", isOpen && "open", isOpen && "is-open")}>
+          <button type="button" className={cx("setting-select-trigger ema-sw-select-trigger", isOpen && "is-open")} onClick={() => setOpenSelect(isOpen ? null : selectKey)}>
             <span>{displayValue}</span>
             <ChevronDown size={15} />
           </button>
           {isOpen && (
-            <div className="uam-filter-menu software-custom-select-menu">
-              <button type="button" className={cx("uam-filter-option software-custom-select-option", value === "all" && "selected", value === "all" && "is-selected")} onClick={() => { onChange("all"); setOpenSelect(null); }}>
+            <div className="uam-filter-menu ema-sw-select-menu">
+              <button type="button" className={cx("uam-filter-option ema-sw-select-option", value === "all" && "selected", value === "all" && "is-selected")} onClick={() => { onChange("all"); setOpenSelect(null); }}>
                 <span>{allLabel}</span>
               </button>
               {options.map((option) => (
-                <button type="button" key={option} className={cx("uam-filter-option software-custom-select-option", value === option && "selected", value === option && "is-selected")} onClick={() => { onChange(option); setOpenSelect(null); }}>
+                <button type="button" key={option} className={cx("uam-filter-option ema-sw-select-option", value === option && "selected", value === option && "is-selected")} onClick={() => { onChange(option); setOpenSelect(null); }}>
                   <span>{option}</span>
                 </button>
               ))}
@@ -1360,15 +1364,15 @@ export default function Software() {
             white-space: nowrap !important;
           }
 
-          .software-inventory-module .software-filter-row--toolbar .software-custom-select,
+          .software-inventory-module .software-filter-row--toolbar .ema-sw-select,
           .software-inventory-module .software-filter-row--toolbar .setting-select-dropdown,
-          .software-inventory-module .software-filter-row--toolbar .software-custom-select-trigger,
+          .software-inventory-module .software-filter-row--toolbar .ema-sw-select-trigger,
           .software-inventory-module .software-filter-row--toolbar .setting-select-trigger {
             width: 100% !important;
             min-width: 0 !important;
           }
 
-          .software-inventory-module .software-filter-row--toolbar .software-custom-select-trigger,
+          .software-inventory-module .software-filter-row--toolbar .ema-sw-select-trigger,
           .software-inventory-module .software-filter-row--toolbar .setting-select-trigger {
             height: 40px !important;
             min-height: 40px !important;
@@ -1904,6 +1908,499 @@ export default function Software() {
 
         `}</style>
 
+      
+      <style>{`
+        /* SOFTWARE_FINAL_STANDARD_HERO_KPI_STYLE */
+        html body .software-inventory-module.settings-module-root .settings-hero.software-hero {
+          height: 132px !important;
+          min-height: 132px !important;
+          max-height: 132px !important;
+          padding: 18px 20px !important;
+          display: grid !important;
+          grid-template-columns: minmax(360px, 0.86fr) minmax(720px, 1.14fr) !important;
+          align-items: center !important;
+          gap: 18px !important;
+          overflow: hidden !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 16px !important;
+          background:
+            radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.08), transparent 32%),
+            #ffffff !important;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .settings-hero.software-hero > div:first-child {
+          min-width: 0 !important;
+          overflow: hidden !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .settings-hero.software-hero h2 {
+          margin: 9px 0 0 !important;
+          color: #0f2746 !important;
+          font-size: 28px !important;
+          line-height: 1.05 !important;
+          font-weight: 650 !important;
+          letter-spacing: -0.055em !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .settings-hero.software-hero p {
+          margin: 8px 0 0 !important;
+          color: #64748b !important;
+          font-size: 12.5px !important;
+          line-height: 1.35 !important;
+          max-width: 760px !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          height: 78px !important;
+          min-height: 78px !important;
+          max-height: 78px !important;
+          display: grid !important;
+          grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+          grid-auto-rows: 78px !important;
+          gap: 10px !important;
+          align-items: stretch !important;
+          justify-items: stretch !important;
+          overflow: hidden !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-card,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-card {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          height: 78px !important;
+          min-height: 78px !important;
+          max-height: 78px !important;
+          margin: 0 !important;
+          padding: 10px 11px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 14px !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+          outline: none !important;
+          color: #0f2746 !important;
+          display: block !important;
+          overflow: hidden !important;
+          cursor: pointer !important;
+          transform: none !important;
+          text-align: left !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-card:hover,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-card.is-active,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-card:hover,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-card.is-active {
+          border-color: #c7d2fe !important;
+          background: #f8f7ff !important;
+          box-shadow: inset 3px 0 0 #4f46e5 !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-content,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-content {
+          width: 100% !important;
+          height: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          display: grid !important;
+          grid-template-columns: 30px minmax(0, 1fr) !important;
+          grid-template-rows: 13px 24px 13px !important;
+          column-gap: 8px !important;
+          row-gap: 3px !important;
+          align-items: center !important;
+          justify-content: stretch !important;
+          overflow: hidden !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-icon,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-icon {
+          grid-column: 1 !important;
+          grid-row: 1 / 4 !important;
+          width: 30px !important;
+          height: 30px !important;
+          min-width: 30px !important;
+          min-height: 30px !important;
+          padding: 7px !important;
+          border-radius: 999px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+          box-shadow: none !important;
+          margin: 0 !important;
+          align-self: center !important;
+          justify-self: center !important;
+          display: grid !important;
+          place-items: center !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-icon svg,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-icon svg {
+          width: 16px !important;
+          height: 16px !important;
+          min-width: 16px !important;
+          min-height: 16px !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          color: currentColor !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          display: block !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-label,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-label {
+          grid-column: 2 !important;
+          grid-row: 1 !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          color: #64748b !important;
+          font-size: 8.8px !important;
+          font-weight: 600 !important;
+          line-height: 1 !important;
+          letter-spacing: 0.045em !important;
+          text-transform: uppercase !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: block !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-value,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-value {
+          grid-column: 2 !important;
+          grid-row: 2 !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          color: #0f2746 !important;
+          font-size: 18px !important;
+          font-weight: 650 !important;
+          line-height: 1 !important;
+          letter-spacing: -0.025em !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: block !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-note,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-note {
+          grid-column: 2 !important;
+          grid-row: 3 !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          color: #64748b !important;
+          font-size: 9.2px !important;
+          font-weight: 500 !important;
+          line-height: 1.05 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: block !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .settings-hero.software-hero::before,
+        html body .software-inventory-module.settings-module-root .settings-hero.software-hero::after {
+          display: none !important;
+          content: none !important;
+        }
+
+        @media (max-width: 1320px) {
+          html body .software-inventory-module.settings-module-root .settings-hero.software-hero {
+            grid-template-columns: minmax(320px, 0.8fr) minmax(660px, 1.2fr) !important;
+          }
+
+          html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-note,
+          html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-note {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      
+      <style>{`
+        /* SOFTWARE_DROPDOWN_AND_TABLE_WRAP_FINAL_FIX */
+
+        /* Dropdown final fix */
+        html body .software-inventory-module .software-filter-row.software-filter-row--toolbar {
+          overflow: visible !important;
+          position: relative !important;
+          z-index: 20 !important;
+        }
+
+        html body .software-inventory-module .software-filter-group {
+          min-width: 0 !important;
+          width: 100% !important;
+          display: grid !important;
+          gap: 7px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: visible !important;
+          position: relative !important;
+        }
+
+        html body .software-inventory-module .software-filter-group label {
+          margin: 0 !important;
+          color: #0f2746 !important;
+          font-size: 11px !important;
+          font-weight: 650 !important;
+          line-height: 1 !important;
+          letter-spacing: 0 !important;
+          text-transform: none !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select {
+          width: 100% !important;
+          min-width: 0 !important;
+          height: 38px !important;
+          position: relative !important;
+          display: block !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: visible !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select-trigger {
+          width: 100% !important;
+          min-width: 0 !important;
+          height: 38px !important;
+          min-height: 38px !important;
+          max-height: 38px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          padding: 0 12px !important;
+          margin: 0 !important;
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) 16px !important;
+          gap: 8px !important;
+          align-items: center !important;
+          text-align: left !important;
+          font-size: 11.8px !important;
+          font-weight: 600 !important;
+          line-height: 1 !important;
+          box-shadow: none !important;
+          outline: none !important;
+          cursor: pointer !important;
+          overflow: hidden !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select-trigger:hover {
+          border-color: #c9dbff !important;
+          background: #fbfdff !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select-trigger:focus,
+        html body .software-inventory-module .ema-sw-select-trigger:focus-visible,
+        html body .software-inventory-module .ema-sw-select.is-open .ema-sw-select-trigger,
+        html body .software-inventory-module .ema-sw-select.open .ema-sw-select-trigger {
+          border-color: #93c5fd !important;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10) !important;
+          outline: none !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select-trigger span {
+          min-width: 0 !important;
+          max-width: 100% !important;
+          color: #0f2746 !important;
+          font-size: 11.8px !important;
+          font-weight: 600 !important;
+          line-height: 1 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select-trigger svg {
+          width: 15px !important;
+          height: 15px !important;
+          min-width: 15px !important;
+          color: #64748b !important;
+          justify-self: end !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select-menu {
+          position: absolute !important;
+          top: calc(100% + 6px) !important;
+          left: 0 !important;
+          right: 0 !important;
+          z-index: 2147482800 !important;
+          min-width: 100% !important;
+          max-height: 240px !important;
+          overflow: auto !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background: #ffffff !important;
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16) !important;
+          padding: 6px !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select-option {
+          width: 100% !important;
+          min-height: 32px !important;
+          border: 0 !important;
+          border-radius: 9px !important;
+          background: transparent !important;
+          color: #0f2746 !important;
+          padding: 0 10px !important;
+          margin: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-start !important;
+          text-align: left !important;
+          font-size: 11.5px !important;
+          font-weight: 500 !important;
+          line-height: 1 !important;
+          cursor: pointer !important;
+          box-shadow: none !important;
+          outline: none !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select-option:hover,
+        html body .software-inventory-module .ema-sw-select-option.selected,
+        html body .software-inventory-module .ema-sw-select-option.is-selected {
+          background: #eef5ff !important;
+          color: #2563eb !important;
+        }
+
+        /* Remove old black-border dropdown class effect */
+        html body .software-inventory-module .software-filter-row--toolbar .setting-select-trigger,
+        html body .software-inventory-module .software-filter-row--toolbar .software-custom-select-trigger,
+        html body .software-inventory-module .software-filter-row--toolbar .ema-sw-select-trigger {
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+          outline: none !important;
+        }
+
+        /* Table layout final wrap fix */
+        html body .software-inventory-module .software-device-table.software-standard-table {
+          width: calc(100% - 28px) !important;
+          max-width: calc(100% - 28px) !important;
+          margin-left: 14px !important;
+          margin-right: 14px !important;
+          overflow: auto !important;
+        }
+
+        html body .software-inventory-module .software-device-table .software-standard-row.software-device-table-row,
+        html body .software-inventory-module .software-device-table .software-device-table-row {
+          display: grid !important;
+          grid-template-columns:
+            56px
+            minmax(160px, 1.55fr)
+            minmax(160px, 1.45fr)
+            minmax(110px, 0.75fr)
+            minmax(130px, 0.95fr)
+            minmax(150px, 1.05fr)
+            minmax(140px, 1fr) !important;
+          min-width: 100% !important;
+          width: 100% !important;
+          align-items: stretch !important;
+        }
+
+        html body .software-inventory-module .software-device-table .software-standard-row.software-device-table-row:not(.head),
+        html body .software-inventory-module .software-device-table .software-device-table-row:not(.head),
+        html body .software-inventory-module .software-device-table .user-row:not(.head) {
+          height: auto !important;
+          min-height: 72px !important;
+        }
+
+        html body .software-inventory-module .software-device-table .user-cell {
+          min-width: 0 !important;
+          max-width: 100% !important;
+          min-height: 72px !important;
+          height: auto !important;
+          padding: 12px 12px !important;
+          display: flex !important;
+          align-items: center !important;
+          overflow: visible !important;
+          white-space: normal !important;
+        }
+
+        html body .software-inventory-module .software-device-table .head .user-cell,
+        html body .software-inventory-module .software-device-table .user-row.head .user-cell {
+          min-height: 50px !important;
+          height: 50px !important;
+          padding-top: 14px !important;
+          padding-bottom: 14px !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        /* Force long text to wrap, overriding old inline nowrap */
+        html body .software-inventory-module .software-device-table .user-row:not(.head) .user-cell,
+        html body .software-inventory-module .software-device-table .user-row:not(.head) .user-cell *,
+        html body .software-inventory-module .software-device-table .software-user-name,
+        html body .software-inventory-module .software-device-table .software-user-name *,
+        html body .software-inventory-module .software-device-table .software-device-cell,
+        html body .software-inventory-module .software-device-table .software-device-cell *,
+        html body .software-inventory-module .software-device-table .software-category-cell,
+        html body .software-inventory-module .software-device-table .software-category-cell *,
+        html body .software-inventory-module .software-device-table .software-type-cell,
+        html body .software-inventory-module .software-device-table .software-type-cell *,
+        html body .software-inventory-module .software-device-table .software-text-cell,
+        html body .software-inventory-module .software-device-table .software-model-text,
+        html body .software-inventory-module .software-device-table .software-date-cell {
+          white-space: normal !important;
+          overflow: visible !important;
+          text-overflow: unset !important;
+          overflow-wrap: anywhere !important;
+          word-break: break-word !important;
+          line-height: 1.35 !important;
+        }
+
+        html body .software-inventory-module .software-device-table .software-user-name,
+        html body .software-inventory-module .software-device-table .software-device-cell,
+        html body .software-inventory-module .software-device-table .software-category-cell,
+        html body .software-inventory-module .software-device-table .software-type-cell {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: flex-start !important;
+          justify-content: center !important;
+          gap: 3px !important;
+        }
+
+        html body .software-inventory-module .software-device-table .user-row:not(.head) .user-cell strong,
+        html body .software-inventory-module .software-device-table .user-row:not(.head) .user-cell span,
+        html body .software-inventory-module .software-device-table .user-row:not(.head) .user-cell small,
+        html body .software-inventory-module .software-device-table .user-row:not(.head) .user-cell em {
+          display: block !important;
+          max-width: 100% !important;
+          color: inherit !important;
+        }
+
+        /* Keep row number compact */
+        html body .software-inventory-module .software-device-table .row-index-pill,
+        html body .software-inventory-module .software-device-table .software-row-no {
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          word-break: normal !important;
+        }
+      `}</style>
+
       {toast && (
         <div className="settings-toast-layer software-toast-layer">
           <div className={cx("settings-toast software-toast", toast.type === "error" ? "settings-toast-error" : toast.type === "info" ? "settings-toast-info" : "settings-toast-success")}>
@@ -2075,14 +2572,14 @@ export default function Software() {
                 </>
               ) : (
                 <>
-                  <div className="user-row head advanced clean-table-row software-standard-row software-device-table-row software-dynamic-row" role="row" style={{ gridTemplateColumns: `4.2rem repeat(${tableColumns[selected.tableKey].length}, minmax(11rem, 1fr))` }}>
+                  <div className="user-row head advanced clean-table-row software-standard-row software-device-table-row software-dynamic-row" data-table-key={selected.tableKey} role="row">
                     <div className="user-cell">#</div>
                     {tableColumns[selected.tableKey].map((column, index) => <div className="user-cell" key={column}><TableSortButton label={column} index={index} /></div>)}
                   </div>
                   {!isDataLoading && pageTableRows.map((row, rowIndex) => (
-                    <div className="user-row advanced clean-table-row software-standard-row software-device-table-row software-dynamic-row" role="row" key={`${selected.tableKey}-${rowIndex}`} style={{ gridTemplateColumns: `4.2rem repeat(${tableColumns[selected.tableKey].length}, minmax(11rem, 1fr))` }}>
+                    <div className="user-row advanced clean-table-row software-standard-row software-device-table-row software-dynamic-row" data-table-key={selected.tableKey} role="row" key={`${selected.tableKey}-${rowIndex}`} style={{ gridTemplateColumns: `56px repeat(${tableColumns[selected.tableKey].length}, minmax(150px, 1fr))` }}>
                       <div className="user-cell row-number"><span className="row-index-pill software-row-no">{String((page - 1) * PAGE_SIZE + rowIndex + 1).padStart(2, "0")}</span></div>
-                      {row.map((cell, cellIndex) => <div className="user-cell software-text-cell" key={cellIndex}>{cell}</div>)}
+                      {row.slice(0, tableColumns[selected.tableKey].length).map((cell, cellIndex) => <div className="user-cell software-text-cell" key={cellIndex}>{cell}</div>)}
                     </div>
                   ))}
                   {!pageTableRows.length && !isDataLoading && <div className="software-empty-state"><Database size={24} /><strong>No software records loaded</strong><span>Choose a folder, device or statistic view to load data.</span></div>}

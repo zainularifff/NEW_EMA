@@ -25,7 +25,11 @@ import {
   X,
 } from "lucide-react";
 import appMeteringService from "../services/appMeteringService";
+import "../styles/app-metering-v2.css";
 
+import "../styles/ema-standard-table.css";
+import "../styles/ema-standard-controls.css";
+import "../styles/ema-table-pagination-standard.css";
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }

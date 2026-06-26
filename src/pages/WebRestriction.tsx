@@ -47,7 +47,11 @@ import restrictionService, {
   WebGroupUrl,
   WhitelistSoftware,
 } from '../services/restrictionService';
+import '../styles/web-restriction-v2.css';
 
+import "../styles/ema-standard-controls.css";
+import "../styles/ema-table-pagination-standard.css";
+import "../styles/appweb-restriction-final.css";
 type SubTab = 'status' | 'settings' | 'policyStatus';
 type NoticeTone = 'success' | 'warning' | 'error' | 'info';
 type NoticeState = { id: number; text: string; tone: NoticeTone } | null;

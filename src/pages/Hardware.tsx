@@ -26,8 +26,12 @@ import {
   Unlock,
   X,
 } from "lucide-react";
+import "../styles/hardware-v2.css";
 
 
+import "../styles/ema-standard-table.css";
+import "../styles/ema-standard-controls.css";
+import "../styles/ema-table-pagination-standard.css";
 type StatusType = "Online" | "Locked" | "Stale Sync" | "Offline";
 type KpiFilter = "all" | "recent" | "stale" | "locked" | "running";
 type SortDirection = "asc" | "desc";
@@ -1801,10 +1805,10 @@ function HardwareDropdown({
   }, [disabled]);
 
   return (
-    <div ref={dropdownRef} className={`hardware-custom-select ${isOpen ? "is-open" : ""} ${disabled ? "is-disabled" : ""}`}>
+    <div ref={dropdownRef} className={`ema-hw-select ${isOpen ? "is-open" : ""} ${disabled ? "is-disabled" : ""}`}>
       <button
         type="button"
-        className="hardware-custom-select-trigger"
+        className="ema-hw-select-trigger"
         onClick={() => !disabled && setIsOpen((current) => !current)}
         disabled={disabled}
         aria-label={label}
@@ -1816,7 +1820,7 @@ function HardwareDropdown({
       </button>
 
       {isOpen && (
-        <div className="hardware-custom-select-menu" role="listbox" aria-label={label}>
+        <div className="ema-hw-select-menu" role="listbox" aria-label={label}>
           {options.map((option) => {
             const isSelected = option.value === value;
 
@@ -1824,7 +1828,7 @@ function HardwareDropdown({
               <button
                 key={option.value}
                 type="button"
-                className={`hardware-custom-select-option ${isSelected ? "is-selected" : ""}`}
+                className={`ema-hw-select-option ${isSelected ? "is-selected" : ""}`}
                 role="option"
                 aria-selected={isSelected}
                 onClick={() => {
@@ -1833,7 +1837,7 @@ function HardwareDropdown({
                 }}
               >
                 <span>{option.label}</span>
-                {isSelected && <span className="hardware-custom-select-check">✓</span>}
+                {isSelected && <span className="ema-hw-select-check">✓</span>}
               </button>
             );
           })}
@@ -4779,8 +4783,8 @@ export default function HardwareInventory() {
         }
 
         .hardware-module-root .hardware-filter-group,
-        .hardware-module-root .hardware-custom-select,
-        .hardware-module-root .hardware-custom-select-trigger {
+        .hardware-module-root .ema-hw-select,
+        .hardware-module-root .ema-hw-select-trigger {
           min-width: 0 !important;
           width: 100% !important;
         }
@@ -5448,6 +5452,1938 @@ export default function HardwareInventory() {
       </div>
 
       <DeviceDetailsDrawer device={detailDevice} isOpen={hasDetailDevice} onClose={closeDeviceDetails} />
+
+      
+      <style>{`
+        /* HARDWARE_FINAL_STANDARD_HERO_KPI_STYLE */
+        html body .hardware-module-root.settings-module-root .settings-hero.hardware-hero {
+          height: 132px !important;
+          min-height: 132px !important;
+          max-height: 132px !important;
+          padding: 18px 20px !important;
+          display: grid !important;
+          grid-template-columns: minmax(360px, 0.86fr) minmax(720px, 1.14fr) !important;
+          align-items: center !important;
+          gap: 18px !important;
+          overflow: hidden !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 16px !important;
+          background:
+            radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.08), transparent 32%),
+            #ffffff !important;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .settings-hero.hardware-hero > div:first-child {
+          min-width: 0 !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .settings-hero.hardware-hero h2 {
+          margin: 9px 0 0 !important;
+          color: #0f2746 !important;
+          font-size: 28px !important;
+          line-height: 1.05 !important;
+          font-weight: 650 !important;
+          letter-spacing: -0.055em !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .settings-hero.hardware-hero p {
+          margin: 8px 0 0 !important;
+          color: #64748b !important;
+          font-size: 12.5px !important;
+          line-height: 1.35 !important;
+          max-width: 760px !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          height: 78px !important;
+          min-height: 78px !important;
+          max-height: 78px !important;
+          display: grid !important;
+          grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+          grid-auto-rows: 78px !important;
+          gap: 10px !important;
+          align-items: stretch !important;
+          justify-items: stretch !important;
+          overflow: hidden !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-card {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          height: 78px !important;
+          min-height: 78px !important;
+          max-height: 78px !important;
+          margin: 0 !important;
+          padding: 10px 11px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 14px !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+          outline: none !important;
+          color: #0f2746 !important;
+          display: block !important;
+          overflow: hidden !important;
+          cursor: pointer !important;
+          transform: none !important;
+          text-align: left !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-card:hover,
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-card.is-active {
+          border-color: #c7d2fe !important;
+          background: #f8f7ff !important;
+          box-shadow: inset 3px 0 0 #4f46e5 !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-content {
+          width: 100% !important;
+          height: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          display: grid !important;
+          grid-template-columns: 30px minmax(0, 1fr) !important;
+          grid-template-rows: 13px 24px 13px !important;
+          column-gap: 8px !important;
+          row-gap: 3px !important;
+          align-items: center !important;
+          justify-content: stretch !important;
+          overflow: hidden !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-icon {
+          grid-column: 1 !important;
+          grid-row: 1 / 4 !important;
+          width: 30px !important;
+          height: 30px !important;
+          min-width: 30px !important;
+          min-height: 30px !important;
+          padding: 7px !important;
+          border-radius: 999px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+          box-shadow: none !important;
+          margin: 0 !important;
+          align-self: center !important;
+          justify-self: center !important;
+          display: grid !important;
+          place-items: center !important;
+          font-style: normal !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-icon svg {
+          width: 16px !important;
+          height: 16px !important;
+          min-width: 16px !important;
+          min-height: 16px !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          color: currentColor !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          display: block !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-label {
+          grid-column: 2 !important;
+          grid-row: 1 !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          color: #64748b !important;
+          font-size: 8.8px !important;
+          font-weight: 600 !important;
+          line-height: 1 !important;
+          letter-spacing: 0.045em !important;
+          text-transform: uppercase !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: block !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-value {
+          grid-column: 2 !important;
+          grid-row: 2 !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          color: #0f2746 !important;
+          font-size: 18px !important;
+          font-weight: 650 !important;
+          line-height: 1 !important;
+          letter-spacing: -0.025em !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: block !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-note {
+          grid-column: 2 !important;
+          grid-row: 3 !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          color: #64748b !important;
+          font-size: 9.2px !important;
+          font-weight: 500 !important;
+          line-height: 1.05 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: block !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .settings-hero.hardware-hero::before,
+        html body .hardware-module-root.settings-module-root .settings-hero.hardware-hero::after {
+          display: none !important;
+          content: none !important;
+        }
+
+        @media (max-width: 1320px) {
+          html body .hardware-module-root.settings-module-root .settings-hero.hardware-hero {
+            grid-template-columns: minmax(320px, 0.8fr) minmax(660px, 1.2fr) !important;
+          }
+
+          html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-note {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      
+      <style>{`
+        /* HARDWARE_RESTORE_ACTIONS_AND_STANDARD_SIDEBAR */
+
+        /* Sidebar must match all other modules */
+        html body .hardware-module-root.settings-module-root .settings-layout.hardware-settings-layout {
+          width: 100% !important;
+          height: 100% !important;
+          min-height: 0 !important;
+          max-height: 100% !important;
+          display: grid !important;
+          grid-template-columns: 280px minmax(0, 1fr) !important;
+          gap: 14px !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .settings-menu.hardware-left-panel {
+          width: 280px !important;
+          min-width: 280px !important;
+          max-width: 280px !important;
+          height: 100% !important;
+          min-height: 0 !important;
+          max-height: 100% !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 16px !important;
+          background: #ffffff !important;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+          display: grid !important;
+          grid-template-rows: 86px auto minmax(0, 1fr) !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .ema-sidebar-content {
+          min-height: 0 !important;
+          height: 100% !important;
+          padding: 12px !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .ema-sidebar-subpanel {
+          min-height: 0 !important;
+          height: 100% !important;
+          display: grid !important;
+          grid-template-rows: auto auto minmax(0, 1fr) !important;
+          gap: 8px !important;
+          overflow: hidden !important;
+          align-content: start !important;
+        }
+
+        html body .hardware-module-root .ema-sidebar-tree {
+          min-height: 0 !important;
+          height: 100% !important;
+          overflow: auto !important;
+          display: grid !important;
+          gap: 6px !important;
+          align-content: start !important;
+        }
+
+        /* Main area must allow right advanced action panel */
+        html body .hardware-module-root .hardware-settings-content {
+          min-height: 0 !important;
+          height: 100% !important;
+          display: grid !important;
+          grid-template-rows: 132px minmax(0, 1fr) !important;
+          gap: 14px !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-main-grid {
+          min-height: 0 !important;
+          height: 100% !important;
+          max-height: 100% !important;
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) !important;
+          gap: 14px !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-main-grid.has-inspector {
+          grid-template-columns: minmax(0, 1fr) 340px !important;
+        }
+
+        /* Device table card */
+        html body .hardware-module-root .hardware-registry-card {
+          min-width: 0 !important;
+          min-height: 0 !important;
+          height: 100% !important;
+          max-height: none !important;
+          display: grid !important;
+          grid-template-rows: auto auto minmax(0, 1fr) 54px !important;
+          overflow: hidden !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 16px !important;
+          background: #ffffff !important;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+        }
+
+        html body .hardware-module-root .hardware-registry-toolbar.hardware-registry-toolbar-stacked {
+          width: calc(100% - 28px) !important;
+          max-width: calc(100% - 28px) !important;
+          margin: 14px 14px 0 !important;
+          padding: 12px !important;
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 14px !important;
+          background: #fbfdff !important;
+          box-shadow: none !important;
+          display: grid !important;
+          grid-template-rows: 38px 54px !important;
+          gap: 12px !important;
+          overflow: visible !important;
+        }
+
+        html body .hardware-module-root .hardware-scan-command-row {
+          width: 100% !important;
+          min-width: 0 !important;
+          display: grid !important;
+          grid-template-columns: 132px 132px 132px minmax(280px, 1fr) 38px 94px !important;
+          gap: 10px !important;
+          align-items: center !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-registry-filters.hardware-registry-filter-row {
+          width: 100% !important;
+          min-width: 0 !important;
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) 230px 230px 82px !important;
+          gap: 10px !important;
+          align-items: end !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-registry-filters.hardware-registry-filter-row::before {
+          content: "" !important;
+          display: block !important;
+        }
+
+        html body .hardware-module-root .hardware-registry-subhead {
+          width: calc(100% - 28px) !important;
+          max-width: calc(100% - 28px) !important;
+          min-height: 34px !important;
+          margin: 10px 14px 6px !important;
+          padding: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-device-table.hardware-standard-table {
+          width: calc(100% - 28px) !important;
+          max-width: calc(100% - 28px) !important;
+          margin: 0 14px !important;
+          min-height: 0 !important;
+          max-height: none !important;
+          overflow: auto !important;
+          display: block !important;
+          pointer-events: auto !important;
+        }
+
+        html body .hardware-module-root .hardware-device-row,
+        html body .hardware-module-root .hardware-device-table .hardware-device-table-row {
+          cursor: pointer !important;
+          pointer-events: auto !important;
+        }
+
+        html body .hardware-module-root .hardware-device-row * {
+          pointer-events: auto !important;
+        }
+
+        html body .hardware-module-root .hardware-pagination {
+          width: calc(100% - 28px) !important;
+          max-width: calc(100% - 28px) !important;
+          margin: 0 14px 12px !important;
+        }
+
+        /* Restore right advanced module panel */
+        html body .hardware-module-root .hardware-right-panel {
+          min-width: 0 !important;
+          width: 340px !important;
+          height: 100% !important;
+          min-height: 0 !important;
+          max-height: 100% !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 16px !important;
+          background: #ffffff !important;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+          display: grid !important;
+          grid-template-rows: minmax(0, 1fr) !important;
+          overflow: hidden !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          position: relative !important;
+          z-index: 4 !important;
+        }
+
+        html body .hardware-module-root .hardware-right-device {
+          min-height: 0 !important;
+          height: 100% !important;
+          display: grid !important;
+          grid-template-rows: 78px minmax(0, 1fr) !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-right-header {
+          min-height: 78px !important;
+          padding: 14px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.95) !important;
+          background: #fbfdff !important;
+          display: grid !important;
+          grid-template-columns: 40px minmax(0, 1fr) 34px !important;
+          gap: 10px !important;
+          align-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-right-icon {
+          width: 40px !important;
+          height: 40px !important;
+          border-radius: 13px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+          display: grid !important;
+          place-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-right-title {
+          min-width: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-right-title h3 {
+          margin: 0 !important;
+          color: #0f2746 !important;
+          font-size: 14px !important;
+          font-weight: 650 !important;
+          line-height: 1.15 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root .hardware-right-title p {
+          margin: 4px 0 0 !important;
+          color: #64748b !important;
+          font-size: 11px !important;
+          line-height: 1.25 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root .hardware-right-close {
+          width: 34px !important;
+          height: 34px !important;
+          border-radius: 11px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          background: #ffffff !important;
+          color: #64748b !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-action-list {
+          min-height: 0 !important;
+          height: 100% !important;
+          overflow: auto !important;
+          padding: 12px !important;
+          display: grid !important;
+          gap: 10px !important;
+          align-content: start !important;
+        }
+
+        html body .hardware-module-root .hardware-action-item {
+          width: 100% !important;
+          min-height: 62px !important;
+          border-radius: 14px !important;
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          padding: 10px !important;
+          display: grid !important;
+          grid-template-columns: 38px minmax(0, 1fr) !important;
+          gap: 10px !important;
+          align-items: center !important;
+          text-align: left !important;
+          box-shadow: none !important;
+          cursor: pointer !important;
+          pointer-events: auto !important;
+        }
+
+        html body .hardware-module-root .hardware-action-item:hover:not(:disabled) {
+          border-color: #c9dbff !important;
+          background: #eef5ff !important;
+        }
+
+        html body .hardware-module-root .hardware-action-item:disabled {
+          opacity: 0.45 !important;
+          cursor: not-allowed !important;
+        }
+
+        html body .hardware-module-root .hardware-action-icon {
+          width: 38px !important;
+          height: 38px !important;
+          border-radius: 12px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+          display: grid !important;
+          place-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-action-item strong {
+          display: block !important;
+          color: #0f2746 !important;
+          font-size: 12.5px !important;
+          font-weight: 650 !important;
+          line-height: 1.15 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root .hardware-action-item span {
+          display: block !important;
+          margin-top: 3px !important;
+          color: #64748b !important;
+          font-size: 10.5px !important;
+          font-weight: 500 !important;
+          line-height: 1.25 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        /* Keep device scan usable after row selection */
+        html body .hardware-module-root .hardware-command-btn[title*="Refresh hardware inventory for"] {
+          pointer-events: auto !important;
+        }
+
+        html body .hardware-module-root .hardware-command-btn:disabled {
+          pointer-events: auto !important;
+        }
+
+        @media (max-width: 1360px) {
+          html body .hardware-module-root .hardware-main-grid.has-inspector {
+            grid-template-columns: minmax(0, 1fr) 320px !important;
+          }
+
+          html body .hardware-module-root .hardware-right-panel {
+            width: 320px !important;
+          }
+
+          html body .hardware-module-root .hardware-scan-command-row {
+            grid-template-columns: 116px 116px 116px minmax(240px, 1fr) 38px 90px !important;
+          }
+
+          html body .hardware-module-root .hardware-registry-filters.hardware-registry-filter-row {
+            grid-template-columns: minmax(0, 1fr) 210px 210px 82px !important;
+          }
+        }
+      `}</style>
+
+      
+      <style>{`
+        /* HARDWARE_ADVANCED_MODAL_UI_FIX */
+
+        html body .hardware-module-root .hardware-modal-overlay {
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 2147482600 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          background: rgba(15, 23, 42, 0.52) !important;
+          backdrop-filter: blur(10px) saturate(120%) !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 24px !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-modal {
+          width: min(620px, calc(100vw - 48px)) !important;
+          max-width: calc(100vw - 48px) !important;
+          max-height: calc(100vh - 48px) !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 20px !important;
+          background: #ffffff !important;
+          box-shadow: 0 36px 90px rgba(8, 26, 55, 0.35) !important;
+          overflow: hidden !important;
+          display: grid !important;
+          grid-template-rows: 76px minmax(0, 1fr) 66px !important;
+          color: #0f2746 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-message,
+        html body .hardware-module-root .hardware-modal-colored,
+        html body .hardware-module-root .hardware-folder-modal,
+        html body .hardware-module-root .hardware-move-modal {
+          width: min(640px, calc(100vw - 48px)) !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-geo,
+        html body .hardware-module-root .hardware-modal-geo-v2 {
+          width: min(1180px, calc(100vw - 48px)) !important;
+          height: min(780px, calc(100vh - 48px)) !important;
+          grid-template-rows: 76px minmax(0, 1fr) 66px !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-header {
+          min-height: 76px !important;
+          padding: 14px 16px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.95) !important;
+          background:
+            radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.10), transparent 36%),
+            #ffffff !important;
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) 38px !important;
+          gap: 14px !important;
+          align-items: center !important;
+          color: #0f2746 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title {
+          min-width: 0 !important;
+          display: grid !important;
+          grid-template-columns: 42px minmax(0, 1fr) !important;
+          gap: 12px !important;
+          align-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title > svg {
+          width: 42px !important;
+          height: 42px !important;
+          min-width: 42px !important;
+          min-height: 42px !important;
+          padding: 10px !important;
+          border-radius: 14px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-header.red .hardware-modal-title > svg {
+          background: #fef2f2 !important;
+          color: #dc2626 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-header.green .hardware-modal-title > svg {
+          background: #ecfdf5 !important;
+          color: #15803d !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title strong {
+          display: block !important;
+          margin: 0 !important;
+          color: #0f2746 !important;
+          font-size: 15px !important;
+          font-weight: 650 !important;
+          line-height: 1.15 !important;
+          letter-spacing: 0 !important;
+          text-transform: none !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title span {
+          display: block !important;
+          margin-top: 4px !important;
+          color: #64748b !important;
+          font-size: 11.5px !important;
+          font-weight: 500 !important;
+          line-height: 1.25 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-close,
+        html body .hardware-module-root .hardware-modal-close.inverse {
+          width: 38px !important;
+          height: 38px !important;
+          min-width: 38px !important;
+          min-height: 38px !important;
+          border-radius: 12px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          background: #ffffff !important;
+          color: #64748b !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          box-shadow: none !important;
+          cursor: pointer !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-close:hover {
+          background: #fef2f2 !important;
+          color: #dc2626 !important;
+          border-color: #fecaca !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-body {
+          min-height: 0 !important;
+          padding: 16px !important;
+          background: #f8fbff !important;
+          overflow: auto !important;
+          display: grid !important;
+          gap: 14px !important;
+          align-content: start !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-footer,
+        html body .hardware-module-root .hardware-modal-footer.embedded {
+          min-height: 66px !important;
+          padding: 12px 16px !important;
+          border-top: 1px solid rgba(226, 232, 240, 0.95) !important;
+          background: #ffffff !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-end !important;
+          gap: 10px !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-footer.embedded {
+          border-top: 0 !important;
+          padding: 4px 0 0 !important;
+          min-height: 42px !important;
+        }
+
+        html body .hardware-module-root .hardware-device-target-card,
+        html body .hardware-module-root .hardware-preview-card,
+        html body .hardware-module-root .hardware-info-banner,
+        html body .hardware-module-root .hardware-option-card {
+          width: 100% !important;
+          min-height: 54px !important;
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 14px !important;
+          background: #ffffff !important;
+          padding: 12px !important;
+          display: grid !important;
+          grid-template-columns: 38px minmax(0, 1fr) !important;
+          gap: 10px !important;
+          align-items: center !important;
+          box-shadow: none !important;
+          color: #0f2746 !important;
+        }
+
+        html body .hardware-module-root .hardware-info-banner.yellow {
+          background: #fff7ed !important;
+          border-color: #fed7aa !important;
+        }
+
+        html body .hardware-module-root .hardware-info-banner.red {
+          background: #fef2f2 !important;
+          border-color: #fecaca !important;
+        }
+
+        html body .hardware-module-root .hardware-info-banner.blue {
+          background: #eef5ff !important;
+          border-color: #c9dbff !important;
+        }
+
+        html body .hardware-module-root .hardware-info-banner.green {
+          background: #ecfdf5 !important;
+          border-color: #bbf7d0 !important;
+        }
+
+        html body .hardware-module-root .hardware-device-target-card > svg,
+        html body .hardware-module-root .hardware-info-banner > svg {
+          width: 38px !important;
+          height: 38px !important;
+          min-width: 38px !important;
+          min-height: 38px !important;
+          padding: 10px !important;
+          border-radius: 12px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+        }
+
+        html body .hardware-module-root .hardware-device-target-card strong,
+        html body .hardware-module-root .hardware-preview-card strong,
+        html body .hardware-module-root .hardware-info-banner strong,
+        html body .hardware-module-root .hardware-option-card strong {
+          display: block !important;
+          color: #0f2746 !important;
+          font-size: 12.5px !important;
+          font-weight: 650 !important;
+          line-height: 1.2 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root .hardware-device-target-card span,
+        html body .hardware-module-root .hardware-preview-card span,
+        html body .hardware-module-root .hardware-info-banner span,
+        html body .hardware-module-root .hardware-option-card span,
+        html body .hardware-module-root .hardware-move-helper {
+          display: block !important;
+          margin-top: 3px !important;
+          color: #64748b !important;
+          font-size: 11px !important;
+          font-weight: 500 !important;
+          line-height: 1.35 !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group {
+          display: grid !important;
+          gap: 7px !important;
+          min-width: 0 !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group label,
+        html body .hardware-module-root .hardware-check span {
+          color: #0f2746 !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          line-height: 1.1 !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group input,
+        html body .hardware-module-root .hardware-form-group textarea {
+          width: 100% !important;
+          min-width: 0 !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          font-size: 12px !important;
+          font-weight: 500 !important;
+          outline: none !important;
+          box-shadow: none !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group input {
+          height: 38px !important;
+          min-height: 38px !important;
+          padding: 0 12px !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group textarea {
+          min-height: 126px !important;
+          resize: vertical !important;
+          padding: 11px 12px !important;
+          line-height: 1.45 !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group input:focus,
+        html body .hardware-module-root .hardware-form-group textarea:focus {
+          border-color: #93c5fd !important;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10) !important;
+        }
+
+        html body .hardware-module-root .hardware-check {
+          width: fit-content !important;
+          min-height: 30px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          margin: 0 !important;
+          color: #0f2746 !important;
+          cursor: pointer !important;
+        }
+
+        html body .hardware-module-root .hardware-check input,
+        html body .hardware-module-root .hardware-option-card input {
+          width: 16px !important;
+          height: 16px !important;
+          min-width: 16px !important;
+          min-height: 16px !important;
+          accent-color: #2563eb !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-option-card {
+          grid-template-columns: 18px minmax(0, 1fr) !important;
+          cursor: pointer !important;
+        }
+
+        html body .hardware-module-root .hardware-session-grid {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 10px !important;
+        }
+
+        html body .hardware-module-root .hardware-session-grid button {
+          min-height: 72px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 14px !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          padding: 12px !important;
+          display: grid !important;
+          gap: 8px !important;
+          place-items: center !important;
+          text-align: center !important;
+          box-shadow: none !important;
+          cursor: pointer !important;
+        }
+
+        html body .hardware-module-root .hardware-session-grid button.is-active,
+        html body .hardware-module-root .hardware-session-grid button:hover:not(:disabled) {
+          border-color: #c7d2fe !important;
+          background: #f8f7ff !important;
+          color: #2563eb !important;
+          box-shadow: inset 3px 0 0 #4f46e5 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-section-title {
+          color: #0f2746 !important;
+          font-size: 12px !important;
+          font-weight: 650 !important;
+          line-height: 1.2 !important;
+        }
+
+        html body .hardware-module-root .hardware-btn,
+        html body .hardware-module-root .hardware-btn.link,
+        html body .hardware-module-root .hardware-btn.primary,
+        html body .hardware-module-root .hardware-btn.danger {
+          height: 38px !important;
+          min-height: 38px !important;
+          border-radius: 12px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          padding: 0 14px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 8px !important;
+          font-size: 11.5px !important;
+          font-weight: 600 !important;
+          line-height: 1 !important;
+          box-shadow: none !important;
+          cursor: pointer !important;
+        }
+
+        html body .hardware-module-root .hardware-btn.primary {
+          border-color: #4f46e5 !important;
+          background: linear-gradient(135deg, #4f46e5, #2563eb) !important;
+          color: #ffffff !important;
+          box-shadow: 0 12px 24px rgba(79, 70, 229, 0.16) !important;
+        }
+
+        html body .hardware-module-root .hardware-btn.danger {
+          border-color: #dc2626 !important;
+          background: #dc2626 !important;
+          color: #ffffff !important;
+          box-shadow: 0 12px 24px rgba(220, 38, 38, 0.16) !important;
+        }
+
+        html body .hardware-module-root .hardware-btn.link:hover {
+          border-color: #c9dbff !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+        }
+
+        html body .hardware-module-root .hardware-form-error {
+          min-height: 34px !important;
+          border-radius: 12px !important;
+          border: 1px solid #fecaca !important;
+          background: #fef2f2 !important;
+          color: #dc2626 !important;
+          padding: 10px 12px !important;
+          font-size: 11.5px !important;
+          font-weight: 500 !important;
+        }
+
+        /* Geo modal layout */
+        html body .hardware-module-root .hardware-geo-redesign-body {
+          grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr) !important;
+          gap: 16px !important;
+          align-content: stretch !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-redesign-left,
+        html body .hardware-module-root .hardware-geo-history-modern {
+          min-height: 0 !important;
+          display: grid !important;
+          gap: 12px !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-redesign-left {
+          grid-template-rows: auto minmax(0, 1fr) !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-modern {
+          grid-template-rows: auto minmax(0, 1fr) auto !important;
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 16px !important;
+          background: #ffffff !important;
+          padding: 12px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-card,
+        html body .hardware-module-root .hardware-geo-map-shell {
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 16px !important;
+          background: #ffffff !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-frame {
+          min-height: 360px !important;
+          height: 100% !important;
+          background: #eef5f9 !important;
+          position: relative !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-frame iframe {
+          width: 100% !important;
+          height: 100% !important;
+          min-height: 360px !important;
+          border: 0 !important;
+          display: block !important;
+        }
+
+        @media (max-width: 980px) {
+          html body .hardware-module-root .hardware-modal {
+            width: min(640px, calc(100vw - 28px)) !important;
+            max-width: calc(100vw - 28px) !important;
+          }
+
+          html body .hardware-module-root .hardware-modal-geo,
+          html body .hardware-module-root .hardware-modal-geo-v2 {
+            height: calc(100vh - 28px) !important;
+          }
+
+          html body .hardware-module-root .hardware-geo-redesign-body {
+            grid-template-columns: 1fr !important;
+            overflow: auto !important;
+          }
+        }
+      `}</style>
+
+      
+      <style>{`
+        /* HARDWARE_ADVANCED_MODAL_FINAL_POLISH */
+
+        html body .hardware-module-root .hardware-modal-overlay {
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 2147482600 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          display: grid !important;
+          place-items: center !important;
+          padding: 24px !important;
+          background: rgba(15, 23, 42, 0.54) !important;
+          backdrop-filter: blur(10px) saturate(120%) !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-modal {
+          width: min(640px, calc(100vw - 48px)) !important;
+          max-width: calc(100vw - 48px) !important;
+          max-height: calc(100vh - 48px) !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 20px !important;
+          background: #ffffff !important;
+          box-shadow: 0 36px 90px rgba(8, 26, 55, 0.35) !important;
+          color: #0f2746 !important;
+          overflow: hidden !important;
+          display: grid !important;
+          grid-template-rows: 76px minmax(0, 1fr) 66px !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-message,
+        html body .hardware-module-root .hardware-move-modal,
+        html body .hardware-module-root .hardware-modal-colored,
+        html body .hardware-module-root .hardware-folder-modal {
+          width: min(640px, calc(100vw - 48px)) !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-geo,
+        html body .hardware-module-root .hardware-modal-geo-v2 {
+          width: min(1180px, calc(100vw - 48px)) !important;
+          height: min(780px, calc(100vh - 48px)) !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-header {
+          height: 76px !important;
+          min-height: 76px !important;
+          padding: 14px 16px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.95) !important;
+          background:
+            radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.10), transparent 36%),
+            #ffffff !important;
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) 38px !important;
+          gap: 14px !important;
+          align-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title {
+          min-width: 0 !important;
+          display: grid !important;
+          grid-template-columns: 42px minmax(0, 1fr) !important;
+          gap: 12px !important;
+          align-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title > svg {
+          width: 42px !important;
+          height: 42px !important;
+          padding: 10px !important;
+          border-radius: 14px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-header.red .hardware-modal-title > svg {
+          background: #fef2f2 !important;
+          color: #dc2626 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-header.green .hardware-modal-title > svg {
+          background: #ecfdf5 !important;
+          color: #15803d !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title strong,
+        html body .hardware-module-root .hardware-modal-title span {
+          display: block !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title strong {
+          color: #0f2746 !important;
+          font-size: 15px !important;
+          font-weight: 650 !important;
+          line-height: 1.15 !important;
+          text-transform: none !important;
+          letter-spacing: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title span {
+          margin-top: 4px !important;
+          color: #64748b !important;
+          font-size: 11.5px !important;
+          font-weight: 500 !important;
+          line-height: 1.25 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-close,
+        html body .hardware-module-root .hardware-modal-close.inverse {
+          width: 38px !important;
+          height: 38px !important;
+          border-radius: 12px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          background: #ffffff !important;
+          color: #64748b !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 0 !important;
+          box-shadow: none !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-body {
+          min-height: 0 !important;
+          padding: 16px !important;
+          background: #f8fbff !important;
+          overflow: auto !important;
+          display: grid !important;
+          gap: 14px !important;
+          align-content: start !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-footer {
+          min-height: 66px !important;
+          padding: 12px 16px !important;
+          border-top: 1px solid rgba(226, 232, 240, 0.95) !important;
+          background: #ffffff !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-end !important;
+          gap: 10px !important;
+          margin: 0 !important;
+        }
+
+        /* Common modal fields */
+        html body .hardware-module-root .hardware-form-group {
+          display: grid !important;
+          gap: 7px !important;
+          margin: 0 !important;
+          min-width: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group label,
+        html body .hardware-module-root .hardware-check span {
+          display: block !important;
+          color: #0f2746 !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          line-height: 1.1 !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group input,
+        html body .hardware-module-root .hardware-form-group textarea {
+          width: 100% !important;
+          min-width: 0 !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          font-size: 12px !important;
+          font-weight: 500 !important;
+          outline: none !important;
+          box-shadow: none !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group input {
+          height: 38px !important;
+          padding: 0 12px !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group textarea {
+          min-height: 124px !important;
+          padding: 11px 12px !important;
+          line-height: 1.45 !important;
+          resize: vertical !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown,
+        html body .hardware-module-root .hardware-move-select-group .hardware-dropdown {
+          width: 100% !important;
+          min-width: 0 !important;
+          position: relative !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-button,
+        html body .hardware-module-root .hardware-select-button,
+        html body .hardware-module-root .hardware-dropdown-trigger {
+          width: 100% !important;
+          height: 38px !important;
+          min-height: 38px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          padding: 0 12px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 8px !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          box-shadow: none !important;
+          outline: none !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-menu,
+        html body .hardware-module-root .hardware-select-menu {
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background: #ffffff !important;
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16) !important;
+          padding: 6px !important;
+          z-index: 2147482800 !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-option,
+        html body .hardware-module-root .hardware-select-option {
+          min-height: 32px !important;
+          border-radius: 9px !important;
+          color: #0f2746 !important;
+          background: transparent !important;
+          font-size: 11.5px !important;
+          font-weight: 500 !important;
+          padding: 0 10px !important;
+          display: flex !important;
+          align-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-option:hover,
+        html body .hardware-module-root .hardware-select-option:hover {
+          background: #eef5ff !important;
+          color: #2563eb !important;
+        }
+
+        html body .hardware-module-root .hardware-btn {
+          height: 38px !important;
+          min-height: 38px !important;
+          border-radius: 12px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          padding: 0 14px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 8px !important;
+          font-size: 11.5px !important;
+          font-weight: 600 !important;
+          line-height: 1 !important;
+          box-shadow: none !important;
+          cursor: pointer !important;
+        }
+
+        html body .hardware-module-root .hardware-btn.primary {
+          border-color: #4f46e5 !important;
+          background: linear-gradient(135deg, #4f46e5, #2563eb) !important;
+          color: #ffffff !important;
+          box-shadow: 0 12px 24px rgba(79, 70, 229, 0.16) !important;
+        }
+
+        html body .hardware-module-root .hardware-btn.danger {
+          border-color: #dc2626 !important;
+          background: #dc2626 !important;
+          color: #ffffff !important;
+          box-shadow: 0 12px 24px rgba(220, 38, 38, 0.16) !important;
+        }
+
+        html body .hardware-module-root .hardware-device-target-card,
+        html body .hardware-module-root .hardware-preview-card,
+        html body .hardware-module-root .hardware-info-banner {
+          width: 100% !important;
+          min-height: 54px !important;
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 14px !important;
+          background: #ffffff !important;
+          padding: 12px !important;
+          display: grid !important;
+          grid-template-columns: 38px minmax(0, 1fr) !important;
+          gap: 10px !important;
+          align-items: center !important;
+          box-shadow: none !important;
+        }
+
+        html body .hardware-module-root .hardware-info-banner.yellow {
+          background: #fff7ed !important;
+          border-color: #fed7aa !important;
+        }
+
+        html body .hardware-module-root .hardware-info-banner.blue {
+          background: #eef5ff !important;
+          border-color: #c9dbff !important;
+        }
+
+        html body .hardware-module-root .hardware-device-target-card > svg,
+        html body .hardware-module-root .hardware-info-banner > svg {
+          width: 38px !important;
+          height: 38px !important;
+          padding: 10px !important;
+          border-radius: 12px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+        }
+
+        html body .hardware-module-root .hardware-device-target-card strong,
+        html body .hardware-module-root .hardware-preview-card strong,
+        html body .hardware-module-root .hardware-info-banner strong {
+          display: block !important;
+          color: #0f2746 !important;
+          font-size: 12.5px !important;
+          font-weight: 650 !important;
+          line-height: 1.2 !important;
+        }
+
+        html body .hardware-module-root .hardware-device-target-card span,
+        html body .hardware-module-root .hardware-preview-card span,
+        html body .hardware-module-root .hardware-info-banner span,
+        html body .hardware-module-root .hardware-move-helper {
+          display: block !important;
+          margin-top: 3px !important;
+          color: #64748b !important;
+          font-size: 11px !important;
+          font-weight: 500 !important;
+          line-height: 1.35 !important;
+        }
+
+        html body .hardware-module-root .hardware-check {
+          width: fit-content !important;
+          min-height: 30px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          margin: 0 !important;
+          cursor: pointer !important;
+        }
+
+        html body .hardware-module-root .hardware-check input {
+          width: 16px !important;
+          height: 16px !important;
+          accent-color: #2563eb !important;
+          margin: 0 !important;
+        }
+
+        /* Geolocation modal */
+        html body .hardware-module-root .hardware-geo-redesign-body {
+          grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.65fr) !important;
+          gap: 16px !important;
+          align-content: stretch !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-redesign-left {
+          min-height: 0 !important;
+          display: grid !important;
+          grid-template-rows: auto minmax(0, 1fr) !important;
+          gap: 12px !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-card,
+        html body .hardware-module-root .hardware-geo-map-shell,
+        html body .hardware-module-root .hardware-geo-history-modern {
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 16px !important;
+          background: #ffffff !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-card {
+          padding: 14px !important;
+          display: grid !important;
+          gap: 12px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-head {
+          display: grid !important;
+          grid-template-columns: 42px minmax(0, 1fr) auto !important;
+          gap: 12px !important;
+          align-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-icon {
+          width: 42px !important;
+          height: 42px !important;
+          border-radius: 14px !important;
+          background: #ecfdf5 !important;
+          color: #15803d !important;
+          display: grid !important;
+          place-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-head span,
+        html body .hardware-module-root .hardware-geo-current-head strong,
+        html body .hardware-module-root .hardware-geo-current-head p,
+        html body .hardware-module-root .hardware-geo-history-modern-head span,
+        html body .hardware-module-root .hardware-geo-history-modern-head strong {
+          display: block !important;
+          margin: 0 !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-head span,
+        html body .hardware-module-root .hardware-geo-history-modern-head span {
+          color: #64748b !important;
+          font-size: 10px !important;
+          font-weight: 650 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.055em !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-head strong,
+        html body .hardware-module-root .hardware-geo-history-modern-head strong {
+          margin-top: 4px !important;
+          color: #0f2746 !important;
+          font-size: 14px !important;
+          font-weight: 650 !important;
+          line-height: 1.2 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-head p {
+          margin-top: 4px !important;
+          color: #64748b !important;
+          font-size: 11.5px !important;
+          line-height: 1.35 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-state {
+          min-height: 28px !important;
+          border-radius: 999px !important;
+          border: 1px solid #bbf7d0 !important;
+          background: #ecfdf5 !important;
+          color: #15803d !important;
+          padding: 0 10px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 6px !important;
+          font-size: 10.5px !important;
+          font-weight: 600 !important;
+          white-space: nowrap !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-grid {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 10px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-grid > div {
+          min-width: 0 !important;
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 13px !important;
+          background: #fbfdff !important;
+          padding: 10px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-grid > div.is-wide {
+          grid-column: 1 / -1 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-grid small,
+        html body .hardware-module-root .hardware-geo-current-grid strong,
+        html body .hardware-module-root .hardware-geo-current-grid span {
+          display: block !important;
+          margin: 0 !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-grid small {
+          color: #64748b !important;
+          font-size: 10px !important;
+          font-weight: 650 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.055em !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-grid strong {
+          margin-top: 5px !important;
+          color: #0f2746 !important;
+          font-size: 12px !important;
+          font-weight: 650 !important;
+          line-height: 1.35 !important;
+          word-break: break-word !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-shell {
+          display: grid !important;
+          grid-template-rows: 58px minmax(0, 1fr) !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-shell-head {
+          padding: 12px 14px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.96) !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 12px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-shell-head span,
+        html body .hardware-module-root .hardware-geo-map-shell-head strong {
+          display: block !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-shell-head span {
+          color: #64748b !important;
+          font-size: 10px !important;
+          font-weight: 650 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.055em !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-shell-head strong {
+          margin-top: 4px !important;
+          color: #0f2746 !important;
+          font-size: 12px !important;
+          font-weight: 650 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-frame {
+          min-height: 350px !important;
+          height: 100% !important;
+          background: #eef5f9 !important;
+          position: relative !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-frame iframe {
+          width: 100% !important;
+          height: 100% !important;
+          min-height: 350px !important;
+          border: 0 !important;
+          display: block !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-modern {
+          min-height: 0 !important;
+          padding: 12px !important;
+          display: grid !important;
+          grid-template-rows: auto minmax(0, 1fr) auto !important;
+          gap: 12px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-modern-head {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 12px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-count {
+          min-width: 64px !important;
+          border-radius: 13px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+          padding: 8px 10px !important;
+          text-align: center !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-count strong,
+        html body .hardware-module-root .hardware-geo-history-count span {
+          display: block !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-list-modern {
+          min-height: 0 !important;
+          overflow: auto !important;
+          display: grid !important;
+          gap: 8px !important;
+          align-content: start !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-item-modern {
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 13px !important;
+          background: #fbfdff !important;
+          padding: 10px !important;
+          display: grid !important;
+          grid-template-columns: 28px minmax(0, 1fr) !important;
+          gap: 10px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-index-modern {
+          width: 28px !important;
+          height: 28px !important;
+          border-radius: 9px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+          display: grid !important;
+          place-items: center !important;
+          font-size: 10.5px !important;
+          font-weight: 650 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-content-modern {
+          min-width: 0 !important;
+          display: grid !important;
+          gap: 6px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-date-modern strong,
+        html body .hardware-module-root .hardware-geo-history-date-modern span,
+        html body .hardware-module-root .hardware-geo-history-content-modern p {
+          display: block !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-date-modern strong {
+          color: #0f2746 !important;
+          font-size: 11.5px !important;
+          font-weight: 650 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-date-modern span,
+        html body .hardware-module-root .hardware-geo-history-content-modern p {
+          color: #64748b !important;
+          font-size: 10.8px !important;
+          line-height: 1.35 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-meta-modern {
+          display: flex !important;
+          flex-wrap: wrap !important;
+          gap: 6px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-meta-modern span {
+          min-height: 22px !important;
+          border-radius: 999px !important;
+          background: #ffffff !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          color: #0f2746 !important;
+          padding: 0 8px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          font-size: 10px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-pagination {
+          width: 100% !important;
+          margin: 0 !important;
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 14px !important;
+        }
+
+        @media (max-width: 980px) {
+          html body .hardware-module-root .hardware-modal {
+            width: min(640px, calc(100vw - 28px)) !important;
+            max-width: calc(100vw - 28px) !important;
+          }
+
+          html body .hardware-module-root .hardware-modal-geo,
+          html body .hardware-module-root .hardware-modal-geo-v2 {
+            height: calc(100vh - 28px) !important;
+          }
+
+          html body .hardware-module-root .hardware-geo-redesign-body {
+            grid-template-columns: 1fr !important;
+            overflow: auto !important;
+          }
+        }
+      `}</style>
+
+      
+      <style>{`
+        /* HARDWARE_DROPDOWN_STANDARD_FIX */
+
+        html body .hardware-module-root .hardware-filter-group {
+          min-width: 0 !important;
+          display: grid !important;
+          gap: 6px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-filter-group label {
+          margin: 0 !important;
+          color: #0f2746 !important;
+          font-size: 11px !important;
+          font-weight: 650 !important;
+          line-height: 1 !important;
+          letter-spacing: 0 !important;
+          text-transform: none !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown,
+        html body .hardware-module-root .hardware-filter-group .hardware-dropdown,
+        html body .hardware-module-root .hardware-registry-filters .hardware-dropdown {
+          width: 100% !important;
+          min-width: 0 !important;
+          height: 38px !important;
+          position: relative !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-button,
+        html body .hardware-module-root .hardware-select-button,
+        html body .hardware-module-root .hardware-dropdown-trigger,
+        html body .hardware-module-root .hardware-filter-group select,
+        html body .hardware-module-root .hardware-registry-filters select,
+        html body .hardware-module-root select.hardware-dropdown-button,
+        html body .hardware-module-root select.hardware-select-button {
+          width: 100% !important;
+          min-width: 0 !important;
+          height: 38px !important;
+          min-height: 38px !important;
+          max-height: 38px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background-color: #ffffff !important;
+          color: #0f2746 !important;
+          padding: 0 36px 0 12px !important;
+          margin: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 8px !important;
+          text-align: left !important;
+          font-size: 11.8px !important;
+          font-weight: 600 !important;
+          line-height: 1 !important;
+          box-shadow: none !important;
+          outline: none !important;
+          cursor: pointer !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-filter-group select,
+        html body .hardware-module-root .hardware-registry-filters select,
+        html body .hardware-module-root select.hardware-dropdown-button,
+        html body .hardware-module-root select.hardware-select-button {
+          appearance: none !important;
+          -webkit-appearance: none !important;
+          background-image:
+            linear-gradient(45deg, transparent 50%, #0f2746 50%),
+            linear-gradient(135deg, #0f2746 50%, transparent 50%) !important;
+          background-position:
+            calc(100% - 17px) 16px,
+            calc(100% - 12px) 16px !important;
+          background-size:
+            5px 5px,
+            5px 5px !important;
+          background-repeat: no-repeat !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-button:hover,
+        html body .hardware-module-root .hardware-select-button:hover,
+        html body .hardware-module-root .hardware-dropdown-trigger:hover,
+        html body .hardware-module-root .hardware-filter-group select:hover,
+        html body .hardware-module-root .hardware-registry-filters select:hover {
+          border-color: #c9dbff !important;
+          background-color: #fbfdff !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-button:focus,
+        html body .hardware-module-root .hardware-dropdown-button:focus-visible,
+        html body .hardware-module-root .hardware-select-button:focus,
+        html body .hardware-module-root .hardware-select-button:focus-visible,
+        html body .hardware-module-root .hardware-dropdown-trigger:focus,
+        html body .hardware-module-root .hardware-dropdown-trigger:focus-visible,
+        html body .hardware-module-root .hardware-filter-group select:focus,
+        html body .hardware-module-root .hardware-filter-group select:focus-visible,
+        html body .hardware-module-root .hardware-registry-filters select:focus,
+        html body .hardware-module-root .hardware-registry-filters select:focus-visible {
+          border-color: #93c5fd !important;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10) !important;
+          outline: none !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-button *,
+        html body .hardware-module-root .hardware-select-button *,
+        html body .hardware-module-root .hardware-dropdown-trigger * {
+          min-width: 0 !important;
+          max-width: 100% !important;
+          color: inherit !important;
+          font-size: inherit !important;
+          font-weight: inherit !important;
+          line-height: 1 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-button svg,
+        html body .hardware-module-root .hardware-select-button svg,
+        html body .hardware-module-root .hardware-dropdown-trigger svg {
+          width: 14px !important;
+          height: 14px !important;
+          min-width: 14px !important;
+          color: #64748b !important;
+          margin-left: auto !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-menu,
+        html body .hardware-module-root .hardware-select-menu {
+          min-width: 100% !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background: #ffffff !important;
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16) !important;
+          padding: 6px !important;
+          overflow: hidden !important;
+          z-index: 2147482800 !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-option,
+        html body .hardware-module-root .hardware-select-option {
+          min-height: 32px !important;
+          border: 0 !important;
+          border-radius: 9px !important;
+          background: transparent !important;
+          color: #0f2746 !important;
+          font-size: 11.5px !important;
+          font-weight: 500 !important;
+          padding: 0 10px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-start !important;
+          text-align: left !important;
+          cursor: pointer !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-option:hover,
+        html body .hardware-module-root .hardware-dropdown-option.is-active,
+        html body .hardware-module-root .hardware-select-option:hover,
+        html body .hardware-module-root .hardware-select-option.is-active {
+          background: #eef5ff !important;
+          color: #2563eb !important;
+        }
+
+        html body .hardware-module-root .hardware-clear-filters-btn {
+          height: 38px !important;
+          min-height: 38px !important;
+          max-height: 38px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background: #ffffff !important;
+          color: #64748b !important;
+          box-shadow: none !important;
+          outline: none !important;
+        }
+
+        html body .hardware-module-root .hardware-clear-filters-btn:not(:disabled):hover {
+          border-color: #fecaca !important;
+          background: #fef2f2 !important;
+          color: #dc2626 !important;
+        }
+      `}</style>
 
       {toast && (
         <div className={`hardware-toast hardware-toast-${toast.type}`} role="status">

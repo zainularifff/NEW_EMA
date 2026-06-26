@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertCircle,
   CheckCircle2,
@@ -13,7 +14,11 @@ import {
   X,
 } from "lucide-react";
 import taskListService from "../services/taskListService";
+import "../styles/task-list-v2.css";
 
+import "../styles/ema-standard-table.css";
+import "../styles/ema-standard-controls.css";
+import "../styles/ema-table-pagination-standard.css";
 type AppButtonVariant =
   | "primary"
   | "secondary"
@@ -1425,16 +1430,29 @@ function TaskDetailModal({
   onRefresh: () => void;
   onAction: (action: TaskAction, task: TaskItem) => void;
 }) {
-  return (
-    <div className="task-detail-modal-layer" onClick={onClose} role="presentation">
-      <section className="task-detail-modal ema-panel-surface" role="dialog" aria-modal="true" aria-label={`Task ${task.id} detail`} onClick={(event) => event.stopPropagation()}>
-        <div className="task-detail-modal-toolbar">
-          <div>
+  const modalNode = (
+    <div className="task-detail-modal-layer task-detail-modal-layer-v2" onClick={onClose} role="presentation">
+      <section
+        className="task-detail-modal task-detail-modal-v2 ema-panel-surface"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Task ${task.id} detail`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="task-detail-modal-toolbar task-detail-modal-toolbar-v2">
+          <div className="task-detail-modal-title-block">
             <span className="section-tag">TASK DETAIL</span>
             <h3>Task #{task.id}</h3>
-            <p>Command summary, target endpoints and execution progress.</p>
+            <p>{task.classification} ? {task.commandType || task.taskType || "Task command"}</p>
           </div>
-          <div className="task-row-actions">
+
+          <div className="task-detail-modal-summary">
+            <div><span>Status</span><strong>{task.state}</strong></div>
+            <div><span>Targets</span><strong>{task.totalObjects}</strong></div>
+            <div><span>Complete</span><strong>{task.completionRate}%</strong></div>
+          </div>
+
+          <div className="task-row-actions task-detail-modal-actions">
             <button type="button" onClick={onRefresh} title="Refresh task detail" disabled={isLoading}>
               {isLoading ? <Loader2 size={16} className="task-spin" /> : <RefreshCw size={16} />}
             </button>
@@ -1442,9 +1460,9 @@ function TaskDetailModal({
               <X size={18} />
             </button>
           </div>
-        </div>
+        </header>
 
-        <div className="task-detail-modal-body task-detail-workspace task-detail-side-workspace">
+        <div className="task-detail-modal-body task-detail-modal-body-v2">
           <section className="task-card task-detail-action-card task-detail-left-column">
             <TaskRightPanel task={task} onAction={onAction} />
           </section>
@@ -1464,6 +1482,8 @@ function TaskDetailModal({
       </section>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(modalNode, document.body) : modalNode;
 }
 
 function TaskRightPanel({

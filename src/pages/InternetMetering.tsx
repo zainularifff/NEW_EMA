@@ -27,7 +27,12 @@ import {
 import clsx from 'clsx';
 
 import internetMeteringService from '../services/internetMeteringService';
+import '../styles/internet-metering-v2.css';
 
+import "../styles/ema-standard-table.css";
+import "../styles/ema-standard-controls.css";
+import "../styles/internet-metering-v2.css";
+import "../styles/ema-table-pagination-standard.css";
 type NodeKind = 'all' | 'folder' | 'device' | 'url-folder' | 'url';
 
 type TreeNodeType = {
@@ -839,14 +844,14 @@ function ImCustomSelect({
   }, [open, updateMenuPosition]);
 
   const menuNode = open && typeof document !== 'undefined' ? createPortal(
-    <div ref={menuRef} className="uam-filter-menu uam-filter-menu-portal setting-select-menu" style={menuStyle} role="listbox" aria-label={ariaLabel}>
+    <div ref={menuRef} className="im-select-menu im-select-menu-portal" style={menuStyle} role="listbox" aria-label={ariaLabel}>
       {options.map((option) => {
         const selectedOption = option.value === value;
         return (
           <button
             key={`${option.value}-${option.label}`}
             type="button"
-            className={clsx('uam-filter-option', selectedOption && 'selected')}
+            className={clsx('im-select-option', selectedOption && 'selected')}
             role="option"
             aria-selected={selectedOption}
             onClick={() => {
@@ -855,7 +860,7 @@ function ImCustomSelect({
             }}
           >
             <span>{option.label}</span>
-            {selectedOption && <span className="uam-filter-check">✓</span>}
+            {selectedOption && <span className="im-select-check">✓</span>}
           </button>
         );
       })}
@@ -864,11 +869,11 @@ function ImCustomSelect({
   ) : null;
 
   return (
-    <div className={clsx('uam-filter-dropdown setting-select-dropdown', open && 'open', className)}>
+    <div className={clsx('im-select', open && 'open', className)}>
       <button
         ref={triggerRef}
         type="button"
-        className="uam-filter-trigger setting-select-trigger"
+        className="im-select-trigger"
         aria-expanded={open}
         aria-label={ariaLabel}
         onClick={() => setOpen((current) => !current)}
@@ -1744,12 +1749,7 @@ export default function InternetMetering() {
                 <p>{usagePanelUrl ? `${selectedScopeLabel} · ${usagePanelUrl.label}` : `${urlTotalRecords > 0 ? formatNumber(urlTotalRecords) : formatNumber(visibleUrlRows.length)} rules available`}</p>
               </div>
               <div className="content-actions">
-                <button type="button" onClick={() => setPendingMeteringAction({ action: 'start', node: selectedScope })} disabled={meteringBusy || selectedScopeRunning} className="primary-btn">
-                  {meteringBusy ? <Loader2 size={14} className="animate-spin" /> : <Wifi size={14} />} Start
-                </button>
-                <button type="button" onClick={() => setPendingMeteringAction({ action: 'stop', node: selectedScope })} disabled={meteringBusy || !selectedScopeRunning} className="danger-btn">
-                  {meteringBusy ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />} Stop
-                </button>
+
                 <button type="button" onClick={collectResult} disabled={collecting || meteringBusy} className="soft-btn">
                   {collecting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Collect
                 </button>

@@ -1,0 +1,825 @@
+
+/* EMA Module Sidebar Standard
+   Reuse this for Hardware, Software, Network, App Restriction, Web Restriction, Patch, Internet/App Metering.
+   UI only. No logic changes. */
+
+:root {
+  --ema-module-sidebar-width: 280px;
+  --ema-module-card-radius: 16px;
+  --ema-module-border: rgba(203, 213, 225, 0.95);
+  --ema-module-border-soft: rgba(226, 232, 240, 0.96);
+  --ema-module-bg: #eef5f9;
+  --ema-module-surface: #ffffff;
+  --ema-module-muted: #64748b;
+  --ema-module-text: #0f2746;
+  --ema-module-blue: #2563eb;
+  --ema-module-indigo: #4f46e5;
+}
+
+/* Standard module shell */
+body .hardware-module-root.settings-module-root,
+body .software-module-root.settings-module-root,
+body .network-module-root.settings-module-root,
+body .patch-module-root.settings-module-root,
+body .appwebrestriction-module.settings-module-root,
+body [data-section="software-distribution"].settings-module-root,
+body [data-section="app-restriction"].settings-module-root,
+body [data-section="web-restriction"].settings-module-root,
+body [data-section="internet-metering"].settings-module-root,
+body [data-section="app-metering"].settings-module-root {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: calc(100vh - 66px) !important;
+  min-height: calc(100vh - 66px) !important;
+  max-height: calc(100vh - 66px) !important;
+  padding: 12px !important;
+  background: var(--ema-module-bg) !important;
+  overflow: hidden !important;
+  color: var(--ema-module-text) !important;
+}
+
+body .hardware-module-root *,
+body .software-module-root *,
+body .network-module-root *,
+body .patch-module-root *,
+body .appwebrestriction-module *,
+body [data-section="software-distribution"] *,
+body [data-section="app-restriction"] *,
+body [data-section="web-restriction"] *,
+body [data-section="internet-metering"] *,
+body [data-section="app-metering"] * {
+  box-sizing: border-box !important;
+}
+
+/* Same panel layout for every module */
+body .hardware-module-root .settings-layout,
+body .software-module-root .settings-layout,
+body .network-module-root .settings-layout,
+body .patch-module-root .settings-layout,
+body .appwebrestriction-module .settings-layout,
+body [data-section="software-distribution"] .settings-layout,
+body [data-section="app-restriction"] .settings-layout,
+body [data-section="web-restriction"] .settings-layout,
+body [data-section="internet-metering"] .settings-layout,
+body [data-section="app-metering"] .settings-layout {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  display: grid !important;
+  grid-template-columns: var(--ema-module-sidebar-width) minmax(0, 1fr) !important;
+  gap: 14px !important;
+  overflow: hidden !important;
+}
+
+/* Same sidebar panel */
+body .hardware-module-root .settings-menu,
+body .software-module-root .settings-menu,
+body .network-module-root .settings-menu,
+body .patch-module-root .settings-menu,
+body .appwebrestriction-module .settings-menu,
+body [data-section="software-distribution"] .settings-menu,
+body [data-section="app-restriction"] .settings-menu,
+body [data-section="web-restriction"] .settings-menu,
+body [data-section="internet-metering"] .settings-menu,
+body [data-section="app-metering"] .settings-menu {
+  width: var(--ema-module-sidebar-width) !important;
+  min-width: var(--ema-module-sidebar-width) !important;
+  max-width: var(--ema-module-sidebar-width) !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  border: 1px solid var(--ema-module-border) !important;
+  border-radius: var(--ema-module-card-radius) !important;
+  background: var(--ema-module-surface) !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+  display: grid !important;
+  grid-template-rows: 86px auto minmax(0, 1fr) !important;
+  overflow: hidden !important;
+}
+
+/* Panel title */
+body .hardware-module-root .settings-menu .panel-head,
+body .software-module-root .settings-menu .panel-head,
+body .network-module-root .settings-menu .panel-head,
+body .patch-module-root .settings-menu .panel-head,
+body .appwebrestriction-module .settings-menu .panel-head,
+body [data-section="software-distribution"] .settings-menu .panel-head,
+body [data-section="app-restriction"] .settings-menu .panel-head,
+body [data-section="web-restriction"] .settings-menu .panel-head,
+body [data-section="internet-metering"] .settings-menu .panel-head,
+body [data-section="app-metering"] .settings-menu .panel-head {
+  height: 86px !important;
+  min-height: 86px !important;
+  padding: 16px !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.95) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.08), transparent 34%),
+    #ffffff !important;
+  display: grid !important;
+  gap: 4px !important;
+  align-content: center !important;
+  overflow: hidden !important;
+}
+
+body .hardware-module-root .panel-head span,
+body .software-module-root .panel-head span,
+body .network-module-root .panel-head span,
+body .patch-module-root .panel-head span,
+body .appwebrestriction-module .panel-head span,
+body [data-section="software-distribution"] .panel-head span,
+body [data-section="app-restriction"] .panel-head span,
+body [data-section="web-restriction"] .panel-head span,
+body [data-section="internet-metering"] .panel-head span,
+body [data-section="app-metering"] .panel-head span {
+  width: fit-content !important;
+  max-width: 100% !important;
+  min-height: 22px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 0 9px !important;
+  border-radius: 999px !important;
+  background: #eef5ff !important;
+  border: 1px solid #c9dbff !important;
+  color: var(--ema-module-blue) !important;
+  font-size: 9.5px !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.075em !important;
+  text-transform: uppercase !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body .hardware-module-root .panel-head strong,
+body .software-module-root .panel-head strong,
+body .network-module-root .panel-head strong,
+body .patch-module-root .panel-head strong,
+body .appwebrestriction-module .panel-head strong,
+body [data-section="software-distribution"] .panel-head strong,
+body [data-section="app-restriction"] .panel-head strong,
+body [data-section="web-restriction"] .panel-head strong,
+body [data-section="internet-metering"] .panel-head strong,
+body [data-section="app-metering"] .panel-head strong {
+  color: var(--ema-module-text) !important;
+  font-size: 15px !important;
+  font-weight: 650 !important;
+  line-height: 1.1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body .hardware-module-root .panel-head small,
+body .software-module-root .panel-head small,
+body .network-module-root .panel-head small,
+body .patch-module-root .panel-head small,
+body .appwebrestriction-module .panel-head small,
+body [data-section="software-distribution"] .panel-head small,
+body [data-section="app-restriction"] .panel-head small,
+body [data-section="web-restriction"] .panel-head small,
+body [data-section="internet-metering"] .panel-head small,
+body [data-section="app-metering"] .panel-head small {
+  color: var(--ema-module-muted) !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Switcher buttons under panel head */
+body .hardware-module-root .settings-menu-list.ema-module-sidebar-switcher,
+body .software-module-root .settings-menu-list.ema-module-sidebar-switcher,
+body .network-module-root .settings-menu-list.ema-module-sidebar-switcher,
+body .patch-module-root .settings-menu-list.ema-module-sidebar-switcher,
+body .appwebrestriction-module .settings-menu-list.ema-module-sidebar-switcher,
+body [data-section="app-restriction"] .settings-menu-list.ema-module-sidebar-switcher,
+body [data-section="web-restriction"] .settings-menu-list.ema-module-sidebar-switcher,
+body [data-section="internet-metering"] .settings-menu-list.ema-module-sidebar-switcher,
+body [data-section="app-metering"] .settings-menu-list.ema-module-sidebar-switcher {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 12px !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.95) !important;
+  display: grid !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+}
+
+/* Content area inside sidebar */
+body .hardware-module-root .ema-sidebar-content,
+body .software-module-root .ema-sidebar-content,
+body .network-module-root .ema-sidebar-content,
+body .patch-module-root .ema-sidebar-content,
+body .appwebrestriction-module .ema-sidebar-content,
+body [data-section="app-restriction"] .ema-sidebar-content,
+body [data-section="web-restriction"] .ema-sidebar-content,
+body [data-section="internet-metering"] .ema-sidebar-content,
+body [data-section="app-metering"] .ema-sidebar-content {
+  min-height: 0 !important;
+  height: 100% !important;
+  padding: 12px !important;
+  overflow: hidden !important;
+}
+
+body .hardware-module-root .ema-sidebar-subpanel,
+body .software-module-root .ema-sidebar-subpanel,
+body .network-module-root .ema-sidebar-subpanel,
+body .patch-module-root .ema-sidebar-subpanel,
+body .appwebrestriction-module .ema-sidebar-subpanel,
+body [data-section="app-restriction"] .ema-sidebar-subpanel,
+body [data-section="web-restriction"] .ema-sidebar-subpanel,
+body [data-section="internet-metering"] .ema-sidebar-subpanel,
+body [data-section="app-metering"] .ema-sidebar-subpanel {
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-rows: auto auto minmax(0, 1fr) !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+  align-content: start !important;
+}
+
+/* Search field standard */
+body .hardware-module-root .section-search,
+body .software-module-root .section-search,
+body .network-module-root .section-search,
+body .patch-module-root .section-search,
+body .appwebrestriction-module .section-search,
+body [data-section="software-distribution"] .section-search,
+body [data-section="app-restriction"] .section-search,
+body [data-section="web-restriction"] .section-search,
+body [data-section="internet-metering"] .section-search,
+body [data-section="app-metering"] .section-search {
+  width: 100% !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  border: 1px solid var(--ema-module-border) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 10px !important;
+  color: var(--ema-module-muted) !important;
+  box-shadow: none !important;
+}
+
+body .hardware-module-root .section-search input,
+body .software-module-root .section-search input,
+body .network-module-root .section-search input,
+body .patch-module-root .section-search input,
+body .appwebrestriction-module .section-search input,
+body [data-section="software-distribution"] .section-search input,
+body [data-section="app-restriction"] .section-search input,
+body [data-section="web-restriction"] .section-search input,
+body [data-section="internet-metering"] .section-search input,
+body [data-section="app-metering"] .section-search input {
+  flex: 1 !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  color: var(--ema-module-text) !important;
+  font-size: 12px !important;
+  box-shadow: none !important;
+}
+
+/* Standard sidebar button */
+body .hardware-module-root .setting-btn,
+body .software-module-root .setting-btn,
+body .network-module-root .setting-btn,
+body .patch-module-root .setting-btn,
+body .appwebrestriction-module .setting-btn,
+body [data-section="software-distribution"] .setting-btn,
+body [data-section="app-restriction"] .setting-btn,
+body [data-section="web-restriction"] .setting-btn,
+body [data-section="internet-metering"] .setting-btn,
+body [data-section="app-metering"] .setting-btn {
+  width: 100% !important;
+  min-height: 42px !important;
+  border: 1px solid var(--ema-module-border-soft) !important;
+  border-radius: 13px !important;
+  background: #ffffff !important;
+  color: var(--ema-module-text) !important;
+  padding: 8px 10px !important;
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+  gap: 9px !important;
+  align-items: center !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+}
+
+body .hardware-module-root .setting-btn:hover,
+body .hardware-module-root .setting-btn.active,
+body .software-module-root .setting-btn:hover,
+body .software-module-root .setting-btn.active,
+body .network-module-root .setting-btn:hover,
+body .network-module-root .setting-btn.active,
+body .patch-module-root .setting-btn:hover,
+body .patch-module-root .setting-btn.active,
+body .appwebrestriction-module .setting-btn:hover,
+body .appwebrestriction-module .setting-btn.active,
+body [data-section="software-distribution"] .setting-btn:hover,
+body [data-section="software-distribution"] .setting-btn.active,
+body [data-section="app-restriction"] .setting-btn:hover,
+body [data-section="app-restriction"] .setting-btn.active,
+body [data-section="web-restriction"] .setting-btn:hover,
+body [data-section="web-restriction"] .setting-btn.active,
+body [data-section="internet-metering"] .setting-btn:hover,
+body [data-section="internet-metering"] .setting-btn.active,
+body [data-section="app-metering"] .setting-btn:hover,
+body [data-section="app-metering"] .setting-btn.active {
+  border-color: #c7d2fe !important;
+  background: #f8f7ff !important;
+  box-shadow: inset 3px 0 0 var(--ema-module-indigo) !important;
+}
+
+body .hardware-module-root .setting-icon,
+body .software-module-root .setting-icon,
+body .network-module-root .setting-icon,
+body .patch-module-root .setting-icon,
+body .appwebrestriction-module .setting-icon,
+body [data-section="software-distribution"] .setting-icon,
+body [data-section="app-restriction"] .setting-icon,
+body [data-section="web-restriction"] .setting-icon,
+body [data-section="internet-metering"] .setting-icon,
+body [data-section="app-metering"] .setting-icon {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 11px !important;
+  background: #eef5ff !important;
+  color: var(--ema-module-blue) !important;
+  display: grid !important;
+  place-items: center !important;
+}
+
+/* Shared tree */
+body .hardware-module-root .ema-sidebar-tree,
+body .software-module-root .ema-sidebar-tree,
+body .network-module-root .ema-sidebar-tree,
+body .patch-module-root .ema-sidebar-tree,
+body .appwebrestriction-module .ema-sidebar-tree,
+body [data-section="app-restriction"] .ema-sidebar-tree,
+body [data-section="web-restriction"] .ema-sidebar-tree,
+body [data-section="internet-metering"] .ema-sidebar-tree,
+body [data-section="app-metering"] .ema-sidebar-tree {
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: auto !important;
+  display: grid !important;
+  gap: 6px !important;
+  align-content: start !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-level,
+body .software-module-root .ema-sidebar-tree-level,
+body .network-module-root .ema-sidebar-tree-level,
+body .patch-module-root .ema-sidebar-tree-level,
+body .appwebrestriction-module .ema-sidebar-tree-level,
+body [data-section="app-restriction"] .ema-sidebar-tree-level,
+body [data-section="web-restriction"] .ema-sidebar-tree-level,
+body [data-section="internet-metering"] .ema-sidebar-tree-level,
+body [data-section="app-metering"] .ema-sidebar-tree-level {
+  display: grid !important;
+  gap: 5px !important;
+  align-content: start !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-branch,
+body .software-module-root .ema-sidebar-tree-branch,
+body .network-module-root .ema-sidebar-tree-branch,
+body .patch-module-root .ema-sidebar-tree-branch,
+body .appwebrestriction-module .ema-sidebar-tree-branch,
+body [data-section="app-restriction"] .ema-sidebar-tree-branch,
+body [data-section="web-restriction"] .ema-sidebar-tree-branch,
+body [data-section="internet-metering"] .ema-sidebar-tree-branch,
+body [data-section="app-metering"] .ema-sidebar-tree-branch {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 4px !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-node,
+body .software-module-root .ema-sidebar-tree-node,
+body .network-module-root .ema-sidebar-tree-node,
+body .patch-module-root .ema-sidebar-tree-node,
+body .appwebrestriction-module .ema-sidebar-tree-node,
+body [data-section="app-restriction"] .ema-sidebar-tree-node,
+body [data-section="web-restriction"] .ema-sidebar-tree-node,
+body [data-section="internet-metering"] .ema-sidebar-tree-node,
+body [data-section="app-metering"] .ema-sidebar-tree-node {
+  min-height: 34px !important;
+  border-radius: 11px !important;
+  display: grid !important;
+  grid-template-columns: 26px minmax(0, 1fr) !important;
+  align-items: center !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-node:hover,
+body .hardware-module-root .ema-sidebar-tree-node.is-selected,
+body .hardware-module-root .ema-sidebar-tree-node.is-active,
+body .software-module-root .ema-sidebar-tree-node:hover,
+body .software-module-root .ema-sidebar-tree-node.is-selected,
+body .software-module-root .ema-sidebar-tree-node.is-active,
+body .network-module-root .ema-sidebar-tree-node:hover,
+body .network-module-root .ema-sidebar-tree-node.is-selected,
+body .network-module-root .ema-sidebar-tree-node.is-active,
+body .patch-module-root .ema-sidebar-tree-node:hover,
+body .patch-module-root .ema-sidebar-tree-node.is-selected,
+body .patch-module-root .ema-sidebar-tree-node.is-active,
+body .appwebrestriction-module .ema-sidebar-tree-node:hover,
+body .appwebrestriction-module .ema-sidebar-tree-node.is-selected,
+body .appwebrestriction-module .ema-sidebar-tree-node.is-active,
+body [data-section="app-restriction"] .ema-sidebar-tree-node:hover,
+body [data-section="app-restriction"] .ema-sidebar-tree-node.is-selected,
+body [data-section="app-restriction"] .ema-sidebar-tree-node.is-active,
+body [data-section="web-restriction"] .ema-sidebar-tree-node:hover,
+body [data-section="web-restriction"] .ema-sidebar-tree-node.is-selected,
+body [data-section="web-restriction"] .ema-sidebar-tree-node.is-active {
+  background: #f8f7ff !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-toggle,
+body .software-module-root .ema-sidebar-tree-toggle,
+body .network-module-root .ema-sidebar-tree-toggle,
+body .patch-module-root .ema-sidebar-tree-toggle,
+body .appwebrestriction-module .ema-sidebar-tree-toggle,
+body [data-section="app-restriction"] .ema-sidebar-tree-toggle,
+body [data-section="web-restriction"] .ema-sidebar-tree-toggle,
+body [data-section="internet-metering"] .ema-sidebar-tree-toggle,
+body [data-section="app-metering"] .ema-sidebar-tree-toggle {
+  width: 26px !important;
+  height: 26px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--ema-module-muted) !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 0 !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-main,
+body .software-module-root .ema-sidebar-tree-main,
+body .network-module-root .ema-sidebar-tree-main,
+body .patch-module-root .ema-sidebar-tree-main,
+body .appwebrestriction-module .ema-sidebar-tree-main,
+body [data-section="app-restriction"] .ema-sidebar-tree-main,
+body [data-section="web-restriction"] .ema-sidebar-tree-main,
+body [data-section="internet-metering"] .ema-sidebar-tree-main,
+body [data-section="app-metering"] .ema-sidebar-tree-main {
+  min-width: 0 !important;
+  height: 34px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--ema-module-text) !important;
+  padding: 0 8px !important;
+  display: grid !important;
+  grid-template-columns: 26px minmax(0, 1fr) auto !important;
+  gap: 7px !important;
+  align-items: center !important;
+  text-align: left !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-icon,
+body .software-module-root .ema-sidebar-tree-icon,
+body .network-module-root .ema-sidebar-tree-icon,
+body .patch-module-root .ema-sidebar-tree-icon,
+body .appwebrestriction-module .ema-sidebar-tree-icon,
+body [data-section="app-restriction"] .ema-sidebar-tree-icon,
+body [data-section="web-restriction"] .ema-sidebar-tree-icon,
+body [data-section="internet-metering"] .ema-sidebar-tree-icon,
+body [data-section="app-metering"] .ema-sidebar-tree-icon {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 8px !important;
+  background: #eef5ff !important;
+  color: var(--ema-module-blue) !important;
+  display: grid !important;
+  place-items: center !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-label,
+body .software-module-root .ema-sidebar-tree-label,
+body .network-module-root .ema-sidebar-tree-label,
+body .patch-module-root .ema-sidebar-tree-label,
+body .appwebrestriction-module .ema-sidebar-tree-label,
+body [data-section="app-restriction"] .ema-sidebar-tree-label,
+body [data-section="web-restriction"] .ema-sidebar-tree-label,
+body [data-section="internet-metering"] .ema-sidebar-tree-label,
+body [data-section="app-metering"] .ema-sidebar-tree-label {
+  min-width: 0 !important;
+  color: var(--ema-module-text) !important;
+  font-size: 11.5px !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-count,
+body .software-module-root .ema-sidebar-tree-count,
+body .network-module-root .ema-sidebar-tree-count,
+body .patch-module-root .ema-sidebar-tree-count,
+body .appwebrestriction-module .ema-sidebar-tree-count,
+body [data-section="app-restriction"] .ema-sidebar-tree-count,
+body [data-section="web-restriction"] .ema-sidebar-tree-count,
+body [data-section="internet-metering"] .ema-sidebar-tree-count,
+body [data-section="app-metering"] .ema-sidebar-tree-count {
+  min-width: 20px !important;
+  height: 20px !important;
+  border-radius: 999px !important;
+  border: 1px solid #dbeafe !important;
+  background: #eff6ff !important;
+  color: var(--ema-module-blue) !important;
+  padding: 0 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 9.5px !important;
+  white-space: nowrap !important;
+}
+
+body .hardware-module-root .ema-sidebar-tree-children,
+body .software-module-root .ema-sidebar-tree-children,
+body .network-module-root .ema-sidebar-tree-children,
+body .patch-module-root .ema-sidebar-tree-children,
+body .appwebrestriction-module .ema-sidebar-tree-children,
+body [data-section="app-restriction"] .ema-sidebar-tree-children,
+body [data-section="web-restriction"] .ema-sidebar-tree-children,
+body [data-section="internet-metering"] .ema-sidebar-tree-children,
+body [data-section="app-metering"] .ema-sidebar-tree-children {
+  margin-left: 12px !important;
+  display: grid !important;
+  gap: 4px !important;
+}
+
+/* Main content common */
+body .hardware-module-root .settings-content,
+body .software-module-root .settings-content,
+body .network-module-root .settings-content,
+body .patch-module-root .settings-content,
+body .appwebrestriction-module .settings-content,
+body [data-section="software-distribution"] .settings-content,
+body [data-section="app-restriction"] .settings-content,
+body [data-section="web-restriction"] .settings-content,
+body [data-section="internet-metering"] .settings-content,
+body [data-section="app-metering"] .settings-content {
+  min-width: 0 !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+}
+
+@media (max-width: 980px) {
+  body .hardware-module-root.settings-module-root,
+  body .software-module-root.settings-module-root,
+  body .network-module-root.settings-module-root,
+  body .patch-module-root.settings-module-root,
+  body .appwebrestriction-module.settings-module-root,
+  body [data-section="software-distribution"].settings-module-root,
+  body [data-section="app-restriction"].settings-module-root,
+  body [data-section="web-restriction"].settings-module-root,
+  body [data-section="internet-metering"].settings-module-root,
+  body [data-section="app-metering"].settings-module-root {
+    height: auto !important;
+    min-height: calc(100vh - 66px) !important;
+    max-height: none !important;
+    overflow: auto !important;
+  }
+
+  body .hardware-module-root .settings-layout,
+  body .software-module-root .settings-layout,
+  body .network-module-root .settings-layout,
+  body .patch-module-root .settings-layout,
+  body .appwebrestriction-module .settings-layout,
+  body [data-section="software-distribution"] .settings-layout,
+  body [data-section="app-restriction"] .settings-layout,
+  body [data-section="web-restriction"] .settings-layout,
+  body [data-section="internet-metering"] .settings-layout,
+  body [data-section="app-metering"] .settings-layout {
+    height: auto !important;
+    grid-template-columns: 1fr !important;
+    overflow: visible !important;
+  }
+
+  body .hardware-module-root .settings-menu,
+  body .software-module-root .settings-menu,
+  body .network-module-root .settings-menu,
+  body .patch-module-root .settings-menu,
+  body .appwebrestriction-module .settings-menu,
+  body [data-section="software-distribution"] .settings-menu,
+  body [data-section="app-restriction"] .settings-menu,
+  body [data-section="web-restriction"] .settings-menu,
+  body [data-section="internet-metering"] .settings-menu,
+  body [data-section="app-metering"] .settings-menu {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 360px !important;
+  }
+}
+
+
+/* INTERNET_METERING_SHARED_GUARD - same module sidebar/tree standard */
+body .internet-metering-page.settings-module-root,
+body [data-section="internet-metering"].settings-module-root {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: calc(100vh - 66px) !important;
+  min-height: calc(100vh - 66px) !important;
+  max-height: calc(100vh - 66px) !important;
+  padding: 12px !important;
+  background: #eef5f9 !important;
+  overflow: hidden !important;
+}
+
+body .internet-metering-page .settings-layout,
+body [data-section="internet-metering"] .settings-layout {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: 280px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  overflow: hidden !important;
+}
+
+body .internet-metering-page .settings-menu,
+body [data-section="internet-metering"] .settings-menu {
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 280px !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+  display: grid !important;
+  grid-template-rows: 86px auto minmax(0, 1fr) !important;
+  overflow: hidden !important;
+}
+
+
+/* APP_METERING_SHARED_GUARD - same module sidebar/tree standard */
+body .appmetering-module-root.settings-module-root,
+body [data-section="application-metering"].settings-module-root {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: calc(100vh - 66px) !important;
+  min-height: calc(100vh - 66px) !important;
+  max-height: calc(100vh - 66px) !important;
+  padding: 12px !important;
+  background: #eef5f9 !important;
+  overflow: hidden !important;
+}
+
+body .appmetering-module-root .settings-layout,
+body [data-section="application-metering"] .settings-layout {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: 280px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  overflow: hidden !important;
+}
+
+body .appmetering-module-root .settings-menu,
+body [data-section="application-metering"] .settings-menu {
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 280px !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+  display: grid !important;
+  grid-template-rows: 86px auto minmax(0, 1fr) !important;
+  overflow: hidden !important;
+}
+
+
+/* NETWORK_INVENTORY_SHARED_GUARD - same module sidebar/tree standard */
+body .network-inventory-module.settings-module-root {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: calc(100vh - 66px) !important;
+  min-height: calc(100vh - 66px) !important;
+  max-height: calc(100vh - 66px) !important;
+  padding: 12px !important;
+  background: #eef5f9 !important;
+  overflow: hidden !important;
+}
+
+body .network-inventory-module .settings-layout {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: 280px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  overflow: hidden !important;
+}
+
+body .network-inventory-module .settings-menu {
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 280px !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+  display: grid !important;
+  grid-template-rows: 86px auto minmax(0, 1fr) !important;
+  overflow: hidden !important;
+}
+
+
+/* SOFTWARE_INVENTORY_SHARED_GUARD - same module sidebar/tree standard */
+body .software-inventory-module.settings-module-root {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: calc(100vh - 66px) !important;
+  min-height: calc(100vh - 66px) !important;
+  max-height: calc(100vh - 66px) !important;
+  padding: 12px !important;
+  background: #eef5f9 !important;
+  overflow: hidden !important;
+}
+
+body .software-inventory-module .settings-layout {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: 280px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  overflow: hidden !important;
+}
+
+body .software-inventory-module .settings-menu {
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 280px !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+  display: grid !important;
+  grid-template-rows: 86px auto minmax(0, 1fr) !important;
+  overflow: hidden !important;
+}
+
+
+/* HARDWARE_INVENTORY_SHARED_GUARD - same module sidebar/tree standard */
+body .hardware-module-root.settings-module-root {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: calc(100vh - 66px) !important;
+  min-height: calc(100vh - 66px) !important;
+  max-height: calc(100vh - 66px) !important;
+  padding: 12px !important;
+  background: #eef5f9 !important;
+  overflow: hidden !important;
+}
+
+body .hardware-module-root .settings-layout {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: 280px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  overflow: hidden !important;
+}
+
+body .hardware-module-root .settings-menu {
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 280px !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+  display: grid !important;
+  grid-template-rows: 86px auto minmax(0, 1fr) !important;
+  overflow: hidden !important;
+}

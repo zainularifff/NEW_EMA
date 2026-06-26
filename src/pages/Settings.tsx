@@ -150,10 +150,53 @@ function isResourceSupportEngineer(row: ResourceEngineer) {
     row.RoleName,
     row.role,
     row.supportLevel,
-    ...(Array.isArray(row.roles) ? row.roles : [])].join(" ").toLowerCase();
+    ...(Array.isArray(row.roles) ? row.roles : [])
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 
-  return roleText.includes("support");
+  const statusText = [
+    row.status,
+    row.Status,
+    row.currentStatus
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const explicitInactive =
+    statusText.includes("inactive") ||
+    statusText.includes("disabled") ||
+    statusText.includes("locked") ||
+    statusText.includes("deleted") ||
+    row.isActive === false ||
+    row.IsActive === false ||
+    row.active === false ||
+    row.isActive === 0 ||
+    row.IsActive === 0 ||
+    row.active === 0 ||
+    row.isDeleted === true ||
+    row.IsDeleted === true ||
+    row.isDeleted === 1 ||
+    row.IsDeleted === 1;
+
+  if (explicitInactive) return false;
+
+  const supportRoles = [
+    "support",
+    "l1 support",
+    "l2 support",
+    "service desk",
+    "it operation",
+    "it operations",
+    "it operation manager",
+    "it operations manager"
+  ];
+
+  return supportRoles.some((role) => roleText.includes(role));
 }
+
 
 
 type SectionItem = {
@@ -3853,104 +3896,115 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
 
 
 
-function ResourcePlanningContent({
-  search,
-  engineers,
-  schedules,
-  form,
-  editingId,
-  loading,
-  saving,
-  error,
-  onFormChange,
-  onSave,
-  onEdit,
-  onDelete,
-  onReset,
-  onReload}: {
-  search: string;
-  engineers: ResourceEngineer[];
-  schedules: ResourceSchedule[];
-  form: ResourceScheduleForm;
-  editingId: number | null;
-  loading: boolean;
-  saving: boolean;
-  error: string;
-  onFormChange: (patch: Partial<ResourceScheduleForm>) => void;
-  onSave: () => void;
-  onEdit: (row: ResourceSchedule) => void;
-  onDelete: (row: ResourceSchedule) => void;
-  onReset: () => void;
-  onReload: () => void;
-}) {
-  type ResourceSortKey = "created" | "engineer" | "role" | "period" | "status";
-  type ResourceSortDirection = "asc" | "desc";
 
-  const pageSize = 5;
-  const query = search.trim().toLowerCase();
+function ResourcePlanningContent(props: any) {
+  const {
+    search = "",
+    supportEngineers: supportEngineersProp = [],
+    engineers: engineersProp = [],
+    schedules = [],
+    form = {},
+    editingId,
+    loading,
+    saving,
+    error,
+    onReload,
+    onFormChange,
+    onSave,
+    onReset,
+    onEdit,
+    onDelete
+  } = props;
 
-  const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [sortKey, setSortKey] = useState<ResourceSortKey>("created");
-  const [sortDirection, setSortDirection] = useState<ResourceSortDirection>("desc");
+  const [sortKey, setSortKey] = useState<"engineer" | "role" | "period" | "status" | "created">("created");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
-  const supportEngineers = engineers.filter(isResourceSupportEngineer);
-  const selectedEngineer = supportEngineers.find((engineer) => getResourceEngineerUserId(engineer) === form.UserID);
+  const resourceEngineerMap = new Map<string, any>();
 
-  const getCreatedSortValue = (row: ResourceSchedule) => {
-    const createdValue = String(row.CreatedAt ?? row.createdAt ?? row.UpdatedAt ?? row.updatedAt ?? row.StartDate ?? row.EndDate ?? "").trim();
-    const createdTime = createdValue ? new Date(createdValue).getTime() : Number.NaN;
+  [...(Array.isArray(supportEngineersProp) ? supportEngineersProp : []), ...(Array.isArray(engineersProp) ? engineersProp : [])]
+    .filter((engineer: any) => isResourceSupportEngineer(engineer))
+    .forEach((engineer: any) => {
+      const key = String(getResourceEngineerUserId(engineer) || engineer.UserID || engineer.id || getResourceEngineerName(engineer) || "").trim();
+      if (key && !resourceEngineerMap.has(key)) resourceEngineerMap.set(key, engineer);
+    });
 
-    if (Number.isFinite(createdTime)) return createdTime;
+  const supportEngineers = resourceEngineerMap.size
+    ? Array.from(resourceEngineerMap.values())
+    : [...(Array.isArray(supportEngineersProp) ? supportEngineersProp : []), ...(Array.isArray(engineersProp) ? engineersProp : [])];
 
-    const fallbackId = getResourceScheduleId(row);
-    return Number.isFinite(fallbackId) ? fallbackId : 0;
-  };
+  const query = String(search || "").trim().toLowerCase();
 
-  const getPeriodSortValue = (row: ResourceSchedule) => {
-    const startValue = String(row.StartDate || "").trim();
-    const startTime = startValue ? new Date(startValue).getTime() : Number.NaN;
-    return Number.isFinite(startTime) ? startTime : 0;
-  };
+  const fallbackEngineers = schedules
+    .map((row: any) => {
+      const scheduleId = getResourceScheduleId(row);
+      const name = getResourceScheduleName(row);
+      const role = getResourceScheduleRole(row);
+      const department = getResourceScheduleDepartment(row);
 
-  const roleOptions: DropdownOption[] = [
-    { value: "all", label: "All Roles" },
-    ...Array.from(new Set(schedules.map((row) => getResourceScheduleRole(row) || "Support").filter(Boolean)))
-      .sort((a, b) => a.localeCompare(b))
-      .map((role) => ({ value: role, label: role }))];
+      return {
+        UserID: row.UserID || row.userID || row.UserId || row.EngineerUserID || row.EngineerID || scheduleId || name,
+        id: row.UserID || row.userID || row.UserId || row.EngineerUserID || row.EngineerID || scheduleId || name,
+        username: name,
+        name,
+        fullName: name,
+        role,
+        RoleName: role,
+        department,
+        Department: department
+      };
+    })
+    .filter((engineer: any) => String(engineer.UserID || engineer.id || engineer.name || "").trim());
 
-  const statusOptions: DropdownOption[] = [
-    { value: "all", label: "All Statuses" },
-    ...Array.from(new Set(schedules.map((row) => getResourceScheduleStatus(row) || "On Leave").filter(Boolean)))
-      .sort((a, b) => a.localeCompare(b))
-      .map((status) => ({ value: status, label: status }))];
+  const engineerMap = new Map<string, any>();
 
-  const filteredSchedules = schedules.filter((row) => {
-    const rowStatus = getResourceScheduleStatus(row) || "On Leave";
-    const rowRole = getResourceScheduleRole(row) || "Support";
+  [...supportEngineers, ...fallbackEngineers].forEach((engineer: any) => {
+    const key = String(getResourceEngineerUserId(engineer) || engineer.UserID || engineer.id || getResourceEngineerName(engineer) || "").trim();
+    if (key && !engineerMap.has(key)) engineerMap.set(key, engineer);
+  });
 
-    if (statusFilter !== "all" && rowStatus !== statusFilter) return false;
-    if (roleFilter !== "all" && rowRole !== roleFilter) return false;
+  const engineerOptionsList = Array.from(engineerMap.values());
 
-    if (!query) return true;
+  const selectedEngineer = engineerOptionsList.find((engineer: any) => {
+    return String(getResourceEngineerUserId(engineer) || engineer.UserID || engineer.id || getResourceEngineerName(engineer)) === String(form.UserID || "");
+  });
 
-    return [
+  const selectedRole = selectedEngineer ? getResourceEngineerRole(selectedEngineer) : "";
+
+  const statusOptions = Array.from(new Set(
+    schedules.map((row: any) => getResourceScheduleStatus(row)).filter(Boolean)
+  )).sort().map((status) => ({ value: String(status), label: String(status) }));
+
+  const roleOptions = Array.from(new Set([
+    ...supportEngineers.map((engineer: any) => getResourceEngineerRole(engineer)).filter(Boolean),
+    ...schedules.map((row: any) => getResourceScheduleRole(row)).filter(Boolean)
+  ])).sort().map((role) => ({ value: String(role), label: String(role) }));
+
+  const filteredSchedules = schedules.filter((row: any) => {
+    const status = getResourceScheduleStatus(row);
+    const role = getResourceScheduleRole(row);
+
+    if (statusFilter !== "all" && status !== statusFilter) return false;
+    if (roleFilter !== "all" && role !== roleFilter) return false;
+
+    const haystack = [
       getResourceScheduleName(row),
-      rowRole,
       getResourceScheduleDepartment(row),
-      rowStatus,
+      getResourceScheduleRole(row),
+      getResourceScheduleStatus(row),
       getResourceScheduleRemarks(row),
       row.StartDate,
       row.EndDate,
-      row.CreatedAt,
-      row.createdAt]
-      .join(" ")
-      .toLowerCase()
-      .includes(query);
+      row.createdAt
+    ].join(" ").toLowerCase();
+
+    return !query || haystack.includes(query);
   });
 
-  const sortedSchedules = [...filteredSchedules].sort((left, right) => {
+  const sortedSchedules = [...filteredSchedules].sort((left: any, right: any) => {
     const direction = sortDirection === "asc" ? 1 : -1;
 
     if (sortKey === "created") {
@@ -3975,16 +4029,21 @@ function ResourcePlanningContent({
           ? getResourceScheduleRole(right)
           : getResourceScheduleStatus(right);
 
-    return leftValue.localeCompare(rightValue) * direction;
+    return String(leftValue || "").localeCompare(String(rightValue || "")) * direction;
   });
 
   const totalPages = Math.max(1, Math.ceil(sortedSchedules.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const pageStartIndex = (safeCurrentPage - 1) * pageSize;
   const paginatedSchedules = sortedSchedules.slice(pageStartIndex, pageStartIndex + pageSize);
-  const showingFrom = sortedSchedules.length === 0 ? 0 : pageStartIndex + 1;
-  const showingTo = Math.min(pageStartIndex + pageSize, sortedSchedules.length);
-  const selectedRole = selectedEngineer ? getResourceEngineerRole(selectedEngineer) : "";
+  const showingFrom = sortedSchedules.length ? pageStartIndex + 1 : 0;
+  const showingTo = Math.min(pageStartIndex + paginatedSchedules.length, sortedSchedules.length);
+
+  const activeSchedules = schedules.filter((row: any) => {
+    const status = String(getResourceScheduleStatus(row) || "").toLowerCase();
+    return status.includes("leave") || status.includes("training") || status.includes("site") || status.includes("unavailable");
+  }).length;
+
   const filterActive = statusFilter !== "all" || roleFilter !== "all";
 
   useEffect(() => {
@@ -3995,7 +4054,7 @@ function ResourcePlanningContent({
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
 
-  const updateSort = (nextSortKey: ResourceSortKey) => {
+  const updateSort = (nextSortKey: "engineer" | "role" | "period" | "status" | "created") => {
     if (sortKey === nextSortKey) {
       setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
       return;
@@ -4005,9 +4064,9 @@ function ResourcePlanningContent({
     setSortDirection(nextSortKey === "created" || nextSortKey === "period" ? "desc" : "asc");
   };
 
-  const sortIndicator = (targetKey: ResourceSortKey) => {
-    if (sortKey !== targetKey) return "↕";
-    return sortDirection === "asc" ? "↑" : "↓";
+  const sortIndicator = (targetKey: "engineer" | "role" | "period" | "status" | "created") => {
+    if (sortKey !== targetKey) return "?";
+    return sortDirection === "asc" ? "?" : "?";
   };
 
   const resetTableFilters = () => {
@@ -4019,240 +4078,214 @@ function ResourcePlanningContent({
   };
 
   return (
-    <div >
+    <div className="settings-v2-resource-content">
+      <div className="settings-v2-resource-command">
+        <div className="settings-v2-resource-info">
+          <span>Resource Planning</span>
+          <strong>Engineer Leave & Assignment Visibility</strong>
+          <small>Manage engineer leave using EMA users. Service Desk assignment will warn when an engineer is on leave.</small>
+        </div>
+
+        <div className="settings-v2-resource-stats">
+          <div><span>Engineers</span><strong>{engineerOptionsList.length}</strong></div>
+          <div><span>Schedules</span><strong>{schedules.length}</strong></div>
+          <div><span>Active</span><strong>{activeSchedules}</strong></div>
+          <div><span>Filtered</span><strong>{sortedSchedules.length}</strong></div>
+        </div>
+
+        <div className="settings-v2-resource-actions">
+          <button type="button" onClick={onReload} disabled={loading || saving}>
+            {loading ? "Loading..." : "Refresh"}
+          </button>
+        </div>
+      </div>
+
       {error && (
-        <div >
+        <div className="settings-v2-alert">
           <strong>Resource Planning load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <section >
-        <div>
-          <span >RESOURCE PLANNING</span>
-          <h3>Engineer Leave & Assignment Visibility</h3>
-          <p>
-            Manage engineer leave using EMA users only. Service Desk assignment will still allow selection,
-            but will warn users when an engineer is on leave.
-          </p>
-        </div>
-
-        <div >
-          <button  type="button" onClick={onReload} disabled={loading || saving}>
-            {loading ? "Loading..." : "Refresh"}
-          </button>
-        </div>
-      </section>
-
-      <section >
-        <article >
-          <div >
+      <div className="settings-v2-resource-body">
+        <section className="settings-v2-resource-form-card">
+          <div className="settings-v2-resource-card-head">
             <div>
-              <span >{editingId ? "UPDATE SCHEDULE" : "NEW SCHEDULE"}</span>
-              <h4>{editingId ? "Edit Engineer Leave" : "Add Engineer Leave"}</h4>
-              <p>Leave only creates a warning. It does not block ticket assignment.</p>
+              <span>{editingId ? "Update Schedule" : "New Schedule"}</span>
+              <strong>{editingId ? "Edit Engineer Leave" : "Add Engineer Leave"}</strong>
+              <small>Leave only creates a warning. It does not block ticket assignment.</small>
             </div>
           </div>
 
-          <div >
-            <label >
-              Engineer
-              <SettingSelect
-                value={form.UserID}
-                placeholder="Select support engineer"
-                ariaLabel="Resource planning engineer" 
-                onChange={(value) => onFormChange({ UserID: value })}
-                options={[
-                  { value: "", label: "Select support engineer" },
-                  ...supportEngineers.map((engineer) => {
-                    const userId = getResourceEngineerUserId(engineer);
-                    const engineerRole = getResourceEngineerRole(engineer);
-                    const department = getResourceEngineerDepartment(engineer);
-                    const label = `${getResourceEngineerName(engineer)} · ${engineerRole}${department ? ` · ${department}` : ""}`;
+          <div className="settings-v2-resource-form-grid">
+            <label>
+              <span>Engineer</span>
+              <select
+                value={form.UserID || ""}
+                onChange={(event) => onFormChange({ UserID: event.target.value })}
+                aria-label="Resource planning engineer"
+              >
+                <option value="">Select support engineer</option>
+                {engineerOptionsList.map((engineer: any) => {
+                  const userId = getResourceEngineerUserId(engineer) || engineer.UserID || engineer.id || getResourceEngineerName(engineer);
+                  const engineerRole = getResourceEngineerRole(engineer);
+                  const department = getResourceEngineerDepartment(engineer);
+                  const label = String(getResourceEngineerName(engineer) || "Unknown engineer") + " ? " + String(engineerRole || "Support") + (department ? " ? " + department : "");
 
-                    return {
-                      value: userId,
-                      label};
-                  })]}
-              />
+                  return <option key={String(userId)} value={String(userId)}>{label}</option>;
+                })}
+              </select>
             </label>
 
-            <label >
-              Leave Status
-              <SettingSelect
-                value={form.Status}
-                placeholder="Select leave status"
-                ariaLabel="Resource planning leave status" 
-                onChange={(value) => onFormChange({ Status: value })}
-                options={[
-                  { value: "On Leave", label: "On Leave" },
-                  { value: "Training", label: "Training" },
-                  { value: "On Site", label: "On Site" },
-                  { value: "Unavailable", label: "Unavailable" }]}
-              />
+            <label>
+              <span>Leave Status</span>
+              <select
+                value={form.Status || "On Leave"}
+                onChange={(event) => onFormChange({ Status: event.target.value })}
+                aria-label="Resource planning leave status"
+              >
+                <option value="On Leave">On Leave</option>
+                <option value="Training">Training</option>
+                <option value="On Site">On Site</option>
+                <option value="Unavailable">Unavailable</option>
+              </select>
             </label>
 
-            <label >
-              Start Date
-              <input 
+            <label>
+              <span>Start Date</span>
+              <input
                 type="date"
-                value={form.StartDate}
+                value={form.StartDate || ""}
                 onChange={(event) => onFormChange({ StartDate: event.target.value })}
               />
             </label>
 
-            <label >
-              End Date
-              <input 
+            <label>
+              <span>End Date</span>
+              <input
                 type="date"
-                value={form.EndDate}
+                value={form.EndDate || ""}
                 onChange={(event) => onFormChange({ EndDate: event.target.value })}
               />
             </label>
 
-            <label >
-              Remarks
-              <textarea 
-                value={form.Remarks}
+            <label className="settings-v2-resource-full">
+              <span>Remarks</span>
+              <textarea
+                value={form.Remarks || ""}
                 onChange={(event) => onFormChange({ Remarks: event.target.value })}
                 placeholder="Example: Annual leave / site visit / training day"
               />
             </label>
           </div>
 
-          <div >
-            <button  type="button" onClick={onReset} disabled={saving}>
-              Clear
-            </button>
-            <button  type="button" onClick={onSave} disabled={saving || loading}>
-              {saving ? "Saving..." : editingId ? "Update Leave" : "Add Leave"}
-            </button>
-          </div>
-
           {selectedEngineer && (
-            <div >
-              <strong>{getResourceEngineerName(selectedEngineer)}</strong>
-              <span>{selectedRole || "Support"}{getResourceEngineerDepartment(selectedEngineer) ? ` · ${getResourceEngineerDepartment(selectedEngineer)}` : ""}</span>
-            </div>
-          )}
-        </article>
-
-        <article >
-          <div >
-            <div>
-              <span >SCHEDULES</span>
-              <h4>Active & Upcoming Leave</h4>
-              <p>Latest leave schedules are shown first. Click a table title to sort.</p>
-            </div>
-
-            <div >
-              <SettingSelect
-                value={statusFilter}
-                placeholder="All Statuses"
-                ariaLabel="Filter leave status" 
-                onChange={setStatusFilter}
-                options={statusOptions}
-              />
-              <SettingSelect
-                value={roleFilter}
-                placeholder="All Roles"
-                ariaLabel="Filter support role" 
-                onChange={setRoleFilter}
-                options={roleOptions}
-              />
-              {filterActive && (
-                <button  type="button" onClick={resetTableFilters}>
-                  Reset
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div >
-            <table >
-              <thead>
-                <tr>
-                  <th>
-                    <button  type="button" onClick={() => updateSort("engineer")}>
-                      Engineer <span>{sortIndicator("engineer")}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button  type="button" onClick={() => updateSort("role")}>
-                      Role <span>{sortIndicator("role")}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button  type="button" onClick={() => updateSort("period")}>
-                      Period <span>{sortIndicator("period")}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button  type="button" onClick={() => updateSort("status")}>
-                      Status <span>{sortIndicator("status")}</span>
-                    </button>
-                  </th>
-                  <th>Remarks</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && (
-                  <tr>
-                    <td colSpan={6}>Loading resource planning...</td>
-                  </tr>
-                )}
-
-                {!loading && sortedSchedules.length === 0 && (
-                  <tr>
-                    <td colSpan={6}>No engineer leave schedule found.</td>
-                  </tr>
-                )}
-
-                {!loading && paginatedSchedules.map((row) => {
-                  const scheduleId = getResourceScheduleId(row);
-
-                  return (
-                    <tr key={scheduleId || `${getResourceScheduleName(row)}-${row.StartDate}-${row.EndDate}`}>
-                      <td>
-                        <strong>{getResourceScheduleName(row) || "Unknown engineer"}</strong>
-                        <small>{getResourceScheduleDepartment(row) || "No department"}</small>
-                      </td>
-                      <td>{getResourceScheduleRole(row) || "Support"}</td>
-                      <td>
-                        <strong>{String(row.StartDate || "").slice(0, 10)}</strong>
-                        <small>to {String(row.EndDate || "").slice(0, 10)}</small>
-                      </td>
-                      <td><span >{getResourceScheduleStatus(row)}</span></td>
-                      <td>{getResourceScheduleRemarks(row) || "-"}</td>
-                      <td>
-                        <div >
-                          <button  type="button" onClick={() => onEdit(row)}>Edit</button>
-                          <button  type="button" onClick={() => onDelete(row)}>Delete</button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {!loading && sortedSchedules.length > 0 && (
-            <div >
-              <div >Page {safeCurrentPage} / {totalPages}</div>
-              <div >Showing {showingFrom}-{showingTo} of {sortedSchedules.length} leave records</div>
-              <div  aria-label="Resource planning pagination">
-                <button  type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page">«</button>
-                <button  type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page">‹</button>
-                <span >{safeCurrentPage}</span>
-                <button  type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page">›</button>
-                <button  type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page">»</button>
+            <div className="settings-v2-resource-selected">
+              <div>
+                <strong>{getResourceEngineerName(selectedEngineer)}</strong>
+                <span>{selectedRole || "Support"}{getResourceEngineerDepartment(selectedEngineer) ? " ? " + getResourceEngineerDepartment(selectedEngineer) : ""}</span>
               </div>
             </div>
           )}
-        </article>
-      </section>
+
+          <div className="settings-v2-resource-form-actions">
+            <button type="button" onClick={onReset} disabled={saving}>Clear</button>
+            <button type="button" onClick={onSave} disabled={saving || loading}>
+              {saving ? "Saving..." : editingId ? "Update Leave" : "Add Leave"}
+            </button>
+          </div>
+        </section>
+
+        <section className="settings-v2-resource-table-card">
+          <div className="settings-v2-resource-table-toolbar">
+            <div>
+              <span>Schedules</span>
+              <strong>Active & Upcoming Leave</strong>
+              <small>Latest leave schedules are shown first. Click a table title to sort.</small>
+            </div>
+
+            <div className="settings-v2-resource-filters">
+              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter leave status">
+                <option value="all">All statuses</option>
+                {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+
+              <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} aria-label="Filter support role">
+                <option value="all">All roles</option>
+                {roleOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+
+              {filterActive && <button type="button" onClick={resetTableFilters}>Reset</button>}
+            </div>
+          </div>
+
+          <div className="settings-v2-resource-table">
+            <div className="settings-v2-resource-head">
+              <button type="button" onClick={() => updateSort("engineer")}>Engineer <span>{sortIndicator("engineer")}</span></button>
+              <button type="button" onClick={() => updateSort("role")}>Role <span>{sortIndicator("role")}</span></button>
+              <button type="button" onClick={() => updateSort("period")}>Period <span>{sortIndicator("period")}</span></button>
+              <button type="button" onClick={() => updateSort("status")}>Status <span>{sortIndicator("status")}</span></button>
+              <div>Remarks</div>
+              <div>Action</div>
+            </div>
+
+            {loading && <div className="settings-v2-loading">Loading resource planning...</div>}
+            {!loading && sortedSchedules.length === 0 && <div className="settings-v2-empty">No engineer leave schedule found.</div>}
+
+            {!loading && paginatedSchedules.map((row: any) => {
+              const scheduleId = getResourceScheduleId(row);
+              const status = getResourceScheduleStatus(row);
+
+              return (
+                <div className="settings-v2-resource-row" key={scheduleId || String(getResourceScheduleName(row)) + "-" + String(row.StartDate) + "-" + String(row.EndDate)}>
+                  <div>
+                    <strong>{getResourceScheduleName(row) || "Unknown engineer"}</strong>
+                    <small>{getResourceScheduleDepartment(row) || "No department"}</small>
+                  </div>
+
+                  <div><span className="settings-v2-resource-role">{getResourceScheduleRole(row) || "Support"}</span></div>
+
+                  <div>
+                    <strong>{String(row.StartDate || "").slice(0, 10)}</strong>
+                    <small>to {String(row.EndDate || "").slice(0, 10)}</small>
+                  </div>
+
+                  <div><span className="settings-v2-resource-status">{status}</span></div>
+
+                  <div><span className="settings-v2-resource-remarks">{getResourceScheduleRemarks(row) || "-"}</span></div>
+
+                  <div>
+                    <div className="ema-row-actions">
+                      <button className="ema-action-btn ema-action-btn-edit" type="button" onClick={() => onEdit(row)} aria-label="Edit leave schedule" title="Edit">
+                        <PencilSvg />
+                      </button>
+                      <button className="ema-action-btn ema-action-btn-delete" type="button" onClick={() => onDelete(row)} aria-label="Delete leave schedule" title="Delete">
+                        <TrashSvg />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {!loading && sortedSchedules.length > 0 && (
+            <div className="ema-pagination">
+              <div className="ema-pagination-summary">Showing {showingFrom} to {showingTo} of {sortedSchedules.length} leave records</div>
+
+              <div className="ema-pagination-controls" aria-label="Resource planning pagination">
+                <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+                <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+                <span className="ema-page-current">{safeCurrentPage}</span>
+                <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+                <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+              </div>
+
+              <div className="ema-page-size">{pageSize} / page</div>
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
@@ -5477,23 +5510,28 @@ function AuditContent(props: any) {
 }
 
 
-function PricingContent({
-  search,
-  rows,
-  categoryOptions,
-  brandOptionsByCategory,
-  modelOptionsByKey,
-  loading,
-  saving,
-  savingRowId,
-  error,
-  onAdd,
-  onChange,
-  onSaveRow,
-  onRequestDelete}: PricingContentProps) {
+
+function PricingContent(props: PricingContentProps) {
+  const {
+    search,
+    rows,
+    categoryOptions,
+    brandOptionsByCategory,
+    modelOptionsByKey,
+    loading,
+    saving,
+    savingRowId,
+    error,
+    onAdd,
+    onChange,
+    onSaveRow,
+    onRequestDelete
+  } = props;
+
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
   const term = search.trim().toLowerCase();
+
   const visibleRows = rows.filter((row) => {
     const haystack = `${row.Category} ${row.Brand} ${row.Model} ${row.Price} ${row.IsExcluded ? "excluded" : "capex"}`.toLowerCase();
     return !term || haystack.includes(term);
@@ -5503,6 +5541,14 @@ function PricingContent({
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const pageStartIndex = (safeCurrentPage - 1) * pageSize;
   const paginatedRows = visibleRows.slice(pageStartIndex, pageStartIndex + pageSize);
+  const showingFrom = visibleRows.length ? pageStartIndex + 1 : 0;
+  const showingTo = Math.min(pageStartIndex + paginatedRows.length, visibleRows.length);
+
+  const excludedCount = rows.filter((row) => row.IsExcluded).length;
+  const activeCount = Math.max(0, rows.length - excludedCount);
+  const averagePrice = rows.length
+    ? Math.round(rows.reduce((total, row) => total + (Number(row.Price) || 0), 0) / rows.length)
+    : 0;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -5512,126 +5558,161 @@ function PricingContent({
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
 
+  const formatMoney = (value: number) => {
+    const safe = Number(value) || 0;
+    return safe.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  };
+
   return (
-    <div >
-      {error && <div >{error}</div>}
-
-      <div >
-        <article >
-          <span >BM</span>
-          <div>
-            <strong>Brand and Model Pricing</strong>
-            <p>Set pricing by device category, brand and exact model. The system prioritises the most specific match when estimating replacement cost.</p>
-          </div>
-        </article>
-
-        <article >
-          <span >CX</span>
-          <div>
-            <strong>CAPEX Exposure Control</strong>
-            <p>Exclude selected rows from CAPEX replacement exposure while keeping them available as asset reference data.</p>
-          </div>
-        </article>
-
-        <article >
-          <strong>Planning disclaimer</strong>
-          <p>Market price and replacement-cost values are estimates based on current pricing, asset age and lifecycle assumptions. Use them for planning guidance and confirm final procurement values with Finance or Procurement before approval.</p>
-        </article>
-      </div>
-
-      <div >
-        <div >
-          <div>Device Category</div>
-          <div>Brand</div>
-          <div>Model Optional</div>
-          <div>Market Price (RM)</div>
-          <div>Exclude from CAPEX</div>
-          <div>Actions</div>
+    <div className="settings-v2-pricing-content">
+      <div className="settings-v2-pricing-command">
+        <div className="settings-v2-pricing-info">
+          <span>Device Pricing</span>
+          <strong>Brand & Model Pricing Control</strong>
+          <small>Maintain replacement price references used by Management Dashboard CAPEX estimation.</small>
         </div>
 
-        {loading && <div >Loading device pricing...</div>}
+        <div className="settings-v2-pricing-stats">
+          <div><span>Total Rules</span><strong>{rows.length}</strong></div>
+          <div><span>CAPEX Active</span><strong>{activeCount}</strong></div>
+          <div><span>Excluded</span><strong>{excludedCount}</strong></div>
+          <div><span>Average RM</span><strong>{formatMoney(averagePrice)}</strong></div>
+        </div>
+
+        <div className="settings-v2-pricing-actions">
+          <button type="button" onClick={onAdd} disabled={loading || saving}>+ Add Pricing</button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="settings-v2-alert">
+          <strong>Device pricing load error</strong>
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div className="settings-v2-pricing-note">
+        <div>
+          <span>Planning Reference</span>
+          <p>Market price and replacement-cost values are estimates. Confirm final procurement values with Finance or Procurement before approval.</p>
+        </div>
+      </div>
+
+      <div className="settings-v2-pricing-table">
+        <div className="settings-v2-pricing-head">
+          <div>No</div>
+          <div>Device Category</div>
+          <div>Brand</div>
+          <div>Model</div>
+          <div>Market Price</div>
+          <div>CAPEX</div>
+          <div>Action</div>
+        </div>
+
+        {loading && <div className="settings-v2-loading">Loading device pricing...</div>}
 
         {!loading && visibleRows.length === 0 && (
-          <div >
-            <strong>No pricing rules yet.</strong>
+          <div className="settings-v2-pricing-empty">
+            <strong>No pricing rules found.</strong>
             <span>Add a custom pricing row, select category, brand and model, then save pricing.</span>
-            <button  type="button" onClick={onAdd}>+ Add Custom Pricing</button>
+            <button type="button" onClick={onAdd}>+ Add Custom Pricing</button>
           </div>
         )}
 
-        {!loading && paginatedRows.map((row) => {
+        {!loading && paginatedRows.map((row, index) => {
           const brandOptions = brandOptionsByCategory[row.Category] || [];
           const modelOptions = modelOptionsByKey[pricingModelKey(row.Category, row.Brand)] || [];
+          const rowSaving = saving || savingRowId === row.id;
 
           return (
-            <div  key={row.id}>
-              <label >Device Category</label>
-              <SettingSelect 
-                value={row.Category}
-                placeholder="Select category"
-                options={[
-                  ...(!row.Category ? [{ value: "", label: "Select category" }] : []),
-                  ...categoryOptions.map((category) => ({ value: category, label: category })),
-                  ...(!categoryOptions.includes("Others") ? [{ value: "Others", label: "Others" }] : [])]}
-                onChange={(value) => onChange(row.id, { Category: value })}
-                ariaLabel="Device category"
-              />
+            <div className="settings-v2-pricing-row" key={row.id}>
+              <div><span className="settings-v2-row-no">{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
 
-              <label >Brand</label>
-              <SettingSelect 
-                value={row.Brand}
-                placeholder="General / All Brands"
-                disabled={!row.Category}
-                options={[
-                  { value: "", label: "General / All Brands" },
-                  ...brandOptions.map((brand) => ({ value: brand, label: brand }))]}
-                onChange={(value) => onChange(row.id, { Brand: value })}
-                ariaLabel="Device brand"
-              />
-
-              <label >Model Optional</label>
-              <SettingSelect 
-                value={row.Model}
-                placeholder="General / All Models"
-                disabled={!row.Category || !row.Brand}
-                options={[
-                  { value: "", label: "General / All Models" },
-                  ...modelOptions.map((model) => ({ value: model, label: model }))]}
-                onChange={(value) => onChange(row.id, { Model: value })}
-                ariaLabel="Device model"
-              />
-
-              <label >Market Price</label>
-              <div >
-                <span>RM</span>
-                <input 
-                  min={0}
-                  step="0.01"
-                  type="number"
-                  value={row.Price}
-                  onChange={(event) => onChange(row.id, { Price: Number(event.target.value) || 0 })}
-                />
+              <div>
+                <select
+                  value={row.Category}
+                  onChange={(event) => onChange(row.id, { Category: event.target.value })}
+                  aria-label="Device category"
+                >
+                  {!row.Category && <option value="">Select category</option>}
+                  {categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}
+                  {!categoryOptions.includes("Others") && <option value="Others">Others</option>}
+                </select>
               </div>
 
-              <label >Exclude CAPEX</label>
-              <button 
-                type="button"
-                aria-label="Toggle exclude from CAPEX"
-                onClick={() => onChange(row.id, { IsExcluded: !row.IsExcluded })}
-              />
-
-              <label >Actions</label>
-              <div >
-                <button 
-                  type="button"
-                  onClick={() => onSaveRow(row.id)}
-                  disabled={saving || savingRowId === row.id}
+              <div>
+                <select
+                  value={row.Brand}
+                  disabled={!row.Category}
+                  onChange={(event) => onChange(row.id, { Brand: event.target.value })}
+                  aria-label="Device brand"
                 >
-                  {savingRowId === row.id ? "Saving..." : "Save"}
+                  <option value="">General / All Brands</option>
+                  {brandOptions.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <select
+                  value={row.Model}
+                  disabled={!row.Category || !row.Brand}
+                  onChange={(event) => onChange(row.id, { Model: event.target.value })}
+                  aria-label="Device model"
+                >
+                  <option value="">General / All Models</option>
+                  {modelOptions.map((model) => <option key={model} value={model}>{model}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <div className="settings-v2-pricing-price">
+                  <span>RM</span>
+                  <input
+                    min={0}
+                    step="0.01"
+                    type="number"
+                    value={row.Price}
+                    onChange={(event) => onChange(row.id, { Price: Number(event.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <button
+                  className={`settings-v2-pricing-toggle ${row.IsExcluded ? "excluded" : "included"}`}
+                  type="button"
+                  aria-label="Toggle exclude from CAPEX"
+                  onClick={() => onChange(row.id, { IsExcluded: !row.IsExcluded })}
+                >
+                  <span />
+                  {row.IsExcluded ? "Excluded" : "Included"}
                 </button>
-                <button  type="button" title="Delete pricing row" onClick={() => onRequestDelete(row)} disabled={saving || savingRowId === row.id}>
-                  <TrashSvg />
-                </button>
+              </div>
+
+              <div>
+                <div className="ema-row-actions">
+                  <button
+                    className="ema-action-btn ema-action-btn-edit"
+                    type="button"
+                    onClick={() => onSaveRow(row.id)}
+                    disabled={rowSaving}
+                    title="Save pricing row"
+                    aria-label="Save pricing row"
+                  >
+                    {savingRowId === row.id ? "..." : <PencilSvg />}
+                  </button>
+
+                  <button
+                    className="ema-action-btn ema-action-btn-delete"
+                    type="button"
+                    title="Delete pricing row"
+                    onClick={() => onRequestDelete(row)}
+                    disabled={rowSaving}
+                    aria-label="Delete pricing row"
+                  >
+                    <TrashSvg />
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -5639,101 +5720,155 @@ function PricingContent({
       </div>
 
       {!loading && visibleRows.length > 0 && (
-        <div >
-          <div >Page {safeCurrentPage} of {totalPages}</div>
-          <div >Showing {visibleRows.length === 0 ? 0 : pageStartIndex + 1}-{Math.min(pageStartIndex + pageSize, visibleRows.length)} of {visibleRows.length} pricing records</div>
-          <div  aria-label="Device pricing pagination">
-            <button  type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page">«</button>
-            <button  type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page">‹</button>
-            <span >{safeCurrentPage}</span>
-            <button  type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page">›</button>
-            <button  type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page">»</button>
+        <div className="ema-pagination">
+          <div className="ema-pagination-summary">Showing {showingFrom} to {showingTo} of {visibleRows.length} pricing records</div>
+
+          <div className="ema-pagination-controls" aria-label="Device pricing pagination">
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span className="ema-page-current">{safeCurrentPage}</span>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
           </div>
+
+          <div className="ema-page-size">{pageSize} / page</div>
         </div>
       )}
-
-
     </div>
   );
 }
+
+
 
 function ManagementPolicyContent({ values, profile, loading, saving, error, onChange, onReload, onReset, onSave }: ManagementPolicyContentProps) {
   const normalizedValues = normalizeManagementPolicyValues(values);
   const updatedAt = profile?.updatedAt ? new Date(profile.updatedAt).toLocaleString() : "Not saved yet";
   const groupedFields = MANAGEMENT_POLICY_GROUPS.map((group) => ({
     group,
-    fields: MANAGEMENT_POLICY_FIELDS.filter((field) => field.group === group)}));
+    fields: MANAGEMENT_POLICY_FIELDS.filter((field) => field.group === group)
+  }));
+
+  const totalRules = MANAGEMENT_POLICY_FIELDS.length;
+  const costRules = MANAGEMENT_POLICY_FIELDS.filter((field) => field.group === "Cost & Saving Assumptions").length;
+  const freshnessRules = MANAGEMENT_POLICY_FIELDS.filter((field) => field.group === "Evidence Freshness Policy").length;
+  const riskRules = Math.max(0, totalRules - costRules - freshnessRules);
+
+  const getGroupDescription = (group: string) => {
+    if (group === "Cost & Saving Assumptions") return "Money values used to estimate exposure and saving opportunity.";
+    if (group === "Evidence Freshness Policy") return "Freshness limits used to mark endpoint and inventory evidence as stale.";
+    return "Risk score weights and thresholds used by dashboard evidence rows.";
+  };
+
+  const getGroupTone = (group: string) => {
+    if (group === "Cost & Saving Assumptions") return "green";
+    if (group === "Evidence Freshness Policy") return "blue";
+    return "orange";
+  };
 
   return (
-    <section >
-      <article >
-        <div>
-          <span >Policy profile</span>
-          <h4>{profile?.profileName || "Default EMA Management Policy"}</h4>
-          <p>
-            These assumptions feed the Management Dashboard calculation engine. Change them here instead of editing hardcoded numbers in the backend.
-          </p>
-          <div >
+    <div className="settings-v2-policy-content">
+      <div className="settings-v2-policy-command">
+        <div className="settings-v2-policy-info">
+          <span>Management Policy</span>
+          <strong>{profile?.profileName || "Default EMA Management Policy"}</strong>
+          <small>Manage assumptions used by Management Dashboard calculation engine without hardcoding values.</small>
+        </div>
+
+        <div className="settings-v2-policy-stats">
+          <div><span>Total Rules</span><strong>{totalRules}</strong></div>
+          <div><span>Cost Rules</span><strong>{costRules}</strong></div>
+          <div><span>Freshness</span><strong>{freshnessRules}</strong></div>
+          <div><span>Risk Rules</span><strong>{riskRules}</strong></div>
+        </div>
+
+        <div className="settings-v2-policy-actions">
+          <button type="button" onClick={onReload} disabled={loading || saving}>{loading ? "Loading..." : "Reload"}</button>
+          <button type="button" onClick={onReset} disabled={loading || saving}>Reset</button>
+          <button type="button" onClick={onSave} disabled={loading || saving}>{saving ? "Saving..." : "Save Policy"}</button>
+        </div>
+      </div>
+
+      {loading && <div className="settings-v2-loading">Loading Management Policy...</div>}
+
+      {error && (
+        <div className="settings-v2-alert">
+          <strong>Management Policy load error</strong>
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div className="settings-v2-policy-body">
+        <section className="settings-v2-policy-profile">
+          <div className="settings-v2-policy-profile-main">
+            <span>Policy Profile</span>
+            <strong>{profile?.profileName || "Default EMA Management Policy"}</strong>
+            <small>These assumptions feed ROI, CAPEX, stale evidence and risk exposure calculation.</small>
+          </div>
+
+          <div className="settings-v2-policy-profile-meta">
             <span>{profile?.scopeType || "GLOBAL"}</span>
-            <span>{MANAGEMENT_POLICY_FIELDS.length} rule value(s)</span>
+            <span>{totalRules} rule values</span>
             <span>Updated: {updatedAt}</span>
           </div>
-        </div>
-        <div >
-          <button  type="button" onClick={onReload} disabled={loading || saving}>{loading ? "Loading..." : "Reload"}</button>
-          <button  type="button" onClick={onReset} disabled={loading || saving}>Reset defaults</button>
-          <button  type="button" onClick={onSave} disabled={loading || saving}>{saving ? "Saving..." : "Save Policy"}</button>
-        </div>
-      </article>
+        </section>
 
-      {error && <div >{error}</div>}
+        <section className="settings-v2-policy-grid">
+          {groupedFields.map(({ group, fields }) => {
+            const tone = getGroupTone(group);
 
-      <div >
-        {groupedFields.map(({ group, fields }) => (
-          <article  key={group}>
-            <div >
-              <div>
-                <h4>{group}</h4>
-                <p>{group === "Cost & Saving Assumptions" ? "Money values used to estimate exposure and opportunity." : group === "Evidence Freshness Policy" ? "Freshness limits used to mark endpoint and inventory evidence as stale." : "Risk score weights and thresholds used by dashboard evidence rows."}</p>
-              </div>
-              <span >{fields.length} rules</span>
-            </div>
+            return (
+              <article className={"settings-v2-policy-group " + tone} key={group}>
+                <div className="settings-v2-policy-group-head">
+                  <div>
+                    <span>{group}</span>
+                    <strong>{fields.length} Rules</strong>
+                    <small>{getGroupDescription(group)}</small>
+                  </div>
+                </div>
 
-            <div >
-              {fields.map((field) => {
-                const inputValue = managementPolicyInputValue(normalizedValues, field);
-                return (
-                  <label  key={field.key}>
-                    <span>
-                      <strong>{field.label}</strong>
-                      <small>{field.description}</small>
-                    </span>
-                    <div >
-                      <input 
-                        type="number"
-                        min={field.min}
-                        max={field.max}
-                        step={field.step}
-                        value={inputValue}
-                        onChange={(event) => {
-                          const parsed = Number(event.target.value);
-                          const scaled = Number.isFinite(parsed) ? parsed / (field.displayScale || 1) : DEFAULT_MANAGEMENT_POLICY_VALUES[field.key] || 0;
-                          onChange(field.key, scaled);
-                        }}
-                      />
-                      <em>{field.unit}</em>
-                    </div>
-                    <b>{formatManagementPolicyValue(normalizedValues, field)}</b>
-                  </label>
-                );
-              })}
-            </div>
-          </article>
-        ))}
+                <div className="settings-v2-policy-fields">
+                  {fields.map((field) => {
+                    const inputValue = managementPolicyInputValue(normalizedValues, field);
+
+                    return (
+                      <label className="settings-v2-policy-field" key={field.key}>
+                        <div className="settings-v2-policy-field-label">
+                          <span>{field.label}</span>
+                          <small>{field.description}</small>
+                        </div>
+
+                        <div className="settings-v2-policy-input">
+                          <input
+                            type="number"
+                            min={field.min}
+                            max={field.max}
+                            step={field.step}
+                            value={inputValue}
+                            onChange={(event) => {
+                              const parsed = Number(event.target.value);
+                              const scaled = Number.isFinite(parsed)
+                                ? parsed / (field.displayScale || 1)
+                                : DEFAULT_MANAGEMENT_POLICY_VALUES[field.key] || 0;
+                              onChange(field.key, scaled);
+                            }}
+                          />
+                          <em>{field.unit}</em>
+                        </div>
+
+                        <b>{formatManagementPolicyValue(normalizedValues, field)}</b>
+                      </label>
+                    );
+                  })}
+                </div>
+              </article>
+            );
+          })}
+        </section>
       </div>
-    </section>
+    </div>
   );
 }
+
 
 
 function AgingContent({
@@ -5744,96 +5879,102 @@ function AgingContent({
   onChange,
   onReload,
   onSave,
-  onReset}: AgingContentProps) {
+  onReset
+}: AgingContentProps) {
+  const statusText = rule.enabled ? "Enabled" : "Disabled";
+  const unknownText = rule.includeUnknownAge ? "Included" : "Flag as data gap";
+
   return (
-    <div >
-      {loading && (
-        <div >
-          Loading PC aging rule from AssetSettings...
+    <div className="settings-v2-aging-content">
+      <div className="settings-v2-aging-command">
+        <div className="settings-v2-aging-info">
+          <span>PC Aging Rule</span>
+          <strong>Endpoint Lifecycle Configuration</strong>
+          <small>Configure lifecycle thresholds, replacement planning and calculation basis for hardware aging.</small>
+        </div>
+
+        <div className="settings-v2-aging-stats">
+          <div><span>Status</span><strong>{statusText}</strong></div>
+          <div><span>Review</span><strong>{rule.monitorMaxYears} yrs</strong></div>
+          <div><span>Critical</span><strong>{rule.agingMinYears} yrs</strong></div>
+          <div><span>Window</span><strong>{rule.replacementWindowMonths} mo</strong></div>
+        </div>
+
+        <div className="settings-v2-aging-actions">
+          <button type="button" onClick={onReload} disabled={loading || saving}>{loading ? "Loading..." : "Reload"}</button>
+          <button type="button" onClick={onReset} disabled={saving}>Reset</button>
+          <button type="button" onClick={onSave} disabled={saving || loading}>{saving ? "Saving..." : "Save Changes"}</button>
+        </div>
+      </div>
+
+      {loading && <div className="settings-v2-loading">Loading PC aging rule from AssetSettings...</div>}
+
+      {error && (
+        <div className="settings-v2-alert">
+          <strong>PC Aging load error</strong>
+          <span>{error}</span>
         </div>
       )}
-      {error && <div >{error}</div>}
 
-      <section >
-        <div >
-          <span >LIFECYCLE CONTROL</span>
-          <h3>PC Aging Configuration</h3>
-          <p>
-            Configure endpoint lifecycle thresholds, replacement planning and calculation basis.
-            These settings are saved as the master rule for future hardware aging and refresh reporting.
-          </p>
-        </div>
+      <div className="settings-v2-aging-body">
+        <section className="settings-v2-aging-top-grid">
+          <article className="settings-v2-aging-status-card">
+            <div className="settings-v2-aging-card-head">
+              <div>
+                <span>Rule Status</span>
+                <strong>{rule.enabled ? "Active lifecycle rule" : "Lifecycle rule paused"}</strong>
+                <small>Turn lifecycle calculation on or off without deleting the saved configuration.</small>
+              </div>
 
-        <div >
-          <button  type="button" onClick={onReload} disabled={loading || saving}>
-            Reload
-          </button>
-          <button  type="button" onClick={onReset} disabled={saving}>
-            Reset
-          </button>
-          <button  type="button" onClick={onSave} disabled={saving || loading}>
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
-      </section>
-
-      <section >
-        <article >
-          <div >
-            <div>
-              <span >Rule Status</span>
-              <h4>{rule.enabled ? "Enabled" : "Disabled"}</h4>
-              <p>Turn lifecycle calculation on or off without deleting the saved configuration.</p>
+              <button
+                className={"settings-v2-aging-switch " + (rule.enabled ? "enabled" : "disabled")}
+                aria-label="Toggle PC aging rule"
+                type="button"
+                onClick={() => onChange({ enabled: !rule.enabled })}
+              >
+                <span />
+              </button>
             </div>
 
-            <button 
-              aria-label="Toggle PC aging rule"
-              type="button"
-              onClick={() => onChange({ enabled: !rule.enabled })}
-            />
-          </div>
+            <div className="settings-v2-aging-status-foot">
+              <span>{formatAgeSourceLabel(rule.ageSource)}</span>
+              <b>{statusText}</b>
+            </div>
+          </article>
 
-          <div >
-            <span>{rule.enabled ? "Active lifecycle rule" : "Lifecycle rule paused"}</span>
-            <b>{formatAgeSourceLabel(rule.ageSource)}</b>
-          </div>
-        </article>
+          <article className="settings-v2-aging-guide-card">
+            <div className="settings-v2-aging-card-head">
+              <div>
+                <span>Decision Guide</span>
+                <strong>Lifecycle Actions</strong>
+                <small>Operational action generated from the current threshold rule.</small>
+              </div>
+            </div>
 
-        <article >
-          <span >Review Threshold</span>
-          <h4>{rule.monitorMaxYears} years</h4>
-          <p>Devices at or above this age are marked for lifecycle review.</p>
-        </article>
+            <div className="settings-v2-aging-guide-list">
+              <AgingActionRow status="Standard" condition={"< " + rule.healthyMaxYears + " years"} action="Monitor" tone="blue" />
+              <AgingActionRow status="Aging" condition={">= " + rule.monitorMaxYears + " years"} action="Review" tone="amber" />
+              <AgingActionRow status="Critical" condition={">= " + rule.agingMinYears + " years"} action="Replace" tone="red" />
+            </div>
+          </article>
+        </section>
 
-        <article >
-          <span >Critical Reference</span>
-          <h4>{rule.agingMinYears} years</h4>
-          <p>Devices at or above this age become replacement candidates.</p>
-        </article>
-
-        <article >
-          <span >Refresh Window</span>
-          <h4>{rule.replacementWindowMonths} months</h4>
-          <p>Planning window used for refresh forecast and CAPEX preparation.</p>
-        </article>
-      </section>
-
-      <section >
-        <article >
-          <div >
+        <section className="settings-v2-aging-threshold-card">
+          <div className="settings-v2-aging-card-head">
             <div>
-              <span >THRESHOLD BUILDER</span>
-              <h4>Lifecycle Age Bands</h4>
-              <p>Set the year thresholds used to classify every endpoint into standard, aging and critical groups.</p>
+              <span>Lifecycle Age Bands</span>
+              <strong>Threshold Configuration</strong>
+              <small>Set the year thresholds used to classify every endpoint into standard, aging and critical groups.</small>
             </div>
           </div>
 
-          <div >
+          <div className="settings-v2-aging-threshold-list">
             <AgingThresholdLine
               label="Standard Device"
               help="Healthy lifecycle window before review is required."
               value={rule.healthyMaxYears}
-              display={`< ${rule.healthyMaxYears} years`}
+              display={"< " + rule.healthyMaxYears + " years"}
+              tone="blue"
               onChange={(value) => onChange({ healthyMaxYears: value })}
             />
 
@@ -5841,7 +5982,8 @@ function AgingContent({
               label="Aging Device"
               help="Device should be reviewed and considered for refresh planning."
               value={rule.monitorMaxYears}
-              display={`≥ ${rule.monitorMaxYears} years`}
+              display={">= " + rule.monitorMaxYears + " years"}
+              tone="amber"
               onChange={(value) => onChange({ monitorMaxYears: value })}
             />
 
@@ -5849,141 +5991,138 @@ function AgingContent({
               label="Critical Aging"
               help="Device is a high-priority replacement candidate."
               value={rule.agingMinYears}
-              display={`≥ ${rule.agingMinYears} years`}
+              display={">= " + rule.agingMinYears + " years"}
+              tone="red"
               onChange={(value) => onChange({ agingMinYears: value })}
             />
           </div>
-        </article>
+        </section>
 
-        <aside >
-          <div >
-            <div>
-              <span >DECISION GUIDE</span>
-              <h4>Lifecycle Actions</h4>
-              <p>Operational action generated from the current threshold rule.</p>
+        <section className="settings-v2-aging-bottom-grid">
+          <article className="settings-v2-aging-config-card">
+            <div className="settings-v2-aging-card-head">
+              <div>
+                <span>Calculation Basis</span>
+                <strong>Aging Reference</strong>
+                <small>Choose how the system determines device age when generating lifecycle results.</small>
+              </div>
             </div>
-          </div>
 
-          <div >
-            <AgingActionRow
-              status="Standard"
-              condition={`< ${rule.healthyMaxYears} years`}
-              action="Monitor"
-              tone="blue"
-            />
-            <AgingActionRow
-              status="Aging"
-              condition={`≥ ${rule.monitorMaxYears} years`}
-              action="Review"
-              tone="amber"
-            />
-            <AgingActionRow
-              status="Critical"
-              condition={`≥ ${rule.agingMinYears} years`}
-              action="Replace"
-              tone="red"
-            />
-          </div>
-        </aside>
-      </section>
+            <div className="settings-v2-aging-form-grid">
+              <label>
+                <span>Primary Date</span>
+                <select
+                  value={rule.ageSource}
+                  onChange={(event) => onChange({ ageSource: event.target.value })}
+                  aria-label="PC aging primary date source"
+                >
+                  {AGE_SOURCE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
 
-      <section >
-        <article >
-          <div >
-            <div>
-              <span >CALCULATION BASIS</span>
-              <h4>Aging Reference</h4>
-              <p>Choose how the system determines device age when generating lifecycle results.</p>
+              <label>
+                <span>Missing Date</span>
+                <select
+                  value={rule.includeUnknownAge ? "include" : "exclude"}
+                  onChange={(event) => onChange({ includeUnknownAge: event.target.value === "include" })}
+                  aria-label="PC aging missing date handling"
+                >
+                  <option value="exclude">Flag as data gap</option>
+                  <option value="include">Include in aging report</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Replacement Window</span>
+                <div className="settings-v2-aging-number-field">
+                  <input
+                    type="number"
+                    min="0"
+                    max="36"
+                    value={rule.replacementWindowMonths}
+                    onChange={(event) => onChange({ replacementWindowMonths: Number(event.target.value) })}
+                  />
+                  <em>months</em>
+                </div>
+              </label>
             </div>
-          </div>
 
-          <div >
-            <label >
-              Primary Date
-              <SettingSelect
-                value={rule.ageSource}
-                options={AGE_SOURCE_OPTIONS}
-                onChange={(value) => onChange({ ageSource: value })}
-                ariaLabel="PC aging primary date source"
-              />
-            </label>
-
-            <label >
-              Missing Date
-              <SettingSelect
-                value={rule.includeUnknownAge ? "include" : "exclude"}
-                options={[
-                  { value: "exclude", label: "Flag as data gap" },
-                  { value: "include", label: "Include in aging report" }]}
-                onChange={(value) => onChange({ includeUnknownAge: value === "include" })}
-                ariaLabel="PC aging missing date handling"
-              />
-            </label>
-
-            <label >
-              Replacement Window
-              <input 
-                type="number"
-                min="0"
-                max="36"
-                value={rule.replacementWindowMonths}
-                onChange={(event) => onChange({ replacementWindowMonths: Number(event.target.value) })}
-              />
-            </label>
-          </div>
-
-          <div >
-            <strong>{formatAgeSourceLabel(rule.ageSource)}</strong>
-            <span>is currently used as the main lifecycle reference date.</span>
-          </div>
-        </article>
-
-        <article >
-          <div >
-            <div>
-              <span >ADMIN NOTE</span>
-              <h4>Operational Note</h4>
-              <p>Store an internal note with this lifecycle configuration.</p>
+            <div className="settings-v2-aging-reference">
+              <span>{formatAgeSourceLabel(rule.ageSource)}</span>
+              <small>Primary age reference ? Missing date: {unknownText}</small>
             </div>
-          </div>
+          </article>
 
-          <textarea 
-            value={rule.notes}
-            onChange={(event) => onChange({ notes: event.target.value })}
-            placeholder="Example: This lifecycle rule is used for annual endpoint refresh planning."
-          />
-        </article>
-      </section>
+          <article className="settings-v2-aging-note-card">
+            <div className="settings-v2-aging-card-head">
+              <div>
+                <span>Admin Note</span>
+                <strong>Operational Note</strong>
+                <small>Store an internal note with this lifecycle configuration.</small>
+              </div>
+            </div>
+
+            <textarea
+              value={rule.notes}
+              onChange={(event) => onChange({ notes: event.target.value })}
+              placeholder="Example: This lifecycle rule is used for annual endpoint refresh planning."
+            />
+          </article>
+        </section>
+      </div>
     </div>
   );
 }
 
 
-function AgingThresholdLine({ label, help, value, display, onChange }: { label: string; help: string; value: number; display: string; onChange: (value: number) => void }) {
+
+function AgingThresholdLine({ label, help, value, display, tone, onChange }: { label: string; help: string; value: number; display: string; tone?: "blue" | "amber" | "red"; onChange: (value: number) => void }) {
+  const safeTone = tone || "blue";
+
   return (
-    <div >
-      <div >
+    <div className={"settings-v2-aging-threshold-row " + safeTone}>
+      <div className="settings-v2-aging-threshold-title">
         <span>{label}</span>
         <small>{help}</small>
       </div>
-      <input type="range" min="1" max="15" value={value} onChange={(event) => onChange(Number(event.target.value))} />
-      <div >
-        <input type="number" min="1" max="15" value={value} onChange={(event) => onChange(Number(event.target.value))} />
+
+      <input
+        type="range"
+        min="1"
+        max="15"
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+
+      <div className="settings-v2-aging-threshold-value">
+        <input
+          type="number"
+          min="1"
+          max="15"
+          value={value}
+          onChange={(event) => onChange(Number(event.target.value))}
+        />
         <b>{display}</b>
       </div>
     </div>
   );
 }
 
+
 function AgingActionRow({ status, condition, action, tone }: { status: string; condition: string; action: string; tone: "blue" | "amber" | "red" }) {
   return (
-    <div >
-      <span>{status}</span>
-      <small>{condition}</small>
+    <div className={"settings-v2-aging-action-row " + tone}>
+      <div>
+        <span>{status}</span>
+        <small>{condition}</small>
+      </div>
       <b>{action}</b>
     </div>
   );
 }
+
 
 function RiskContent({ search }: { search: string }) {
   const rows = risks.filter((risk) => !search || risk.join(" ").toLowerCase().includes(search));
@@ -6581,6 +6720,7 @@ function AccessPolicyModal(props: any) {
 
   return typeof document !== "undefined" ? createPortal(modalNode, document.body) : modalNode;
 }
+
 
 
 function AccessPolicyDeleteConfirmModal({ target, onCancel, onConfirm }: { target: { policy: AccessPolicy; index: number } | null; onCancel: () => void; onConfirm: () => void }) {

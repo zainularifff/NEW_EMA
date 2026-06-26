@@ -1,0 +1,838 @@
+
+/* EMA Standard Controls
+   Standard button, search, select and dropdown style for all operation modules.
+   UI only. No logic/API changes. */
+
+:root {
+  --ema-control-height: 38px;
+  --ema-control-radius: 12px;
+  --ema-control-border: rgba(203, 213, 225, 0.96);
+  --ema-control-border-hover: #c9dbff;
+  --ema-control-text: #0f2746;
+  --ema-control-muted: #64748b;
+  --ema-control-blue: #2563eb;
+  --ema-control-indigo: #4f46e5;
+  --ema-control-bg: #ffffff;
+  --ema-control-soft: #eef5ff;
+}
+
+html body .hardware-module-root,
+html body .software-inventory-module,
+html body .network-inventory-module,
+html body .appwebrestriction-module,
+html body .apprestriction-v2-scope,
+html body .appmetering-module-root,
+html body .internet-metering-page,
+html body .patch-module-root,
+html body [data-section="software-distribution"],
+html body .task-list-module {
+  --ema-local-control-height: 38px;
+}
+
+/* Common button standard */
+html body .hardware-module-root .soft-btn,
+html body .hardware-module-root .hardware-command-btn,
+html body .hardware-module-root .hardware-icon-btn,
+html body .hardware-module-root .hardware-clear-filters-btn,
+html body .hardware-module-root .primary-btn,
+html body .hardware-module-root .danger-btn,
+html body .software-inventory-module .soft-btn,
+html body .software-inventory-module .primary-btn,
+html body .software-inventory-module .danger-btn,
+html body .network-inventory-module .soft-btn,
+html body .network-inventory-module .primary-btn,
+html body .network-inventory-module .danger-btn,
+html body .appwebrestriction-module .soft-btn,
+html body .appwebrestriction-module .primary-btn,
+html body .appwebrestriction-module .danger-btn,
+html body .apprestriction-v2-scope .soft-btn,
+html body .apprestriction-v2-scope .primary-btn,
+html body .apprestriction-v2-scope .danger-btn,
+html body .appmetering-module-root .soft-btn,
+html body .appmetering-module-root .primary-btn,
+html body .appmetering-module-root .danger-btn,
+html body .internet-metering-page .soft-btn,
+html body .internet-metering-page .primary-btn,
+html body .internet-metering-page .danger-btn,
+html body .patch-module-root .soft-btn,
+html body .patch-module-root .primary-btn,
+html body .patch-module-root .danger-btn,
+html body [data-section="software-distribution"] .soft-btn,
+html body [data-section="software-distribution"] .primary-btn,
+html body [data-section="software-distribution"] .danger-btn,
+html body .task-list-module .soft-btn,
+html body .task-list-module .primary-btn,
+html body .task-list-module .danger-btn,
+html body .task-list-module .app-btn {
+  height: var(--ema-control-height) !important;
+  min-height: var(--ema-control-height) !important;
+  max-height: var(--ema-control-height) !important;
+  border-radius: var(--ema-control-radius) !important;
+  border: 1px solid var(--ema-control-border) !important;
+  background: var(--ema-control-bg) !important;
+  color: var(--ema-control-text) !important;
+  padding: 0 14px !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+}
+
+html body .hardware-module-root .soft-btn:hover,
+html body .hardware-module-root .hardware-command-btn:hover,
+html body .hardware-module-root .hardware-icon-btn:hover,
+html body .hardware-module-root .hardware-clear-filters-btn:hover,
+html body .software-inventory-module .soft-btn:hover,
+html body .network-inventory-module .soft-btn:hover,
+html body .appwebrestriction-module .soft-btn:hover,
+html body .apprestriction-v2-scope .soft-btn:hover,
+html body .appmetering-module-root .soft-btn:hover,
+html body .internet-metering-page .soft-btn:hover,
+html body .patch-module-root .soft-btn:hover,
+html body [data-section="software-distribution"] .soft-btn:hover,
+html body .task-list-module .soft-btn:hover {
+  border-color: var(--ema-control-border-hover) !important;
+  background: var(--ema-control-soft) !important;
+  color: var(--ema-control-blue) !important;
+}
+
+/* Primary button standard */
+html body .hardware-module-root .primary-btn,
+html body .hardware-module-root .hardware-command-btn:not(:disabled):has(svg + span),
+html body .software-inventory-module .primary-btn,
+html body .network-inventory-module .primary-btn,
+html body .appwebrestriction-module .primary-btn,
+html body .apprestriction-v2-scope .primary-btn,
+html body .appmetering-module-root .primary-btn,
+html body .internet-metering-page .primary-btn,
+html body .patch-module-root .primary-btn,
+html body [data-section="software-distribution"] .primary-btn,
+html body .task-list-module .primary-btn,
+html body .task-list-module .app-btn.primary {
+  border-color: var(--ema-control-indigo) !important;
+  background: linear-gradient(135deg, #4f46e5, #2563eb) !important;
+  color: #ffffff !important;
+  box-shadow: 0 12px 24px rgba(79, 70, 229, 0.16) !important;
+}
+
+/* Export button should be blue and consistent */
+html body .hardware-module-root .hardware-toolbar-export,
+html body .software-inventory-module .software-toolbar-export,
+html body .network-inventory-module .network-toolbar-export,
+html body .appmetering-module-root .export-btn,
+html body .internet-metering-page .export-btn,
+html body .patch-module-root .export-btn,
+html body [data-section="software-distribution"] .export-btn,
+html body .task-list-module .export-btn {
+  height: var(--ema-control-height) !important;
+  min-height: var(--ema-control-height) !important;
+  border-radius: var(--ema-control-radius) !important;
+  border: 1px solid #0f7ee8 !important;
+  background: #0f7ee8 !important;
+  color: #ffffff !important;
+  padding: 0 14px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 12px 24px rgba(15, 126, 232, 0.18) !important;
+}
+
+/* Icon-only button standard */
+html body .hardware-module-root .mini-btn,
+html body .hardware-module-root .hardware-icon-btn,
+html body .software-inventory-module .mini-btn,
+html body .network-inventory-module .mini-btn,
+html body .appwebrestriction-module .mini-btn,
+html body .apprestriction-v2-scope .mini-btn,
+html body .appmetering-module-root .mini-btn,
+html body .internet-metering-page .mini-btn,
+html body .patch-module-root .mini-btn,
+html body [data-section="software-distribution"] .mini-btn,
+html body .task-list-module .mini-btn,
+html body .task-list-module .task-action {
+  width: 38px !important;
+  min-width: 38px !important;
+  max-width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  padding: 0 !important;
+  border-radius: var(--ema-control-radius) !important;
+  border: 1px solid var(--ema-control-border) !important;
+  background: #ffffff !important;
+  color: var(--ema-control-text) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: none !important;
+}
+
+/* Disabled state */
+html body .hardware-module-root button:disabled,
+html body .software-inventory-module button:disabled,
+html body .network-inventory-module button:disabled,
+html body .appwebrestriction-module button:disabled,
+html body .apprestriction-v2-scope button:disabled,
+html body .appmetering-module-root button:disabled,
+html body .internet-metering-page button:disabled,
+html body .patch-module-root button:disabled,
+html body [data-section="software-distribution"] button:disabled,
+html body .task-list-module button:disabled {
+  opacity: 0.42 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  background: #f8fafc !important;
+  color: #94a3b8 !important;
+  border-color: rgba(226, 232, 240, 0.96) !important;
+}
+
+/* Search box standard */
+html body .hardware-module-root .hardware-search-box,
+html body .hardware-module-root .section-search,
+html body .software-inventory-module .section-search,
+html body .software-inventory-module .software-search-box,
+html body .network-inventory-module .section-search,
+html body .appwebrestriction-module .section-search,
+html body .apprestriction-v2-scope .section-search,
+html body .appmetering-module-root .section-search,
+html body .appmetering-module-root .user-search-inline,
+html body .internet-metering-page .section-search,
+html body .internet-metering-page .user-search-inline,
+html body .patch-module-root .section-search,
+html body .patch-module-root .user-search-inline,
+html body [data-section="software-distribution"] .section-search,
+html body [data-section="software-distribution"] .user-search-inline,
+html body .task-list-module .section-search,
+html body .task-list-module .task-list-search {
+  height: var(--ema-control-height) !important;
+  min-height: var(--ema-control-height) !important;
+  max-height: var(--ema-control-height) !important;
+  border-radius: var(--ema-control-radius) !important;
+  border: 1px solid var(--ema-control-border) !important;
+  background: #ffffff !important;
+  color: var(--ema-control-muted) !important;
+  padding: 0 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+html body .hardware-module-root .hardware-search-box input,
+html body .hardware-module-root .section-search input,
+html body .software-inventory-module .section-search input,
+html body .software-inventory-module .software-search-box input,
+html body .network-inventory-module .section-search input,
+html body .appwebrestriction-module .section-search input,
+html body .apprestriction-v2-scope .section-search input,
+html body .appmetering-module-root .section-search input,
+html body .appmetering-module-root .user-search-inline input,
+html body .internet-metering-page .section-search input,
+html body .internet-metering-page .user-search-inline input,
+html body .patch-module-root .section-search input,
+html body .patch-module-root .user-search-inline input,
+html body [data-section="software-distribution"] .section-search input,
+html body [data-section="software-distribution"] .user-search-inline input,
+html body .task-list-module .section-search input,
+html body .task-list-module .task-list-search input {
+  flex: 1 !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  color: var(--ema-control-text) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+}
+
+/* Native select standard */
+html body .hardware-module-root select,
+html body .software-inventory-module select,
+html body .network-inventory-module select,
+html body .appwebrestriction-module select,
+html body .apprestriction-v2-scope select,
+html body .appmetering-module-root select,
+html body .internet-metering-page select,
+html body .patch-module-root select,
+html body [data-section="software-distribution"] select,
+html body .task-list-module select,
+html body .hardware-module-root .setting-select,
+html body .software-inventory-module .setting-select,
+html body .network-inventory-module .setting-select,
+html body .appwebrestriction-module .setting-select,
+html body .apprestriction-v2-scope .setting-select,
+html body .appmetering-module-root .setting-select,
+html body .internet-metering-page .setting-select,
+html body .patch-module-root .setting-select,
+html body [data-section="software-distribution"] .setting-select,
+html body .task-list-module .setting-select {
+  height: var(--ema-control-height) !important;
+  min-height: var(--ema-control-height) !important;
+  max-height: var(--ema-control-height) !important;
+  border-radius: var(--ema-control-radius) !important;
+  border: 1px solid var(--ema-control-border) !important;
+  background: #ffffff !important;
+  color: var(--ema-control-text) !important;
+  padding: 0 34px 0 12px !important;
+  margin: 0 !important;
+  font-size: 11.8px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  appearance: auto !important;
+  -webkit-appearance: menulist !important;
+}
+
+/* Custom dropdown buttons standard */
+html body .hardware-module-root .hardware-dropdown-button,
+html body .hardware-module-root .hardware-select-button,
+html body .hardware-module-root .hardware-dropdown-trigger,
+html body .software-inventory-module .software-dropdown-button,
+html body .software-inventory-module .hardware-dropdown-button,
+html body .network-inventory-module .hardware-dropdown-button,
+html body .network-inventory-module .network-dropdown-button,
+html body .appwebrestriction-module .hardware-dropdown-button,
+html body .apprestriction-v2-scope .hardware-dropdown-button,
+html body .appmetering-module-root .dropdown-toggle,
+html body .internet-metering-page .dropdown-toggle,
+html body .patch-module-root .dropdown-toggle,
+html body [data-section="software-distribution"] .dropdown-toggle,
+html body .task-list-module .dropdown-toggle {
+  height: var(--ema-control-height) !important;
+  min-height: var(--ema-control-height) !important;
+  max-height: var(--ema-control-height) !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  border-radius: var(--ema-control-radius) !important;
+  border: 1px solid var(--ema-control-border) !important;
+  background: #ffffff !important;
+  color: var(--ema-control-text) !important;
+  padding: 0 12px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  font-size: 11.8px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Dropdown menu standard */
+html body .hardware-module-root .hardware-dropdown-menu,
+html body .hardware-module-root .hardware-select-menu,
+html body .software-inventory-module .software-dropdown-menu,
+html body .software-inventory-module .hardware-dropdown-menu,
+html body .network-inventory-module .hardware-dropdown-menu,
+html body .network-inventory-module .network-dropdown-menu,
+html body .appwebrestriction-module .hardware-dropdown-menu,
+html body .apprestriction-v2-scope .hardware-dropdown-menu,
+html body .appmetering-module-root .dropdown-menu,
+html body .internet-metering-page .dropdown-menu,
+html body .patch-module-root .dropdown-menu,
+html body [data-section="software-distribution"] .dropdown-menu,
+html body .task-list-module .dropdown-menu {
+  border: 1px solid var(--ema-control-border) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16) !important;
+  padding: 6px !important;
+  overflow: hidden !important;
+  z-index: 2147482000 !important;
+}
+
+html body .hardware-module-root .hardware-dropdown-option,
+html body .hardware-module-root .hardware-select-option,
+html body .software-inventory-module .software-dropdown-option,
+html body .software-inventory-module .hardware-dropdown-option,
+html body .network-inventory-module .hardware-dropdown-option,
+html body .network-inventory-module .network-dropdown-option,
+html body .appwebrestriction-module .hardware-dropdown-option,
+html body .apprestriction-v2-scope .hardware-dropdown-option,
+html body .appmetering-module-root .dropdown-item,
+html body .internet-metering-page .dropdown-item,
+html body .patch-module-root .dropdown-item,
+html body [data-section="software-distribution"] .dropdown-item,
+html body .task-list-module .dropdown-item {
+  min-height: 32px !important;
+  border-radius: 9px !important;
+  color: var(--ema-control-text) !important;
+  background: transparent !important;
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  padding: 0 10px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+html body .hardware-module-root .hardware-dropdown-option:hover,
+html body .hardware-module-root .hardware-select-option:hover,
+html body .software-inventory-module .software-dropdown-option:hover,
+html body .software-inventory-module .hardware-dropdown-option:hover,
+html body .network-inventory-module .hardware-dropdown-option:hover,
+html body .network-inventory-module .network-dropdown-option:hover,
+html body .appwebrestriction-module .hardware-dropdown-option:hover,
+html body .apprestriction-v2-scope .hardware-dropdown-option:hover,
+html body .appmetering-module-root .dropdown-item:hover,
+html body .internet-metering-page .dropdown-item:hover,
+html body .patch-module-root .dropdown-item:hover,
+html body [data-section="software-distribution"] .dropdown-item:hover,
+html body .task-list-module .dropdown-item:hover {
+  background: #eef5ff !important;
+  color: var(--ema-control-blue) !important;
+}
+
+/* Filter labels */
+html body .hardware-module-root .hardware-filter-group label,
+html body .software-inventory-module .software-filter-group label,
+html body .network-inventory-module .network-filter-group label,
+html body .appwebrestriction-module .form-field span,
+html body .apprestriction-v2-scope .form-field span,
+html body .appmetering-module-root .form-field span,
+html body .internet-metering-page .form-field span,
+html body .patch-module-root .form-field span,
+html body [data-section="software-distribution"] .form-field span,
+html body .task-list-module .form-field span {
+  display: block !important;
+  margin: 0 0 6px !important;
+  color: var(--ema-control-text) !important;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+/* Hardware toolbar exact fix */
+html body .hardware-module-root .hardware-scan-command-row {
+  display: grid !important;
+  grid-template-columns:
+    minmax(120px, auto)
+    minmax(120px, auto)
+    minmax(120px, auto)
+    minmax(280px, 1fr)
+    38px
+    minmax(96px, auto) !important;
+  gap: 10px !important;
+  align-items: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+html body .hardware-module-root .hardware-registry-filter-row {
+  display: grid !important;
+  grid-template-columns: minmax(190px, 240px) minmax(190px, 240px) minmax(82px, auto) !important;
+  gap: 10px !important;
+  align-items: end !important;
+  justify-content: end !important;
+  width: 100% !important;
+}
+
+/* Reset button standard */
+html body .hardware-module-root .hardware-clear-filters-btn,
+html body .software-inventory-module .clear-filters-btn,
+html body .network-inventory-module .clear-filters-btn,
+html body .appmetering-module-root .clear-filters-btn,
+html body .internet-metering-page .clear-filters-btn,
+html body .patch-module-root .clear-filters-btn,
+html body [data-section="software-distribution"] .clear-filters-btn,
+html body .task-list-module .clear-filters-btn {
+  color: #64748b !important;
+  border-color: rgba(203, 213, 225, 0.95) !important;
+  background: #ffffff !important;
+}
+
+html body .hardware-module-root .hardware-clear-filters-btn:not(:disabled):hover,
+html body .software-inventory-module .clear-filters-btn:not(:disabled):hover,
+html body .network-inventory-module .clear-filters-btn:not(:disabled):hover,
+html body .appmetering-module-root .clear-filters-btn:not(:disabled):hover,
+html body .internet-metering-page .clear-filters-btn:not(:disabled):hover,
+html body .patch-module-root .clear-filters-btn:not(:disabled):hover,
+html body [data-section="software-distribution"] .clear-filters-btn:not(:disabled):hover,
+html body .task-list-module .clear-filters-btn:not(:disabled):hover {
+  color: #dc2626 !important;
+  border-color: #fecaca !important;
+  background: #fef2f2 !important;
+}
+
+
+
+
+/* FINAL: Hardware dropdown standard fallback */
+html body .hardware-module-root .hardware-dropdown-button,
+html body .hardware-module-root .hardware-select-button,
+html body .hardware-module-root .hardware-dropdown-trigger,
+html body .hardware-module-root .hardware-filter-group select,
+html body .hardware-module-root .hardware-registry-filters select {
+  height: 38px !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 12px !important;
+  background-color: #ffffff !important;
+  color: #0f2746 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+html body .hardware-module-root .hardware-filter-group select,
+html body .hardware-module-root .hardware-registry-filters select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+
+/* FINAL FIX: Dropdown standard all operation pages */
+html body .hardware-module-root select,
+html body .software-inventory-module select,
+html body .network-inventory-module select,
+html body .appwebrestriction-module select,
+html body .apprestriction-v2-scope select,
+html body .appmetering-module-root select,
+html body .internet-metering-page select,
+html body .patch-module-root select,
+html body [data-section="software-distribution"] select,
+html body .task-list-module select,
+html body .hardware-module-root .setting-select,
+html body .software-inventory-module .setting-select,
+html body .network-inventory-module .setting-select,
+html body .appwebrestriction-module .setting-select,
+html body .apprestriction-v2-scope .setting-select,
+html body .appmetering-module-root .setting-select,
+html body .internet-metering-page .setting-select,
+html body .patch-module-root .setting-select,
+html body [data-section="software-distribution"] .setting-select,
+html body .task-list-module .setting-select {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 12px !important;
+  background-color: #ffffff !important;
+  color: #0f2746 !important;
+  padding: 0 36px 0 12px !important;
+  margin: 0 !important;
+  font-size: 11.8px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  text-align: left !important;
+  box-shadow: none !important;
+  outline: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  cursor: pointer !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #0f2746 50%),
+    linear-gradient(135deg, #0f2746 50%, transparent 50%) !important;
+  background-position:
+    calc(100% - 17px) 16px,
+    calc(100% - 12px) 16px !important;
+  background-size:
+    5px 5px,
+    5px 5px !important;
+  background-repeat: no-repeat !important;
+}
+
+html body .hardware-module-root select:hover,
+html body .software-inventory-module select:hover,
+html body .network-inventory-module select:hover,
+html body .appwebrestriction-module select:hover,
+html body .apprestriction-v2-scope select:hover,
+html body .appmetering-module-root select:hover,
+html body .internet-metering-page select:hover,
+html body .patch-module-root select:hover,
+html body [data-section="software-distribution"] select:hover,
+html body .task-list-module select:hover,
+html body .hardware-module-root .setting-select:hover,
+html body .software-inventory-module .setting-select:hover,
+html body .network-inventory-module .setting-select:hover,
+html body .appwebrestriction-module .setting-select:hover,
+html body .apprestriction-v2-scope .setting-select:hover,
+html body .appmetering-module-root .setting-select:hover,
+html body .internet-metering-page .setting-select:hover,
+html body .patch-module-root .setting-select:hover,
+html body [data-section="software-distribution"] .setting-select:hover,
+html body .task-list-module .setting-select:hover {
+  border-color: #c9dbff !important;
+  background-color: #fbfdff !important;
+}
+
+html body .hardware-module-root select:focus,
+html body .software-inventory-module select:focus,
+html body .network-inventory-module select:focus,
+html body .appwebrestriction-module select:focus,
+html body .apprestriction-v2-scope select:focus,
+html body .appmetering-module-root select:focus,
+html body .internet-metering-page select:focus,
+html body .patch-module-root select:focus,
+html body [data-section="software-distribution"] select:focus,
+html body .task-list-module select:focus,
+html body .hardware-module-root .setting-select:focus,
+html body .software-inventory-module .setting-select:focus,
+html body .network-inventory-module .setting-select:focus,
+html body .appwebrestriction-module .setting-select:focus,
+html body .apprestriction-v2-scope .setting-select:focus,
+html body .appmetering-module-root .setting-select:focus,
+html body .internet-metering-page .setting-select:focus,
+html body .patch-module-root .setting-select:focus,
+html body [data-section="software-distribution"] .setting-select:focus,
+html body .task-list-module .setting-select:focus {
+  border-color: #93c5fd !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10) !important;
+  outline: none !important;
+}
+
+/* Custom dropdown trigger/button standard */
+html body .hardware-module-root .hardware-dropdown-button,
+html body .hardware-module-root .hardware-select-button,
+html body .hardware-module-root .hardware-dropdown-trigger,
+html body .software-inventory-module .software-dropdown-button,
+html body .software-inventory-module .hardware-dropdown-button,
+html body .software-inventory-module .hardware-select-button,
+html body .network-inventory-module .network-dropdown-button,
+html body .network-inventory-module .hardware-dropdown-button,
+html body .network-inventory-module .hardware-select-button,
+html body .appwebrestriction-module .hardware-dropdown-button,
+html body .appwebrestriction-module .hardware-select-button,
+html body .apprestriction-v2-scope .hardware-dropdown-button,
+html body .apprestriction-v2-scope .hardware-select-button,
+html body .appmetering-module-root .dropdown-toggle,
+html body .internet-metering-page .dropdown-toggle,
+html body .patch-module-root .dropdown-toggle,
+html body [data-section="software-distribution"] .dropdown-toggle,
+html body .task-list-module .dropdown-toggle {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  color: #0f2746 !important;
+  padding: 0 12px !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  font-size: 11.8px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  text-align: left !important;
+  box-shadow: none !important;
+  outline: none !important;
+  cursor: pointer !important;
+  overflow: hidden !important;
+}
+
+html body .hardware-module-root .hardware-dropdown-button:hover,
+html body .hardware-module-root .hardware-select-button:hover,
+html body .hardware-module-root .hardware-dropdown-trigger:hover,
+html body .software-inventory-module .software-dropdown-button:hover,
+html body .software-inventory-module .hardware-dropdown-button:hover,
+html body .software-inventory-module .hardware-select-button:hover,
+html body .network-inventory-module .network-dropdown-button:hover,
+html body .network-inventory-module .hardware-dropdown-button:hover,
+html body .network-inventory-module .hardware-select-button:hover,
+html body .appwebrestriction-module .hardware-dropdown-button:hover,
+html body .appwebrestriction-module .hardware-select-button:hover,
+html body .apprestriction-v2-scope .hardware-dropdown-button:hover,
+html body .apprestriction-v2-scope .hardware-select-button:hover,
+html body .appmetering-module-root .dropdown-toggle:hover,
+html body .internet-metering-page .dropdown-toggle:hover,
+html body .patch-module-root .dropdown-toggle:hover,
+html body [data-section="software-distribution"] .dropdown-toggle:hover,
+html body .task-list-module .dropdown-toggle:hover {
+  border-color: #c9dbff !important;
+  background: #fbfdff !important;
+}
+
+html body .hardware-module-root .hardware-dropdown-button:focus,
+html body .hardware-module-root .hardware-select-button:focus,
+html body .hardware-module-root .hardware-dropdown-trigger:focus,
+html body .software-inventory-module .software-dropdown-button:focus,
+html body .software-inventory-module .hardware-dropdown-button:focus,
+html body .software-inventory-module .hardware-select-button:focus,
+html body .network-inventory-module .network-dropdown-button:focus,
+html body .network-inventory-module .hardware-dropdown-button:focus,
+html body .network-inventory-module .hardware-select-button:focus,
+html body .appwebrestriction-module .hardware-dropdown-button:focus,
+html body .appwebrestriction-module .hardware-select-button:focus,
+html body .apprestriction-v2-scope .hardware-dropdown-button:focus,
+html body .apprestriction-v2-scope .hardware-select-button:focus,
+html body .appmetering-module-root .dropdown-toggle:focus,
+html body .internet-metering-page .dropdown-toggle:focus,
+html body .patch-module-root .dropdown-toggle:focus,
+html body [data-section="software-distribution"] .dropdown-toggle:focus,
+html body .task-list-module .dropdown-toggle:focus {
+  border-color: #93c5fd !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10) !important;
+  outline: none !important;
+}
+
+html body .hardware-module-root .hardware-dropdown-button *,
+html body .hardware-module-root .hardware-select-button *,
+html body .hardware-module-root .hardware-dropdown-trigger *,
+html body .software-inventory-module .software-dropdown-button *,
+html body .software-inventory-module .hardware-dropdown-button *,
+html body .software-inventory-module .hardware-select-button *,
+html body .network-inventory-module .network-dropdown-button *,
+html body .network-inventory-module .hardware-dropdown-button *,
+html body .network-inventory-module .hardware-select-button *,
+html body .appwebrestriction-module .hardware-dropdown-button *,
+html body .appwebrestriction-module .hardware-select-button *,
+html body .apprestriction-v2-scope .hardware-dropdown-button *,
+html body .apprestriction-v2-scope .hardware-select-button *,
+html body .appmetering-module-root .dropdown-toggle *,
+html body .internet-metering-page .dropdown-toggle *,
+html body .patch-module-root .dropdown-toggle *,
+html body [data-section="software-distribution"] .dropdown-toggle *,
+html body .task-list-module .dropdown-toggle * {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  color: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Dropdown menu standard */
+html body .hardware-module-root .hardware-dropdown-menu,
+html body .hardware-module-root .hardware-select-menu,
+html body .software-inventory-module .software-dropdown-menu,
+html body .software-inventory-module .hardware-dropdown-menu,
+html body .software-inventory-module .hardware-select-menu,
+html body .network-inventory-module .network-dropdown-menu,
+html body .network-inventory-module .hardware-dropdown-menu,
+html body .network-inventory-module .hardware-select-menu,
+html body .appwebrestriction-module .hardware-dropdown-menu,
+html body .appwebrestriction-module .hardware-select-menu,
+html body .apprestriction-v2-scope .hardware-dropdown-menu,
+html body .apprestriction-v2-scope .hardware-select-menu,
+html body .appmetering-module-root .dropdown-menu,
+html body .internet-metering-page .dropdown-menu,
+html body .patch-module-root .dropdown-menu,
+html body [data-section="software-distribution"] .dropdown-menu,
+html body .task-list-module .dropdown-menu {
+  min-width: 100% !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16) !important;
+  padding: 6px !important;
+  margin-top: 6px !important;
+  overflow: hidden !important;
+  z-index: 2147482800 !important;
+}
+
+html body .hardware-module-root .hardware-dropdown-option,
+html body .hardware-module-root .hardware-select-option,
+html body .software-inventory-module .software-dropdown-option,
+html body .software-inventory-module .hardware-dropdown-option,
+html body .software-inventory-module .hardware-select-option,
+html body .network-inventory-module .network-dropdown-option,
+html body .network-inventory-module .hardware-dropdown-option,
+html body .network-inventory-module .hardware-select-option,
+html body .appwebrestriction-module .hardware-dropdown-option,
+html body .appwebrestriction-module .hardware-select-option,
+html body .apprestriction-v2-scope .hardware-dropdown-option,
+html body .apprestriction-v2-scope .hardware-select-option,
+html body .appmetering-module-root .dropdown-item,
+html body .internet-metering-page .dropdown-item,
+html body .patch-module-root .dropdown-item,
+html body [data-section="software-distribution"] .dropdown-item,
+html body .task-list-module .dropdown-item {
+  min-height: 32px !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: #0f2746 !important;
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  padding: 0 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  text-align: left !important;
+  cursor: pointer !important;
+}
+
+html body .hardware-module-root .hardware-dropdown-option:hover,
+html body .hardware-module-root .hardware-dropdown-option.is-active,
+html body .hardware-module-root .hardware-select-option:hover,
+html body .hardware-module-root .hardware-select-option.is-active,
+html body .software-inventory-module .software-dropdown-option:hover,
+html body .software-inventory-module .software-dropdown-option.is-active,
+html body .software-inventory-module .hardware-dropdown-option:hover,
+html body .software-inventory-module .hardware-dropdown-option.is-active,
+html body .software-inventory-module .hardware-select-option:hover,
+html body .software-inventory-module .hardware-select-option.is-active,
+html body .network-inventory-module .network-dropdown-option:hover,
+html body .network-inventory-module .network-dropdown-option.is-active,
+html body .network-inventory-module .hardware-dropdown-option:hover,
+html body .network-inventory-module .hardware-dropdown-option.is-active,
+html body .network-inventory-module .hardware-select-option:hover,
+html body .network-inventory-module .hardware-select-option.is-active,
+html body .appwebrestriction-module .hardware-dropdown-option:hover,
+html body .appwebrestriction-module .hardware-dropdown-option.is-active,
+html body .appwebrestriction-module .hardware-select-option:hover,
+html body .appwebrestriction-module .hardware-select-option.is-active,
+html body .apprestriction-v2-scope .hardware-dropdown-option:hover,
+html body .apprestriction-v2-scope .hardware-dropdown-option.is-active,
+html body .apprestriction-v2-scope .hardware-select-option:hover,
+html body .apprestriction-v2-scope .hardware-select-option.is-active,
+html body .appmetering-module-root .dropdown-item:hover,
+html body .internet-metering-page .dropdown-item:hover,
+html body .patch-module-root .dropdown-item:hover,
+html body [data-section="software-distribution"] .dropdown-item:hover,
+html body .task-list-module .dropdown-item:hover {
+  background: #eef5ff !important;
+  color: #2563eb !important;
+}
+
+/* Reset dropdown/filter button standard */
+html body .hardware-module-root .hardware-clear-filters-btn,
+html body .software-inventory-module .clear-filters-btn,
+html body .network-inventory-module .clear-filters-btn,
+html body .appwebrestriction-module .clear-filters-btn,
+html body .apprestriction-v2-scope .clear-filters-btn,
+html body .appmetering-module-root .clear-filters-btn,
+html body .internet-metering-page .clear-filters-btn,
+html body .patch-module-root .clear-filters-btn,
+html body [data-section="software-distribution"] .clear-filters-btn,
+html body .task-list-module .clear-filters-btn {
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  color: #64748b !important;
+  padding: 0 12px !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
