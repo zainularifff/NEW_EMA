@@ -1,0 +1,3676 @@
+/* =========================================================
+   EMA SETTINGS CLEAN UI
+   Single final settings page UI.
+========================================================= */
+
+/* page base */
+main[data-section],
+.ema-screen {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+main[data-section] {
+  padding: 0 !important;
+}
+
+main[data-section] .ema-layout {
+  width: 100% !important;
+  min-height: calc(100vh - var(--ema-topbar-height) - 24px) !important;
+  display: grid !important;
+  grid-template-columns: 180px minmax(0, 1fr) !important;
+  gap: 10px !important;
+  align-items: stretch !important;
+}
+
+/* left settings panel */
+main[data-section] .ema-side-panel {
+  height: calc(100vh - var(--ema-topbar-height) - 24px) !important;
+  max-height: calc(100vh - var(--ema-topbar-height) - 24px) !important;
+  overflow: hidden !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 14px !important;
+  background: var(--ema-card) !important;
+  box-shadow: var(--ema-shadow) !important;
+  padding: 12px 10px !important;
+}
+
+main[data-section] .ema-side-head {
+  padding: 0 4px 10px !important;
+}
+
+main[data-section] .ema-side-head span {
+  display: inline-flex !important;
+  width: fit-content !important;
+  padding: 5px 8px !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--ema-border) !important;
+  color: var(--ema-blue) !important;
+  background: var(--ema-blue-soft) !important;
+  font-size: 9px !important;
+  line-height: 1 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+}
+
+main[data-section] .ema-side-head strong,
+main[data-section] .ema-side-head small {
+  display: none !important;
+}
+
+main[data-section] .ema-menu {
+  height: calc(100% - 34px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding-right: 2px !important;
+}
+
+main[data-section] .ema-menu-group {
+  margin: 0 0 12px !important;
+}
+
+main[data-section] .ema-menu-group-title {
+  margin: 0 0 7px !important;
+  padding: 0 2px 6px !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+}
+
+main[data-section] .ema-menu-list {
+  display: grid !important;
+  gap: 5px !important;
+}
+
+main[data-section] .ema-menu-item {
+  width: 100% !important;
+  height: 33px !important;
+  display: grid !important;
+  grid-template-columns: 26px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 7px !important;
+  padding: 4px 7px !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--ema-text) !important;
+  text-align: left !important;
+  cursor: pointer !important;
+}
+
+main[data-section] .ema-menu-item:hover {
+  background: var(--ema-blue-soft) !important;
+}
+
+main[data-section] .ema-menu-item.active {
+  border-color: rgba(77, 99, 245, 0.2) !important;
+  background: rgba(77, 99, 245, 0.12) !important;
+  box-shadow: inset 3px 0 0 var(--ema-blue) !important;
+}
+
+main[data-section] .ema-menu-icon {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 9px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: var(--ema-blue-soft) !important;
+  color: var(--ema-text) !important;
+}
+
+main[data-section] .ema-menu-item.active .ema-menu-icon {
+  color: var(--ema-blue) !important;
+}
+
+main[data-section] .ema-menu-icon svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+main[data-section] .ema-menu-text strong {
+  display: block !important;
+  color: var(--ema-text) !important;
+  font-size: 9.5px !important;
+  line-height: 1.05 !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* right main */
+main[data-section] .ema-main-panel {
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  gap: 10px !important;
+}
+
+/* hero */
+main[data-section] .ema-hero-shell {
+  height: 118px !important;
+  min-height: 118px !important;
+  display: grid !important;
+  grid-template-columns: minmax(360px, 395px) minmax(0, 1fr) !important;
+  gap: 16px !important;
+  align-items: center !important;
+  padding: 14px 18px 14px 84px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 16px !important;
+  background:
+    radial-gradient(circle at 3% 42%, rgba(77, 99, 245, 0.15), transparent 18%),
+    linear-gradient(135deg, var(--ema-card) 0%, var(--ema-card-2) 100%) !important;
+  box-shadow: var(--ema-shadow) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+main[data-section] .ema-hero-shell::before {
+  content: "" !important;
+  position: absolute !important;
+  left: 26px !important;
+  top: 50% !important;
+  width: 44px !important;
+  height: 44px !important;
+  transform: translateY(-50%) !important;
+  border-radius: 15px !important;
+  background:
+    radial-gradient(circle at 50% 37%, #ffffff 0 6px, transparent 7px),
+    radial-gradient(circle at 50% 68%, #ffffff 0 12px, transparent 13px),
+    linear-gradient(135deg, #315df5, #6d46f6) !important;
+  box-shadow: 0 12px 24px rgba(77, 99, 245, 0.24) !important;
+}
+
+main[data-section] .ema-hero-info {
+  min-width: 0 !important;
+  position: relative !important;
+  z-index: 2 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  text-align: left !important;
+}
+
+main[data-section] .ema-hero-info .ema-eyebrow {
+  display: inline-flex !important;
+  width: fit-content !important;
+  margin: 0 0 7px !important;
+  padding: 4px 8px !important;
+  border-radius: 999px !important;
+  background: rgba(77, 99, 245, 0.13) !important;
+  color: var(--ema-blue) !important;
+  font-size: 9px !important;
+  line-height: 1 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+}
+
+main[data-section] .ema-hero-info h2 {
+  margin: 0 !important;
+  color: var(--ema-text) !important;
+  font-size: 17px !important;
+  line-height: 1.15 !important;
+  font-weight: 700 !important;
+}
+
+main[data-section] .ema-hero-info p {
+  margin: 7px 0 0 !important;
+  max-width: 100% !important;
+  color: var(--ema-muted) !important;
+  font-size: 10px !important;
+  line-height: 1.45 !important;
+  font-weight: 500 !important;
+}
+
+/* KPI row exactly like reference */
+main[data-section] .ema-hero-shell .ema-score-grid {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(130px, 1fr)) !important;
+  gap: 9px !important;
+  align-items: stretch !important;
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-card {
+  height: 70px !important;
+  min-height: 70px !important;
+  max-height: 70px !important;
+  display: grid !important;
+  grid-template-columns: 32px minmax(0, 1fr) !important;
+  grid-template-rows: 14px 20px 13px !important;
+  column-gap: 9px !important;
+  row-gap: 2px !important;
+  align-items: center !important;
+  align-content: center !important;
+  justify-items: start !important;
+  padding: 10px 11px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 13px !important;
+  background: var(--ema-card) !important;
+  box-shadow: var(--ema-shadow) !important;
+  overflow: hidden !important;
+  text-align: left !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-card::before,
+main[data-section] .ema-hero-shell .ema-kpi-card::after {
+  display: none !important;
+  content: none !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-icon {
+  grid-column: 1 !important;
+  grid-row: 1 / span 3 !important;
+  position: static !important;
+  inset: auto !important;
+  transform: none !important;
+  align-self: center !important;
+  justify-self: start !important;
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  min-height: 30px !important;
+  border-radius: 999px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  opacity: 1 !important;
+  overflow: hidden !important;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.14) !important;
+  filter: none !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-icon.blue,
+main[data-section] .ema-hero-shell .ema-kpi-card[data-tone="blue"] .ema-kpi-icon {
+  background: linear-gradient(135deg, #1677ff, #2457f5) !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-icon.green,
+main[data-section] .ema-hero-shell .ema-kpi-card[data-tone="green"] .ema-kpi-icon {
+  background: linear-gradient(135deg, #12a36f, #079455) !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-icon.red,
+main[data-section] .ema-hero-shell .ema-kpi-card[data-tone="red"] .ema-kpi-icon {
+  background: linear-gradient(135deg, #ef3f5f, #e31b54) !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-icon.purple,
+main[data-section] .ema-hero-shell .ema-kpi-card[data-tone="purple"] .ema-kpi-icon {
+  background: linear-gradient(135deg, #8b5cf6, #6d46f6) !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-icon svg {
+  width: 14px !important;
+  height: 14px !important;
+  display: block !important;
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  fill: none !important;
+  opacity: 1 !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-icon svg *,
+main[data-section] .ema-hero-shell .ema-kpi-icon path,
+main[data-section] .ema-hero-shell .ema-kpi-icon circle,
+main[data-section] .ema-hero-shell .ema-kpi-icon rect,
+main[data-section] .ema-hero-shell .ema-kpi-icon line,
+main[data-section] .ema-hero-shell .ema-kpi-icon polyline {
+  stroke: #ffffff !important;
+  fill: none !important;
+  opacity: 1 !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-label,
+main[data-section] .ema-hero-shell .ema-kpi-value,
+main[data-section] .ema-hero-shell .ema-kpi-helper {
+  grid-column: 2 !important;
+  justify-self: start !important;
+  align-self: center !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-label {
+  grid-row: 1 !important;
+  color: var(--ema-muted) !important;
+  font-size: 8.2px !important;
+  line-height: 1.1 !important;
+  font-weight: 600 !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-value {
+  grid-row: 2 !important;
+  color: var(--ema-text) !important;
+  font-size: 17px !important;
+  line-height: 1 !important;
+  font-weight: 700 !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-helper {
+  grid-row: 3 !important;
+  color: var(--ema-muted) !important;
+  font-size: 7px !important;
+  line-height: 1.1 !important;
+  font-weight: 500 !important;
+}
+
+/* content card */
+main[data-section] .ema-content-card {
+  min-width: 0 !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 14px !important;
+  background: var(--ema-card) !important;
+  box-shadow: var(--ema-shadow) !important;
+  overflow: hidden !important;
+}
+
+/* responsive */
+@media (max-width: 1280px) {
+  main[data-section] .ema-layout {
+    grid-template-columns: 170px minmax(0, 1fr) !important;
+  }
+
+  main[data-section] .ema-hero-shell {
+    grid-template-columns: minmax(300px, 330px) minmax(0, 1fr) !important;
+  }
+
+  main[data-section] .ema-hero-shell .ema-score-grid {
+    grid-template-columns: repeat(4, minmax(118px, 1fr)) !important;
+  }
+
+  main[data-section] .ema-hero-shell .ema-kpi-label {
+    font-size: 7.8px !important;
+  }
+
+  main[data-section] .ema-hero-shell .ema-kpi-helper {
+    font-size: 6.6px !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  main[data-section] .ema-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  main[data-section] .ema-side-panel {
+    height: auto !important;
+    max-height: 260px !important;
+  }
+
+  main[data-section] .ema-hero-shell {
+    height: auto !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  main[data-section] .ema-hero-shell .ema-score-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 560px) {
+  main[data-section] .ema-hero-shell {
+    padding: 14px !important;
+  }
+
+  main[data-section] .ema-hero-shell::before {
+    display: none !important;
+  }
+
+  main[data-section] .ema-hero-shell .ema-score-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* =========================================================
+   EMA SETTINGS KPI WIDTH TUNE
+   KPI card not too wide; fixed compact card width.
+========================================================= */
+
+main[data-section] .ema-hero-shell {
+  grid-template-columns: minmax(360px, 395px) auto !important;
+  justify-content: start !important;
+}
+
+main[data-section] .ema-hero-shell .ema-score-grid {
+  width: auto !important;
+  max-width: none !important;
+  justify-self: start !important;
+  grid-template-columns: repeat(4, 140px) !important;
+  gap: 9px !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-card {
+  width: 140px !important;
+  min-width: 140px !important;
+  max-width: 140px !important;
+  height: 70px !important;
+  min-height: 70px !important;
+  max-height: 70px !important;
+  grid-template-columns: 30px minmax(0, 1fr) !important;
+  column-gap: 8px !important;
+  padding: 10px 10px !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-icon {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-icon svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-label {
+  font-size: 8.1px !important;
+}
+
+main[data-section] .ema-hero-shell .ema-kpi-helper {
+  font-size: 6.8px !important;
+}
+
+/* laptop */
+@media (max-width: 1280px) {
+  main[data-section] .ema-hero-shell {
+    grid-template-columns: minmax(300px, 330px) auto !important;
+  }
+
+  main[data-section] .ema-hero-shell .ema-score-grid {
+    grid-template-columns: repeat(4, 132px) !important;
+    gap: 8px !important;
+  }
+
+  main[data-section] .ema-hero-shell .ema-kpi-card {
+    width: 132px !important;
+    min-width: 132px !important;
+    max-width: 132px !important;
+  }
+
+  main[data-section] .ema-hero-shell .ema-kpi-label {
+    font-size: 7.8px !important;
+  }
+
+  main[data-section] .ema-hero-shell .ema-kpi-helper {
+    font-size: 6.5px !important;
+  }
+}
+
+/* END EMA SETTINGS KPI WIDTH TUNE */
+
+/* =========================================================
+   EMA SETTINGS KPI ALIGN RIGHT
+   Push KPI group to the far right of the hero.
+========================================================= */
+
+@media (min-width: 1101px) {
+  main[data-section] .ema-hero-shell {
+    grid-template-columns: minmax(320px, 1fr) auto !important;
+    justify-content: stretch !important;
+    column-gap: 18px !important;
+  }
+
+  main[data-section] .ema-hero-info {
+    max-width: 420px !important;
+  }
+
+  main[data-section] .ema-hero-shell .ema-score-grid {
+    justify-self: end !important;
+    margin-left: auto !important;
+    margin-right: 0 !important;
+  }
+}
+
+@media (max-width: 1280px) and (min-width: 1101px) {
+  main[data-section] .ema-hero-shell {
+    grid-template-columns: minmax(280px, 1fr) auto !important;
+  }
+
+  main[data-section] .ema-hero-info {
+    max-width: 360px !important;
+  }
+}
+
+/* END EMA SETTINGS KPI ALIGN RIGHT */
+
+/* =========================================================
+   EMA SOFTWARE POLICY SETTINGS
+========================================================= */
+
+.ema-software-policy {
+  padding: 12px !important;
+  display: grid !important;
+  gap: 12px !important;
+}
+
+.ema-sp-toolbar {
+  display: flex !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  align-items: center !important;
+}
+
+.ema-sp-eyebrow {
+  display: inline-flex !important;
+  padding: 4px 8px !important;
+  border-radius: 999px !important;
+  background: rgba(77, 99, 245, 0.12) !important;
+  color: var(--ema-blue) !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+}
+
+.ema-sp-toolbar h3 {
+  margin: 7px 0 3px !important;
+  font-size: 16px !important;
+  color: var(--ema-text) !important;
+}
+
+.ema-sp-toolbar p {
+  margin: 0 !important;
+  font-size: 10px !important;
+  color: var(--ema-muted) !important;
+}
+
+.ema-sp-actions {
+  display: flex !important;
+  gap: 8px !important;
+}
+
+.ema-sp-actions button {
+  height: 32px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  border: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  border-radius: 10px !important;
+  padding: 0 11px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+}
+
+.ema-sp-actions button:last-child {
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+.ema-sp-cards {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.ema-sp-cards article {
+  min-height: 68px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 13px !important;
+  background: var(--ema-card) !important;
+  box-shadow: var(--ema-shadow) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 12px !important;
+}
+
+.ema-sp-cards article > span {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #fff !important;
+}
+
+.ema-sp-cards .blue { background: linear-gradient(135deg, #1677ff, #2457f5) !important; }
+.ema-sp-cards .green { background: linear-gradient(135deg, #12a36f, #079455) !important; }
+.ema-sp-cards .purple { background: linear-gradient(135deg, #8b5cf6, #6d46f6) !important; }
+.ema-sp-cards .red { background: linear-gradient(135deg, #ef3f5f, #e31b54) !important; }
+
+.ema-sp-cards strong {
+  display: block !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  color: var(--ema-text) !important;
+}
+
+.ema-sp-cards small {
+  display: block !important;
+  margin-top: 5px !important;
+  font-size: 9px !important;
+  color: var(--ema-muted) !important;
+}
+
+.ema-sp-filter input {
+  width: 100% !important;
+  height: 34px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  padding: 0 12px !important;
+  font-size: 10px !important;
+}
+
+.ema-sp-error {
+  border: 1px solid rgba(239, 68, 68, 0.25) !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #ef4444 !important;
+  border-radius: 10px !important;
+  padding: 10px 12px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+}
+
+.ema-sp-table-wrap {
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 13px !important;
+  overflow: auto !important;
+  background: var(--ema-card) !important;
+}
+
+.ema-sp-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  min-width: 850px !important;
+}
+
+.ema-sp-table th,
+.ema-sp-table td {
+  padding: 10px 11px !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+  text-align: left !important;
+  font-size: 10px !important;
+  color: var(--ema-text) !important;
+  white-space: nowrap !important;
+}
+
+.ema-sp-table th {
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  background: var(--ema-card-2) !important;
+}
+
+.ema-sp-empty {
+  text-align: center !important;
+  color: var(--ema-muted) !important;
+  padding: 26px !important;
+}
+
+.ema-sp-pill,
+.ema-sp-status {
+  display: inline-flex !important;
+  align-items: center !important;
+  border-radius: 999px !important;
+  padding: 4px 8px !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  background: var(--ema-blue-soft) !important;
+  color: var(--ema-blue) !important;
+}
+
+.ema-sp-pill.legal,
+.ema-sp-status.active {
+  background: rgba(34, 197, 94, 0.12) !important;
+  color: #16a34a !important;
+}
+
+.ema-sp-pill.illegal,
+.ema-sp-status.inactive {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+}
+
+@media (max-width: 980px) {
+  .ema-sp-toolbar {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+  }
+
+  .ema-sp-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .ema-sp-cards {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* END EMA SOFTWARE POLICY SETTINGS */
+
+/* =========================================================
+   EMA SETTINGS FLAT SIDEBAR SOFTWARE POLICY
+========================================================= */
+
+/* remove sidebar tree section headers */
+main[data-section] .ema-menu-group-title {
+  display: none !important;
+}
+
+main[data-section] .ema-menu-group {
+  margin: 0 !important;
+}
+
+main[data-section] .ema-menu-list {
+  gap: 7px !important;
+}
+
+main[data-section] .ema-menu {
+  display: grid !important;
+  align-content: start !important;
+  gap: 7px !important;
+}
+
+/* Software Policy content */
+.ema-software-policy {
+  padding: 12px !important;
+  display: grid !important;
+  gap: 12px !important;
+}
+
+.ema-sp-toolbar {
+  display: flex !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  align-items: center !important;
+}
+
+.ema-sp-eyebrow {
+  display: inline-flex !important;
+  padding: 4px 8px !important;
+  border-radius: 999px !important;
+  background: rgba(77, 99, 245, 0.12) !important;
+  color: var(--ema-blue) !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+}
+
+.ema-sp-toolbar h3 {
+  margin: 7px 0 3px !important;
+  font-size: 16px !important;
+  color: var(--ema-text) !important;
+}
+
+.ema-sp-toolbar p {
+  margin: 0 !important;
+  font-size: 10px !important;
+  color: var(--ema-muted) !important;
+}
+
+.ema-sp-actions {
+  display: flex !important;
+  gap: 8px !important;
+}
+
+.ema-sp-actions button {
+  height: 32px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  border: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  border-radius: 10px !important;
+  padding: 0 11px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+}
+
+.ema-sp-actions button:last-child {
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+.ema-sp-cards {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.ema-sp-cards article {
+  min-height: 68px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 13px !important;
+  background: var(--ema-card) !important;
+  box-shadow: var(--ema-shadow) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 12px !important;
+}
+
+.ema-sp-cards article > span {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #fff !important;
+}
+
+.ema-sp-cards .blue { background: linear-gradient(135deg, #1677ff, #2457f5) !important; }
+.ema-sp-cards .green { background: linear-gradient(135deg, #12a36f, #079455) !important; }
+.ema-sp-cards .purple { background: linear-gradient(135deg, #8b5cf6, #6d46f6) !important; }
+.ema-sp-cards .red { background: linear-gradient(135deg, #ef3f5f, #e31b54) !important; }
+
+.ema-sp-cards strong {
+  display: block !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  color: var(--ema-text) !important;
+}
+
+.ema-sp-cards small {
+  display: block !important;
+  margin-top: 5px !important;
+  font-size: 9px !important;
+  color: var(--ema-muted) !important;
+}
+
+.ema-sp-filter input {
+  width: 100% !important;
+  height: 34px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  padding: 0 12px !important;
+  font-size: 10px !important;
+}
+
+.ema-sp-error {
+  border: 1px solid rgba(239, 68, 68, 0.25) !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #ef4444 !important;
+  border-radius: 10px !important;
+  padding: 10px 12px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+}
+
+.ema-sp-table-wrap {
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 13px !important;
+  overflow: auto !important;
+  background: var(--ema-card) !important;
+}
+
+.ema-sp-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  min-width: 850px !important;
+}
+
+.ema-sp-table th,
+.ema-sp-table td {
+  padding: 10px 11px !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+  text-align: left !important;
+  font-size: 10px !important;
+  color: var(--ema-text) !important;
+  white-space: nowrap !important;
+}
+
+.ema-sp-table th {
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  background: var(--ema-card-2) !important;
+}
+
+.ema-sp-empty {
+  text-align: center !important;
+  color: var(--ema-muted) !important;
+  padding: 26px !important;
+}
+
+.ema-sp-pill,
+.ema-sp-status {
+  display: inline-flex !important;
+  border-radius: 999px !important;
+  padding: 4px 8px !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  background: var(--ema-blue-soft) !important;
+  color: var(--ema-blue) !important;
+}
+
+.ema-sp-pill.legal,
+.ema-sp-status.active {
+  background: rgba(34, 197, 94, 0.12) !important;
+  color: #16a34a !important;
+}
+
+.ema-sp-pill.illegal,
+.ema-sp-status.inactive {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+}
+
+/* END EMA SETTINGS FLAT SIDEBAR SOFTWARE POLICY */
+
+/* =========================================================
+   EMA SETTINGS CLEAN CONTENT NO V2
+========================================================= */
+
+main[data-section] .ema-main-panel {
+  height: calc(100vh - var(--ema-topbar-height) - 24px) !important;
+  max-height: calc(100vh - var(--ema-topbar-height) - 24px) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+main[data-section] .ema-settings-content-card,
+main[data-section] .ema-content-card {
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 14px !important;
+  background: var(--ema-card) !important;
+  box-shadow: var(--ema-shadow) !important;
+  overflow: hidden !important;
+}
+
+main[data-section] .ema-settings-toolbar {
+  min-height: 54px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  padding: 10px 12px !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+}
+
+main[data-section] .ema-settings-search {
+  width: min(360px, 100%) !important;
+  height: 34px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 11px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card-2) !important;
+  color: var(--ema-muted) !important;
+  overflow: hidden !important;
+}
+
+main[data-section] .ema-settings-search svg {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+}
+
+main[data-section] .ema-settings-search input {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  padding: 0 !important;
+}
+
+main[data-section] .ema-settings-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+main[data-section] .ema-settings-toolbar button,
+main[data-section] .ema-settings-actions button {
+  height: 32px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 0 12px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+}
+
+main[data-section] .ema-settings-actions button:last-child {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+  color: #fff !important;
+}
+
+main[data-section] .ema-settings-content-body {
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: auto !important;
+  padding: 12px !important;
+}
+
+main[data-section] .ema-settings-role-content {
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-rows: minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+}
+
+main[data-section] .ema-settings-table-card {
+  width: 100% !important;
+  min-height: 0 !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 13px !important;
+  background: var(--ema-card) !important;
+  overflow: hidden !important;
+}
+
+main[data-section] .ema-settings-table-head,
+main[data-section] .ema-settings-table-row {
+  display: grid !important;
+  grid-template-columns: 64px minmax(280px, 1fr) 130px 120px 110px !important;
+  align-items: center !important;
+}
+
+main[data-section] .ema-settings-table-head {
+  min-height: 40px !important;
+  background: var(--ema-card-2) !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+}
+
+main[data-section] .ema-settings-table-row {
+  min-height: 58px !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+}
+
+main[data-section] .ema-settings-table-row:last-child {
+  border-bottom: 0 !important;
+}
+
+main[data-section] .ema-settings-table-head > div,
+main[data-section] .ema-settings-table-row > div {
+  min-width: 0 !important;
+  padding: 0 12px !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  text-align: left !important;
+}
+
+main[data-section] .ema-settings-table-head > div {
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+}
+
+main[data-section] .ema-settings-row-no {
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+}
+
+main[data-section] .ema-settings-role-main {
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+}
+
+main[data-section] .ema-settings-role-avatar {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12) !important;
+}
+
+main[data-section] .ema-settings-role-avatar svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+main[data-section] .ema-settings-role-avatar.blue {
+  background: linear-gradient(135deg, #1677ff, #2457f5) !important;
+}
+
+main[data-section] .ema-settings-role-avatar.green {
+  background: linear-gradient(135deg, #12a36f, #079455) !important;
+}
+
+main[data-section] .ema-settings-role-avatar.indigo {
+  background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+}
+
+main[data-section] .ema-settings-role-avatar.purple {
+  background: linear-gradient(135deg, #8b5cf6, #6d46f6) !important;
+}
+
+main[data-section] .ema-settings-role-avatar.sky {
+  background: linear-gradient(135deg, #0ea5e9, #2563eb) !important;
+}
+
+main[data-section] .ema-settings-role-avatar.gray {
+  background: linear-gradient(135deg, #64748b, #475569) !important;
+}
+
+main[data-section] .ema-settings-role-name {
+  min-width: 0 !important;
+}
+
+main[data-section] .ema-settings-role-name strong {
+  display: block !important;
+  color: var(--ema-text) !important;
+  font-size: 10.5px !important;
+  font-weight: 800 !important;
+  line-height: 1.15 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+main[data-section] .ema-settings-role-name small {
+  display: block !important;
+  margin-top: 3px !important;
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  line-height: 1.15 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+main[data-section] .ema-settings-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  width: fit-content !important;
+  height: 22px !important;
+  padding: 0 8px !important;
+  border-radius: 999px !important;
+  background: var(--ema-blue-soft) !important;
+  color: var(--ema-blue) !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+}
+
+main[data-section] .ema-settings-pill.active {
+  background: rgba(34, 197, 94, 0.12) !important;
+  color: #16a34a !important;
+}
+
+main[data-section] .ema-settings-pill.inactive {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+}
+
+main[data-section] .ema-settings-pill.standard {
+  background: rgba(100, 116, 139, 0.12) !important;
+  color: var(--ema-muted) !important;
+}
+
+main[data-section] .ema-settings-pill.required {
+  background: rgba(124, 77, 255, 0.12) !important;
+  color: var(--ema-purple) !important;
+}
+
+main[data-section] .ema-settings-pill-dot {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 999px !important;
+  background: currentColor !important;
+}
+
+main[data-section] .ema-row-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+main[data-section] .ema-action-btn {
+  width: 28px !important;
+  height: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 9px !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  padding: 0 !important;
+}
+
+main[data-section] .ema-action-btn svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+main[data-section] .ema-action-btn-edit {
+  color: var(--ema-blue) !important;
+}
+
+main[data-section] .ema-action-btn-delete {
+  color: #ef4444 !important;
+}
+
+main[data-section] .ema-action-btn:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+}
+
+main[data-section] .ema-settings-empty,
+main[data-section] .ema-settings-loading {
+  padding: 26px !important;
+  text-align: center !important;
+  color: var(--ema-muted) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+}
+
+main[data-section] .ema-settings-alert {
+  margin-bottom: 10px !important;
+  border: 1px solid rgba(239, 68, 68, 0.25) !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #ef4444 !important;
+  border-radius: 10px !important;
+  padding: 10px 12px !important;
+}
+
+main[data-section] .ema-settings-alert strong,
+main[data-section] .ema-settings-alert span {
+  display: block !important;
+  font-size: 10px !important;
+}
+
+main[data-section] .ema-pagination {
+  min-height: 42px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 12px !important;
+  background: var(--ema-card) !important;
+  padding: 7px 10px !important;
+}
+
+main[data-section] .ema-pagination-summary,
+main[data-section] .ema-page-size {
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+}
+
+main[data-section] .ema-pagination-controls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+main[data-section] .ema-page-btn,
+main[data-section] .ema-page-current {
+  width: 28px !important;
+  height: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 9px !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  padding: 0 !important;
+}
+
+main[data-section] .ema-page-btn svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+main[data-section] .ema-page-current {
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+@media (max-width: 980px) {
+  main[data-section] .ema-settings-toolbar {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  main[data-section] .ema-settings-search {
+    width: 100% !important;
+  }
+
+  main[data-section] .ema-settings-table-head,
+  main[data-section] .ema-settings-table-row {
+    grid-template-columns: 48px minmax(220px, 1fr) 100px 90px 88px !important;
+  }
+}
+
+/* END EMA SETTINGS CLEAN CONTENT NO V2 */
+
+/* =========================================================
+   EMA SETTINGS TOOLBAR CLEAN FINAL
+   Fix raw search icon/input/buttons. No old class naming.
+========================================================= */
+
+main[data-section] .ema-settings-content-card {
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 14px !important;
+  background: var(--ema-card) !important;
+  box-shadow: var(--ema-shadow) !important;
+  overflow: hidden !important;
+}
+
+main[data-section] .ema-settings-toolbar {
+  min-height: 54px !important;
+  height: 54px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  padding: 10px 12px !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+}
+
+main[data-section] .ema-settings-search {
+  width: min(360px, 100%) !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 11px !important;
+  margin: 0 !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card-2) !important;
+  color: var(--ema-muted) !important;
+  overflow: hidden !important;
+}
+
+main[data-section] .ema-settings-search svg,
+main[data-section] .ema-settings-toolbar svg {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+  display: block !important;
+  color: var(--ema-muted) !important;
+  stroke-width: 2.2 !important;
+}
+
+main[data-section] .ema-settings-search input {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 32px !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+main[data-section] .ema-settings-search input::placeholder {
+  color: var(--ema-muted) !important;
+}
+
+main[data-section] .ema-settings-toolbar > div,
+main[data-section] .ema-settings-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+main[data-section] .ema-settings-toolbar button,
+main[data-section] .ema-settings-actions button {
+  height: 32px !important;
+  min-height: 32px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 0 12px !important;
+  margin: 0 !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+}
+
+main[data-section] .ema-settings-toolbar button:last-child,
+main[data-section] .ema-settings-actions button:last-child {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+  color: #ffffff !important;
+}
+
+main[data-section] .ema-settings-toolbar button:last-child svg,
+main[data-section] .ema-settings-actions button:last-child svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+main[data-section] .ema-settings-content-body {
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: auto !important;
+  padding: 12px !important;
+}
+
+/* hard guard: no giant svg inside settings content */
+main[data-section] .ema-settings-content-card svg {
+  max-width: 18px !important;
+  max-height: 18px !important;
+}
+
+/* END EMA SETTINGS TOOLBAR CLEAN FINAL */
+
+/* =========================================================
+   EMA SETTINGS CONTENT WRAPPER FIX
+   Clean content wrapper. No v2 selector.
+========================================================= */
+
+main[data-section] .ema-main-panel {
+  height: calc(100vh - var(--ema-topbar-height) - 24px) !important;
+  max-height: calc(100vh - var(--ema-topbar-height) - 24px) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+main[data-section] .ema-settings-content-card {
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-rows: 54px minmax(0, 1fr) !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 14px !important;
+  background: var(--ema-card) !important;
+  box-shadow: var(--ema-shadow) !important;
+  overflow: hidden !important;
+}
+
+main[data-section] .ema-settings-toolbar {
+  min-height: 54px !important;
+  height: 54px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  padding: 10px 12px !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+}
+
+main[data-section] .ema-settings-search {
+  width: min(360px, 100%) !important;
+  height: 34px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 11px !important;
+  margin: 0 !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card-2) !important;
+  color: var(--ema-muted) !important;
+  overflow: hidden !important;
+}
+
+main[data-section] .ema-settings-search svg,
+main[data-section] .ema-settings-toolbar svg {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+  display: block !important;
+  color: var(--ema-muted) !important;
+}
+
+main[data-section] .ema-settings-search input {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 32px !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+main[data-section] .ema-settings-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+main[data-section] .ema-settings-toolbar button,
+main[data-section] .ema-settings-actions button {
+  height: 32px !important;
+  min-height: 32px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 0 12px !important;
+  margin: 0 !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+}
+
+main[data-section] .ema-settings-actions button:last-child {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+  color: #ffffff !important;
+}
+
+main[data-section] .ema-settings-content-body {
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: auto !important;
+  padding: 12px !important;
+  display: block !important;
+}
+
+/* Role table clean */
+main[data-section] .ema-settings-role-content {
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-rows: minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+}
+
+main[data-section] .ema-settings-table-card {
+  width: 100% !important;
+  min-height: 0 !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 13px !important;
+  background: var(--ema-card) !important;
+  overflow: hidden !important;
+}
+
+main[data-section] .ema-settings-table-head,
+main[data-section] .ema-settings-table-row {
+  display: grid !important;
+  grid-template-columns: 64px minmax(280px, 1fr) 130px 120px 110px !important;
+  align-items: center !important;
+}
+
+main[data-section] .ema-settings-table-head {
+  min-height: 40px !important;
+  background: var(--ema-card-2) !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+}
+
+main[data-section] .ema-settings-table-row {
+  min-height: 58px !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+}
+
+main[data-section] .ema-settings-table-row:last-child {
+  border-bottom: 0 !important;
+}
+
+main[data-section] .ema-settings-table-head > div,
+main[data-section] .ema-settings-table-row > div {
+  min-width: 0 !important;
+  padding: 0 12px !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  text-align: left !important;
+}
+
+main[data-section] .ema-settings-table-head > div {
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+}
+
+main[data-section] .ema-settings-role-main {
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+}
+
+main[data-section] .ema-settings-role-avatar {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12) !important;
+}
+
+main[data-section] .ema-settings-role-avatar svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+main[data-section] .ema-settings-role-avatar.blue {
+  background: linear-gradient(135deg, #1677ff, #2457f5) !important;
+}
+
+main[data-section] .ema-settings-role-avatar.green {
+  background: linear-gradient(135deg, #12a36f, #079455) !important;
+}
+
+main[data-section] .ema-settings-role-avatar.indigo {
+  background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+}
+
+main[data-section] .ema-settings-role-avatar.purple {
+  background: linear-gradient(135deg, #8b5cf6, #6d46f6) !important;
+}
+
+main[data-section] .ema-settings-role-avatar.sky {
+  background: linear-gradient(135deg, #0ea5e9, #2563eb) !important;
+}
+
+main[data-section] .ema-settings-role-avatar.gray {
+  background: linear-gradient(135deg, #64748b, #475569) !important;
+}
+
+main[data-section] .ema-settings-role-name {
+  min-width: 0 !important;
+}
+
+main[data-section] .ema-settings-role-name strong {
+  display: block !important;
+  color: var(--ema-text) !important;
+  font-size: 10.5px !important;
+  font-weight: 800 !important;
+  line-height: 1.15 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+main[data-section] .ema-settings-role-name small {
+  display: block !important;
+  margin-top: 3px !important;
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  line-height: 1.15 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+main[data-section] .ema-settings-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  width: fit-content !important;
+  height: 22px !important;
+  padding: 0 8px !important;
+  border-radius: 999px !important;
+  background: var(--ema-blue-soft) !important;
+  color: var(--ema-blue) !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+}
+
+main[data-section] .ema-settings-pill.active {
+  background: rgba(34, 197, 94, 0.12) !important;
+  color: #16a34a !important;
+}
+
+main[data-section] .ema-settings-pill.inactive {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+}
+
+main[data-section] .ema-settings-pill.standard {
+  background: rgba(100, 116, 139, 0.12) !important;
+  color: var(--ema-muted) !important;
+}
+
+main[data-section] .ema-settings-pill.required {
+  background: rgba(124, 77, 255, 0.12) !important;
+  color: var(--ema-purple) !important;
+}
+
+main[data-section] .ema-settings-pill-dot {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 999px !important;
+  background: currentColor !important;
+}
+
+main[data-section] .ema-row-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+main[data-section] .ema-action-btn {
+  width: 28px !important;
+  height: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 9px !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  padding: 0 !important;
+}
+
+main[data-section] .ema-action-btn svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+main[data-section] .ema-action-btn-edit {
+  color: var(--ema-blue) !important;
+}
+
+main[data-section] .ema-action-btn-delete {
+  color: #ef4444 !important;
+}
+
+main[data-section] .ema-pagination {
+  min-height: 42px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 12px !important;
+  background: var(--ema-card) !important;
+  padding: 7px 10px !important;
+}
+
+/* END EMA SETTINGS CONTENT WRAPPER FIX */
+
+/* =========================================================
+   EMA SETTINGS ROLE USER ACCESS STYLE
+   Role content follows User Access table UI:
+   toolbar + table + footer inside one clean card.
+========================================================= */
+
+/* outer card for toolbar + body */
+main[data-section] .ema-settings-content-card {
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-rows: 58px minmax(0, 1fr) !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 14px !important;
+  background: var(--ema-card) !important;
+  box-shadow: var(--ema-shadow) !important;
+  overflow: hidden !important;
+}
+
+/* toolbar like reference */
+main[data-section] .ema-settings-toolbar {
+  min-height: 58px !important;
+  height: 58px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  padding: 12px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+  box-shadow: none !important;
+}
+
+main[data-section] .ema-settings-search {
+  width: min(360px, 100%) !important;
+  height: 34px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 12px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card-2) !important;
+  color: var(--ema-muted) !important;
+  overflow: hidden !important;
+}
+
+main[data-section] .ema-settings-search svg,
+main[data-section] .ema-settings-toolbar svg {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+  display: block !important;
+}
+
+main[data-section] .ema-settings-search input {
+  width: 100% !important;
+  height: 32px !important;
+  min-width: 0 !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  padding: 0 !important;
+}
+
+main[data-section] .ema-settings-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+main[data-section] .ema-settings-toolbar button,
+main[data-section] .ema-settings-actions button {
+  height: 34px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 0 14px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+}
+
+main[data-section] .ema-settings-actions button:last-child {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+  color: #fff !important;
+}
+
+/* body spacing */
+main[data-section] .ema-settings-content-body {
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  padding: 12px !important;
+  background: transparent !important;
+}
+
+/* role content card */
+main[data-section] .ema-settings-role-content {
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-rows: minmax(0, 1fr) 48px !important;
+  gap: 0 !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 13px !important;
+  background: var(--ema-card) !important;
+  overflow: hidden !important;
+}
+
+/* table inside role content */
+main[data-section] .ema-settings-table-card {
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-rows: 40px minmax(0, 1fr) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+main[data-section] .ema-settings-table-head {
+  min-height: 40px !important;
+  height: 40px !important;
+  display: grid !important;
+  grid-template-columns: 64px minmax(280px, 1fr) 130px 120px 110px !important;
+  align-items: center !important;
+  background: var(--ema-card-2) !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+}
+
+main[data-section] .ema-settings-table-head > div {
+  min-width: 0 !important;
+  padding: 0 12px !important;
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  text-align: left !important;
+}
+
+main[data-section] .ema-settings-table-scroll {
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: auto !important;
+  background: var(--ema-card) !important;
+}
+
+main[data-section] .ema-settings-table-row {
+  min-height: 58px !important;
+  height: 58px !important;
+  display: grid !important;
+  grid-template-columns: 64px minmax(280px, 1fr) 130px 120px 110px !important;
+  align-items: center !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+}
+
+main[data-section] .ema-settings-table-row:last-child {
+  border-bottom: 0 !important;
+}
+
+main[data-section] .ema-settings-table-row > div {
+  min-width: 0 !important;
+  padding: 0 12px !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  text-align: left !important;
+}
+
+/* role cell */
+main[data-section] .ema-settings-row-no {
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+}
+
+main[data-section] .ema-settings-role-main {
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  min-width: 0 !important;
+}
+
+main[data-section] .ema-settings-role-avatar {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12) !important;
+}
+
+main[data-section] .ema-settings-role-avatar svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+main[data-section] .ema-settings-role-avatar.blue { background: linear-gradient(135deg, #1677ff, #2457f5) !important; }
+main[data-section] .ema-settings-role-avatar.green { background: linear-gradient(135deg, #12a36f, #079455) !important; }
+main[data-section] .ema-settings-role-avatar.indigo { background: linear-gradient(135deg, #6366f1, #4f46e5) !important; }
+main[data-section] .ema-settings-role-avatar.purple { background: linear-gradient(135deg, #8b5cf6, #6d46f6) !important; }
+main[data-section] .ema-settings-role-avatar.sky { background: linear-gradient(135deg, #0ea5e9, #2563eb) !important; }
+main[data-section] .ema-settings-role-avatar.gray { background: linear-gradient(135deg, #64748b, #475569) !important; }
+
+main[data-section] .ema-settings-role-name {
+  min-width: 0 !important;
+}
+
+main[data-section] .ema-settings-role-name strong {
+  display: block !important;
+  color: var(--ema-text) !important;
+  font-size: 10.5px !important;
+  font-weight: 800 !important;
+  line-height: 1.15 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+main[data-section] .ema-settings-role-name small {
+  display: block !important;
+  margin-top: 3px !important;
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  line-height: 1.15 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* pills */
+main[data-section] .ema-settings-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  width: fit-content !important;
+  height: 22px !important;
+  padding: 0 8px !important;
+  border-radius: 999px !important;
+  background: var(--ema-blue-soft) !important;
+  color: var(--ema-blue) !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+}
+
+main[data-section] .ema-settings-pill.active {
+  background: rgba(34, 197, 94, 0.12) !important;
+  color: #16a34a !important;
+}
+
+main[data-section] .ema-settings-pill.inactive {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+}
+
+main[data-section] .ema-settings-pill.standard {
+  background: rgba(100, 116, 139, 0.12) !important;
+  color: var(--ema-muted) !important;
+}
+
+main[data-section] .ema-settings-pill.required {
+  background: rgba(124, 77, 255, 0.12) !important;
+  color: var(--ema-purple) !important;
+}
+
+main[data-section] .ema-settings-pill-dot {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 999px !important;
+  background: currentColor !important;
+}
+
+/* actions */
+main[data-section] .ema-row-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+main[data-section] .ema-action-btn {
+  width: 28px !important;
+  height: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 9px !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  padding: 0 !important;
+}
+
+main[data-section] .ema-action-btn svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+main[data-section] .ema-action-btn-edit { color: var(--ema-blue) !important; }
+main[data-section] .ema-action-btn-delete { color: #ef4444 !important; }
+
+/* footer pagination inside role card but outside table grid */
+main[data-section] .ema-settings-table-footer {
+  height: 48px !important;
+  min-height: 48px !important;
+  border-top: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+  display: grid !important;
+  grid-template-columns: 1fr auto auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 8px 12px !important;
+}
+
+main[data-section] .ema-pagination-summary,
+main[data-section] .ema-page-size {
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+}
+
+main[data-section] .ema-pagination-controls {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+}
+
+main[data-section] .ema-page-btn,
+main[data-section] .ema-page-current {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 9px !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+}
+
+main[data-section] .ema-page-current {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+  color: #ffffff !important;
+}
+
+main[data-section] .ema-page-size {
+  height: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 10px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 9px !important;
+  background: var(--ema-card-2) !important;
+}
+
+/* empty */
+main[data-section] .ema-settings-empty {
+  padding: 26px !important;
+  text-align: center !important;
+  color: var(--ema-muted) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+}
+
+/* END EMA SETTINGS ROLE USER ACCESS STYLE */
+
+/* =========================================================
+   EMA SETTINGS REMOVE APPROVAL COLUMN
+   Role table columns: No, Role, Status, Action.
+========================================================= */
+
+main[data-section] .ema-settings-table-head,
+main[data-section] .ema-settings-table-row {
+  grid-template-columns: 64px minmax(280px, 1fr) 120px 110px !important;
+}
+
+main[data-section] .ema-settings-table-row > div:nth-child(3),
+main[data-section] .ema-settings-table-head > div:nth-child(3) {
+  justify-self: start !important;
+}
+
+main[data-section] .ema-settings-table-row > div:nth-child(4),
+main[data-section] .ema-settings-table-head > div:nth-child(4) {
+  justify-self: end !important;
+}
+
+main[data-section] .ema-action-btn:disabled,
+main[data-section] button.ema-action-btn:disabled {
+  opacity: 0.32 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  filter: grayscale(0.4) !important;
+}
+
+/* END EMA SETTINGS REMOVE APPROVAL COLUMN */
+
+/* =========================================================
+   EMA COMMON DATA TABLE CLEAN
+   Reusable clean data table. No v2. No page-specific UAM.
+========================================================= */
+
+main[data-section] .ema-settings-content-body:has(.ema-data-page) {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  padding: 12px !important;
+}
+
+.ema-data-page {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  overflow: hidden !important;
+}
+
+.ema-data-toolbar {
+  width: 100% !important;
+  min-height: 58px !important;
+  flex: 0 0 auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr) !important;
+  gap: 10px !important;
+  align-items: center !important;
+  padding: 12px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 13px !important;
+  background: var(--ema-card) !important;
+}
+
+.ema-data-search {
+  height: 34px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 12px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card-2) !important;
+  color: var(--ema-muted) !important;
+  overflow: hidden !important;
+}
+
+.ema-data-search svg,
+.ema-data-actions svg {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+}
+
+.ema-data-search input {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 32px !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  padding: 0 !important;
+}
+
+.ema-data-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+.ema-data-actions select,
+.ema-data-actions button {
+  height: 34px !important;
+  min-height: 34px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  padding: 0 12px !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+}
+
+.ema-data-actions select {
+  min-width: 124px !important;
+}
+
+.ema-data-actions button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+}
+
+.ema-data-actions button:last-child {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+  color: #fff !important;
+}
+
+.ema-data-card {
+  width: 100% !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 13px !important;
+  background: var(--ema-card) !important;
+  overflow: hidden !important;
+}
+
+.ema-data-head,
+.ema-data-row {
+  width: 100% !important;
+  display: grid !important;
+  align-items: center !important;
+}
+
+[data-ema-data="user-access"] .ema-data-head,
+[data-ema-data="user-access"] .ema-data-row {
+  grid-template-columns: 54px minmax(220px, 1fr) minmax(170px, 0.8fr) 80px 100px 145px 92px !important;
+}
+
+.ema-data-head {
+  height: 40px !important;
+  min-height: 40px !important;
+  flex: 0 0 40px !important;
+  background: var(--ema-card-2) !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+}
+
+.ema-data-head > div {
+  min-width: 0 !important;
+  padding: 0 10px !important;
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+}
+
+.ema-data-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+  background: var(--ema-card) !important;
+}
+
+.ema-data-row {
+  height: 48px !important;
+  min-height: 48px !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+}
+
+.ema-data-row:last-child {
+  border-bottom: 0 !important;
+}
+
+.ema-data-row > div {
+  min-width: 0 !important;
+  padding: 0 10px !important;
+}
+
+.ema-data-no {
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+}
+
+.ema-data-profile {
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  min-width: 0 !important;
+}
+
+.ema-data-profile i {
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-style: normal !important;
+  color: #fff !important;
+  font-size: 8.5px !important;
+  font-weight: 900 !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+}
+
+.ema-data-profile strong {
+  display: block !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  line-height: 1.15 !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.ema-data-profile small {
+  display: block !important;
+  margin-top: 2px !important;
+  color: var(--ema-muted) !important;
+  font-size: 8.5px !important;
+  line-height: 1.1 !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.ema-data-chip-list {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  flex-wrap: wrap !important;
+  min-width: 0 !important;
+}
+
+.ema-data-pill {
+  height: 22px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  border-radius: 999px !important;
+  padding: 0 8px !important;
+  background: var(--ema-blue-soft) !important;
+  color: var(--ema-blue) !important;
+  font-size: 8.5px !important;
+  font-weight: 900 !important;
+}
+
+.ema-data-pill.active {
+  background: rgba(34, 197, 94, 0.12) !important;
+  color: #16a34a !important;
+}
+
+.ema-data-pill.inactive {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+}
+
+.ema-data-pill.required {
+  background: rgba(124, 77, 255, 0.12) !important;
+  color: var(--ema-purple) !important;
+}
+
+.ema-data-pill.standard {
+  background: rgba(100, 116, 139, 0.12) !important;
+  color: var(--ema-muted) !important;
+}
+
+.ema-data-pill-dot {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 999px !important;
+  background: currentColor !important;
+}
+
+.ema-data-date {
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+}
+
+.ema-data-empty {
+  padding: 26px !important;
+  text-align: center !important;
+  color: var(--ema-muted) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+}
+
+.ema-data-footer {
+  height: 48px !important;
+  min-height: 48px !important;
+  flex: 0 0 48px !important;
+  border-top: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+  display: grid !important;
+  grid-template-columns: 1fr auto auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 8px 12px !important;
+}
+
+.ema-user-modal-global {
+  grid-template-columns: 1fr 1fr !important;
+}
+
+.ema-user-modal-global .ema-field:nth-child(1),
+.ema-user-modal-global .ema-field:nth-child(2),
+.ema-user-modal-global .ema-field:nth-child(4),
+.ema-user-modal-global .ema-switch-row {
+  grid-column: 1 / -1 !important;
+}
+
+@media (max-width: 1200px) {
+  .ema-data-toolbar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ema-data-actions {
+    justify-content: flex-start !important;
+  }
+
+  .ema-data-card {
+    overflow-x: auto !important;
+  }
+
+  [data-ema-data="user-access"] .ema-data-head,
+  [data-ema-data="user-access"] .ema-data-row {
+    min-width: 920px !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .ema-user-modal-global {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* END EMA COMMON DATA TABLE CLEAN */
+
+/* =========================================================
+   EMA DATA TABLE EMERGENCY VISIBLE
+   Force clean data table visible. No v2. No uam.
+========================================================= */
+
+/* jangan lock body sampai content hilang */
+main[data-section] .ema-settings-content-body:has(.ema-data-page) {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+  padding: 12px !important;
+}
+
+/* page flow biasa */
+.ema-data-page {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  display: block !important;
+  overflow: visible !important;
+}
+
+/* toolbar normal */
+.ema-data-toolbar {
+  width: 100% !important;
+  min-height: 58px !important;
+  height: auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr) !important;
+  gap: 10px !important;
+  align-items: center !important;
+  padding: 12px !important;
+  margin: 0 0 10px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 13px !important;
+  background: var(--ema-card) !important;
+  overflow: visible !important;
+}
+
+.ema-data-search {
+  height: 34px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 12px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card-2) !important;
+  color: var(--ema-muted) !important;
+  overflow: hidden !important;
+}
+
+.ema-data-search svg {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+}
+
+.ema-data-search input {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 32px !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  padding: 0 !important;
+}
+
+.ema-data-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+.ema-data-actions select,
+.ema-data-actions button {
+  height: 34px !important;
+  min-height: 34px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  padding: 0 12px !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+}
+
+.ema-data-actions button:last-child {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+  color: #fff !important;
+}
+
+/* card jangan flex height penuh sampai body kosong */
+.ema-data-card {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  display: block !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 13px !important;
+  background: var(--ema-card) !important;
+  overflow: hidden !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* head/row wajib visible */
+.ema-data-head,
+.ema-data-row {
+  width: 100% !important;
+  display: grid !important;
+  align-items: center !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  transform: none !important;
+}
+
+[data-ema-data="user-access"] .ema-data-head,
+[data-ema-data="user-access"] .ema-data-row {
+  grid-template-columns: 54px minmax(220px, 1fr) minmax(170px, 0.8fr) 80px 100px 145px 92px !important;
+}
+
+.ema-data-head {
+  height: 40px !important;
+  min-height: 40px !important;
+  background: var(--ema-card-2) !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+}
+
+.ema-data-head > div {
+  min-width: 0 !important;
+  padding: 0 10px !important;
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+}
+
+/* body jangan kosong/hidden */
+.ema-data-body {
+  height: auto !important;
+  min-height: 48px !important;
+  max-height: none !important;
+  display: block !important;
+  overflow: visible !important;
+  background: var(--ema-card) !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.ema-data-row {
+  height: 48px !important;
+  min-height: 48px !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+}
+
+.ema-data-row:last-child {
+  border-bottom: 0 !important;
+}
+
+.ema-data-row > div {
+  min-width: 0 !important;
+  padding: 0 10px !important;
+  color: var(--ema-text) !important;
+}
+
+/* profile */
+.ema-data-profile {
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  min-width: 0 !important;
+}
+
+.ema-data-profile i {
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-style: normal !important;
+  color: #fff !important;
+  font-size: 8.5px !important;
+  font-weight: 900 !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+}
+
+.ema-data-profile strong {
+  display: block !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  line-height: 1.15 !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.ema-data-profile small {
+  display: block !important;
+  margin-top: 2px !important;
+  color: var(--ema-muted) !important;
+  font-size: 8.5px !important;
+  line-height: 1.1 !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* pills */
+.ema-data-chip-list {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  flex-wrap: wrap !important;
+  min-width: 0 !important;
+}
+
+.ema-data-pill {
+  height: 22px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  border-radius: 999px !important;
+  padding: 0 8px !important;
+  background: var(--ema-blue-soft) !important;
+  color: var(--ema-blue) !important;
+  font-size: 8.5px !important;
+  font-weight: 900 !important;
+}
+
+.ema-data-pill.active {
+  background: rgba(34, 197, 94, 0.12) !important;
+  color: #16a34a !important;
+}
+
+.ema-data-pill.inactive {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+}
+
+.ema-data-pill.required {
+  background: rgba(124, 77, 255, 0.12) !important;
+  color: var(--ema-purple) !important;
+}
+
+.ema-data-pill.standard {
+  background: rgba(100, 116, 139, 0.12) !important;
+  color: var(--ema-muted) !important;
+}
+
+.ema-data-pill-dot {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 999px !important;
+  background: currentColor !important;
+}
+
+.ema-data-date,
+.ema-data-no {
+  color: var(--ema-text) !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+}
+
+.ema-data-empty {
+  padding: 26px !important;
+  text-align: center !important;
+  color: var(--ema-muted) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+}
+
+/* footer */
+.ema-data-footer {
+  width: 100% !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  border-top: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+  display: grid !important;
+  grid-template-columns: 1fr auto auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 8px 12px !important;
+}
+
+@media (max-width: 1200px) {
+  .ema-data-toolbar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ema-data-actions {
+    justify-content: flex-start !important;
+  }
+
+  .ema-data-card {
+    overflow-x: auto !important;
+  }
+
+  [data-ema-data="user-access"] .ema-data-head,
+  [data-ema-data="user-access"] .ema-data-row {
+    min-width: 920px !important;
+  }
+}
+
+/* END EMA DATA TABLE EMERGENCY VISIBLE */
+
+/* =========================================================
+   EMA DATA FULL SCREEN HEIGHT FIX
+   Make data page use full available screen height.
+========================================================= */
+
+/* Settings right panel uses available viewport */
+main[data-section] .ema-main-panel {
+  min-height: 0 !important;
+  height: calc(100vh - var(--ema-topbar-height) - 24px) !important;
+  max-height: calc(100vh - var(--ema-topbar-height) - 24px) !important;
+  overflow: hidden !important;
+}
+
+/* Content card that contains data table must fill remaining area */
+main[data-section] .ema-settings-content-card:has(.ema-data-page) {
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+/* Content body should fill, not shrink */
+main[data-section] .ema-settings-content-body:has(.ema-data-page) {
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+  padding: 12px !important;
+}
+
+/* Main data page fills screen */
+.ema-data-page {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  display: grid !important;
+  grid-template-rows: 64px minmax(0, 1fr) !important;
+  gap: 12px !important;
+  overflow: hidden !important;
+}
+
+/* Toolbar bigger and properly spaced */
+.ema-data-toolbar {
+  width: 100% !important;
+  height: 64px !important;
+  min-height: 64px !important;
+  display: grid !important;
+  grid-template-columns: minmax(320px, 440px) minmax(0, 1fr) !important;
+  gap: 12px !important;
+  align-items: center !important;
+  padding: 14px !important;
+  margin: 0 !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 14px !important;
+  background: var(--ema-card) !important;
+  overflow: visible !important;
+}
+
+/* Search wider and normal size */
+.ema-data-search {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 13px !important;
+  border-radius: 11px !important;
+}
+
+.ema-data-search input {
+  height: 36px !important;
+  font-size: 10.5px !important;
+}
+
+/* Actions align right and not tiny */
+.ema-data-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 9px !important;
+  flex-wrap: nowrap !important;
+  min-width: 0 !important;
+}
+
+.ema-data-actions select,
+.ema-data-actions button {
+  height: 38px !important;
+  min-height: 38px !important;
+  border-radius: 11px !important;
+  padding: 0 14px !important;
+  font-size: 10.5px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+}
+
+.ema-data-actions select {
+  min-width: 136px !important;
+}
+
+/* Table card fills rest of screen */
+.ema-data-card {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  display: grid !important;
+  grid-template-rows: 42px minmax(0, 1fr) 50px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 14px !important;
+  background: var(--ema-card) !important;
+  overflow: hidden !important;
+}
+
+/* Header */
+.ema-data-head {
+  height: 42px !important;
+  min-height: 42px !important;
+  background: var(--ema-card-2) !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+}
+
+/* Body must scroll inside table, not whole page */
+.ema-data-body {
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: auto !important;
+  background: var(--ema-card) !important;
+}
+
+/* Rows a bit taller like reference */
+.ema-data-row {
+  height: 52px !important;
+  min-height: 52px !important;
+}
+
+/* Footer fixed at bottom */
+.ema-data-footer {
+  height: 50px !important;
+  min-height: 50px !important;
+  border-top: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+  display: grid !important;
+  grid-template-columns: 1fr auto auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 9px 12px !important;
+}
+
+/* User Access columns */
+[data-ema-data="user-access"] .ema-data-head,
+[data-ema-data="user-access"] .ema-data-row {
+  grid-template-columns: 56px minmax(240px, 1fr) minmax(180px, 0.8fr) 86px 104px 155px 96px !important;
+}
+
+/* Responsive only when screen really narrow */
+@media (max-width: 1280px) {
+  .ema-data-toolbar {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    min-height: 112px !important;
+  }
+
+  .ema-data-actions {
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+  }
+
+  .ema-data-card {
+    overflow-x: auto !important;
+  }
+
+  [data-ema-data="user-access"] .ema-data-head,
+  [data-ema-data="user-access"] .ema-data-row {
+    min-width: 980px !important;
+  }
+}
+
+/* END EMA DATA FULL SCREEN HEIGHT FIX */
+
+/* =========================================================
+   EMA DATA OUTER CONTAINER LIKE ROLES
+   Same outer container concept as Role Based Control.
+========================================================= */
+
+/* parent should not add another visible card */
+main[data-section] .ema-settings-content-card:has(.ema-data-page) {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+/* content body owns spacing only */
+main[data-section] .ema-settings-content-body:has(.ema-data-page) {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  padding: 12px !important;
+  background: transparent !important;
+}
+
+/* THIS is the outer container, same as roles */
+.ema-data-page {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-rows: 58px minmax(0, 1fr) !important;
+  gap: 12px !important;
+  padding: 12px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 14px !important;
+  background: var(--ema-card) !important;
+  box-shadow: var(--ema-shadow) !important;
+  overflow: hidden !important;
+}
+
+/* toolbar sits INSIDE outer container, no own container border */
+.ema-data-toolbar {
+  width: 100% !important;
+  height: 58px !important;
+  min-height: 58px !important;
+  display: grid !important;
+  grid-template-columns: minmax(320px, 440px) minmax(0, 1fr) !important;
+  gap: 12px !important;
+  align-items: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+/* search same sizing as role */
+.ema-data-search {
+  width: 100% !important;
+  max-width: 440px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 13px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 11px !important;
+  background: var(--ema-card-2) !important;
+}
+
+/* actions align same */
+.ema-data-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 9px !important;
+  flex-wrap: nowrap !important;
+  min-width: 0 !important;
+}
+
+.ema-data-actions select,
+.ema-data-actions button {
+  height: 38px !important;
+  min-height: 38px !important;
+  border-radius: 11px !important;
+  padding: 0 14px !important;
+  font-size: 10.5px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+}
+
+/* table card inside outer container */
+.ema-data-card {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-rows: 42px minmax(0, 1fr) 50px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 13px !important;
+  background: var(--ema-card) !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+/* footer stays inside table card, like roles */
+.ema-data-footer {
+  height: 50px !important;
+  min-height: 50px !important;
+  border-top: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+  display: grid !important;
+  grid-template-columns: 1fr auto auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 9px 12px !important;
+}
+
+/* same horizontal behavior */
+@media (max-width: 1280px) {
+  .ema-data-page {
+    grid-template-rows: auto minmax(0, 1fr) !important;
+  }
+
+  .ema-data-toolbar {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    min-height: 96px !important;
+  }
+
+  .ema-data-actions {
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+  }
+}
+
+/* END EMA DATA OUTER CONTAINER LIKE ROLES */
+
+/* =========================================================
+   EMA SETTINGS UNIFIED CONTENT SIZING
+   Same container/table sizing for Roles, User Access and next pages.
+========================================================= */
+
+:root {
+  --ema-data-outer-radius: 14px;
+  --ema-data-inner-radius: 13px;
+  --ema-data-pad: 12px;
+  --ema-data-gap: 10px;
+  --ema-data-toolbar-h: 58px;
+  --ema-data-control-h: 34px;
+  --ema-data-head-h: 40px;
+  --ema-data-row-h: 58px;
+  --ema-data-footer-h: 48px;
+}
+
+/* main panel fixed same for all settings pages */
+main[data-section] .ema-main-panel {
+  height: calc(100vh - var(--ema-topbar-height) - 24px) !important;
+  max-height: calc(100vh - var(--ema-topbar-height) - 24px) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* content card holder same for all */
+main[data-section] .ema-settings-content-card,
+main[data-section] .ema-settings-content-card:has(.ema-data-page) {
+  height: 100% !important;
+  min-height: 0 !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: var(--ema-data-outer-radius) !important;
+  background: var(--ema-card) !important;
+  box-shadow: var(--ema-shadow) !important;
+  overflow: hidden !important;
+}
+
+/* content body same */
+main[data-section] .ema-settings-content-body,
+main[data-section] .ema-settings-content-body:has(.ema-data-page) {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  padding: var(--ema-data-pad) !important;
+  background: transparent !important;
+}
+
+/* =========================
+   OUTER TABLE AREA STANDARD
+========================= */
+
+/* Roles root and clean data root share same outer sizing */
+main[data-section] .ema-settings-role-content,
+main[data-section] .ema-data-page {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  display: grid !important;
+  gap: var(--ema-data-gap) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+/* Roles has toolbar outside role content; User Access has toolbar inside ema-data-page */
+main[data-section] .ema-data-page {
+  grid-template-rows: var(--ema-data-toolbar-h) minmax(0, 1fr) !important;
+}
+
+/* Role content itself only table + footer */
+main[data-section] .ema-settings-role-content:not(.ema-settings-user-content) {
+  grid-template-rows: minmax(0, 1fr) var(--ema-data-footer-h) !important;
+}
+
+/* =========================
+   TOOLBAR STANDARD
+========================= */
+
+main[data-section] .ema-settings-toolbar,
+main[data-section] .ema-data-toolbar {
+  width: 100% !important;
+  height: var(--ema-data-toolbar-h) !important;
+  min-height: var(--ema-data-toolbar-h) !important;
+  max-height: var(--ema-data-toolbar-h) !important;
+  display: grid !important;
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr) !important;
+  gap: var(--ema-data-gap) !important;
+  align-items: center !important;
+  padding: var(--ema-data-pad) !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+  border-radius: 0 !important;
+  background: var(--ema-card) !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+/* if toolbar is directly inside outer card, keep same look */
+main[data-section] .ema-data-page > .ema-data-toolbar {
+  border: 1px solid var(--ema-border) !important;
+  border-radius: var(--ema-data-inner-radius) !important;
+  background: var(--ema-card) !important;
+}
+
+/* search same size */
+main[data-section] .ema-settings-search,
+main[data-section] .ema-data-search {
+  width: 100% !important;
+  max-width: 360px !important;
+  height: var(--ema-data-control-h) !important;
+  min-height: var(--ema-data-control-h) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 11px !important;
+  margin: 0 !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card-2) !important;
+  color: var(--ema-muted) !important;
+  overflow: hidden !important;
+}
+
+main[data-section] .ema-settings-search svg,
+main[data-section] .ema-data-search svg {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+}
+
+main[data-section] .ema-settings-search input,
+main[data-section] .ema-data-search input {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 32px !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  padding: 0 !important;
+}
+
+/* actions same size */
+main[data-section] .ema-settings-actions,
+main[data-section] .ema-data-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+  min-width: 0 !important;
+}
+
+main[data-section] .ema-settings-actions select,
+main[data-section] .ema-data-actions select,
+main[data-section] .ema-settings-actions button,
+main[data-section] .ema-data-actions button,
+main[data-section] .ema-settings-toolbar button,
+main[data-section] .ema-data-toolbar button {
+  height: var(--ema-data-control-h) !important;
+  min-height: var(--ema-data-control-h) !important;
+  max-height: var(--ema-data-control-h) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 0 12px !important;
+  margin: 0 !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+}
+
+main[data-section] .ema-settings-actions select,
+main[data-section] .ema-data-actions select {
+  min-width: 124px !important;
+}
+
+main[data-section] .ema-settings-actions button:last-child,
+main[data-section] .ema-data-actions button:last-child {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+  color: #fff !important;
+}
+
+/* =========================
+   TABLE CARD STANDARD
+========================= */
+
+main[data-section] .ema-settings-table-card,
+main[data-section] .ema-data-card {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  display: grid !important;
+  grid-template-rows: var(--ema-data-head-h) minmax(0, 1fr) !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: var(--ema-data-inner-radius) !important;
+  background: var(--ema-card) !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+/* data-card includes footer inside, roles table-card does not */
+main[data-section] .ema-data-card {
+  grid-template-rows: var(--ema-data-head-h) minmax(0, 1fr) var(--ema-data-footer-h) !important;
+}
+
+/* header */
+main[data-section] .ema-settings-table-head,
+main[data-section] .ema-data-head {
+  height: var(--ema-data-head-h) !important;
+  min-height: var(--ema-data-head-h) !important;
+  max-height: var(--ema-data-head-h) !important;
+  display: grid !important;
+  align-items: center !important;
+  background: var(--ema-card-2) !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+}
+
+/* roles columns */
+main[data-section] .ema-settings-table-head,
+main[data-section] .ema-settings-table-row {
+  grid-template-columns: 64px minmax(280px, 1fr) 120px 110px !important;
+}
+
+/* user columns */
+main[data-section] [data-ema-data="user-access"] .ema-data-head,
+main[data-section] [data-ema-data="user-access"] .ema-data-row {
+  grid-template-columns: 64px minmax(280px, 1fr) minmax(170px, 0.8fr) 80px 100px 150px 110px !important;
+}
+
+main[data-section] .ema-settings-table-head > div,
+main[data-section] .ema-data-head > div {
+  min-width: 0 !important;
+  padding: 0 12px !important;
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+  text-align: left !important;
+}
+
+/* scroll body */
+main[data-section] .ema-settings-table-scroll,
+main[data-section] .ema-data-body {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow: auto !important;
+  display: block !important;
+  background: var(--ema-card) !important;
+}
+
+/* rows */
+main[data-section] .ema-settings-table-row,
+main[data-section] .ema-data-row {
+  height: var(--ema-data-row-h) !important;
+  min-height: var(--ema-data-row-h) !important;
+  max-height: var(--ema-data-row-h) !important;
+  display: grid !important;
+  align-items: center !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+}
+
+main[data-section] .ema-settings-table-row:last-child,
+main[data-section] .ema-data-row:last-child {
+  border-bottom: 0 !important;
+}
+
+main[data-section] .ema-settings-table-row > div,
+main[data-section] .ema-data-row > div {
+  min-width: 0 !important;
+  padding: 0 12px !important;
+  color: var(--ema-text) !important;
+}
+
+/* =========================
+   FOOTER STANDARD
+========================= */
+
+main[data-section] .ema-settings-table-footer,
+main[data-section] .ema-data-footer,
+main[data-section] .ema-pagination {
+  height: var(--ema-data-footer-h) !important;
+  min-height: var(--ema-data-footer-h) !important;
+  max-height: var(--ema-data-footer-h) !important;
+  border-top: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+  display: grid !important;
+  grid-template-columns: 1fr auto auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 8px 12px !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+}
+
+/* role footer outside table gets no extra outer card */
+main[data-section] .ema-settings-role-content > .ema-settings-table-footer {
+  border: 1px solid var(--ema-border) !important;
+  border-radius: var(--ema-data-inner-radius) !important;
+}
+
+/* pagination controls consistent */
+main[data-section] .ema-pagination-controls {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+}
+
+main[data-section] .ema-page-btn,
+main[data-section] .ema-page-current,
+main[data-section] .ema-page-size {
+  height: 28px !important;
+  min-height: 28px !important;
+  border-radius: 9px !important;
+}
+
+/* =========================
+   CELL HELPERS
+========================= */
+
+main[data-section] .ema-data-profile,
+main[data-section] .ema-settings-role-main {
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  min-width: 0 !important;
+}
+
+main[data-section] .ema-data-profile i,
+main[data-section] .ema-settings-role-avatar {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-style: normal !important;
+  color: #fff !important;
+  font-size: 8.5px !important;
+  font-weight: 900 !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+}
+
+main[data-section] .ema-data-profile strong,
+main[data-section] .ema-settings-role-name strong {
+  display: block !important;
+  color: var(--ema-text) !important;
+  font-size: 10.5px !important;
+  line-height: 1.15 !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+main[data-section] .ema-data-profile small,
+main[data-section] .ema-settings-role-name small {
+  display: block !important;
+  margin-top: 3px !important;
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  line-height: 1.15 !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* responsive */
+@media (max-width: 1280px) {
+  main[data-section] .ema-data-page {
+    grid-template-rows: auto minmax(0, 1fr) !important;
+  }
+
+  main[data-section] .ema-data-toolbar,
+  main[data-section] .ema-settings-toolbar {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    min-height: calc(var(--ema-data-toolbar-h) * 2) !important;
+    max-height: none !important;
+  }
+
+  main[data-section] .ema-data-actions,
+  main[data-section] .ema-settings-actions {
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+  }
+
+  main[data-section] .ema-data-card,
+  main[data-section] .ema-settings-table-card {
+    overflow-x: auto !important;
+  }
+
+  main[data-section] [data-ema-data="user-access"] .ema-data-head,
+  main[data-section] [data-ema-data="user-access"] .ema-data-row {
+    min-width: 980px !important;
+  }
+}
+
+/* END EMA SETTINGS UNIFIED CONTENT SIZING */

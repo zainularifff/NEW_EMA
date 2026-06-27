@@ -310,7 +310,6 @@ if (compression) {
 
 // CORS
 const cors = require("cors");
-const userAccessRoutes = require("./routes/userAccessRoutes");
 app.use(cors({
     origin: process.env.FRONTEND_URL || true,
     credentials: true
@@ -327,7 +326,6 @@ app.use(cookieParser());
 const API_SLOW_LOG_MS = Number(process.env.API_SLOW_LOG_MS || 1000);
 const API_TIMING_LOG_ENABLED = String(process.env.API_TIMING_LOG || 'true').toLowerCase() !== 'false';
 
-app.use("/api/settings/user-access", userAccessRoutes);
 app.use((req, res, next) => {
     req._emaTiming = {
         startedAt: Date.now(),

@@ -1,0 +1,1324 @@
+/* =========================================================
+   EMA COMMON UI
+   Reusable modal, confirmation modal, toast and form UI.
+========================================================= */
+
+body.ema-modal-open {
+  overflow: hidden !important;
+}
+
+.ema-modal-layer {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 20px !important;
+}
+
+.ema-modal-backdrop {
+  position: absolute !important;
+  inset: 0 !important;
+  border: 0 !important;
+  background: rgba(15, 23, 42, 0.48) !important;
+  backdrop-filter: blur(6px) !important;
+}
+
+.ema-modal {
+  width: min(100%, 560px) !important;
+  max-height: calc(100vh - 40px) !important;
+  position: relative !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 18px !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28) !important;
+  overflow: hidden !important;
+}
+
+.ema-modal-sm {
+  width: min(100%, 420px) !important;
+}
+
+.ema-modal-md {
+  width: min(100%, 560px) !important;
+}
+
+.ema-modal-lg {
+  width: min(100%, 760px) !important;
+}
+
+.ema-modal-xl {
+  width: min(100%, 960px) !important;
+}
+
+.ema-modal-header {
+  min-height: 66px !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  padding: 18px 18px 14px !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+  background:
+    radial-gradient(circle at 0 0, rgba(77, 99, 245, 0.12), transparent 28%),
+    var(--ema-card) !important;
+}
+
+.ema-modal-header h2 {
+  margin: 0 !important;
+  color: var(--ema-text) !important;
+  font-size: 16px !important;
+  line-height: 1.2 !important;
+  font-weight: 800 !important;
+}
+
+.ema-modal-header p {
+  margin: 5px 0 0 !important;
+  color: var(--ema-muted) !important;
+  font-size: 10px !important;
+  line-height: 1.4 !important;
+  font-weight: 500 !important;
+}
+
+.ema-modal-close {
+  width: 32px !important;
+  height: 32px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card-2) !important;
+  color: var(--ema-text) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+}
+
+.ema-modal-body {
+  min-height: 0 !important;
+  padding: 16px 18px !important;
+  overflow: auto !important;
+}
+
+.ema-modal-footer {
+  padding: 14px 18px !important;
+  border-top: 1px solid var(--ema-border) !important;
+  background: var(--ema-card) !important;
+}
+
+.ema-modal-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+
+.ema-form-grid {
+  display: grid !important;
+  gap: 12px !important;
+}
+
+.ema-field {
+  display: grid !important;
+  gap: 6px !important;
+}
+
+.ema-field span,
+.ema-switch-row span {
+  color: var(--ema-muted) !important;
+  font-size: 9.5px !important;
+  font-weight: 800 !important;
+}
+
+.ema-field input,
+.ema-field textarea,
+.ema-field select {
+  width: 100% !important;
+  min-height: 34px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card-2) !important;
+  color: var(--ema-text) !important;
+  padding: 0 11px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  outline: none !important;
+}
+
+.ema-field textarea {
+  min-height: 76px !important;
+  padding-top: 10px !important;
+  resize: vertical !important;
+}
+
+.ema-field input:focus,
+.ema-field textarea:focus,
+.ema-field select:focus {
+  border-color: rgba(77, 99, 245, 0.7) !important;
+  box-shadow: 0 0 0 3px rgba(77, 99, 245, 0.12) !important;
+}
+
+.ema-switch-row {
+  min-height: 38px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding: 10px 12px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 12px !important;
+  background: var(--ema-card-2) !important;
+}
+
+.ema-switch-row input {
+  width: 16px !important;
+  height: 16px !important;
+  accent-color: var(--ema-blue) !important;
+}
+
+.ema-btn {
+  height: 34px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  border-radius: 10px !important;
+  padding: 0 14px !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  border: 1px solid transparent !important;
+}
+
+.ema-btn:disabled {
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
+}
+
+.ema-btn-light {
+  color: var(--ema-text) !important;
+  background: var(--ema-card) !important;
+  border-color: var(--ema-border) !important;
+}
+
+.ema-btn-primary {
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+  border-color: transparent !important;
+}
+
+.ema-btn-danger {
+  color: #fff !important;
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  border-color: transparent !important;
+}
+
+.ema-btn-warning {
+  color: #111827 !important;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+  border-color: transparent !important;
+}
+
+.ema-btn-info {
+  color: #fff !important;
+  background: linear-gradient(135deg, #1677ff, #2457f5) !important;
+  border-color: transparent !important;
+}
+
+.ema-confirm-icon {
+  width: 52px !important;
+  height: 52px !important;
+  margin: 4px auto 0 !important;
+  border-radius: 999px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 22px !important;
+  font-weight: 900 !important;
+}
+
+.ema-confirm-danger {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+
+.ema-confirm-warning {
+  color: #f59e0b !important;
+  background: rgba(245, 158, 11, 0.14) !important;
+}
+
+.ema-confirm-info {
+  color: var(--ema-blue) !important;
+  background: rgba(77, 99, 245, 0.12) !important;
+}
+
+.ema-toast-viewport {
+  position: fixed !important;
+  top: 16px !important;
+  right: 16px !important;
+  z-index: 10000 !important;
+  display: grid !important;
+  gap: 10px !important;
+  width: min(360px, calc(100vw - 32px)) !important;
+  pointer-events: none !important;
+}
+
+.ema-toast {
+  pointer-events: auto !important;
+  min-height: 54px !important;
+  display: grid !important;
+  grid-template-columns: 10px minmax(0, 1fr) 24px !important;
+  gap: 10px !important;
+  align-items: center !important;
+  padding: 12px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 14px !important;
+  background: var(--ema-card) !important;
+  color: var(--ema-text) !important;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.18) !important;
+}
+
+.ema-toast-dot {
+  width: 9px !important;
+  height: 9px !important;
+  border-radius: 999px !important;
+}
+
+.ema-toast-success .ema-toast-dot {
+  background: #16a34a !important;
+}
+
+.ema-toast-error .ema-toast-dot {
+  background: #ef4444 !important;
+}
+
+.ema-toast-warning .ema-toast-dot {
+  background: #f59e0b !important;
+}
+
+.ema-toast-info .ema-toast-dot {
+  background: var(--ema-blue) !important;
+}
+
+.ema-toast strong {
+  display: block !important;
+  color: var(--ema-text) !important;
+  font-size: 10.5px !important;
+  font-weight: 900 !important;
+  line-height: 1.15 !important;
+}
+
+.ema-toast small {
+  display: block !important;
+  margin-top: 3px !important;
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  line-height: 1.25 !important;
+}
+
+.ema-toast button {
+  width: 24px !important;
+  height: 24px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--ema-muted) !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+}
+
+/* =========================================================
+   EMA ROLE MODAL CLEAN UI
+   Temporary hide approval required until feature is ready.
+========================================================= */
+
+/* Role modal should be compact and clean */
+.ema-modal:has(.ema-role-modal-global) {
+  width: min(100%, 520px) !important;
+  border-radius: 18px !important;
+}
+
+/* cleaner header */
+.ema-modal:has(.ema-role-modal-global) .ema-modal-header {
+  min-height: 70px !important;
+  padding: 18px 20px 14px !important;
+}
+
+.ema-modal:has(.ema-role-modal-global) .ema-modal-header h2 {
+  font-size: 17px !important;
+}
+
+.ema-modal:has(.ema-role-modal-global) .ema-modal-header p {
+  max-width: 390px !important;
+  font-size: 10px !important;
+}
+
+/* clean body spacing */
+.ema-role-modal-global {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+}
+
+/* hide approval required until function ready */
+.ema-role-modal-global .ema-switch-row {
+  display: none !important;
+}
+
+/* full-width fields */
+.ema-role-modal-global .ema-field {
+  width: 100% !important;
+  gap: 7px !important;
+}
+
+/* labels */
+.ema-role-modal-global .ema-field span {
+  color: var(--ema-muted) !important;
+  font-size: 9.5px !important;
+  font-weight: 800 !important;
+}
+
+/* inputs/select normal height */
+.ema-role-modal-global .ema-field input,
+.ema-role-modal-global .ema-field select {
+  min-height: 38px !important;
+  height: 38px !important;
+  border-radius: 11px !important;
+  padding: 0 12px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+}
+
+/* description clean */
+.ema-role-modal-global .ema-field textarea {
+  min-height: 82px !important;
+  height: 82px !important;
+  border-radius: 11px !important;
+  padding: 11px 12px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  resize: none !important;
+}
+
+/* footer buttons */
+.ema-modal:has(.ema-role-modal-global) .ema-modal-footer {
+  padding: 14px 20px !important;
+}
+
+.ema-modal:has(.ema-role-modal-global) .ema-modal-actions {
+  justify-content: flex-end !important;
+  gap: 9px !important;
+}
+
+.ema-modal:has(.ema-role-modal-global) .ema-btn {
+  height: 36px !important;
+  min-width: 86px !important;
+  border-radius: 11px !important;
+  font-size: 10px !important;
+}
+
+/* close button cleaner */
+.ema-modal:has(.ema-role-modal-global) .ema-modal-close {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 11px !important;
+}
+
+/* END EMA ROLE MODAL CLEAN UI */
+
+/* =========================================================
+   EMA CONFIRM MODAL CLEAN UI
+   Global confirmation modal standard UI.
+========================================================= */
+
+.ema-modal:has(.ema-confirm-panel) {
+  width: min(100%, 430px) !important;
+  border-radius: 18px !important;
+}
+
+.ema-modal:has(.ema-confirm-panel) .ema-modal-header {
+  min-height: 62px !important;
+  padding: 18px 20px 14px !important;
+}
+
+.ema-modal:has(.ema-confirm-panel) .ema-modal-header h2 {
+  font-size: 17px !important;
+  line-height: 1.15 !important;
+}
+
+.ema-modal:has(.ema-confirm-panel) .ema-modal-header p {
+  display: none !important;
+}
+
+.ema-modal:has(.ema-confirm-panel) .ema-modal-body {
+  padding: 18px 20px !important;
+}
+
+.ema-confirm-panel {
+  display: grid !important;
+  grid-template-columns: 44px minmax(0, 1fr) !important;
+  gap: 12px !important;
+  align-items: flex-start !important;
+  padding: 14px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 14px !important;
+  background: var(--ema-card-2) !important;
+}
+
+.ema-confirm-badge {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.ema-confirm-badge svg {
+  width: 19px !important;
+  height: 19px !important;
+  stroke-width: 2.3 !important;
+}
+
+.ema-confirm-copy {
+  min-width: 0 !important;
+  padding-top: 2px !important;
+}
+
+.ema-confirm-copy p {
+  margin: 0 !important;
+  color: var(--ema-text) !important;
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+  font-weight: 800 !important;
+}
+
+.ema-confirm-copy small {
+  display: block !important;
+  margin-top: 5px !important;
+  color: var(--ema-muted) !important;
+  font-size: 9.5px !important;
+  line-height: 1.35 !important;
+  font-weight: 600 !important;
+}
+
+.ema-confirm-danger {
+  border-color: rgba(239, 68, 68, 0.22) !important;
+  background: rgba(239, 68, 68, 0.07) !important;
+}
+
+.ema-confirm-danger .ema-confirm-badge {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.14) !important;
+}
+
+.ema-confirm-warning {
+  border-color: rgba(245, 158, 11, 0.25) !important;
+  background: rgba(245, 158, 11, 0.08) !important;
+}
+
+.ema-confirm-warning .ema-confirm-badge {
+  color: #d97706 !important;
+  background: rgba(245, 158, 11, 0.16) !important;
+}
+
+.ema-confirm-info {
+  border-color: rgba(77, 99, 245, 0.24) !important;
+  background: rgba(77, 99, 245, 0.08) !important;
+}
+
+.ema-confirm-info .ema-confirm-badge {
+  color: var(--ema-blue) !important;
+  background: rgba(77, 99, 245, 0.14) !important;
+}
+
+.ema-modal:has(.ema-confirm-panel) .ema-modal-footer {
+  padding: 14px 20px !important;
+}
+
+.ema-modal:has(.ema-confirm-panel) .ema-modal-actions {
+  justify-content: flex-end !important;
+  gap: 9px !important;
+}
+
+.ema-modal:has(.ema-confirm-panel) .ema-btn {
+  height: 36px !important;
+  min-width: 86px !important;
+  border-radius: 11px !important;
+  font-size: 10px !important;
+}
+
+/* remove old standalone round icon look */
+.ema-modal:has(.ema-confirm-panel) .ema-confirm-icon {
+  display: none !important;
+}
+
+/* END EMA CONFIRM MODAL CLEAN UI */
+
+/* =========================================================
+   EMA PROTECTED ACTION BUTTON
+========================================================= */
+
+.ema-action-btn:disabled,
+button.ema-action-btn:disabled {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  filter: grayscale(0.35) !important;
+  pointer-events: none !important;
+}
+
+/* END EMA PROTECTED ACTION BUTTON */
+
+/* =========================================================
+   EMA USER MODAL ASSIGN ROLE ONLY
+   Edit user modal shows user summary + assigned role only.
+========================================================= */
+
+.ema-modal:has(.ema-user-modal-global) {
+  width: min(100%, 480px) !important;
+}
+
+.ema-modal:has(.ema-user-modal-global) .ema-modal-header {
+  min-height: 68px !important;
+  padding: 18px 20px 14px !important;
+}
+
+.ema-modal:has(.ema-user-modal-global) .ema-modal-header h2 {
+  font-size: 17px !important;
+}
+
+.ema-modal:has(.ema-user-modal-global) .ema-modal-body {
+  padding: 16px 20px !important;
+}
+
+.ema-user-modal-global {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+}
+
+.ema-user-modal-global .ema-field,
+.ema-user-modal-global .ema-switch-row {
+  grid-column: 1 / -1 !important;
+}
+
+.ema-user-summary-card {
+  display: flex !important;
+  align-items: center !important;
+  gap: 11px !important;
+  padding: 12px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 14px !important;
+  background: var(--ema-card-2) !important;
+}
+
+.ema-user-summary-card i {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-style: normal !important;
+  color: #fff !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+}
+
+.ema-user-summary-card strong {
+  display: block !important;
+  color: var(--ema-text) !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+}
+
+.ema-user-summary-card small {
+  display: block !important;
+  margin-top: 3px !important;
+  color: var(--ema-muted) !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+}
+
+.ema-modal:has(.ema-user-modal-global) .ema-field select,
+.ema-modal:has(.ema-user-modal-global) .ema-field input {
+  height: 38px !important;
+  min-height: 38px !important;
+  border-radius: 11px !important;
+}
+
+.ema-modal:has(.ema-user-modal-global) .ema-modal-footer {
+  padding: 14px 20px !important;
+}
+
+.ema-modal:has(.ema-user-modal-global) .ema-btn {
+  height: 36px !important;
+  min-width: 92px !important;
+}
+
+/* END EMA USER MODAL ASSIGN ROLE ONLY */
+
+/* =========================================================
+   EMA USER ACCOUNT MODAL FIELDS
+========================================================= */
+
+.ema-modal:has(.ema-user-modal-global) {
+  width: min(100%, 620px) !important;
+}
+
+.ema-user-modal-global {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 12px !important;
+}
+
+.ema-user-modal-global .ema-field,
+.ema-user-modal-global .ema-switch-row {
+  grid-column: auto !important;
+}
+
+.ema-user-modal-global .ema-field:nth-child(3),
+.ema-user-modal-global .ema-field:nth-child(4) {
+  grid-column: auto !important;
+}
+
+.ema-user-modal-global .ema-field input,
+.ema-user-modal-global .ema-field select {
+  height: 38px !important;
+  min-height: 38px !important;
+  border-radius: 11px !important;
+}
+
+.ema-user-modal-global .ema-switch-row {
+  min-height: 40px !important;
+}
+
+@media (max-width: 620px) {
+  .ema-user-modal-global {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* END EMA USER ACCOUNT MODAL FIELDS */
+
+/* =========================================================
+   EMA USER ACCOUNT STATUS FIELD
+========================================================= */
+
+.ema-modal:has(.ema-user-modal-global) {
+  width: min(100%, 660px) !important;
+}
+
+.ema-user-modal-global {
+  grid-template-columns: 1fr 1fr !important;
+  gap: 12px !important;
+}
+
+.ema-user-modal-global .ema-field input,
+.ema-user-modal-global .ema-field select {
+  height: 38px !important;
+  min-height: 38px !important;
+}
+
+.ema-user-modal-global .ema-switch-row {
+  min-height: 40px !important;
+}
+
+/* END EMA USER ACCOUNT STATUS FIELD */
+
+/* =========================================================
+   EMA MULTI ROLE PICKER
+========================================================= */
+
+.ema-role-picker-field {
+  grid-column: 1 / -1 !important;
+}
+
+.ema-role-picker-list {
+  width: 100% !important;
+  max-height: 132px !important;
+  overflow: auto !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+  padding: 10px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 12px !important;
+  background: var(--ema-card-2) !important;
+}
+
+.ema-role-picker-item {
+  min-height: 34px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 10px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card) !important;
+  cursor: pointer !important;
+}
+
+.ema-role-picker-item input {
+  width: 14px !important;
+  height: 14px !important;
+  accent-color: var(--ema-blue) !important;
+}
+
+.ema-role-picker-item span {
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+}
+
+@media (max-width: 620px) {
+  .ema-role-picker-list {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* END EMA MULTI ROLE PICKER */
+
+/* =========================================================
+   EMA USER ACCOUNT MODAL CLEAN LOGIC UI
+========================================================= */
+
+.ema-modal:has(.ema-user-account-modal) {
+  width: min(100%, 720px) !important;
+}
+
+.ema-modal:has(.ema-user-account-modal) .ema-modal-body {
+  padding: 16px 18px !important;
+}
+
+.ema-user-account-modal {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 12px !important;
+}
+
+.ema-user-modal-section {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 10px !important;
+  padding: 12px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 14px !important;
+  background: var(--ema-card-2) !important;
+}
+
+.ema-user-modal-section-full {
+  grid-column: 1 / -1 !important;
+}
+
+.ema-user-modal-section-title {
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.01em !important;
+}
+
+.ema-user-account-modal .ema-field {
+  gap: 6px !important;
+}
+
+.ema-user-account-modal .ema-field input,
+.ema-user-account-modal .ema-field select {
+  height: 36px !important;
+  min-height: 36px !important;
+  border-radius: 10px !important;
+  background: var(--ema-card) !important;
+}
+
+.ema-segment-control {
+  width: 100% !important;
+  height: 38px !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 6px !important;
+  padding: 4px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 12px !important;
+  background: var(--ema-card) !important;
+}
+
+.ema-segment-control button {
+  height: 28px !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: var(--ema-muted) !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+}
+
+.ema-segment-control button.active {
+  background: rgba(34, 197, 94, 0.14) !important;
+  color: #16a34a !important;
+}
+
+.ema-segment-control button.active.danger {
+  background: rgba(239, 68, 68, 0.14) !important;
+  color: #ef4444 !important;
+}
+
+.ema-user-security-grid {
+  display: grid !important;
+  gap: 8px !important;
+}
+
+.ema-toggle-card {
+  min-height: 46px !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 18px !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 9px 10px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 12px !important;
+  background: var(--ema-card) !important;
+}
+
+.ema-toggle-card strong {
+  display: block !important;
+  color: var(--ema-text) !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+}
+
+.ema-toggle-card small {
+  display: block !important;
+  margin-top: 2px !important;
+  color: var(--ema-muted) !important;
+  font-size: 8.5px !important;
+  font-weight: 600 !important;
+}
+
+.ema-toggle-card input {
+  width: 16px !important;
+  height: 16px !important;
+  accent-color: var(--ema-blue) !important;
+}
+
+.ema-role-picker-list {
+  max-height: 118px !important;
+  overflow: auto !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.ema-role-picker-item {
+  min-height: 34px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 10px !important;
+  border: 1px solid var(--ema-border) !important;
+  border-radius: 10px !important;
+  background: var(--ema-card) !important;
+  cursor: pointer !important;
+}
+
+.ema-role-picker-item input {
+  width: 14px !important;
+  height: 14px !important;
+  accent-color: var(--ema-blue) !important;
+}
+
+.ema-role-picker-item span {
+  color: var(--ema-text) !important;
+  font-size: 9.5px !important;
+  font-weight: 900 !important;
+}
+
+.ema-user-date-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+}
+
+@media (max-width: 760px) {
+  .ema-user-account-modal {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ema-role-picker-list,
+  .ema-user-date-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* END EMA USER ACCOUNT MODAL CLEAN LOGIC UI */
+
+
+/* =========================================================
+   EMA RESTORED USER ACCESS MODAL
+========================================================= */
+
+.ema-user-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483000 !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 28px !important;
+  background: rgba(15, 23, 42, 0.48) !important;
+  backdrop-filter: blur(3px) !important;
+}
+
+.ema-user-modal-panel {
+  width: min(860px, calc(100vw - 56px)) !important;
+  max-height: calc(100vh - 56px) !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  overflow: hidden !important;
+  border: 1px solid var(--ema-border, #dfe7f2) !important;
+  border-radius: 18px !important;
+  background: #fff !important;
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.25) !important;
+}
+
+.ema-user-modal-header {
+  min-height: 78px !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  padding: 18px 22px !important;
+  border-bottom: 1px solid #e4ebf5 !important;
+}
+
+.ema-user-modal-header span {
+  color: #4d63f5 !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  letter-spacing: .04em !important;
+}
+
+.ema-user-modal-header h3 {
+  margin: 4px 0 3px !important;
+  color: #102647 !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+}
+
+.ema-user-modal-header p {
+  margin: 0 !important;
+  color: #667791 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+
+.ema-user-modal-header > button {
+  width: 34px !important;
+  height: 34px !important;
+  border: 1px solid #dfe7f2 !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #102647 !important;
+  font-size: 22px !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+}
+
+.ema-user-modal-body {
+  min-height: 0 !important;
+  overflow: auto !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 12px !important;
+  padding: 16px 18px !important;
+  background: #fbfdff !important;
+}
+
+.ema-user-modal-section {
+  display: grid !important;
+  gap: 10px !important;
+  padding: 14px !important;
+  border: 1px solid #e1e8f3 !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+}
+
+.ema-user-modal-section-full {
+  grid-column: 1 / -1 !important;
+}
+
+.ema-user-modal-section > strong {
+  color: #102647 !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+}
+
+.ema-user-modal-section label {
+  display: grid !important;
+  gap: 6px !important;
+}
+
+.ema-user-modal-section label > span {
+  color: #526580 !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+}
+
+.ema-user-modal-section input,
+.ema-user-modal-section select,
+.ema-user-modal-section textarea {
+  width: 100% !important;
+  min-height: 36px !important;
+  border: 1px solid #dfe7f2 !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #102647 !important;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+  padding: 0 11px !important;
+}
+
+.ema-user-modal-section textarea {
+  min-height: 70px !important;
+  padding: 10px 11px !important;
+  resize: vertical !important;
+}
+
+.ema-user-modal-toggle {
+  min-height: 42px !important;
+  grid-template-columns: minmax(0, 1fr) 18px !important;
+  align-items: center !important;
+  padding: 9px 10px !important;
+  border: 1px solid #e1e8f3 !important;
+  border-radius: 12px !important;
+  background: #fbfdff !important;
+}
+
+.ema-user-role-grid {
+  max-height: 148px !important;
+  overflow: auto !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+.ema-user-role-grid label {
+  min-height: 34px !important;
+  display: grid !important;
+  grid-template-columns: 16px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 10px !important;
+  border: 1px solid #dfe7f2 !important;
+  border-radius: 10px !important;
+  background: #fbfdff !important;
+}
+
+.ema-user-role-grid input,
+.ema-user-modal-toggle input {
+  width: 15px !important;
+  height: 15px !important;
+  min-height: 15px !important;
+  padding: 0 !important;
+  accent-color: #4d63f5 !important;
+}
+
+.ema-user-extra-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+}
+
+.ema-user-modal-footer {
+  min-height: 64px !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 14px 20px !important;
+  border-top: 1px solid #e4ebf5 !important;
+  background: #fff !important;
+}
+
+.ema-user-modal-footer button {
+  height: 38px !important;
+  min-width: 110px !important;
+  border-radius: 11px !important;
+  border: 1px solid #dfe7f2 !important;
+  background: #fff !important;
+  color: #102647 !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  cursor: pointer !important;
+}
+
+.ema-user-modal-footer button:last-child {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, #4d63f5, #6847f5) !important;
+  color: #fff !important;
+}
+
+@media (max-width: 760px) {
+  .ema-user-modal-body,
+  .ema-user-extra-grid,
+  .ema-user-role-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* END EMA RESTORED USER ACCESS MODAL */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* =========================================================
+   EMA SETTINGS TABLE
+   One wrapper class for all Settings tables.
+========================================================= */
+
+.ema-settings-table {
+  width: 100% !important;
+  min-height: 0 !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+  border: 1px solid #d9e5f5 !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  overflow: hidden !important;
+}
+
+.ema-settings-table .ema-data-toolbar {
+  height: 66px !important;
+  min-height: 66px !important;
+  padding: 0 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  border: 0 !important;
+  border-bottom: 1px solid #d9e5f5 !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+}
+
+.ema-settings-table .ema-data-search {
+  width: min(420px, 42vw) !important;
+  height: 42px !important;
+  margin: 0 !important;
+}
+
+.ema-settings-table .ema-data-actions {
+  margin-left: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+}
+
+.ema-settings-table .ema-data-actions select,
+.ema-settings-table .ema-data-actions button {
+  height: 38px !important;
+}
+
+.ema-settings-table .ema-data-card {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  display: grid !important;
+  grid-template-rows: 48px minmax(0, auto) 64px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+  overflow: hidden !important;
+}
+
+.ema-settings-table .ema-data-head {
+  height: 48px !important;
+  min-height: 48px !important;
+  display: grid !important;
+  align-items: center !important;
+  border-bottom: 1px solid #d9e5f5 !important;
+  background: #fbfdff !important;
+}
+
+.ema-settings-table .ema-data-body {
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: calc(100vh - 430px) !important;
+  display: block !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  background: #fff !important;
+}
+
+.ema-settings-table .ema-data-row {
+  height: 58px !important;
+  min-height: 58px !important;
+  display: grid !important;
+  align-items: center !important;
+  border-bottom: 1px solid #d9e5f5 !important;
+  background: #fff !important;
+}
+
+.ema-settings-table .ema-data-footer {
+  height: 64px !important;
+  min-height: 64px !important;
+  padding: 0 16px !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto auto !important;
+  align-items: center !important;
+  gap: 14px !important;
+  border-top: 1px solid #d9e5f5 !important;
+  background: #fff !important;
+}
+
+.ema-settings-table .ema-pagination-controls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.ema-settings-table .ema-row-actions {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+
+/* END EMA SETTINGS TABLE */

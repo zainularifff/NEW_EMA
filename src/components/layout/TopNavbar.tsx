@@ -317,6 +317,8 @@ export function TopNavbar() {
         <button
           type="button"
           className="btn btn-light d-flex align-items-center gap-2 ema-admin-topbar-btn"
+          onClick={() => navigate("/profile")}
+          aria-label="Open profile"
           title={roleTitle}
         >
           <UserCircle size={18} />

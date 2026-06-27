@@ -6,6 +6,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Hardware from "./pages/Hardware";
 import Settings from "./pages/SettingsWithNotifications";
+import Profile from "./pages/Profile";
 import ServiceDesk from "./pages/ServiceDesk";
 import TaskList from "./pages/TaskList";
 import Report from "./pages/ReportBoard";
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/hardware" element={<Hardware />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/service-desk" element={<ServiceDesk />} />
         <Route path="/tasklist" element={<TaskList />} />
         <Route path="/report" element={<Report />} />

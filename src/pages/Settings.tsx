@@ -6,12 +6,17 @@ import {
   DollarSign,
   FileText,
   Grid3X3,
-  ShieldCheck,
+  
+  LockKeyhole,ShieldCheck,
   SlidersHorizontal,
   TicketCheck,
   UserCog,
   UsersRound} from "lucide-react";
 import NotificationChannelsSettings from "../components/settings/NotificationChannelsSettings";
+import SoftwarePolicySettings from "../components/settings/SoftwarePolicySettings";
+import EmaModal from "../components/common/EmaModal";
+import EmaConfirmModal from "../components/common/EmaConfirmModal";
+import { useEmaToast } from "../components/common/EmaToastProvider";
 import {
   accessControls as settingsAccessControls,
   auditLogs as settingsAuditLogs,
@@ -23,7 +28,7 @@ import {
   settingsRoles,
   settingsUsers} from "../services/settingsService";
 
-type SectionKey = "roles" | "users" | "modules" | "access" | "incident" | "audit" | "pricing" | "aging" | "policy" | "risk" | "resources" | "notifications";
+type SectionKey = "roles" | "users" | "modules" | "access" | "incident" | "audit" | "pricing" | "aging" | "policy" | "risk" | "resources" | "notifications" | "softwarePolicy";
 type RoleStatus = "Active" | "Review" | "Locked" | "Inactive";
 type ModalMode = "add" | "edit" | "delete";
 type ToastTone = "success" | "info" | "warning" | "error";
@@ -209,7 +214,7 @@ type SectionItem = {
   subtitle: string;
 };
 
-type IconName = "role" | "user" | "matrix" | "shield" | "ticket" | "audit" | "price" | "aging" | "sliders" | "risk" | "calendar";
+type IconName = "role" | "user" | "matrix" | "shield" | "ticket" | "audit" | "price" | "aging" | "sliders" | "risk" | "calendar" | "lock" | "guard";
 
 type UserAccess = {
   id?: number | string;
@@ -754,6 +759,17 @@ const sections: Record<SectionKey, SectionItem> = {
     scoreOne: "5",
     scoreTwo: "7",
     subtitle: "Years threshold"},
+  softwarePolicy: {
+    key: "softwarePolicy",
+    title: "Software Policy",
+    desc: "Register software classification, license count, expiry period and usage policy rules.",
+    tag: "SOFTWARE GOVERNANCE",
+    icon: "sliders",
+    count: 0,
+    scoreOne: "Legal",
+    scoreTwo: "Expiry",
+    subtitle: "Policy Rules"
+  },
   policy: {
     key: "policy",
     title: "Management Policy",
@@ -793,12 +809,12 @@ const sections: Record<SectionKey, SectionItem> = {
     scoreTwo: "0",
     subtitle: "Leave schedules"}};
 
-const sectionOrder: SectionKey[] = ["roles", "users", "modules", "access", "incident", "audit", "pricing", "aging", "policy", "notifications", "resources"];
+const sectionOrder: SectionKey[] = ["roles", "users", "modules", "access", "incident", "audit", "pricing", "aging", "policy", "softwarePolicy", "notifications", "resources"];
 
 const emaMenuGroups: Array<{ label: string; keys: SectionKey[] }> = [
   { label: "Access & Roles", keys: ["roles", "users", "modules", "access"] },
   { label: "System Configuration", keys: ["incident", "audit", "pricing", "aging"] },
-  { label: "Policy & Audit", keys: ["policy", "notifications", "resources"] }
+  { label: "Policy & Audit", keys: ["policy", "softwarePolicy", "notifications", "resources"] }
 ].map((group) => ({
   ...group,
   keys: group.keys.filter((key) => sectionOrder.includes(key))
@@ -1621,7 +1637,9 @@ function SettingsMenuIcon({ name }: { name: IconName }) {
   if (name === "role") return <UsersRound size={size} strokeWidth={2.35} />;
   if (name === "user") return <UserCog size={size} strokeWidth={2.35} />;
   if (name === "matrix") return <Grid3X3 size={size} strokeWidth={2.35} />;
+  if (name === "lock") return <LockKeyhole size={size} strokeWidth={2.35} />;
   if (name === "shield") return <ShieldCheck size={size} strokeWidth={2.35} />;
+  if (name === "guard") return <ShieldCheck size={size} strokeWidth={2.35} />;
   if (name === "ticket") return <TicketCheck size={size} strokeWidth={2.35} />;
   if (name === "audit") return <FileText size={size} strokeWidth={2.35} />;
   if (name === "price") return <DollarSign size={size} strokeWidth={2.35} />;
@@ -1630,6 +1648,241 @@ function SettingsMenuIcon({ name }: { name: IconName }) {
   if (name === "calendar") return <CalendarDays size={size} strokeWidth={2.35} />;
 
   return <ShieldCheck size={size} strokeWidth={2.35} />;
+}
+
+function FilterDropdown({ label, value, options, open, onToggle, onSelect, onClose }: { label: string; value: string; options: string[]; open: boolean; onToggle: () => void; onSelect: (value: string) => void; onClose: () => void }) {
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
+
+  const updateMenuPosition = () => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const menuWidth = Math.max(rect.width, 220);
+    const safeGap = 12;
+    const viewportPadding = 16;
+    const optionHeight = 44;
+    const estimatedMenuHeight = Math.min(360, Math.max(56, options.length * optionHeight + 12));
+    const availableBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const availableAbove = rect.top - viewportPadding;
+    const shouldOpenAbove = availableBelow < estimatedMenuHeight && availableAbove > availableBelow;
+    const availableSpace = shouldOpenAbove ? availableAbove : availableBelow;
+    const finalMenuHeight = Math.max(120, Math.min(estimatedMenuHeight, availableSpace));
+    const left = Math.min(rect.left, window.innerWidth - menuWidth - viewportPadding);
+    const top = shouldOpenAbove
+      ? Math.max(viewportPadding, rect.top - finalMenuHeight - safeGap)
+      : Math.min(rect.bottom + safeGap, window.innerHeight - finalMenuHeight - viewportPadding);
+
+    setMenuStyle({
+      position: "fixed",
+      left: Math.max(viewportPadding, left),
+      top,
+      width: menuWidth,
+      maxHeight: finalMenuHeight,
+      zIndex: 2147483600
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    updateMenuPosition();
+
+    const handleReposition = () => updateMenuPosition();
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      onClose();
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    window.addEventListener("resize", handleReposition);
+    window.addEventListener("scroll", handleReposition, true);
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("resize", handleReposition);
+      window.removeEventListener("scroll", handleReposition, true);
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, value, options.length]);
+
+  const menuNode = open && typeof document !== "undefined" ? createPortal(
+    <div ref={menuRef}   role="listbox" aria-label={`${label} filter`}>
+      {options.map((option) => (
+        <button
+          key={option} 
+          type="button"
+          onClick={() => onSelect(option)}
+        >
+          <span>{option}</span>
+          {option === value && <span >✓</span>}
+        </button>
+      ))}
+    </div>,
+    document.body
+  ) : null;
+
+  return (
+    <div >
+      <button ref={triggerRef}  type="button" onClick={onToggle} aria-expanded={open}>
+        <span>{value}</span>
+        <ChevronDownSvg />
+      </button>
+      {menuNode}
+    </div>
+  );
+}
+
+function SettingSelect({
+  value,
+  options,
+  onChange,
+  disabled = false,
+  placeholder = "Select option",
+  ariaLabel}: {
+  value: string;
+  options: DropdownOption[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+  className?: string;
+  ariaLabel?: string;
+}) {
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
+
+  const selected = options.find((option) => dropdownOptionValue(option) === value);
+  const selectedLabel = selected ? dropdownOptionLabel(selected) : placeholder;
+
+  const updateMenuPosition = () => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const viewportPadding = 16;
+    const gap = 8;
+    const menuWidth = Math.max(rect.width, 210);
+    const optionHeight = 36;
+    const estimatedHeight = Math.min(288, Math.max(44, options.length * optionHeight + 10));
+    const availableBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const availableAbove = rect.top - viewportPadding;
+    const openAbove = availableBelow < estimatedHeight && availableAbove > availableBelow;
+    const maxHeight = Math.max(96, Math.min(estimatedHeight, openAbove ? availableAbove : availableBelow));
+    const left = Math.min(Math.max(viewportPadding, rect.left), window.innerWidth - menuWidth - viewportPadding);
+    const top = openAbove
+      ? Math.max(viewportPadding, rect.top - maxHeight - gap)
+      : Math.min(rect.bottom + gap, window.innerHeight - maxHeight - viewportPadding);
+
+    setMenuStyle({
+      position: "fixed",
+      left,
+      top,
+      width: menuWidth,
+      maxHeight,
+      zIndex: 2147483600});
+  };
+
+  useEffect(() => {
+    if (!open) return;
+
+    updateMenuPosition();
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    const handleResize = () => updateMenuPosition();
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleResize, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleResize, true);
+    };
+  }, [open, value, options.length]);
+
+  const menuNode = open && typeof document !== "undefined" ? createPortal(
+    <div ref={menuRef}   role="listbox" aria-label={ariaLabel || placeholder}>
+      {options.map((option) => {
+        const optionValue = dropdownOptionValue(option);
+        const optionLabel = dropdownOptionLabel(option);
+        const selectedOption = optionValue === value;
+
+        return (
+          <button
+            key={`${optionValue}-${optionLabel}`} 
+            type="button"
+            role="option"
+            aria-selected={selectedOption}
+            onClick={() => {
+              onChange(optionValue);
+              setOpen(false);
+            }}
+          >
+            <span>{optionLabel}</span>
+            {selectedOption && <span >✓</span>}
+          </button>
+        );
+      })}
+    </div>,
+    document.body
+  ) : null;
+
+  return (
+    <div >
+      <button
+        ref={triggerRef} 
+        type="button"
+        onClick={() => {
+          if (!disabled) setOpen((current) => !current);
+        }}
+        disabled={disabled}
+        aria-expanded={open}
+        aria-label={ariaLabel || placeholder}
+      >
+        <span>{selectedLabel}</span>
+        <ChevronDownSvg />
+      </button>
+      {menuNode}
+    </div>
+  );
+}
+
+function SettingsMoreSvg() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="5" r="1.8" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+      <circle cx="12" cy="19" r="1.8" fill="currentColor" />
+    </svg>
+  );
+}
+
+function dropdownOptionLabel(option: DropdownOption) {
+  return typeof option === "string" ? option : option.label;
+}
+
+function dropdownOptionValue(option: DropdownOption) {
+  return typeof option === "string" ? option : option.value;
 }
 
 export default function Settings() {
@@ -1738,7 +1991,124 @@ export default function Settings() {
   const usersActiveCount = users.filter((user) => user.status === "Active" && user.isActive !== false).length;
   const usersLockedCount = users.filter((user) => user.accountLocked || user.status === "Locked").length;
   const usersMfaCount = users.filter((user) => user.requireMFA || user.mfa).length;
-  const rolesTotalCount = accessRoles.length;
+  
+  const emaToast = useEmaToast();
+
+  const [emaRoleModalOpen, setEmaRoleModalOpen] = useState(false);
+  const [emaRoleEditingIndex, setEmaRoleEditingIndex] = useState<number | null>(null);
+  const [emaRoleDeleteTarget, setEmaRoleDeleteTarget] = useState<{ index: number; name: string } | null>(null);
+  const [emaRoleForm, setEmaRoleForm] = useState<{
+    name: string;
+    description: string;
+    status: "Active" | "Inactive";
+    approvalRequired: boolean;
+  }>({
+    name: "",
+    description: "",
+    status: "Active",
+    approvalRequired: false,
+  });
+
+  const emaOpenRoleModal = (index: number | null) => {
+    const role = index === null ? null : accessRoles[index];
+
+    if (role && isProtectedSuperAdminRole(role)) {
+      emaToast.warning("Protected role", "Super Admin role cannot be edited.");
+      return;
+    }
+
+    setEmaRoleEditingIndex(index);
+    setEmaRoleForm({
+      name: role?.name || "",
+      description: role?.description || "",
+      status: role?.status === "Inactive" ? "Inactive" : "Active",
+      approvalRequired: Boolean(role?.approvalRequired),
+    });
+    setEmaRoleModalOpen(true);
+  };
+
+  const emaCloseRoleModal = () => {
+    setEmaRoleModalOpen(false);
+    setEmaRoleEditingIndex(null);
+  };
+
+  const emaSaveRole = () => {
+    const name = emaRoleForm.name.trim();
+    const description = emaRoleForm.description.trim();
+
+    if (!name) {
+      emaToast.error("Role name required", "Please enter a role name before saving.");
+      return;
+    }
+
+    setAccessRoles((current) => {
+      if (emaRoleEditingIndex !== null) {
+        return current.map((role, index) => {
+          if (index !== emaRoleEditingIndex) return role;
+
+          return {
+            ...role,
+            name,
+            description,
+            status: emaRoleForm.status,
+            approvalRequired: emaRoleForm.approvalRequired,
+          } as AccessRole;
+        });
+      }
+
+      const roleKey = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "");
+
+      const newRole = {
+        id: "role-" + Date.now(),
+        roleKey: roleKey || "custom_role_" + Date.now(),
+        name,
+        description,
+        status: emaRoleForm.status,
+        approvalRequired: emaRoleForm.approvalRequired,
+      } as AccessRole;
+
+      return [...current, newRole];
+    });
+
+    emaToast.success(
+      emaRoleEditingIndex === null ? "Role added" : "Role updated",
+      emaRoleEditingIndex === null ? "New role has been added successfully." : "Role details have been updated successfully."
+    );
+
+    emaCloseRoleModal();
+  };
+
+  const emaRequestDeleteRole = (index: number) => {
+    const role = accessRoles[index];
+
+    if (!role) {
+      emaToast.error("Role not found", "The selected role could not be found.");
+      return;
+    }
+
+    if (isProtectedSuperAdminRole(role)) {
+      emaToast.warning("Protected role", "Super Admin role cannot be edited or deleted.");
+      return;
+    }
+
+    setEmaRoleDeleteTarget({
+      index,
+      name: role.name || "this role",
+    });
+  };
+
+  const emaConfirmDeleteRole = () => {
+    if (!emaRoleDeleteTarget) return;
+
+    setAccessRoles((current) => current.filter((_, index) => index !== emaRoleDeleteTarget.index));
+    emaToast.success("Role deleted", emaRoleDeleteTarget.name + " has been removed.");
+    setEmaRoleDeleteTarget(null);
+  };
+
+const rolesTotalCount = accessRoles.length;
   const rolesActiveCount = accessRoles.filter((role) => role.status === "Active").length;
   const moduleTotalCount = moduleCatalog.length;
   const moduleActiveRoleCount = accessRoles.filter((role) => role.status === "Active").length;
@@ -1770,6 +2140,50 @@ export default function Settings() {
   const filteredAuditLogs = auditLogs;
   const heroScoreOne = activeSection === "users" ? String(usersTotalCount) : activeSection === "roles" ? String(rolesTotalCount) : activeSection === "modules" ? String(moduleTotalCount) : activeSection === "access" ? String(accessPolicyTotalCount) : activeSection === "audit" ? String(auditTotalCount) : activeSection === "incident" ? incidentConfigMeta.scoreOne : activeSection === "aging" ? String(pcAgingRule.monitorMaxYears) : activeSection === "policy" ? String(MANAGEMENT_POLICY_FIELDS.length) : activeSection === "resources" ? String(resourceSchedules.length) : active.scoreOne;
   const heroScoreTwo = activeSection === "users" ? String(usersLockedCount) : activeSection === "roles" ? String(rolesActiveCount) : activeSection === "modules" ? String(moduleActiveRoleCount) : activeSection === "access" ? String(accessPolicyActiveCount) : activeSection === "audit" ? String(auditTodayCount) : activeSection === "incident" ? incidentConfigMeta.scoreTwo : activeSection === "aging" ? String(pcAgingRule.agingMinYears) : activeSection === "policy" ? (managementPolicyProfile?.profileName || "Global") : activeSection === "resources" ? String(resourceEngineers.length) : active.scoreTwo;
+
+  /* EMA HERO KPI DATA START */
+  const emaHeroCards: Array<{
+    label: string;
+    value: string | number;
+    helper: string;
+    icon: IconName;
+    tone: "blue" | "green" | "red" | "purple";
+  }> =
+    activeSection === "users"
+      ? [
+          { label: "Total Users", value: usersTotalCount, helper: "Users records", icon: "user", tone: "blue" },
+          { label: "Active Users", value: usersActiveCount, helper: "Can access system", icon: "role", tone: "green" },
+          { label: "Locked Users", value: usersLockedCount, helper: "Blocked accounts", icon: "lock", tone: "red" },
+          { label: "MFA Enabled", value: usersMfaCount, helper: "Second Factor Required", icon: "guard", tone: "purple" }
+        ]
+      : activeSection === "roles"
+      ? [
+          { label: "Total Roles", value: rolesTotalCount, helper: "Roles records", icon: "role", tone: "blue" },
+          { label: "Active Roles", value: rolesActiveCount, helper: "Assigned to users", icon: "user", tone: "green" },
+          { label: "Locked Roles", value: heroScoreTwo, helper: "Blocked access", icon: "lock", tone: "red" },
+          { label: "Approval Flow", value: "On", helper: "Protected actions", icon: "guard", tone: "purple" }
+        ]
+      : activeSection === "modules"
+      ? [
+          { label: "Total Modules", value: moduleTotalCount, helper: "Module records", icon: "matrix", tone: "blue" },
+          { label: "Active Roles", value: moduleActiveRoleCount, helper: "Controlled by RBAC", icon: "role", tone: "green" },
+          { label: "Hidden Modules", value: heroScoreTwo, helper: "Disabled modules", icon: "shield", tone: "red" },
+          { label: "RBAC Enabled", value: "On", helper: "Role based access", icon: "shield", tone: "purple" }
+        ]
+      : activeSection === "access"
+      ? [
+          { label: "Total Controls", value: accessPolicyTotalCount, helper: "Access controls records", icon: "shield", tone: "blue" },
+          { label: "Active Controls", value: accessPolicyActiveCount, helper: "Security rules enabled", icon: "shield", tone: "green" },
+          { label: "Review Items", value: heroScoreTwo, helper: "Need attention", icon: "audit", tone: "red" },
+          { label: "Policy Ready", value: "On", helper: "Control active", icon: "shield", tone: "purple" }
+        ]
+      : [
+          { label: activeSection === "incident" ? incidentConfigMeta.scoreOneLabel : "Total Items", value: heroScoreOne, helper: activeSection === "incident" ? incidentConfigMeta.scoreOneCaption : "Records", icon: active.icon, tone: "blue" },
+          { label: activeSection === "incident" ? incidentConfigMeta.scoreTwoLabel : "Active Items", value: heroScoreTwo, helper: activeSection === "incident" ? incidentConfigMeta.scoreTwoCaption : "Available", icon: active.icon, tone: "green" },
+          { label: "Review Items", value: activeSection === "audit" ? auditTodayCount : "0", helper: "Need attention", icon: "audit", tone: "red" },
+          { label: "Control", value: "On", helper: "System ready", icon: "shield", tone: "purple" }
+        ];
+  /* EMA HERO KPI DATA END */
 
   const showToast = (tone: ToastTone, title: string, message: string) => {
     const toastId = Date.now();
@@ -2840,6 +3254,10 @@ setModuleLoaded(true);
     }
   };
 
+
+
+
+
   useEffect(() => {
     // Load user and role records immediately when Settings opens so sidebar badges and
     // KPI values do not show stale/static config numbers.
@@ -2903,6 +3321,10 @@ setModuleLoaded(true);
     // Right-side audit snapshot panel was removed from the Settings screen.
     // Keep this no-op so existing save/user/role handlers remain stable.
   };
+
+
+
+
 
   useEffect(() => {
     if (activeSection !== "incident") return;
@@ -3150,6 +3572,12 @@ setModuleLoaded(true);
     }
   };
 
+
+
+
+
+
+
   // Module Control by Role uses EMA_Roles from Role Based Control.
   // Roles are created in Role Based Control, then access is toggled here per module.
 
@@ -3172,149 +3600,75 @@ setModuleLoaded(true);
   const visibleUsers = users.filter((user) => !filteredContentTerm || `${user.name} ${user.username || ""} ${user.email} ${user.role} ${user.status}`.toLowerCase().includes(filteredContentTerm));
 
   return (
-    <main className="" data-section={activeSection}>
+    <main className="ema-inner ema-screen" data-section={activeSection}>
       <input aria-hidden="true" id="globalSearch" type="hidden" />
       <button hidden id="themeBtn" type="button">
         <span id="themeLabel">Dark Mode</span>
       </button>
 
-      <div className="">
-        <aside className="">
-          <div className="">
+      <div className="ema-layout">
+        <aside className="ema-side-panel">
+          <div className="ema-side-head">
             <span>SETTINGS CENTER</span>
-            <strong>Configuration Area</strong>
-            <small>Select system setup domain</small>
           </div>
 
-          <div className="" id="settingsMenu" role="tablist" aria-label="Settings navigation">
-            {sectionOrder.map((key) => {
-              const item = sections[key];
-              return (
-                <button
-                  key={key}
-                  className=""
-                  type="button"
-                  data-section={key}
-                  onClick={() => {
-                    setActiveSection(key);
-                    setSectionSearch("");
-                  }}
-                >
-                  <span className=""><SettingsMenuIcon name={item.icon} /></span>
-                  <span className=""><strong>{item.title}</strong><small>{item.desc}</small></span>
-                </button>
-              );
-            })}
+          <div className="ema-menu" id="settingsMenu" role="tablist" aria-label="Settings navigation">
+            {emaMenuGroups.map((group) => (
+              <div className="ema-menu-group" key={group.label}>
+                <div className="ema-menu-group-title">{group.label}</div>
+
+                <div className="ema-menu-group-list">
+                  {group.keys.map((key) => {
+                    const item = sections[key];
+
+                    return (
+                      <button
+                        key={key}
+                        className={`ema-menu-item ${activeSection === key ? "active" : ""}`}
+                        type="button"
+                        data-section={key}
+                        onClick={() => {
+                          setActiveSection(key);
+                          setSectionSearch("");
+                        }}
+                      >
+                        <span className="ema-menu-icon">
+                          <SettingsMenuIcon name={item.icon} />
+                        </span>
+                        <span className="ema-menu-text">
+                          <strong>{item.title}</strong>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </aside>
 
-        <section className="">
-          <div className="">
-            <div>
-              <span className="">ADMINISTRATION CONTROL</span>
+        <section className="ema-main-panel">
+          <div className="ema-hero-shell">
+            <div className="ema-hero-info">
+              <span className="ema-eyebrow">ADMINISTRATION CONTROL</span>
               <h2 id="heroTitle">{activeHeroTitle}</h2>
               <p id="heroDesc">{activeHeroDesc}</p>
             </div>
-            <div className="">
-              {active.key === "users" ? (
-                <>
-                  <div >
-                    <span>Total Users</span>
-                    <strong>{usersTotalCount}</strong>
-                    <small>Users records</small>
-                  </div>
-                  <div >
-                    <span>Active Users</span>
-                    <strong>{usersActiveCount}</strong>
-                    <small>Can access system</small>
-                  </div>
-                  <div >
-                    <span>Locked Users</span>
-                    <strong>{usersLockedCount}</strong>
-                    <small>Blocked accounts</small>
-                  </div>
-                  <div >
-                    <span>MFA Enabled</span>
-                    <strong>{usersMfaCount}</strong>
-                    <small>Second Factor Required</small>
-                  </div>
-                </>
-              ) : active.key === "roles" ? (
-                <>
-                  <div className="">
-                    <div className="">
-                      <UsersRound />
-                    </div>
-                    <span>Total Roles</span>
-                    <strong>{rolesTotalCount}</strong>
-                    <small>Roles Records</small>
-                  </div>
-                  <div className="">
-                    <div className="">
-                      <UserCog />
-                    </div>
-                    <span>Active Roles</span>
-                    <strong>{rolesActiveCount}</strong>
-                    <small>Assigned To Users</small>
-                  </div>
-                </>
-              ) : active.key === "modules" ? (
-                <>
-                  <div >
-                    <span>Total Modules</span>
-                    <strong>{moduleTotalCount}</strong>
-                    <small>Modules Records</small>
-                  </div>
-                  <div >
-                    <span>Active Roles</span>
-                    <strong>{moduleActiveRoleCount}</strong>
-                    <small>Controlled by RBAC</small>
-                  </div>
-                </>
-              ) : active.key === "access" ? (
-                <>
-                  <div >
-                    <span>Total Controls</span>
-                    <strong>{accessPolicyTotalCount}</strong>
-                    <small>Access Controls Records</small>
-                  </div>
-                  <div >
-                    <span>Active Controls</span>
-                    <strong>{accessPolicyActiveCount}</strong>
-                    <small>Security Rules Enabled</small>
-                  </div>
-                </>
-              ) : active.key === "incident" ? (
-                <>
-                  <div >
-                    <span>{incidentConfigMeta.scoreOneLabel}</span>
-                    <strong id="scoreOne">{heroScoreOne}</strong>
-                    <small>{incidentConfigMeta.scoreOneCaption}</small>
-                  </div>
-                  <div >
-                    <span>{incidentConfigMeta.scoreTwoLabel}</span>
-                    <strong id="scoreTwo">{heroScoreTwo}</strong>
-                    <small>{incidentConfigMeta.scoreTwoCaption}</small>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div >
-                    <span>{active.subtitle}</span>
-                    <strong id="scoreOne">{heroScoreOne}</strong>
-                    <small>{active.subtitle}</small>
-                  </div>
-                  <div >
-                    <span>Reference</span>
-                    <strong id="scoreTwo">{heroScoreTwo}</strong>
-                    <small>Control Value</small>
-                  </div>
-                </>
-              )}
+            <div className="ema-score-grid">
+              {emaHeroCards.map((card) => (
+                <div className="ema-kpi-card" data-tone={card.tone} key={card.label}>
+                  <span className={"ema-kpi-icon " + card.tone}>
+                    <SettingsMenuIcon name={card.icon} />
+                  </span>
+                  <span className="ema-kpi-label">{card.label}</span>
+                  <strong className="ema-kpi-value">{card.value}</strong>
+                  <small className="ema-kpi-helper">{card.helper}</small>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="">
+          <div className="ema-settings-content-card">
             {false && (
               <div >
                 {activeSection !== "audit" && (
@@ -3347,9 +3701,9 @@ setModuleLoaded(true);
               </div>
             )}
 
-            {activeSection !== "users" && activeSection !== "access" && activeSection !== "audit" && activeSection !== "incident" && activeSection !== "aging" && activeSection !== "policy" && activeSection !== "resources" && activeSection !== "notifications" && (
-              <div className="">
-                <label className="">
+            {activeSection !== "roles" && activeSection !== "users" && activeSection !== "access" && activeSection !== "audit" && activeSection !== "incident" && activeSection !== "aging" && activeSection !== "policy" && activeSection !== "resources" && activeSection !== "softwarePolicy" && activeSection !== "notifications" && (
+              <div className="ema-settings-toolbar">
+                <label className="ema-settings-search">
                   <SearchSvg />
                   <input
                     id="sectionSearch"
@@ -3359,17 +3713,17 @@ setModuleLoaded(true);
                   />
                 </label>
                 {activeSection === "roles" && (
-                  <div className="">
+                  <div className="ema-settings-actions">
                     <button type="button" onClick={loadAccessRoles} disabled={rolesLoading}>{rolesLoading ? "Loading..." : "Refresh"}</button>
                     <button  type="button" onClick={() => openAccessRoleModal(null)}>Add Role</button>
                   </div>
                 )}
                 {activeSection === "modules" && (
-                  <div >
+                  <div className="ema-settings-actions">
                     <button  type="button" onClick={loadModuleAccess} disabled={moduleLoading}>{moduleLoading ? "Loading..." : "Refresh"}</button>
                   </div>
                 )}
-                {activeSection !== "users" && activeSection !== "roles" && activeSection !== "modules" && activeSection !== "audit" && activeSection !== "incident" && activeSection !== "resources" && (
+                {activeSection !== "users" && activeSection !== "roles" && activeSection !== "modules" && activeSection !== "audit" && activeSection !== "incident" && activeSection !== "softwarePolicy" && activeSection !== "resources" && (
                   <div >
                     <SettingSelect 
                       value="all"
@@ -3398,8 +3752,8 @@ setModuleLoaded(true);
               </div>
             )}
 
-            <div className="" id="contentBody">
-              {activeSection === "roles" && <RoleContent roles={accessRoles} loading={rolesLoading} error={rolesError} search={filteredContentTerm} onEdit={openAccessRoleModal} onDelete={requestDeleteAccessRole} />}
+            <div className="ema-settings-content-body" id="contentBody">
+              {activeSection === "roles" && <RoleContent roles={accessRoles} loading={rolesLoading} error={rolesError} search={sectionSearch} onSearchChange={setSectionSearch} onReload={loadAccessRoles} onAdd={() => openAccessRoleModal(null)} onEdit={openAccessRoleModal} onDelete={requestDeleteAccessRole} />}
               {activeSection === "users" && <UserAccessContent users={visibleUsers} sourceUsers={users} loading={usersLoading} error={usersError} search={sectionSearch} onSearchChange={setSectionSearch} onReload={loadUsers} onAdd={() => openUserModal(null)} onEdit={openUserModal} onDelete={requestDeleteUser} />}
               {activeSection === "modules" && <ModuleMatrixContent roles={accessRoles.filter((role) => role.status === "Active")} modules={moduleCatalog} permissions={modulePermissions} loading={moduleLoading} error={moduleError} search={filteredContentTerm} savingKey={moduleSavingKey} onReload={loadModuleAccess} onToggle={toggleRoleModuleAccess} />}
               {activeSection === "access" && <AccessControlContent policies={accessPolicies} loading={accessPoliciesLoading} error={accessPoliciesError} onReload={loadAccessPolicies} onAdd={() => openAccessPolicyModal(null)} onEdit={openAccessPolicyModal} />}
@@ -3475,7 +3829,7 @@ setModuleLoaded(true);
                   onSave={saveIncidentConfig}
                 />
               )}
-              {activeSection === "pricing" && <PricingContent search={filteredContentTerm} rows={pricingRows} categoryOptions={categoryOptions} brandOptionsByCategory={brandOptionsByCategory} modelOptionsByKey={modelOptionsByKey} loading={pricingLoading} saving={pricingSaving} savingRowId={pricingRowSavingId} error={pricingError} onAdd={addPricingRow} onChange={updatePricingRow} onSaveRow={savePricingRow} onRequestDelete={requestDeletePricingRow} />}
+              {activeSection === "pricing" && <PricingContent search={filteredContentTerm} rows={pricingRows} categoryOptions={categoryOptions} brandOptionsByCategory={brandOptionsByCategory} modelOptionsByKey={modelOptionsByKey} loading={pricingLoading} saving={pricingSaving} savingRowId={pricingRowSavingId} error={pricingError} onAdd={() => openUserModal(null)} onChange={updatePricingRow} onSaveRow={savePricingRow} onRequestDelete={requestDeletePricingRow} />}
               {activeSection === "aging" && (
                 <AgingContent
                   rule={pcAgingRule}
@@ -3501,6 +3855,7 @@ setModuleLoaded(true);
                   onSave={saveManagementPolicy}
                 />
               )}
+              {activeSection === "softwarePolicy" && <SoftwarePolicySettings />}
               {activeSection === "risk" && <RiskContent search={filteredContentTerm} />}
               {activeSection === "notifications" && <NotificationChannelsSettings />}
               {activeSection === "resources" && (
@@ -3515,8 +3870,8 @@ setModuleLoaded(true);
                   error={resourceError}
                   onFormChange={(patch) => setResourceForm((current) => ({ ...current, ...patch }))}
                   onSave={saveResourceSchedule}
-                  onEdit={editResourceSchedule}
-                  onDelete={requestDeleteResourceSchedule}
+                  onEdit={openUserModal}
+                  onDelete={requestDeleteUser}
                   onReset={resetResourcePlanningForm}
                   onReload={loadResourcePlanning}
                 />
@@ -3599,7 +3954,7 @@ setModuleLoaded(true);
       />
 
       <SettingsToast toast={settingsToast} onClose={() => setSettingsToast(null)} />
-    </main>
+</main>
   );
 }
 
@@ -3654,22 +4009,22 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
   const enabledWorkingDays = workingHours.filter((row) => row.enabled).length;
 
   return (
-    <div className="">
-      <div className="">
-        <div className="">
+    <div>
+      <div>
+        <div>
           <span>{meta.eyebrow}</span>
           <strong>{meta.commandTitle}</strong>
           <small>{meta.commandDescription}</small>
         </div>
 
-        <div className="">
+        <div>
           <div><span>SLA Rules</span><strong>{slaRows.length}</strong></div>
           <div><span>Working Days</span><strong>{enabledWorkingDays}</strong></div>
           <div><span>Categories</span><strong>{categoryCounts.categoryCount}</strong></div>
           <div><span>Details</span><strong>{categoryCounts.detailCount}</strong></div>
         </div>
 
-        <div className="">
+        <div>
           <button type="button" onClick={onReload} disabled={loading || saving || Boolean(categorySavingKey)}>
             {loading ? "Loading..." : "Refresh"}
           </button>
@@ -3680,22 +4035,22 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
       </div>
 
       {error && (
-        <div className="">
+        <div>
           <strong>Incident Config load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="">
-        <button className="" type="button" onClick={() => onTabChange("sla")}>SLA Rules</button>
-        <button className="" type="button" onClick={() => onTabChange("workingHours")}>Working Hours</button>
-        <button className="" type="button" onClick={() => onTabChange("categories")}>Category Setup</button>
+      <div>
+        <button type="button" onClick={() => onTabChange("sla")}>SLA Rules</button>
+        <button type="button" onClick={() => onTabChange("workingHours")}>Working Hours</button>
+        <button type="button" onClick={() => onTabChange("categories")}>Category Setup</button>
       </div>
 
-      <div className="">
+      <div>
         {activeTab === "sla" && (
-          <section className="">
-            <div className="">
+          <section>
+            <div>
               <div>
                 <span>SLA Configuration</span>
                 <strong>Priority-based SLA Rules</strong>
@@ -3703,8 +4058,8 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
               </div>
             </div>
 
-            <div className="">
-              <div className="">
+            <div>
+              <div>
                 <div>Priority</div>
                 <div>Label</div>
                 <div>Response Min</div>
@@ -3713,12 +4068,12 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
               </div>
 
               {slaRows.map((row) => (
-                <div className="" key={String(row.id)}>
-                  <div><span className="">{row.priority}</span></div>
-                  <div><input className="" value={row.label} readOnly disabled /></div>
-                  <div><input className="" value={row.responseTimeMin} readOnly disabled /></div>
-                  <div><input className="" value={row.resolutionTimeHrs} readOnly disabled /></div>
-                  <div><textarea className="" value={row.escalationPolicy} readOnly disabled /></div>
+                <div key={String(row.id)}>
+                  <div><span>{row.priority}</span></div>
+                  <div><input value={row.label} readOnly disabled /></div>
+                  <div><input value={row.responseTimeMin} readOnly disabled /></div>
+                  <div><input value={row.resolutionTimeHrs} readOnly disabled /></div>
+                  <div><textarea value={row.escalationPolicy} readOnly disabled /></div>
                 </div>
               ))}
             </div>
@@ -3726,8 +4081,8 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
         )}
 
         {activeTab === "workingHours" && (
-          <section className="">
-            <div className="">
+          <section>
+            <div>
               <div>
                 <span>Working Hours</span>
                 <strong>SLA Counting Window</strong>
@@ -3735,8 +4090,8 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
               </div>
             </div>
 
-            <div className="">
-              <div className="">
+            <div>
+              <div>
                 <div>Day</div>
                 <div>Status</div>
                 <div>Start Time</div>
@@ -3745,11 +4100,11 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
               </div>
 
               {workingHours.map((row) => (
-                <div className="" key={row.id}>
-                  <div><span className="">{row.day}</span></div>
+                <div key={row.id}>
+                  <div><span>{row.day}</span></div>
                   <div>
                     <select
-                      className=""
+                     
                       value={row.enabled ? "enabled" : "rest"}
                       onChange={(event) => onWorkingHourChange(row.id, { enabled: event.target.value === "enabled" })}
                       aria-label={`${row.day} working status`}
@@ -3760,7 +4115,7 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
                   </div>
                   <div><input type="time" value={row.start} disabled={!row.enabled} onChange={(event) => onWorkingHourChange(row.id, { start: event.target.value })} /></div>
                   <div><input type="time" value={row.end} disabled={!row.enabled} onChange={(event) => onWorkingHourChange(row.id, { end: event.target.value })} /></div>
-                  <div><span className=""><span />{row.enabled ? "Working Day" : "Rest Day"}</span></div>
+                  <div><span><span />{row.enabled ? "Working Day" : "Rest Day"}</span></div>
                 </div>
               ))}
             </div>
@@ -3768,36 +4123,36 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
         )}
 
         {activeTab === "categories" && (
-          <section className="">
-            <div className="">
+          <section>
+            <div>
               <div>
                 <span>Category Setup</span>
                 <strong>Incident Category Hierarchy</strong>
                 <small>Maintain Category, Subcategory and Incident Detail options used by Service Desk.</small>
               </div>
 
-              <div className="">
+              <div>
                 <span><strong>{categoryCounts.categoryCount}</strong> Categories</span>
                 <span><strong>{categoryCounts.subcategoryCount}</strong> Subcategories</span>
                 <span><strong>{categoryCounts.detailCount}</strong> Details</span>
               </div>
             </div>
 
-            <div className="">
-              <aside className="">
-                <div className="">
+            <div>
+              <aside>
+                <div>
                   <input value={newCategoryName} onChange={(event) => onNewCategoryNameChange(event.target.value)} placeholder="New category name" disabled={categoriesDisabled} />
                   <button type="button" onClick={onAddCategory} disabled={categoriesDisabled || !newCategoryName.trim()}>
                     {categorySavingKey === "category:add" ? "Adding..." : "+ Add"}
                   </button>
                 </div>
 
-                <div className="">
+                <div>
                   {categories.length === 0 ? (
-                    <div className="">No category yet. Add the first incident category.</div>
+                    <div>No category yet. Add the first incident category.</div>
                   ) : categories.map((category) => (
                     <button
-                      className=""
+                     
                       key={String(category.id)}
                       type="button"
                       onClick={() => onSelectCategory(String(category.id))}
@@ -3809,86 +4164,86 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
                 </div>
               </aside>
 
-              <div className="">
+              <div>
                 {selectedCategory ? (
                   <>
-                    <section className="">
-                      <div className="">
+                    <section>
+                      <div>
                         <div><span>Category</span><strong>Edit Selected Category</strong></div>
-                        <div className="">
-                          <button className="" type="button" onClick={() => onUpdateCategory(selectedCategory)} disabled={categoriesDisabled || !selectedCategory.name.trim()} title="Save category"><PencilSvg /></button>
-                          <button className="" type="button" onClick={() => onDeleteCategory(selectedCategory)} disabled={categoriesDisabled} title="Delete category"><TrashSvg /></button>
+                        <div>
+                          <button type="button" onClick={() => onUpdateCategory(selectedCategory)} disabled={categoriesDisabled || !selectedCategory.name.trim()} title="Save category"><PencilSvg /></button>
+                          <button type="button" onClick={() => onDeleteCategory(selectedCategory)} disabled={categoriesDisabled} title="Delete category"><TrashSvg /></button>
                         </div>
                       </div>
                       <input value={selectedCategory.name} onChange={(event) => onCategoryNameChange(selectedCategory.id, event.target.value)} placeholder="Category name" disabled={categoriesDisabled} />
                     </section>
 
-                    <section className="">
-                      <div className="">
+                    <section>
+                      <div>
                         <div><span>Subcategory</span><strong>Subcategories under {selectedCategory.name || "selected category"}</strong></div>
                       </div>
 
-                      <div className="">
+                      <div>
                         <input value={newSubcategoryName} onChange={(event) => onNewSubcategoryNameChange(event.target.value)} placeholder="New subcategory name" disabled={categoriesDisabled} />
                         <button type="button" onClick={onAddSubcategory} disabled={categoriesDisabled || !newSubcategoryName.trim()}>
                           {categorySavingKey === `category:${selectedCategory.id}:subcategory:add` ? "Adding..." : "+ Add Subcategory"}
                         </button>
                       </div>
 
-                      <div className="">
+                      <div>
                         {selectedCategory.subcategories.length === 0 ? (
-                          <div className="">No subcategory yet for this category.</div>
+                          <div>No subcategory yet for this category.</div>
                         ) : selectedCategory.subcategories.map((subcategory) => (
-                          <div className="" key={String(subcategory.id)}>
+                          <div key={String(subcategory.id)}>
                             <button type="button" onClick={() => onSelectSubcategory(String(subcategory.id))}>
                               <strong>{subcategory.name || "Untitled Subcategory"}</strong>
                               <small>{subcategory.details.length} details</small>
                             </button>
                             <input value={subcategory.name} onChange={(event) => onSubcategoryNameChange(selectedCategory.id, subcategory.id, event.target.value)} disabled={categoriesDisabled} />
-                            <div className="">
-                              <button className="" type="button" onClick={() => onUpdateSubcategory(selectedCategory.id, subcategory)} disabled={categoriesDisabled || !subcategory.name.trim()} title="Save subcategory"><PencilSvg /></button>
-                              <button className="" type="button" onClick={() => onDeleteSubcategory(selectedCategory.id, subcategory)} disabled={categoriesDisabled} title="Delete subcategory"><TrashSvg /></button>
+                            <div>
+                              <button type="button" onClick={() => onUpdateSubcategory(selectedCategory.id, subcategory)} disabled={categoriesDisabled || !subcategory.name.trim()} title="Save subcategory"><PencilSvg /></button>
+                              <button type="button" onClick={() => onDeleteSubcategory(selectedCategory.id, subcategory)} disabled={categoriesDisabled} title="Delete subcategory"><TrashSvg /></button>
                             </div>
                           </div>
                         ))}
                       </div>
                     </section>
 
-                    <section className="">
-                      <div className="">
+                    <section>
+                      <div>
                         <div><span>Incident Detail</span><strong>{selectedSubcategory ? `Details under ${selectedSubcategory.name}` : "Select a subcategory"}</strong></div>
                       </div>
 
                       {selectedSubcategory ? (
                         <>
-                          <div className="">
+                          <div>
                             <input value={newDetailName} onChange={(event) => onNewDetailNameChange(event.target.value)} placeholder="New incident detail" disabled={categoriesDisabled} />
                             <button type="button" onClick={onAddDetail} disabled={categoriesDisabled || !newDetailName.trim()}>
                               {categorySavingKey === `subcategory:${selectedSubcategory.id}:detail:add` ? "Adding..." : "+ Add Detail"}
                             </button>
                           </div>
 
-                          <div className="">
+                          <div>
                             {selectedSubcategory.details.length === 0 ? (
-                              <div className="">No incident detail yet for this subcategory.</div>
+                              <div>No incident detail yet for this subcategory.</div>
                             ) : selectedSubcategory.details.map((detail) => (
                               <div key={String(detail.id)}>
                                 <input value={detail.name} onChange={(event) => onDetailNameChange(selectedCategory.id, selectedSubcategory.id, detail.id, event.target.value)} disabled={categoriesDisabled} />
-                                <div className="">
-                                  <button className="" type="button" onClick={() => onUpdateDetail(selectedCategory.id, selectedSubcategory.id, detail)} disabled={categoriesDisabled || !detail.name.trim()} title="Save detail"><PencilSvg /></button>
-                                  <button className="" type="button" onClick={() => onDeleteDetail(selectedCategory.id, selectedSubcategory.id, detail)} disabled={categoriesDisabled} title="Delete detail"><TrashSvg /></button>
+                                <div>
+                                  <button type="button" onClick={() => onUpdateDetail(selectedCategory.id, selectedSubcategory.id, detail)} disabled={categoriesDisabled || !detail.name.trim()} title="Save detail"><PencilSvg /></button>
+                                  <button type="button" onClick={() => onDeleteDetail(selectedCategory.id, selectedSubcategory.id, detail)} disabled={categoriesDisabled} title="Delete detail"><TrashSvg /></button>
                                 </div>
                               </div>
                             ))}
                           </div>
                         </>
                       ) : (
-                        <div className="">Select or add a subcategory before adding incident details.</div>
+                        <div>Select or add a subcategory before adding incident details.</div>
                       )}
                     </section>
                   </>
                 ) : (
-                  <div className="">Add a category first to start configuring Service Desk category setup.</div>
+                  <div>Add a category first to start configuring Service Desk category setup.</div>
                 )}
               </div>
             </div>
@@ -4081,22 +4436,22 @@ function ResourcePlanningContent(props: any) {
   };
 
   return (
-    <div className="">
-      <div className="">
-        <div className="">
+    <div>
+      <div>
+        <div>
           <span>Resource Planning</span>
           <strong>Engineer Leave & Assignment Visibility</strong>
           <small>Manage engineer leave using EMA users. Service Desk assignment will warn when an engineer is on leave.</small>
         </div>
 
-        <div className="">
+        <div>
           <div><span>Engineers</span><strong>{engineerOptionsList.length}</strong></div>
           <div><span>Schedules</span><strong>{schedules.length}</strong></div>
           <div><span>Active</span><strong>{activeSchedules}</strong></div>
           <div><span>Filtered</span><strong>{sortedSchedules.length}</strong></div>
         </div>
 
-        <div className="">
+        <div>
           <button type="button" onClick={onReload} disabled={loading || saving}>
             {loading ? "Loading..." : "Refresh"}
           </button>
@@ -4104,15 +4459,15 @@ function ResourcePlanningContent(props: any) {
       </div>
 
       {error && (
-        <div className="">
+        <div>
           <strong>Resource Planning load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="">
-        <section className="">
-          <div className="">
+      <div>
+        <section>
+          <div>
             <div>
               <span>{editingId ? "Update Schedule" : "New Schedule"}</span>
               <strong>{editingId ? "Edit Engineer Leave" : "Add Engineer Leave"}</strong>
@@ -4120,7 +4475,7 @@ function ResourcePlanningContent(props: any) {
             </div>
           </div>
 
-          <div className="">
+          <div>
             <label>
               <span>Engineer</span>
               <select
@@ -4172,7 +4527,7 @@ function ResourcePlanningContent(props: any) {
               />
             </label>
 
-            <label className="">
+            <label>
               <span>Remarks</span>
               <textarea
                 value={form.Remarks || ""}
@@ -4183,7 +4538,7 @@ function ResourcePlanningContent(props: any) {
           </div>
 
           {selectedEngineer && (
-            <div className="">
+            <div>
               <div>
                 <strong>{getResourceEngineerName(selectedEngineer)}</strong>
                 <span>{selectedRole || "Support"}{getResourceEngineerDepartment(selectedEngineer) ? " ? " + getResourceEngineerDepartment(selectedEngineer) : ""}</span>
@@ -4191,7 +4546,7 @@ function ResourcePlanningContent(props: any) {
             </div>
           )}
 
-          <div className="">
+          <div>
             <button type="button" onClick={onReset} disabled={saving}>Clear</button>
             <button type="button" onClick={onSave} disabled={saving || loading}>
               {saving ? "Saving..." : editingId ? "Update Leave" : "Add Leave"}
@@ -4199,15 +4554,15 @@ function ResourcePlanningContent(props: any) {
           </div>
         </section>
 
-        <section className="">
-          <div className="">
+        <section>
+          <div>
             <div>
               <span>Schedules</span>
               <strong>Active & Upcoming Leave</strong>
               <small>Latest leave schedules are shown first. Click a table title to sort.</small>
             </div>
 
-            <div className="">
+            <div>
               <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter leave status">
                 <option value="all">All statuses</option>
                 {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -4222,8 +4577,8 @@ function ResourcePlanningContent(props: any) {
             </div>
           </div>
 
-          <div className="">
-            <div className="">
+          <div>
+            <div>
               <button type="button" onClick={() => updateSort("engineer")}>Engineer <span>{sortIndicator("engineer")}</span></button>
               <button type="button" onClick={() => updateSort("role")}>Role <span>{sortIndicator("role")}</span></button>
               <button type="button" onClick={() => updateSort("period")}>Period <span>{sortIndicator("period")}</span></button>
@@ -4232,37 +4587,37 @@ function ResourcePlanningContent(props: any) {
               <div>Action</div>
             </div>
 
-            {loading && <div className="">Loading resource planning...</div>}
-            {!loading && sortedSchedules.length === 0 && <div className="">No engineer leave schedule found.</div>}
+            {loading && <div>Loading resource planning...</div>}
+            {!loading && sortedSchedules.length === 0 && <div>No engineer leave schedule found.</div>}
 
             {!loading && paginatedSchedules.map((row: any) => {
               const scheduleId = getResourceScheduleId(row);
               const status = getResourceScheduleStatus(row);
 
               return (
-                <div className="" key={scheduleId || String(getResourceScheduleName(row)) + "-" + String(row.StartDate) + "-" + String(row.EndDate)}>
+                <div key={scheduleId || String(getResourceScheduleName(row)) + "-" + String(row.StartDate) + "-" + String(row.EndDate)}>
                   <div>
                     <strong>{getResourceScheduleName(row) || "Unknown engineer"}</strong>
                     <small>{getResourceScheduleDepartment(row) || "No department"}</small>
                   </div>
 
-                  <div><span className="">{getResourceScheduleRole(row) || "Support"}</span></div>
+                  <div><span>{getResourceScheduleRole(row) || "Support"}</span></div>
 
                   <div>
                     <strong>{String(row.StartDate || "").slice(0, 10)}</strong>
                     <small>to {String(row.EndDate || "").slice(0, 10)}</small>
                   </div>
 
-                  <div><span className="">{status}</span></div>
+                  <div><span>{status}</span></div>
 
-                  <div><span className="">{getResourceScheduleRemarks(row) || "-"}</span></div>
+                  <div><span>{getResourceScheduleRemarks(row) || "-"}</span></div>
 
                   <div>
-                    <div className="">
-                      <button className="" type="button" onClick={() => onEdit(row)} aria-label="Edit leave schedule" title="Edit">
+                    <div>
+                      <button type="button" onClick={() => onEdit(row)} aria-label="Edit leave schedule" title="Edit">
                         <PencilSvg />
                       </button>
-                      <button className="" type="button" onClick={() => onDelete(row)} aria-label="Delete leave schedule" title="Delete">
+                      <button type="button" onClick={() => onDelete(row)} aria-label="Delete leave schedule" title="Delete">
                         <TrashSvg />
                       </button>
                     </div>
@@ -4273,18 +4628,18 @@ function ResourcePlanningContent(props: any) {
           </div>
 
           {!loading && sortedSchedules.length > 0 && (
-            <div className="">
-              <div className="">Showing {showingFrom} to {showingTo} of {sortedSchedules.length} leave records</div>
+            <div>
+              <div>Showing {showingFrom} to {showingTo} of {sortedSchedules.length} leave records</div>
 
-              <div className="" aria-label="Resource planning pagination">
-                <button className="" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
-                <button className="" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
-                <span className="">{safeCurrentPage}</span>
-                <button className="" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
-                <button className="" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+              <div aria-label="Resource planning pagination">
+                <button type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+                <button type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+                <span>{safeCurrentPage}</span>
+                <button type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+                <button type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
               </div>
 
-              <div className="">{pageSize} / page</div>
+              <div>{pageSize} / page</div>
             </div>
           )}
         </section>
@@ -4352,605 +4707,531 @@ function EmaPageLastIcon() {
   );
 }
 
-function SettingsRoleIcon({ role }: { role: AccessRole }) {
-  const name = String(role.name || "").toLowerCase();
 
-  if (name.includes("super")) return <ShieldCheck />;
-  if (name.includes("client")) return <UserCog />;
-  if (name.includes("dashboard")) return <Grid3X3 />;
-  if (name.includes("operation") || name.includes("support")) return <TicketCheck />;
-  return <UsersRound />;
+function SettingsRoleIcon() {
+  return <UsersRound size={14} strokeWidth={2.35} />;
 }
 
-function SettingsMoreSvg() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="5" r="1.8" fill="currentColor" />
-      <circle cx="12" cy="12" r="1.8" fill="currentColor" />
-      <circle cx="12" cy="19" r="1.8" fill="currentColor" />
-    </svg>
-  );
-}
-/* SETTINGS_V2_ROLE_HELPERS_END */
 
-function RoleContent({ roles, loading, error, search, onEdit, onDelete }: { roles: AccessRole[]; loading: boolean; error: string; search: string; onEdit: (index: number) => void; onDelete: (index: number) => void }) {
+function RoleContent({
+  roles,
+  loading,
+  error,
+  search,
+  onSearchChange,
+  onReload,
+  onAdd,
+  onEdit,
+  onDelete,
+}: {
+  roles: AccessRole[];
+  loading: boolean;
+  error: string;
+  search: string;
+  onSearchChange: (value: string) => void;
+  onReload: () => void;
+  onAdd: () => void;
+  onEdit: (index: number) => void;
+  onDelete: (index: number) => void;
+}) {
+  const pageSize = 10;
+  const roleGrid = "64px minmax(360px, 1fr) 140px 110px";
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(() => getSettingsRolePageSize());
 
-  useEffect(() => {
-    const syncPageSize = () => setPageSize(getSettingsRolePageSize());
-    syncPageSize();
-    window.addEventListener("resize", syncPageSize);
-    return () => window.removeEventListener("resize", syncPageSize);
-  }, []);
-
-  const filterTerm = String(search || "").toLowerCase();
-  const filteredRoles = roles.filter((role) => {
-    const haystack = `${role.name} ${role.description} ${role.status} ${role.approvalRequired ? "approval required" : "standard"}`.toLowerCase();
-    return !filterTerm || haystack.includes(filterTerm);
+  const filteredRows = roles.filter((role) => {
+    const term = search.trim().toLowerCase();
+    const haystack = [role.name, role.description, role.status, role.type, role.defaultAccess].join(" ").toLowerCase();
+    return !term || haystack.includes(term);
   });
 
-  const totalPages = Math.max(1, Math.ceil(filteredRoles.length / pageSize));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const pageStartIndex = (safeCurrentPage - 1) * pageSize;
-  const paginatedRoles = filteredRoles.slice(pageStartIndex, pageStartIndex + pageSize);
-  const showingFrom = filteredRoles.length ? pageStartIndex + 1 : 0;
-  const showingTo = Math.min(pageStartIndex + paginatedRoles.length, filteredRoles.length);
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const start = (safePage - 1) * pageSize;
+  const rows = filteredRows.slice(start, start + pageSize);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [search, roles.length]);
 
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [currentPage, totalPages]);
-
   const getActualIndex = (role: AccessRole) => {
     const roleId = role.id || role.roleID;
+
     if (roleId !== undefined && roleId !== null) {
-      const byId = roles.findIndex((item) => String(item.id || item.roleID) === String(roleId));
-      if (byId >= 0) return byId;
+      const found = roles.findIndex((item) => String(item.id || item.roleID) === String(roleId));
+      if (found >= 0) return found;
     }
-    return roles.indexOf(role);
+
+    const byKey = roles.findIndex((item) => String(item.roleKey || item.name) === String(role.roleKey || role.name));
+    return byKey >= 0 ? byKey : roles.indexOf(role);
   };
 
   return (
-    <div className="">
+    <section className="ema-settings-table">
+
+          <style>{`
+            .ema-settings-table {
+              width: 100% !important;
+              height: auto !important;
+              min-height: 0 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              display: block !important;
+              position: relative !important;
+              border: 1px solid #d9e5f5 !important;
+              border-radius: 16px !important;
+              background: #fff !important;
+              overflow: hidden !important;
+            }
+            .ema-settings-table .ema-data-toolbar {
+              width: 100% !important;
+              min-height: 66px !important;
+              height: 66px !important;
+              margin: 0 !important;
+              padding: 0 16px !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: space-between !important;
+              gap: 12px !important;
+              border: 0 !important;
+              border-bottom: 1px solid #d9e5f5 !important;
+              border-radius: 0 !important;
+              background: #fff !important;
+              position: relative !important;
+              top: auto !important;
+              bottom: auto !important;
+              transform: none !important;
+              z-index: 2 !important;
+            }
+            .ema-settings-table .ema-data-search {
+              width: min(420px, 42vw) !important;
+              height: 42px !important;
+              margin: 0 !important;
+            }
+            .ema-settings-table .ema-data-actions {
+              margin-left: auto !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: flex-end !important;
+              gap: 10px !important;
+            }
+            .ema-settings-table .ema-data-actions select,
+            .ema-settings-table .ema-data-actions button {
+              height: 38px !important;
+            }
+            .ema-settings-table .ema-data-card {
+              width: 100% !important;
+              height: auto !important;
+              min-height: 0 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              display: grid !important;
+              grid-template-rows: 48px minmax(0, auto) 64px !important;
+              align-content: start !important;
+              border: 0 !important;
+              border-radius: 0 !important;
+              background: #fff !important;
+              overflow: hidden !important;
+              position: relative !important;
+              top: auto !important;
+              bottom: auto !important;
+              transform: none !important;
+              z-index: 1 !important;
+            }
+            .ema-settings-table .ema-data-head {
+              height: 48px !important;
+              min-height: 48px !important;
+              display: grid !important;
+              align-items: center !important;
+              border-bottom: 1px solid #d9e5f5 !important;
+              background: #fbfdff !important;
+            }
+            .ema-settings-table .ema-data-body {
+              min-height: 0 !important;
+              height: auto !important;
+              max-height: calc(100vh - 430px) !important;
+              display: block !important;
+              overflow-y: auto !important;
+              overflow-x: hidden !important;
+              background: #fff !important;
+              position: relative !important;
+              top: auto !important;
+              bottom: auto !important;
+              transform: none !important;
+            }
+            .ema-settings-table .ema-data-row {
+              height: 58px !important;
+              min-height: 58px !important;
+              display: grid !important;
+              align-items: center !important;
+              border-bottom: 1px solid #d9e5f5 !important;
+              background: #fff !important;
+            }
+            .ema-settings-table .ema-data-footer {
+              height: 64px !important;
+              min-height: 64px !important;
+              padding: 0 16px !important;
+              display: grid !important;
+              grid-template-columns: minmax(0, 1fr) auto auto !important;
+              align-items: center !important;
+              gap: 14px !important;
+              border-top: 1px solid #d9e5f5 !important;
+              background: #fff !important;
+            }
+            .ema-settings-table .ema-pagination-controls,
+            .ema-settings-table .ema-row-actions {
+              display: flex !important;
+              align-items: center !important;
+              gap: 8px !important;
+            }
+            .ema-settings-table .ema-row-actions { justify-content: flex-end !important; }
+            .ema-settings-table .ema-page-btn,
+            .ema-settings-table .ema-page-current,
+            .ema-settings-table .ema-action-btn {
+              width: 34px !important;
+              height: 34px !important;
+              border-radius: 10px !important;
+            }
+          `}</style>
+      <div className="ema-data-toolbar">
+        <label className="ema-data-search">
+          <SearchSvg />
+          <input
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Search roles by name or description..."
+          />
+        </label>
+
+        <div className="ema-data-actions">
+          <button type="button" onClick={onReload} disabled={loading}>{loading ? "Loading..." : "Refresh"}</button>
+          <button type="button" onClick={onAdd}>Add Role</button>
+        </div>
+      </div>
+
       {error && (
-        <div className="">
+        <div className="ema-settings-alert">
           <strong>Role load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="">
-        <div className="">
-          <div className="">No</div>
-          <div className="">Role</div>
-          <div className="">Approval</div>
-          <div className="">Status</div>
-          <div className="">Action</div>
+      <div className="ema-data-card">
+        <div className="ema-data-head" style={{ gridTemplateColumns: roleGrid }}>
+          <div>No.</div>
+          <div>Role</div>
+          <div>Status</div>
+          <div>Action</div>
         </div>
 
-        {loading && <div className="">Loading role records from EMA_Roles...</div>}
-        {!loading && filteredRoles.length === 0 && <div className="">No role records found.</div>}
+        <div className="ema-data-body">
+          {loading && <div className="ema-data-empty">Loading role records...</div>}
+          {!loading && filteredRows.length === 0 && <div className="ema-data-empty">No role record found.</div>}
 
-        {!loading && paginatedRoles.map((role, index) => {
-          const actualIndex = getActualIndex(role);
-          const isInactive = role.status === "Inactive";
-          const approvalClass = role.approvalRequired ? "required" : "standard";
-          const tone = getSettingsRoleTone(role, pageStartIndex + index);
+          {!loading && rows.map((role, index) => {
+            const actualIndex = getActualIndex(role);
+            const protectedRole = isProtectedSuperAdminRole(role);
+            const tone = role.status === "Inactive" || role.status === "Locked" ? "inactive" : role.status === "Review" ? "required" : "active";
 
-          return (
-            <div className="" key={`${role.id || role.roleKey}-${actualIndex}`}>
-              <div className="">
-                <span className="">{String(pageStartIndex + index + 1).padStart(2, "0")}</span>
-              </div>
-
-              <div className="">
-                <div className="">
-                  <span className="">
-                    <SettingsRoleIcon role={role} />
+            return (
+              <div className="ema-data-row" style={{ gridTemplateColumns: roleGrid }} key={String(role.id || role.roleID || role.roleKey || role.name) + "-" + actualIndex}>
+                <div><span className="ema-data-no">{String(start + index + 1).padStart(2, "0")}</span></div>
+                <div>
+                  <div className="ema-data-profile">
+                    <i>{initials(role.name || "R")}</i>
+                    <div>
+                      <strong>{role.name || "Unnamed Role"}</strong>
+                      <small>{role.description || "No description set"}</small>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <span className={"ema-data-pill " + tone}>
+                    <span className="ema-data-pill-dot" />
+                    {role.status || "Active"}
                   </span>
-                  <div className="">
-                    <strong>{role.name}</strong>
-                    <small>{role.description || "No description set"}</small>
+                </div>
+                <div>
+                  <div className="ema-row-actions">
+                    <button className="ema-action-btn ema-action-btn-edit" type="button" onClick={() => onEdit(actualIndex)} disabled={protectedRole} title={protectedRole ? "Super Admin role is protected" : "Edit"}><PencilSvg /></button>
+                    <button className="ema-action-btn ema-action-btn-delete" type="button" onClick={() => onDelete(actualIndex)} disabled={protectedRole} title={protectedRole ? "Super Admin role is protected" : "Delete"}><TrashSvg /></button>
                   </div>
                 </div>
               </div>
-
-              <div className="">
-                <span className="">
-                  {role.approvalRequired ? "Required" : "Standard"}
-                </span>
-              </div>
-
-              <div className="">
-                <span className="">
-                  <span className="" />
-                  {isInactive ? "Inactive" : "Active"}
-                </span>
-              </div>
-
-              <div className="">
-                <div className="">
-                  <button className="" type="button" title="Edit role" aria-label="Edit role" onClick={() => onEdit(actualIndex)}>
-                    <PencilSvg />
-                  </button>
-                  <button
-                    className=""
-                    type="button"
-                    title={isProtectedSuperAdminRole(role) ? "Super Admin is protected and cannot be deleted" : "Delete role"}
-                    aria-label={isProtectedSuperAdminRole(role) ? "Protected role" : "Delete role"}
-                    disabled={isProtectedSuperAdminRole(role)}
-                    onClick={() => onDelete(actualIndex)}
-                  >
-                    <TrashSvg />
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {!loading && filteredRoles.length > 0 && (
-        <div className="">
-          <div className="">
-            Showing {showingFrom} to {showingTo} of {filteredRoles.length} roles
-          </div>
-
-          <div className="" aria-label="Role based control pagination">
-            <button className="" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
-            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
-            <span className="">{safeCurrentPage}</span>
-            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
-            <button className="" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
-          </div>
-
-          <div className="">{pageSize} / page</div>
+            );
+          })}
         </div>
-      )}
-    </div>
+
+        {!loading && filteredRows.length > 0 && (
+          <footer className="ema-data-footer">
+            <div className="ema-pagination-summary">Showing {filteredRows.length ? start + 1 : 0} to {Math.min(start + rows.length, filteredRows.length)} of {filteredRows.length} roles</div>
+            <div className="ema-pagination-controls">
+              <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safePage === 1}><EmaPageFirstIcon /></button>
+              <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safePage === 1}><EmaPagePrevIcon /></button>
+              <span className="ema-page-current">{safePage}</span>
+              <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safePage === totalPages}><EmaPageNextIcon /></button>
+              <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safePage === totalPages}><EmaPageLastIcon /></button>
+            </div>
+            <div className="ema-page-size">{pageSize} / page</div>
+          </footer>
+        )}
+      </div>
+    </section>
   );
 }
 
-function FilterDropdown({ label, value, options, open, onToggle, onSelect, onClose }: { label: string; value: string; options: string[]; open: boolean; onToggle: () => void; onSelect: (value: string) => void; onClose: () => void }) {
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
-
-  const updateMenuPosition = () => {
-    const trigger = triggerRef.current;
-    if (!trigger) return;
-
-    const rect = trigger.getBoundingClientRect();
-    const menuWidth = Math.max(rect.width, 220);
-    const safeGap = 12;
-    const viewportPadding = 16;
-    const optionHeight = 44;
-    const estimatedMenuHeight = Math.min(360, Math.max(56, options.length * optionHeight + 12));
-    const availableBelow = window.innerHeight - rect.bottom - viewportPadding;
-    const availableAbove = rect.top - viewportPadding;
-    const shouldOpenAbove = availableBelow < estimatedMenuHeight && availableAbove > availableBelow;
-    const availableSpace = shouldOpenAbove ? availableAbove : availableBelow;
-    const finalMenuHeight = Math.max(120, Math.min(estimatedMenuHeight, availableSpace));
-    const left = Math.min(rect.left, window.innerWidth - menuWidth - viewportPadding);
-    const top = shouldOpenAbove
-      ? Math.max(viewportPadding, rect.top - finalMenuHeight - safeGap)
-      : Math.min(rect.bottom + safeGap, window.innerHeight - finalMenuHeight - viewportPadding);
-
-    setMenuStyle({
-      position: "fixed",
-      left: Math.max(viewportPadding, left),
-      top,
-      width: menuWidth,
-      maxHeight: finalMenuHeight,
-      zIndex: 2147483600
-    });
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    updateMenuPosition();
-
-    const handleReposition = () => updateMenuPosition();
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
-      onClose();
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-
-    window.addEventListener("resize", handleReposition);
-    window.addEventListener("scroll", handleReposition, true);
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("resize", handleReposition);
-      window.removeEventListener("scroll", handleReposition, true);
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open, value, options.length]);
-
-  const menuNode = open && typeof document !== "undefined" ? createPortal(
-    <div ref={menuRef}   role="listbox" aria-label={`${label} filter`}>
-      {options.map((option) => (
-        <button
-          key={option} 
-          type="button"
-          onClick={() => onSelect(option)}
-        >
-          <span>{option}</span>
-          {option === value && <span >✓</span>}
-        </button>
-      ))}
-    </div>,
-    document.body
-  ) : null;
-
-  return (
-    <div >
-      <button ref={triggerRef}  type="button" onClick={onToggle} aria-expanded={open}>
-        <span>{value}</span>
-        <ChevronDownSvg />
-      </button>
-      {menuNode}
-    </div>
-  );
-}
-
-
-type DropdownOption = string | { value: string; label: string };
-
-function dropdownOptionValue(option: DropdownOption) {
-  return typeof option === "string" ? option : option.value;
-}
-
-function dropdownOptionLabel(option: DropdownOption) {
-  return typeof option === "string" ? option : option.label;
-}
-
-function SettingSelect({
-  value,
-  options,
-  onChange,
-  disabled = false,
-  placeholder = "Select option",
-  ariaLabel}: {
-  value: string;
-  options: DropdownOption[];
-  onChange: (value: string) => void;
-  disabled?: boolean;
-  placeholder?: string;
-  className?: string;
-  ariaLabel?: string;
+function UserAccessContent({
+  users,
+  sourceUsers,
+  loading,
+  error,
+  search,
+  onSearchChange,
+  onReload,
+  onAdd,
+  onEdit,
+  onDelete,
+}: {
+  users: UserAccess[];
+  sourceUsers: UserAccess[];
+  loading: boolean;
+  error: string;
+  search: string;
+  onSearchChange: (value: string) => void;
+  onReload: () => void;
+  onAdd: () => void;
+  onEdit: (index: number) => void;
+  onDelete: (index: number) => void;
 }) {
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const [open, setOpen] = useState(false);
-  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
-
-  const selected = options.find((option) => dropdownOptionValue(option) === value);
-  const selectedLabel = selected ? dropdownOptionLabel(selected) : placeholder;
-
-  const updateMenuPosition = () => {
-    const trigger = triggerRef.current;
-    if (!trigger) return;
-
-    const rect = trigger.getBoundingClientRect();
-    const viewportPadding = 16;
-    const gap = 8;
-    const menuWidth = Math.max(rect.width, 210);
-    const optionHeight = 36;
-    const estimatedHeight = Math.min(288, Math.max(44, options.length * optionHeight + 10));
-    const availableBelow = window.innerHeight - rect.bottom - viewportPadding;
-    const availableAbove = rect.top - viewportPadding;
-    const openAbove = availableBelow < estimatedHeight && availableAbove > availableBelow;
-    const maxHeight = Math.max(96, Math.min(estimatedHeight, openAbove ? availableAbove : availableBelow));
-    const left = Math.min(Math.max(viewportPadding, rect.left), window.innerWidth - menuWidth - viewportPadding);
-    const top = openAbove
-      ? Math.max(viewportPadding, rect.top - maxHeight - gap)
-      : Math.min(rect.bottom + gap, window.innerHeight - maxHeight - viewportPadding);
-
-    setMenuStyle({
-      position: "fixed",
-      left,
-      top,
-      width: menuWidth,
-      maxHeight,
-      zIndex: 2147483600});
-  };
-
-  useEffect(() => {
-    if (!open) return;
-
-    updateMenuPosition();
-
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
-      setOpen(false);
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-
-    const handleResize = () => updateMenuPosition();
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("scroll", handleResize, true);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("scroll", handleResize, true);
-    };
-  }, [open, value, options.length]);
-
-  const menuNode = open && typeof document !== "undefined" ? createPortal(
-    <div ref={menuRef}   role="listbox" aria-label={ariaLabel || placeholder}>
-      {options.map((option) => {
-        const optionValue = dropdownOptionValue(option);
-        const optionLabel = dropdownOptionLabel(option);
-        const selectedOption = optionValue === value;
-
-        return (
-          <button
-            key={`${optionValue}-${optionLabel}`} 
-            type="button"
-            role="option"
-            aria-selected={selectedOption}
-            onClick={() => {
-              onChange(optionValue);
-              setOpen(false);
-            }}
-          >
-            <span>{optionLabel}</span>
-            {selectedOption && <span >✓</span>}
-          </button>
-        );
-      })}
-    </div>,
-    document.body
-  ) : null;
-
-  return (
-    <div >
-      <button
-        ref={triggerRef} 
-        type="button"
-        onClick={() => {
-          if (!disabled) setOpen((current) => !current);
-        }}
-        disabled={disabled}
-        aria-expanded={open}
-        aria-label={ariaLabel || placeholder}
-      >
-        <span>{selectedLabel}</span>
-        <ChevronDownSvg />
-      </button>
-      {menuNode}
-    </div>
-  );
-}
-
-
-function UserAccessContent({ users, sourceUsers, loading, error, search, onSearchChange, onReload, onAdd, onEdit, onDelete }: { users: UserAccess[]; sourceUsers: UserAccess[]; loading: boolean; error: string; search: string; onSearchChange: (value: string) => void; onReload: () => void; onAdd: () => void; onEdit: (index: number) => void; onDelete: (index: number) => void }) {
-  const getPageSize = () => {
-    if (typeof window === "undefined") return 8;
-    const height = window.innerHeight || 900;
-    if (height < 760) return 6;
-    if (height < 900) return 8;
-    if (height < 1080) return 10;
-    return 12;
-  };
-
+  const pageSize = 10;
+  const userGrid = "64px minmax(260px, 1.2fr) minmax(220px, 1fr) 92px 120px 170px 110px";
   const [statusFilter, setStatusFilter] = useState("All Status");
   const [roleFilter, setRoleFilter] = useState("All Roles");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(getPageSize);
 
-  useEffect(() => {
-    const syncPageSize = () => setPageSize(getPageSize());
-    syncPageSize();
-    window.addEventListener("resize", syncPageSize);
-    return () => window.removeEventListener("resize", syncPageSize);
-  }, []);
+  const roleOptions = Array.from(new Set(sourceUsers.flatMap((user) => normalizeUserRoles(user.roles || user.role || user.roleName)))).filter(Boolean).sort();
 
-  const roleOptions = Array.from(new Set(sourceUsers.flatMap((user) => normalizeUserRoles(user.roles || user.role || user.roleName)))).sort();
+  const getDisplayStatus = (user: UserAccess) => {
+    if (user.accountLocked || user.status === "Locked") return "Locked";
+    return user.status || (user.isActive === false ? "Inactive" : "Active");
+  };
 
-  const filteredUsers = users.filter((user) => {
+  const filteredRows = users.filter((user) => {
     const roles = normalizeUserRoles(user.roles || user.role || user.roleName);
-    const haystack = `${user.name} ${user.username} ${user.email} ${user.department} ${user.position} ${roles.join(" ")} ${user.status}`.toLowerCase();
-
-    const matchesSearch = !search.trim() || haystack.includes(search.trim().toLowerCase());
-    const matchesStatus = statusFilter === "All Status" || user.status === statusFilter;
-    const matchesRole = roleFilter === "All Roles" || hasUserRole(user, roleFilter);
-
-    return matchesSearch && matchesStatus && matchesRole;
+    const status = getDisplayStatus(user);
+    const term = search.trim().toLowerCase();
+    const haystack = [user.name, user.username, user.email, roles.join(" "), status].join(" ").toLowerCase();
+    return (!term || haystack.includes(term)) && (statusFilter === "All Status" || status === statusFilter) && (roleFilter === "All Roles" || hasUserRole(user, roleFilter));
   });
 
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const pageStartIndex = (safeCurrentPage - 1) * pageSize;
-  const paginatedUsers = filteredUsers.slice(pageStartIndex, pageStartIndex + pageSize);
-  const showingFrom = filteredUsers.length ? pageStartIndex + 1 : 0;
-  const showingTo = Math.min(pageStartIndex + paginatedUsers.length, filteredUsers.length);
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const start = (safePage - 1) * pageSize;
+  const rows = filteredRows.slice(start, start + pageSize);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [statusFilter, roleFilter, search, users.length]);
 
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [currentPage, totalPages]);
-
   const getActualIndex = (user: UserAccess) => {
     const userId = user.id || user.userID;
     if (userId !== undefined && userId !== null) {
-      const byId = sourceUsers.findIndex((item) => String(item.id || item.userID) === String(userId));
-      if (byId >= 0) return byId;
+      const found = sourceUsers.findIndex((item) => String(item.id || item.userID) === String(userId));
+      if (found >= 0) return found;
     }
-    return sourceUsers.indexOf(user);
-  };
-
-  const getStatusTone = (status: string) => {
-    const value = String(status || "").toLowerCase();
-    if (value.includes("inactive")) return "inactive";
-    if (value.includes("locked")) return "locked";
-    if (value.includes("review")) return "review";
-    return "active";
+    const byEmail = sourceUsers.findIndex((item) => String(item.email || "").toLowerCase() === String(user.email || "").toLowerCase());
+    return byEmail >= 0 ? byEmail : sourceUsers.indexOf(user);
   };
 
   return (
-    <div className="">
-      <div className="">
-        <label className="">
-          <SearchSvg />
-          <input
-            placeholder="Search users by name, email, username or role..."
-            value={search}
-            onChange={(event) => onSearchChange(event.target.value)}
-          />
-        </label>
+    <section className="ema-settings-table">
 
-        <div className="">
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="User status filter">
+          <style>{`
+            .ema-settings-table {
+              width: 100% !important;
+              height: auto !important;
+              min-height: 0 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              display: block !important;
+              position: relative !important;
+              border: 1px solid #d9e5f5 !important;
+              border-radius: 16px !important;
+              background: #fff !important;
+              overflow: hidden !important;
+            }
+            .ema-settings-table .ema-data-toolbar {
+              width: 100% !important;
+              min-height: 66px !important;
+              height: 66px !important;
+              margin: 0 !important;
+              padding: 0 16px !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: space-between !important;
+              gap: 12px !important;
+              border: 0 !important;
+              border-bottom: 1px solid #d9e5f5 !important;
+              border-radius: 0 !important;
+              background: #fff !important;
+              position: relative !important;
+              top: auto !important;
+              bottom: auto !important;
+              transform: none !important;
+              z-index: 2 !important;
+            }
+            .ema-settings-table .ema-data-search {
+              width: min(420px, 42vw) !important;
+              height: 42px !important;
+              margin: 0 !important;
+            }
+            .ema-settings-table .ema-data-actions {
+              margin-left: auto !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: flex-end !important;
+              gap: 10px !important;
+            }
+            .ema-settings-table .ema-data-actions select,
+            .ema-settings-table .ema-data-actions button {
+              height: 38px !important;
+            }
+            .ema-settings-table .ema-data-card {
+              width: 100% !important;
+              height: auto !important;
+              min-height: 0 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              display: grid !important;
+              grid-template-rows: 48px minmax(0, auto) 64px !important;
+              align-content: start !important;
+              border: 0 !important;
+              border-radius: 0 !important;
+              background: #fff !important;
+              overflow: hidden !important;
+              position: relative !important;
+              top: auto !important;
+              bottom: auto !important;
+              transform: none !important;
+              z-index: 1 !important;
+            }
+            .ema-settings-table .ema-data-head {
+              height: 48px !important;
+              min-height: 48px !important;
+              display: grid !important;
+              align-items: center !important;
+              border-bottom: 1px solid #d9e5f5 !important;
+              background: #fbfdff !important;
+            }
+            .ema-settings-table .ema-data-body {
+              min-height: 0 !important;
+              height: auto !important;
+              max-height: calc(100vh - 430px) !important;
+              display: block !important;
+              overflow-y: auto !important;
+              overflow-x: hidden !important;
+              background: #fff !important;
+              position: relative !important;
+              top: auto !important;
+              bottom: auto !important;
+              transform: none !important;
+            }
+            .ema-settings-table .ema-data-row {
+              height: 58px !important;
+              min-height: 58px !important;
+              display: grid !important;
+              align-items: center !important;
+              border-bottom: 1px solid #d9e5f5 !important;
+              background: #fff !important;
+            }
+            .ema-settings-table .ema-data-footer {
+              height: 64px !important;
+              min-height: 64px !important;
+              padding: 0 16px !important;
+              display: grid !important;
+              grid-template-columns: minmax(0, 1fr) auto auto !important;
+              align-items: center !important;
+              gap: 14px !important;
+              border-top: 1px solid #d9e5f5 !important;
+              background: #fff !important;
+            }
+            .ema-settings-table .ema-pagination-controls,
+            .ema-settings-table .ema-row-actions {
+              display: flex !important;
+              align-items: center !important;
+              gap: 8px !important;
+            }
+            .ema-settings-table .ema-row-actions { justify-content: flex-end !important; }
+            .ema-settings-table .ema-page-btn,
+            .ema-settings-table .ema-page-current,
+            .ema-settings-table .ema-action-btn {
+              width: 34px !important;
+              height: 34px !important;
+              border-radius: 10px !important;
+            }
+          `}</style>
+      <div className="ema-data-toolbar">
+        <label className="ema-data-search">
+          <SearchSvg />
+          <input value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Search users by username, email or role..." />
+        </label>
+        <div className="ema-data-actions">
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option>All Status</option>
             <option>Active</option>
             <option>Review</option>
             <option>Locked</option>
             <option>Inactive</option>
           </select>
-
-          <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} aria-label="User role filter">
+          <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
             <option>All Roles</option>
             {roleOptions.map((role) => <option key={role}>{role}</option>)}
           </select>
-        </div>
-
-        <div className="">
           <button type="button" onClick={onReload} disabled={loading}>{loading ? "Loading..." : "Refresh"}</button>
           <button type="button" onClick={onAdd}>Add New User</button>
         </div>
       </div>
 
-      {error && (
-        <div className="">
-          <strong>User access load error</strong>
-          <span>{error}</span>
+      {error && (<div className="ema-settings-alert"><strong>User access load error</strong><span>{error}</span></div>)}
+
+      <div className="ema-data-card">
+        <div className="ema-data-head" style={{ gridTemplateColumns: userGrid }}>
+          <div>No.</div><div>User</div><div>Roles</div><div>MFA</div><div>Status</div><div>Last Login</div><div>Action</div>
         </div>
-      )}
-
-      <div className="">
-        <div className="">
-          <div>No</div>
-          <div>User</div>
-          <div>Roles</div>
-          <div>MFA</div>
-          <div>Status</div>
-          <div>Last Login</div>
-          <div>Action</div>
+        <div className="ema-data-body">
+          {loading && <div className="ema-data-empty">Loading user access records...</div>}
+          {!loading && filteredRows.length === 0 && <div className="ema-data-empty">No user access record found.</div>}
+          {!loading && rows.map((user, index) => {
+            const actualIndex = getActualIndex(user);
+            const roles = normalizeUserRoles(user.roles || user.role || user.roleName);
+            const visibleRoles = roles.slice(0, 2);
+            const hiddenRoleCount = Math.max(roles.length - visibleRoles.length, 0);
+            const status = getDisplayStatus(user);
+            const tone = String(status).toLowerCase().includes("inactive") || String(status).toLowerCase().includes("locked") ? "inactive" : String(status).toLowerCase().includes("review") ? "required" : "active";
+            const isMfa = Boolean(user.requireMFA || user.mfa);
+            return (
+              <div className="ema-data-row" style={{ gridTemplateColumns: userGrid }} key={String(user.id || user.userID || user.email) + "-" + actualIndex}>
+                <div><span className="ema-data-no">{String(start + index + 1).padStart(2, "0")}</span></div>
+                <div><div className="ema-data-profile"><i>{initials(user.name || user.username || user.email || "U")}</i><div><strong>{user.name || user.username || "Unnamed User"}</strong><small>{user.email || user.username || "No email set"}</small></div></div></div>
+                <div><div className="ema-data-chip-list">{visibleRoles.length === 0 && <span className="ema-data-pill standard">No Role</span>}{visibleRoles.map((role) => <span className="ema-data-pill" key={role}>{role}</span>)}{hiddenRoleCount > 0 && <span className="ema-data-pill standard">+{hiddenRoleCount}</span>}</div></div>
+                <div><span className={"ema-data-pill " + (isMfa ? "active" : "standard")}>{isMfa ? "On" : "Off"}</span></div>
+                <div><span className={"ema-data-pill " + tone}><span className="ema-data-pill-dot" />{status}</span></div>
+                <div><span className="ema-data-date">{formatUserDate(user.lastLoginAt)}</span></div>
+                <div><div className="ema-row-actions"><button className="ema-action-btn ema-action-btn-edit" type="button" onClick={() => onEdit(actualIndex)} title="Edit"><PencilSvg /></button><button className="ema-action-btn ema-action-btn-delete" type="button" onClick={() => onDelete(actualIndex)} title="Delete"><TrashSvg /></button></div></div>
+              </div>
+            );
+          })}
         </div>
-
-        {loading && (
-          <div className="">Loading user access records from EMA_Users...</div>
+        {!loading && filteredRows.length > 0 && (
+          <footer className="ema-data-footer">
+            <div className="ema-pagination-summary">Showing {filteredRows.length ? start + 1 : 0} to {Math.min(start + rows.length, filteredRows.length)} of {filteredRows.length} users</div>
+            <div className="ema-pagination-controls"><button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safePage === 1}><EmaPageFirstIcon /></button><button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safePage === 1}><EmaPagePrevIcon /></button><span className="ema-page-current">{safePage}</span><button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safePage === totalPages}><EmaPageNextIcon /></button><button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safePage === totalPages}><EmaPageLastIcon /></button></div>
+            <div className="ema-page-size">{pageSize} / page</div>
+          </footer>
         )}
-
-        {!loading && filteredUsers.length === 0 && (
-          <div className="">No user access record found.</div>
-        )}
-
-        {!loading && paginatedUsers.map((user, index) => {
-          const actualIndex = getActualIndex(user);
-          const isMfa = Boolean(user.requireMFA || user.mfa);
-          const roles = normalizeUserRoles(user.roles || user.role || user.roleName);
-          const visibleRoles = roles.slice(0, 2);
-          const hiddenRoleCount = Math.max(roles.length - visibleRoles.length, 0);
-          const statusTone = getStatusTone(user.status);
-
-          return (
-            <div className="" data-user-index={actualIndex} key={`${user.id || user.email}-${actualIndex}`}>
-              <div><span className="">{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
-
-              <div>
-                <div className="">
-                  <i>{initials(user.name || user.username || user.email || "U")}</i>
-                  <div>
-                    <strong>{user.name || user.username || "Unnamed User"}</strong>
-                    <small>{user.email || user.username || "No email set"}</small>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <div className="">
-                  {visibleRoles.length === 0 && <span className="">No Role</span>}
-                  {visibleRoles.map((role) => <span className="" key={role}>{role}</span>)}
-                  {hiddenRoleCount > 0 && <span className="">+{hiddenRoleCount}</span>}
-                </div>
-              </div>
-
-              <div>
-                <span className="">{isMfa ? "On" : "Off"}</span>
-              </div>
-
-              <div>
-                <span className="">
-                  <span />
-                  {user.status || "Active"}
-                </span>
-              </div>
-
-              <div>
-                <span className="">{formatUserDate(user.lastLoginAt)}</span>
-              </div>
-
-              <div>
-                <div className="">
-                  <button className="" type="button" onClick={() => onEdit(actualIndex)} aria-label="Edit user access" title="Edit">
-                    <PencilSvg />
-                  </button>
-                  <button className="" type="button" onClick={() => onDelete(actualIndex)} aria-label="Delete user access" title="Delete">
-                    <TrashSvg />
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
       </div>
-
-      {!loading && filteredUsers.length > 0 && (
-        <div className="">
-          <div className="">
-            Showing {showingFrom} to {showingTo} of {filteredUsers.length} users
-          </div>
-
-          <div className="" aria-label="User access pagination">
-            <button className="" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
-            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
-            <span className="">{safeCurrentPage}</span>
-            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
-            <button className="" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
-          </div>
-
-          <div className="">{pageSize} / page</div>
-        </div>
-      )}
-    </div>
+    </section>
   );
 }
-
 
 function ModuleMatrixContent({ roles, modules, permissions, loading, error, search, savingKey, onReload, onToggle }: { roles: AccessRole[]; modules: ModuleControlModule[]; permissions: ModulePermission[]; loading: boolean; error: string; search: string; savingKey: string; onReload: () => void; onToggle: (module: ModuleControlModule, role: AccessRole) => void }) {
   const getPageSize = () => {
@@ -5083,14 +5364,14 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
   const coverage = totalPossible ? Math.round((enabledCount / totalPossible) * 100) : 0;
 
   return (
-    <div className="">
-      <div className="">
-        <div className="">
+    <div className="settings-v2-module-content">
+      <div className="settings-v2-module-toolbar">
+        <div className="settings-v2-module-info">
           <strong>Module Permission Matrix</strong>
           <span>Turn module and submodule access on or off for each active role.</span>
         </div>
 
-        <div className="">
+        <div className="settings-v2-module-stats">
           <div><span>Modules</span><strong>{modules.length}</strong></div>
           <div><span>Roles</span><strong>{roles.length}</strong></div>
           <div><span>Coverage</span><strong>{coverage}%</strong></div>
@@ -5100,31 +5381,31 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
       </div>
 
       {error && (
-        <div className="">
+        <div className="settings-v2-alert">
           <strong>Module access load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="" style={{}}>
-        <div className="">
+      <div className="settings-v2-module-matrix" style={matrixStyle}>
+        <div className="settings-v2-module-head">
           <div>No</div>
           <div>Module</div>
           {roles.length > 0 ? roles.map((role) => (
-            <div className="" key={String(getAccessRoleId(role))}>
+            <div className="settings-v2-module-role-head" key={String(getAccessRoleId(role))}>
               <span>{role.name}</span>
             </div>
-          )) : <div className=""><span>Roles</span></div>}
+          )) : <div className="settings-v2-module-role-head"><span>Roles</span></div>}
         </div>
 
-        {loading && <div className="">Loading module access from EMA_Modules...</div>}
-        {!loading && moduleRows.length === 0 && <div className="">No module records found.</div>}
-        {!loading && roles.length === 0 && moduleRows.length > 0 && <div className="">No active roles found. Create active roles in Role Based Control first.</div>}
+        {loading && <div className="settings-v2-loading">Loading module access from EMA_Modules...</div>}
+        {!loading && moduleRows.length === 0 && <div className="settings-v2-empty">No module records found.</div>}
+        {!loading && roles.length === 0 && moduleRows.length > 0 && <div className="settings-v2-empty">No active roles found. Create active roles in Role Based Control first.</div>}
 
         {!loading && roles.length > 0 && pageRows.map((row) => {
           if (row.type === "group") {
             return (
-              <div className="" key={`group-${row.groupName}`}>
+              <div className="settings-v2-module-group" key={`group-${row.groupName}`}>
                 <span>{row.groupName}</span>
               </div>
             );
@@ -5135,11 +5416,11 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
           const rowNumber = pageStartModuleIndex + displayCounter;
 
           return (
-            <div className="" key={String(getModuleId(module))}>
-              <div><span className="">{String(rowNumber).padStart(2, "0")}</span></div>
+            <div className={`settings-v2-module-row ${row.isSubmodule ? "submodule" : ""}`} key={String(getModuleId(module))}>
+              <div><span className="settings-v2-row-no">{String(rowNumber).padStart(2, "0")}</span></div>
 
               <div>
-                <div className="">
+                <div className="settings-v2-module-name">
                   <i>{row.isSubmodule ? "S" : "M"}</i>
                   <div>
                     <strong>{module.moduleName}</strong>
@@ -5155,9 +5436,9 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
                 const enabled = hasModulePermission(permissions, module, role);
 
                 return (
-                  <div className="" key={key}>
+                  <div className="settings-v2-module-toggle-cell" key={key}>
                     <button
-                      className=""
+                      className={`settings-v2-module-toggle ${enabled ? "enabled" : "disabled"}`}
                       type="button"
                       disabled={savingKey === key}
                       title={`${enabled ? "Disable" : "Enable"} ${module.moduleName} for ${role.name}`}
@@ -5176,23 +5457,24 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
       </div>
 
       {!loading && moduleRows.length > 0 && (
-        <div className="">
-          <div className="">Showing {showingFrom} to {showingTo} of {moduleRows.length} modules</div>
+        <div className="ema-pagination">
+          <div className="ema-pagination-summary">Showing {showingFrom} to {showingTo} of {moduleRows.length} modules</div>
 
-          <div className="" aria-label="Module control pagination">
-            <button className="" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
-            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
-            <span className="">{safeCurrentPage}</span>
-            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
-            <button className="" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+          <div className="ema-pagination-controls" aria-label="Module control pagination">
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span className="ema-page-current">{safeCurrentPage}</span>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
           </div>
 
-          <div className="">{pageSize} / page</div>
+          <div className="ema-page-size">{pageSize} / page</div>
         </div>
       )}
     </div>
   );
 }
+
 
 
 function AccessControlContent({ policies, loading, error, onReload, onAdd, onEdit }: { policies: AccessPolicy[]; loading: boolean; error: string; onReload: () => void; onAdd: () => void; onEdit: (index: number) => void }) {
@@ -5236,34 +5518,34 @@ function AccessControlContent({ policies, loading, error, onReload, onAdd, onEdi
   };
 
   return (
-    <div className="">
-      <div className="">
-        <div className="">
+    <div>
+      <div>
+        <div>
           <strong>Access Control Rules</strong>
           <span>Manage MFA, session, IP/VPN and approval enforcement rules from EMA_AccessControls.</span>
         </div>
 
-        <div className="">
+        <div>
           <div><span>Total Policies</span><strong>{policies.length}</strong></div>
           <div><span>Active</span><strong>{activeCount}</strong></div>
           <div><span>MFA Rules</span><strong>{mfaCount}</strong></div>
         </div>
 
-        <div className="">
+        <div>
           <button type="button" onClick={onReload} disabled={loading}>{loading ? "Loading..." : "Refresh"}</button>
           <button type="button" onClick={onAdd}>Add Control</button>
         </div>
       </div>
 
       {error && (
-        <div className="">
+        <div>
           <strong>Access control load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="">
-        <div className="">
+      <div>
+        <div>
           <div>No</div>
           <div>Control</div>
           <div>Scope</div>
@@ -5273,8 +5555,8 @@ function AccessControlContent({ policies, loading, error, onReload, onAdd, onEdi
           <div>Action</div>
         </div>
 
-        {loading && <div className="">Loading access controls from EMA_AccessControls...</div>}
-        {!loading && filteredPolicies.length === 0 && <div className="">No access control records found.</div>}
+        {loading && <div>Loading access controls from EMA_AccessControls...</div>}
+        {!loading && filteredPolicies.length === 0 && <div>No access control records found.</div>}
 
         {!loading && paginatedPolicies.map((policy, index) => {
           const actualIndex = policies.findIndex((item) => String(getAccessPolicyId(item)) === String(getAccessPolicyId(policy)));
@@ -5282,12 +5564,12 @@ function AccessControlContent({ policies, loading, error, onReload, onAdd, onEdi
           const statusTone = getStatusTone(policy.status);
 
           return (
-            <div className="" key={String(getAccessPolicyId(policy))}>
-              <div><span className="">{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
+            <div key={String(getAccessPolicyId(policy))}>
+              <div><span>{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
 
               <div>
-                <div className="">
-                  <i className="">{String(policy.name || "A").slice(0, 2).toUpperCase()}</i>
+                <div>
+                  <i>{String(policy.name || "A").slice(0, 2).toUpperCase()}</i>
                   <div>
                     <strong>{policy.name}</strong>
                     <small>{policy.description || "Access control policy"}</small>
@@ -5295,20 +5577,20 @@ function AccessControlContent({ policies, loading, error, onReload, onAdd, onEdi
                 </div>
               </div>
 
-              <div><span className="">{policy.scope || "Global"}</span></div>
-              <div><span className="">{policy.enforcement || "Standard"}</span></div>
-              <div><span className="">{policy.reviewCycle || "Monthly"}</span></div>
+              <div><span>{policy.scope || "Global"}</span></div>
+              <div><span>{policy.enforcement || "Standard"}</span></div>
+              <div><span>{policy.reviewCycle || "Monthly"}</span></div>
 
               <div>
-                <span className="">
+                <span>
                   <span />
                   {policy.status || "Active"}
                 </span>
               </div>
 
               <div>
-                <div className="">
-                  <button className="" type="button" onClick={() => onEdit(actualIndex)} aria-label="Edit access control" title="Edit">
+                <div>
+                  <button type="button" onClick={() => onEdit(actualIndex)} aria-label="Edit access control" title="Edit">
                     <PencilSvg />
                   </button>
                 </div>
@@ -5319,18 +5601,18 @@ function AccessControlContent({ policies, loading, error, onReload, onAdd, onEdi
       </div>
 
       {!loading && filteredPolicies.length > 0 && (
-        <div className="">
-          <div className="">Showing {showingFrom} to {showingTo} of {filteredPolicies.length} access controls</div>
+        <div>
+          <div>Showing {showingFrom} to {showingTo} of {filteredPolicies.length} access controls</div>
 
-          <div className="" aria-label="Access control pagination">
-            <button className="" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
-            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
-            <span className="">{safeCurrentPage}</span>
-            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
-            <button className="" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+          <div aria-label="Access control pagination">
+            <button type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span>{safeCurrentPage}</span>
+            <button type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
           </div>
 
-          <div className="">{pageSize} / page</div>
+          <div>{pageSize} / page</div>
         </div>
       )}
     </div>
@@ -5381,22 +5663,22 @@ function AuditContent(props: any) {
   const latestDate = allLogs?.[0] ? formatAuditTimestamp(allLogs[0].timestamp).split(",")[0] : "-";
 
   return (
-    <div className="">
-      <div className="">
-        <div className="">
+    <div>
+      <div>
+        <div>
           <span>Audit Log</span>
           <h3>System Activity Trail</h3>
           <p>Review user activity, module changes and system events recorded in EMA_AuditLogs.</p>
         </div>
 
-        <div className="">
+        <div>
           <div><span>Total Logs</span><strong>{totalRecords}</strong></div>
           <div><span>This Page</span><strong>{pageRows.length}</strong></div>
           <div><span>Modules</span><strong>{moduleOptions.length}</strong></div>
           <div><span>Latest</span><strong>{latestDate}</strong></div>
         </div>
 
-        <div className="">
+        <div>
           <button type="button" onClick={onReload} disabled={loading}>
             {loading ? "Loading..." : "Refresh"}
           </button>
@@ -5407,13 +5689,13 @@ function AuditContent(props: any) {
       </div>
 
       {error && (
-        <div className="">
+        <div>
           <strong>Audit log load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="">
+      <div>
         <label>
           <span>Main Module</span>
           <select value={moduleFilter} onChange={(event) => onModuleFilterChange(event.target.value)}>
@@ -5445,8 +5727,8 @@ function AuditContent(props: any) {
         </label>
       </div>
 
-      <div className="">
-        <div className="">
+      <div>
+        <div>
           <div>No</div>
           <div>Time</div>
           <div>User</div>
@@ -5455,37 +5737,37 @@ function AuditContent(props: any) {
           <div>Status</div>
         </div>
 
-        {loading && <div className="">Loading audit logs from EMA_AuditLogs...</div>}
-        {!loading && pageRows.length === 0 && <div className="">No audit log records found.</div>}
+        {loading && <div>Loading audit logs from EMA_AuditLogs...</div>}
+        {!loading && pageRows.length === 0 && <div>No audit log records found.</div>}
 
         {!loading && pageRows.map((row: any, index: number) => {
           const tone = getSeverityTone(row.severity);
 
           return (
-            <div className="" key={String(row.id || `${row.timestamp}-${row.user}-${row.action}-${index}`)}>
-              <div><span className="">{String(startIndex + index + 1).padStart(2, "0")}</span></div>
+            <div key={String(row.id || `${row.timestamp}-${row.user}-${row.action}-${index}`)}>
+              <div><span>{String(startIndex + index + 1).padStart(2, "0")}</span></div>
 
               <div>
-                <span className="">{formatAuditTimestamp(row.timestamp)}</span>
+                <span>{formatAuditTimestamp(row.timestamp)}</span>
               </div>
 
               <div>
-                <span className="">{row.user || "-"}</span>
+                <span>{row.user || "-"}</span>
               </div>
 
               <div>
-                <span className="">{row.module || "-"}</span>
+                <span>{row.module || "-"}</span>
               </div>
 
               <div>
-                <div className="">
+                <div>
                   <span>{row.action || "-"}</span>
                   {row.details && <small>{formatAuditDetails(row.details)}</small>}
                 </div>
               </div>
 
               <div>
-                <span className="">
+                <span>
                   <span />
                   {row.severity || "Info"}
                 </span>
@@ -5495,18 +5777,18 @@ function AuditContent(props: any) {
         })}
       </div>
 
-      <div className="">
-        <div className="">Showing {shownStart} to {shownEnd} of {totalRecords} audit logs</div>
+      <div>
+        <div>Showing {shownStart} to {shownEnd} of {totalRecords} audit logs</div>
 
-        <div className="" aria-label="Audit log pagination">
-          <button className="" type="button" disabled={safePage <= 1 || loading} onClick={() => onPageChange(1)} aria-label="First page"><EmaPageFirstIcon /></button>
-          <button className="" type="button" disabled={safePage <= 1 || loading} onClick={() => onPageChange(Math.max(1, safePage - 1))} aria-label="Previous page"><EmaPagePrevIcon /></button>
-          <span className="">{safePage}</span>
-          <button className="" type="button" disabled={safePage >= safeTotalPages || loading} onClick={() => onPageChange(Math.min(safeTotalPages, safePage + 1))} aria-label="Next page"><EmaPageNextIcon /></button>
-          <button className="" type="button" disabled={safePage >= safeTotalPages || loading} onClick={() => onPageChange(safeTotalPages)} aria-label="Last page"><EmaPageLastIcon /></button>
+        <div aria-label="Audit log pagination">
+          <button type="button" disabled={safePage <= 1 || loading} onClick={() => onPageChange(1)} aria-label="First page"><EmaPageFirstIcon /></button>
+          <button type="button" disabled={safePage <= 1 || loading} onClick={() => onPageChange(Math.max(1, safePage - 1))} aria-label="Previous page"><EmaPagePrevIcon /></button>
+          <span>{safePage}</span>
+          <button type="button" disabled={safePage >= safeTotalPages || loading} onClick={() => onPageChange(Math.min(safeTotalPages, safePage + 1))} aria-label="Next page"><EmaPageNextIcon /></button>
+          <button type="button" disabled={safePage >= safeTotalPages || loading} onClick={() => onPageChange(safeTotalPages)} aria-label="Last page"><EmaPageLastIcon /></button>
         </div>
 
-        <div className="">{limit} / page</div>
+        <div>{limit} / page</div>
       </div>
     </div>
   );
@@ -5566,42 +5848,42 @@ function PricingContent(props: PricingContentProps) {
   };
 
   return (
-    <div className="">
-      <div className="">
-        <div className="">
+    <div>
+      <div>
+        <div>
           <span>Device Pricing</span>
           <strong>Brand & Model Pricing Control</strong>
           <small>Maintain replacement price references used by Management Dashboard CAPEX estimation.</small>
         </div>
 
-        <div className="">
+        <div>
           <div><span>Total Rules</span><strong>{rows.length}</strong></div>
           <div><span>CAPEX Active</span><strong>{activeCount}</strong></div>
           <div><span>Excluded</span><strong>{excludedCount}</strong></div>
           <div><span>Average RM</span><strong>{formatMoney(averagePrice)}</strong></div>
         </div>
 
-        <div className="">
+        <div>
           <button type="button" onClick={onAdd} disabled={loading || saving}>+ Add Pricing</button>
         </div>
       </div>
 
       {error && (
-        <div className="">
+        <div>
           <strong>Device pricing load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="">
+      <div>
         <div>
           <span>Planning Reference</span>
           <p>Market price and replacement-cost values are estimates. Confirm final procurement values with Finance or Procurement before approval.</p>
         </div>
       </div>
 
-      <div className="">
-        <div className="">
+      <div>
+        <div>
           <div>No</div>
           <div>Device Category</div>
           <div>Brand</div>
@@ -5611,10 +5893,10 @@ function PricingContent(props: PricingContentProps) {
           <div>Action</div>
         </div>
 
-        {loading && <div className="">Loading device pricing...</div>}
+        {loading && <div>Loading device pricing...</div>}
 
         {!loading && visibleRows.length === 0 && (
-          <div className="">
+          <div>
             <strong>No pricing rules found.</strong>
             <span>Add a custom pricing row, select category, brand and model, then save pricing.</span>
             <button type="button" onClick={onAdd}>+ Add Custom Pricing</button>
@@ -5627,8 +5909,8 @@ function PricingContent(props: PricingContentProps) {
           const rowSaving = saving || savingRowId === row.id;
 
           return (
-            <div className="" key={row.id}>
-              <div><span className="">{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
+            <div key={row.id}>
+              <div><span>{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
 
               <div>
                 <select
@@ -5667,7 +5949,7 @@ function PricingContent(props: PricingContentProps) {
               </div>
 
               <div>
-                <div className="">
+                <div>
                   <span>RM</span>
                   <input
                     min={0}
@@ -5681,7 +5963,7 @@ function PricingContent(props: PricingContentProps) {
 
               <div>
                 <button
-                  className=""
+                 
                   type="button"
                   aria-label="Toggle exclude from CAPEX"
                   onClick={() => onChange(row.id, { IsExcluded: !row.IsExcluded })}
@@ -5692,9 +5974,9 @@ function PricingContent(props: PricingContentProps) {
               </div>
 
               <div>
-                <div className="">
+                <div>
                   <button
-                    className=""
+                   
                     type="button"
                     onClick={() => onSaveRow(row.id)}
                     disabled={rowSaving}
@@ -5705,7 +5987,7 @@ function PricingContent(props: PricingContentProps) {
                   </button>
 
                   <button
-                    className=""
+                   
                     type="button"
                     title="Delete pricing row"
                     onClick={() => onRequestDelete(row)}
@@ -5722,18 +6004,18 @@ function PricingContent(props: PricingContentProps) {
       </div>
 
       {!loading && visibleRows.length > 0 && (
-        <div className="">
-          <div className="">Showing {showingFrom} to {showingTo} of {visibleRows.length} pricing records</div>
+        <div>
+          <div>Showing {showingFrom} to {showingTo} of {visibleRows.length} pricing records</div>
 
-          <div className="" aria-label="Device pricing pagination">
-            <button className="" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
-            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
-            <span className="">{safeCurrentPage}</span>
-            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
-            <button className="" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+          <div aria-label="Device pricing pagination">
+            <button type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span>{safeCurrentPage}</span>
+            <button type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
           </div>
 
-          <div className="">{pageSize} / page</div>
+          <div>{pageSize} / page</div>
         </div>
       )}
     </div>
@@ -5767,59 +6049,59 @@ function ManagementPolicyContent({ values, profile, loading, saving, error, onCh
   };
 
   return (
-    <div className="">
-      <div className="">
-        <div className="">
+    <div>
+      <div>
+        <div>
           <span>Management Policy</span>
           <strong>{profile?.profileName || "Default EMA Management Policy"}</strong>
           <small>Manage assumptions used by Management Dashboard calculation engine without hardcoding values.</small>
         </div>
 
-        <div className="">
+        <div>
           <div><span>Total Rules</span><strong>{totalRules}</strong></div>
           <div><span>Cost Rules</span><strong>{costRules}</strong></div>
           <div><span>Freshness</span><strong>{freshnessRules}</strong></div>
           <div><span>Risk Rules</span><strong>{riskRules}</strong></div>
         </div>
 
-        <div className="">
+        <div>
           <button type="button" onClick={onReload} disabled={loading || saving}>{loading ? "Loading..." : "Reload"}</button>
           <button type="button" onClick={onReset} disabled={loading || saving}>Reset</button>
           <button type="button" onClick={onSave} disabled={loading || saving}>{saving ? "Saving..." : "Save Policy"}</button>
         </div>
       </div>
 
-      {loading && <div className="">Loading Management Policy...</div>}
+      {loading && <div>Loading Management Policy...</div>}
 
       {error && (
-        <div className="">
+        <div>
           <strong>Management Policy load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="">
-        <section className="">
-          <div className="">
+      <div>
+        <section>
+          <div>
             <span>Policy Profile</span>
             <strong>{profile?.profileName || "Default EMA Management Policy"}</strong>
             <small>These assumptions feed ROI, CAPEX, stale evidence and risk exposure calculation.</small>
           </div>
 
-          <div className="">
+          <div>
             <span>{profile?.scopeType || "GLOBAL"}</span>
             <span>{totalRules} rule values</span>
             <span>Updated: {updatedAt}</span>
           </div>
         </section>
 
-        <section className="">
+        <section>
           {groupedFields.map(({ group, fields }) => {
             const tone = getGroupTone(group);
 
             return (
-              <article className="" key={group}>
-                <div className="">
+              <article key={group}>
+                <div>
                   <div>
                     <span>{group}</span>
                     <strong>{fields.length} Rules</strong>
@@ -5827,18 +6109,18 @@ function ManagementPolicyContent({ values, profile, loading, saving, error, onCh
                   </div>
                 </div>
 
-                <div className="">
+                <div>
                   {fields.map((field) => {
                     const inputValue = managementPolicyInputValue(normalizedValues, field);
 
                     return (
-                      <label className="" key={field.key}>
-                        <div className="">
+                      <label key={field.key}>
+                        <div>
                           <span>{field.label}</span>
                           <small>{field.description}</small>
                         </div>
 
-                        <div className="">
+                        <div>
                           <input
                             type="number"
                             min={field.min}
@@ -5885,41 +6167,41 @@ function AgingContent({
   const unknownText = rule.includeUnknownAge ? "Included" : "Flag as data gap";
 
   return (
-    <div className="">
-      <div className="">
-        <div className="">
+    <div>
+      <div>
+        <div>
           <span>PC Aging Rule</span>
           <strong>Endpoint Lifecycle Configuration</strong>
           <small>Configure lifecycle thresholds, replacement planning and calculation basis for hardware aging.</small>
         </div>
 
-        <div className="">
+        <div>
           <div><span>Status</span><strong>{statusText}</strong></div>
           <div><span>Review</span><strong>{rule.monitorMaxYears} yrs</strong></div>
           <div><span>Critical</span><strong>{rule.agingMinYears} yrs</strong></div>
           <div><span>Window</span><strong>{rule.replacementWindowMonths} mo</strong></div>
         </div>
 
-        <div className="">
+        <div>
           <button type="button" onClick={onReload} disabled={loading || saving}>{loading ? "Loading..." : "Reload"}</button>
           <button type="button" onClick={onReset} disabled={saving}>Reset</button>
           <button type="button" onClick={onSave} disabled={saving || loading}>{saving ? "Saving..." : "Save Changes"}</button>
         </div>
       </div>
 
-      {loading && <div className="">Loading PC aging rule from AssetSettings...</div>}
+      {loading && <div>Loading PC aging rule from AssetSettings...</div>}
 
       {error && (
-        <div className="">
+        <div>
           <strong>PC Aging load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="">
-        <section className="">
-          <article className="">
-            <div className="">
+      <div>
+        <section>
+          <article>
+            <div>
               <div>
                 <span>Rule Status</span>
                 <strong>{rule.enabled ? "Active lifecycle rule" : "Lifecycle rule paused"}</strong>
@@ -5927,7 +6209,7 @@ function AgingContent({
               </div>
 
               <button
-                className=""
+               
                 aria-label="Toggle PC aging rule"
                 type="button"
                 onClick={() => onChange({ enabled: !rule.enabled })}
@@ -5936,14 +6218,14 @@ function AgingContent({
               </button>
             </div>
 
-            <div className="">
+            <div>
               <span>{formatAgeSourceLabel(rule.ageSource)}</span>
               <b>{statusText}</b>
             </div>
           </article>
 
-          <article className="">
-            <div className="">
+          <article>
+            <div>
               <div>
                 <span>Decision Guide</span>
                 <strong>Lifecycle Actions</strong>
@@ -5951,7 +6233,7 @@ function AgingContent({
               </div>
             </div>
 
-            <div className="">
+            <div>
               <AgingActionRow status="Standard" condition={"< " + rule.healthyMaxYears + " years"} action="Monitor" tone="blue" />
               <AgingActionRow status="Aging" condition={">= " + rule.monitorMaxYears + " years"} action="Review" tone="amber" />
               <AgingActionRow status="Critical" condition={">= " + rule.agingMinYears + " years"} action="Replace" tone="red" />
@@ -5959,8 +6241,8 @@ function AgingContent({
           </article>
         </section>
 
-        <section className="">
-          <div className="">
+        <section>
+          <div>
             <div>
               <span>Lifecycle Age Bands</span>
               <strong>Threshold Configuration</strong>
@@ -5968,7 +6250,7 @@ function AgingContent({
             </div>
           </div>
 
-          <div className="">
+          <div>
             <AgingThresholdLine
               label="Standard Device"
               help="Healthy lifecycle window before review is required."
@@ -5998,9 +6280,9 @@ function AgingContent({
           </div>
         </section>
 
-        <section className="">
-          <article className="">
-            <div className="">
+        <section>
+          <article>
+            <div>
               <div>
                 <span>Calculation Basis</span>
                 <strong>Aging Reference</strong>
@@ -6008,7 +6290,7 @@ function AgingContent({
               </div>
             </div>
 
-            <div className="">
+            <div>
               <label>
                 <span>Primary Date</span>
                 <select
@@ -6036,7 +6318,7 @@ function AgingContent({
 
               <label>
                 <span>Replacement Window</span>
-                <div className="">
+                <div>
                   <input
                     type="number"
                     min="0"
@@ -6049,14 +6331,14 @@ function AgingContent({
               </label>
             </div>
 
-            <div className="">
+            <div>
               <span>{formatAgeSourceLabel(rule.ageSource)}</span>
               <small>Primary age reference ? Missing date: {unknownText}</small>
             </div>
           </article>
 
-          <article className="">
-            <div className="">
+          <article>
+            <div>
               <div>
                 <span>Admin Note</span>
                 <strong>Operational Note</strong>
@@ -6081,8 +6363,8 @@ function AgingThresholdLine({ label, help, value, display, tone, onChange }: { l
   const safeTone = tone || "blue";
 
   return (
-    <div className="">
-      <div className="">
+    <div>
+      <div>
         <span>{label}</span>
         <small>{help}</small>
       </div>
@@ -6095,7 +6377,7 @@ function AgingThresholdLine({ label, help, value, display, tone, onChange }: { l
         onChange={(event) => onChange(Number(event.target.value))}
       />
 
-      <div className="">
+      <div>
         <input
           type="number"
           min="1"
@@ -6112,7 +6394,7 @@ function AgingThresholdLine({ label, help, value, display, tone, onChange }: { l
 
 function AgingActionRow({ status, condition, action, tone }: { status: string; condition: string; action: string; tone: "blue" | "amber" | "red" }) {
   return (
-    <div className="">
+    <div>
       <div>
         <span>{status}</span>
         <small>{condition}</small>
@@ -6362,25 +6644,25 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
   };
 
   const modalNode = (
-    <div className="" id="userModalBackdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div className="" role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
-        <header className="">
+    <div id="userModalBackdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
+        <header>
           <div>
-            <span className="" id="userModalMode">{mode}</span>
+            <span id="userModalMode">{mode}</span>
             <h3 id="userModalTitle">{title}</h3>
             <p>Configure identity profile and assign one or more RBAC roles from EMA_Roles.</p>
           </div>
-          <button className="" id="closeUserModal" type="button" onClick={onClose} aria-label="Close user modal">?</button>
+          <button id="closeUserModal" type="button" onClick={onClose} aria-label="Close user modal">?</button>
         </header>
 
-        <div className="">
-          <section className="">
-            <div className="">
+        <div>
+          <section>
+            <div>
               <span>Profile</span>
               <small>Basic identity information for this user.</small>
             </div>
 
-            <div className="">
+            <div>
               <label>Full Name<input id="userFullName" placeholder="Example: Zainul Ariffin" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
               <label>Username<input id="userUsername" placeholder="Example: zainul" value={form.username || ""} onChange={(event) => setForm({ ...form, username: event.target.value })} /></label>
               <label>Email<input id="userEmail" placeholder="user@company.com" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
@@ -6388,14 +6670,14 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
             </div>
           </section>
 
-          <section className="">
-            <div className="">
+          <section>
+            <div>
               <span>Access</span>
               <small>Assign one or more RBAC roles. Module access follows the combined role permissions.</small>
             </div>
 
-            <div className="">
-              <div className="">
+            <div>
+              <div>
                 <strong>Assigned Roles</strong>
                 <button
                   type="button"
@@ -6406,13 +6688,13 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
                 </button>
               </div>
 
-              <div className="">
+              <div>
                 {selectedRoles.length === 0 && (
-                  <div className="">No role assigned yet</div>
+                  <div>No role assigned yet</div>
                 )}
 
                 {selectedRoles.map((role) => (
-                  <span className="" key={role}>
+                  <span key={role}>
                     {role}
                     <button type="button" onClick={() => removeSelectedRole(role)} aria-label={`Remove ${role}`}>?</button>
                   </span>
@@ -6420,8 +6702,8 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
               </div>
 
               {rolePickerOpen && (
-                <div className="">
-                  <label className="">
+                <div>
+                  <label>
                     <SearchSvg />
                     <input
                       value={roleSearchTerm}
@@ -6431,17 +6713,17 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
                     />
                   </label>
 
-                  <div className="">
+                  <div>
                     {roleOptions.length === 0 && (
-                      <div className="">No active roles available. Create a role in Role Based Control first.</div>
+                      <div>No active roles available. Create a role in Role Based Control first.</div>
                     )}
 
                     {roleOptions.length > 0 && filteredRoleOptions.length === 0 && (
-                      <div className="">No matching unassigned roles.</div>
+                      <div>No matching unassigned roles.</div>
                     )}
 
                     {filteredRoleOptions.map((role) => (
-                      <button className="" type="button" key={role} onClick={() => addSelectedRole(role)}>
+                      <button type="button" key={role} onClick={() => addSelectedRole(role)}>
                         <span>{role}</span>
                         <b>Assign</b>
                       </button>
@@ -6451,7 +6733,7 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
               )}
             </div>
 
-            <div className="">
+            <div>
               <label>Department<input id="userDepartment" placeholder="Example: IT Operation" value={form.department || ""} onChange={(event) => setForm({ ...form, department: event.target.value })} /></label>
               <label>Position<input id="userPosition" placeholder="Example: Support Engineer" value={form.position || ""} onChange={(event) => setForm({ ...form, position: event.target.value })} /></label>
               <label>Status
@@ -6465,27 +6747,27 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
             </div>
           </section>
 
-          <section className="">
-            <div className="">
+          <section>
+            <div>
               <span>Password</span>
               <small>{isCreateMode ? "Create a login password for immediate testing." : "Fill only when resetting password."}</small>
             </div>
 
-            <div className="">
+            <div>
               <label>{isCreateMode ? "Initial Password" : "New Password"}<input type="password" id="userPassword" placeholder={isCreateMode ? "Create login password" : "Leave blank to keep current password"} value={form.password || ""} onChange={(event) => setForm({ ...form, password: event.target.value })} /></label>
               <label>Confirm Password<input type="password" id="userConfirmPassword" placeholder="Re-enter password" value={form.confirmPassword || ""} onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })} /></label>
             </div>
           </section>
 
-          <section className="">
-            <div className="">
+          <section>
+            <div>
               <span>Security</span>
               <small>Set MFA, lock status, access dates and notes.</small>
             </div>
 
-            <div className="">
-              <label className=""><input type="checkbox" checked={Boolean(form.requireMFA || form.mfa)} onChange={(event) => setForm({ ...form, requireMFA: event.target.checked, mfa: event.target.checked })} /><span>Require MFA</span></label>
-              <label className=""><input type="checkbox" checked={Boolean(form.accountLocked)} onChange={(event) => setForm({ ...form, accountLocked: event.target.checked, status: event.target.checked ? "Locked" : form.status === "Locked" ? "Active" : form.status })} /><span>Account Locked</span></label>
+            <div>
+              <label><input type="checkbox" checked={Boolean(form.requireMFA || form.mfa)} onChange={(event) => setForm({ ...form, requireMFA: event.target.checked, mfa: event.target.checked })} /><span>Require MFA</span></label>
+              <label><input type="checkbox" checked={Boolean(form.accountLocked)} onChange={(event) => setForm({ ...form, accountLocked: event.target.checked, status: event.target.checked ? "Locked" : form.status === "Locked" ? "Active" : form.status })} /><span>Account Locked</span></label>
               <label>Lock Reason<input id="userLockReason" placeholder="Optional reason shown in audit" value={form.lockReason || ""} onChange={(event) => setForm({ ...form, lockReason: event.target.value })} /></label>
               <label>Access Start<input type="date" id="userAccessStart" value={toDateInputValue(form.accessStartDate)} onChange={(event) => setForm({ ...form, accessStartDate: event.target.value })} /></label>
               <label>Access End<input type="date" id="userAccessEnd" value={toDateInputValue(form.accessEndDate)} onChange={(event) => setForm({ ...form, accessEndDate: event.target.value })} /></label>
@@ -6494,9 +6776,9 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
           </section>
         </div>
 
-        <footer className="">
-          <button className="" id="cancelUserModal" type="button" onClick={onClose}>Cancel</button>
-          <button className="" id="saveUserAccess" type="button" onClick={onSave}>Save User</button>
+        <footer>
+          <button id="cancelUserModal" type="button" onClick={onClose}>Cancel</button>
+          <button id="saveUserAccess" type="button" onClick={onSave}>Save User</button>
         </footer>
       </div>
     </div>
@@ -6509,9 +6791,9 @@ function AccessRoleModal({ open, mode, form, setForm, onClose, onSave }: { open:
   if (!open) return null;
 
   const modalNode = (
-    <div className="" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="" role="dialog" aria-modal="true" aria-labelledby="roleModalTitle">
-        <header className="">
+    <div onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section role="dialog" aria-modal="true" aria-labelledby="roleModalTitle">
+        <header>
           <div>
             <span>{mode}</span>
             <h3 id="roleModalTitle">{mode === "ADD ROLE" ? "Add New Role" : "Update Role"}</h3>
@@ -6521,9 +6803,9 @@ function AccessRoleModal({ open, mode, form, setForm, onClose, onSave }: { open:
           <button type="button" onClick={onClose} aria-label="Close role modal">?</button>
         </header>
 
-        <div className="">
-          <div className="">
-            <label className="">
+        <div>
+          <div>
+            <label>
               <span>Role Name</span>
               <input
                 placeholder="Example: L1 Support"
@@ -6532,7 +6814,7 @@ function AccessRoleModal({ open, mode, form, setForm, onClose, onSave }: { open:
               />
             </label>
 
-            <label className="">
+            <label>
               <span>Status</span>
               <select
                 value={form.status === "Inactive" ? "Inactive" : "Active"}
@@ -6544,7 +6826,7 @@ function AccessRoleModal({ open, mode, form, setForm, onClose, onSave }: { open:
               </select>
             </label>
 
-            <label className="">
+            <label>
               <span>Description</span>
               <input
                 placeholder="Describe this role"
@@ -6553,7 +6835,7 @@ function AccessRoleModal({ open, mode, form, setForm, onClose, onSave }: { open:
               />
             </label>
 
-            <label className="">
+            <label>
               <input
                 type="checkbox"
                 checked={Boolean(form.approvalRequired)}
@@ -6567,7 +6849,7 @@ function AccessRoleModal({ open, mode, form, setForm, onClose, onSave }: { open:
           </div>
         </div>
 
-        <footer className="">
+        <footer>
           <button type="button" onClick={onClose}>Cancel</button>
           <button type="button" onClick={onSave}>Save Role</button>
         </footer>
@@ -6622,9 +6904,9 @@ function AccessPolicyModal(props: any) {
   const isEditMode = String(mode).toUpperCase().includes("EDIT") || String(mode).toUpperCase().includes("UPDATE");
 
   const modalNode = (
-    <div className="" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="" role="dialog" aria-modal="true" aria-labelledby="accessPolicyModalTitle">
-        <header className="">
+    <div onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section role="dialog" aria-modal="true" aria-labelledby="accessPolicyModalTitle">
+        <header>
           <div>
             <span>{mode}</span>
             <h3 id="accessPolicyModalTitle">{isEditMode ? "Update Access Control" : "Add New Access Control"}</h3>
@@ -6634,9 +6916,9 @@ function AccessPolicyModal(props: any) {
           <button type="button" onClick={onClose} aria-label="Close access control modal">?</button>
         </header>
 
-        <div className="">
-          <div className="">
-            <label className="">
+        <div>
+          <div>
+            <label>
               <span>Control Name</span>
               <input
                 placeholder="Example: MFA Enforcement"
@@ -6645,7 +6927,7 @@ function AccessPolicyModal(props: any) {
               />
             </label>
 
-            <label className="">
+            <label>
               <span>Description</span>
               <input
                 placeholder="Describe this access control rule"
@@ -6654,7 +6936,7 @@ function AccessPolicyModal(props: any) {
               />
             </label>
 
-            <label className="">
+            <label>
               <span>Scope</span>
               <select
                 value={form.scope || "Global"}
@@ -6668,7 +6950,7 @@ function AccessPolicyModal(props: any) {
               </select>
             </label>
 
-            <label className="">
+            <label>
               <span>Enforcement</span>
               <select
                 value={form.enforcement || "Standard"}
@@ -6682,7 +6964,7 @@ function AccessPolicyModal(props: any) {
               </select>
             </label>
 
-            <label className="">
+            <label>
               <span>Review Cycle</span>
               <select
                 value={form.reviewCycle || "Monthly"}
@@ -6695,7 +6977,7 @@ function AccessPolicyModal(props: any) {
               </select>
             </label>
 
-            <label className="">
+            <label>
               <span>Status</span>
               <select
                 value={form.status || "Active"}
@@ -6709,7 +6991,7 @@ function AccessPolicyModal(props: any) {
           </div>
         </div>
 
-        <footer className="">
+        <footer>
           <button type="button" onClick={onClose}>Cancel</button>
           <button type="button" onClick={onSave}>Save Control</button>
         </footer>

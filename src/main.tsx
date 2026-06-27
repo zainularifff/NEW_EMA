@@ -19,7 +19,9 @@ createRoot(document.getElementById("root")!).render(
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          <App />
+          <EmaToastProvider>
+        <App />
+      </EmaToastProvider>
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
@@ -27,6 +29,9 @@ createRoot(document.getElementById("root")!).render(
 );
 
 import { installEmaTablePaginationFinal } from "./utils/emaTablePaginationFinal";
+import "./styles/ema-settings-clean.css";
+import { EmaToastProvider } from "./components/common/EmaToastProvider";
+import "./styles/ema-common-ui.css";
 
 installEmaTablePaginationFinal();
 
