@@ -11,7 +11,6 @@ import {
   TicketCheck,
   UserCog,
   UsersRound} from "lucide-react";
-import "../styles/settings-v2.css";
 import NotificationChannelsSettings from "../components/settings/NotificationChannelsSettings";
 import {
   accessControls as settingsAccessControls,
@@ -196,7 +195,6 @@ function isResourceSupportEngineer(row: ResourceEngineer) {
 
   return supportRoles.some((role) => roleText.includes(role));
 }
-
 
 
 type SectionItem = {
@@ -796,6 +794,15 @@ const sections: Record<SectionKey, SectionItem> = {
     subtitle: "Leave schedules"}};
 
 const sectionOrder: SectionKey[] = ["roles", "users", "modules", "access", "incident", "audit", "pricing", "aging", "policy", "notifications", "resources"];
+
+const emaMenuGroups: Array<{ label: string; keys: SectionKey[] }> = [
+  { label: "Access & Roles", keys: ["roles", "users", "modules", "access"] },
+  { label: "System Configuration", keys: ["incident", "audit", "pricing", "aging"] },
+  { label: "Policy & Audit", keys: ["policy", "notifications", "resources"] }
+].map((group) => ({
+  ...group,
+  keys: group.keys.filter((key) => sectionOrder.includes(key))
+}));
 // const sectionOrder: SectionKey[] = ["roles", "users", "modules", "access", "incident", "audit", "pricing", "aging", "policy", "risk", "resources"];
 
 const defaultAccessRoles: AccessRole[] = [
@@ -1125,7 +1132,6 @@ const policies = [
   ["Approval for Critical Action", "Require reason and approval for lock, wipe, unlock and risk override.", "Enabled", "policy-on"],
   ["Password Rotation", "Force periodic password change or SSO policy alignment.", "Disabled", "policy-off"],
   ["Role Change Approval", "Role updates require approval and audit comment.", "Enabled", "policy-on"]] as const;
-
 
 
 const risks = [
@@ -3149,12 +3155,12 @@ setModuleLoaded(true);
 
 
   useEffect(() => {
-    document.documentElement.classList.add("ema-settings-page-active");
-    document.body.classList.add("ema-settings-page-active");
+    document.documentElement.classList.add("ema-ui-page-active");
+    document.body.classList.add("ema-ui-page-active");
 
     return () => {
-      document.documentElement.classList.remove("ema-settings-page-active");
-      document.body.classList.remove("ema-settings-page-active");
+      document.documentElement.classList.remove("ema-ui-page-active");
+      document.body.classList.remove("ema-ui-page-active");
     };
   }, []);
 
@@ -3166,27 +3172,27 @@ setModuleLoaded(true);
   const visibleUsers = users.filter((user) => !filteredContentTerm || `${user.name} ${user.username || ""} ${user.email} ${user.role} ${user.status}`.toLowerCase().includes(filteredContentTerm));
 
   return (
-    <main className="settings-v2-inner" data-section={activeSection}>
+    <main className="" data-section={activeSection}>
       <input aria-hidden="true" id="globalSearch" type="hidden" />
       <button hidden id="themeBtn" type="button">
         <span id="themeLabel">Dark Mode</span>
       </button>
 
-      <div className="settings-v2-layout">
-        <aside className="settings-v2-side-panel">
-          <div className="settings-v2-side-head">
+      <div className="">
+        <aside className="">
+          <div className="">
             <span>SETTINGS CENTER</span>
             <strong>Configuration Area</strong>
             <small>Select system setup domain</small>
           </div>
 
-          <div className="settings-v2-menu" id="settingsMenu" role="tablist" aria-label="Settings navigation">
+          <div className="" id="settingsMenu" role="tablist" aria-label="Settings navigation">
             {sectionOrder.map((key) => {
               const item = sections[key];
               return (
                 <button
                   key={key}
-                  className={`settings-v2-menu-item ${activeSection === key ? "active" : ""}`}
+                  className=""
                   type="button"
                   data-section={key}
                   onClick={() => {
@@ -3194,22 +3200,22 @@ setModuleLoaded(true);
                     setSectionSearch("");
                   }}
                 >
-                  <span className="settings-v2-menu-icon"><SettingsMenuIcon name={item.icon} /></span>
-                  <span className="settings-v2-menu-text"><strong>{item.title}</strong><small>{item.desc}</small></span>
+                  <span className=""><SettingsMenuIcon name={item.icon} /></span>
+                  <span className=""><strong>{item.title}</strong><small>{item.desc}</small></span>
                 </button>
               );
             })}
           </div>
         </aside>
 
-        <section className="settings-v2-main-panel">
-          <div className="settings-v2-hero">
+        <section className="">
+          <div className="">
             <div>
-              <span className="settings-v2-eyebrow">ADMINISTRATION CONTROL</span>
+              <span className="">ADMINISTRATION CONTROL</span>
               <h2 id="heroTitle">{activeHeroTitle}</h2>
               <p id="heroDesc">{activeHeroDesc}</p>
             </div>
-            <div className="settings-v2-score-grid">
+            <div className="">
               {active.key === "users" ? (
                 <>
                   <div >
@@ -3235,16 +3241,16 @@ setModuleLoaded(true);
                 </>
               ) : active.key === "roles" ? (
                 <>
-                  <div className="settings-v2-score-card settings-v2-score-card-total">
-                    <div className="settings-v2-score-card-icon">
+                  <div className="">
+                    <div className="">
                       <UsersRound />
                     </div>
                     <span>Total Roles</span>
                     <strong>{rolesTotalCount}</strong>
                     <small>Roles Records</small>
                   </div>
-                  <div className="settings-v2-score-card settings-v2-score-card-active">
-                    <div className="settings-v2-score-card-icon">
+                  <div className="">
+                    <div className="">
                       <UserCog />
                     </div>
                     <span>Active Roles</span>
@@ -3308,7 +3314,7 @@ setModuleLoaded(true);
             </div>
           </div>
 
-          <div className="settings-v2-content-card">
+          <div className="">
             {false && (
               <div >
                 {activeSection !== "audit" && (
@@ -3342,8 +3348,8 @@ setModuleLoaded(true);
             )}
 
             {activeSection !== "users" && activeSection !== "access" && activeSection !== "audit" && activeSection !== "incident" && activeSection !== "aging" && activeSection !== "policy" && activeSection !== "resources" && activeSection !== "notifications" && (
-              <div className="settings-v2-toolbar">
-                <label className="settings-v2-search">
+              <div className="">
+                <label className="">
                   <SearchSvg />
                   <input
                     id="sectionSearch"
@@ -3353,7 +3359,7 @@ setModuleLoaded(true);
                   />
                 </label>
                 {activeSection === "roles" && (
-                  <div className="settings-v2-actions">
+                  <div className="">
                     <button type="button" onClick={loadAccessRoles} disabled={rolesLoading}>{rolesLoading ? "Loading..." : "Refresh"}</button>
                     <button  type="button" onClick={() => openAccessRoleModal(null)}>Add Role</button>
                   </div>
@@ -3392,7 +3398,7 @@ setModuleLoaded(true);
               </div>
             )}
 
-            <div className="settings-v2-content-body" id="contentBody">
+            <div className="" id="contentBody">
               {activeSection === "roles" && <RoleContent roles={accessRoles} loading={rolesLoading} error={rolesError} search={filteredContentTerm} onEdit={openAccessRoleModal} onDelete={requestDeleteAccessRole} />}
               {activeSection === "users" && <UserAccessContent users={visibleUsers} sourceUsers={users} loading={usersLoading} error={usersError} search={sectionSearch} onSearchChange={setSectionSearch} onReload={loadUsers} onAdd={() => openUserModal(null)} onEdit={openUserModal} onDelete={requestDeleteUser} />}
               {activeSection === "modules" && <ModuleMatrixContent roles={accessRoles.filter((role) => role.status === "Active")} modules={moduleCatalog} permissions={modulePermissions} loading={moduleLoading} error={moduleError} search={filteredContentTerm} savingKey={moduleSavingKey} onReload={loadModuleAccess} onToggle={toggleRoleModuleAccess} />}
@@ -3648,22 +3654,22 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
   const enabledWorkingDays = workingHours.filter((row) => row.enabled).length;
 
   return (
-    <div className="settings-v2-incident-content">
-      <div className="settings-v2-incident-command">
-        <div className="settings-v2-incident-info">
+    <div className="">
+      <div className="">
+        <div className="">
           <span>{meta.eyebrow}</span>
           <strong>{meta.commandTitle}</strong>
           <small>{meta.commandDescription}</small>
         </div>
 
-        <div className="settings-v2-incident-stats">
+        <div className="">
           <div><span>SLA Rules</span><strong>{slaRows.length}</strong></div>
           <div><span>Working Days</span><strong>{enabledWorkingDays}</strong></div>
           <div><span>Categories</span><strong>{categoryCounts.categoryCount}</strong></div>
           <div><span>Details</span><strong>{categoryCounts.detailCount}</strong></div>
         </div>
 
-        <div className="settings-v2-incident-actions">
+        <div className="">
           <button type="button" onClick={onReload} disabled={loading || saving || Boolean(categorySavingKey)}>
             {loading ? "Loading..." : "Refresh"}
           </button>
@@ -3674,22 +3680,22 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
       </div>
 
       {error && (
-        <div className="settings-v2-alert">
+        <div className="">
           <strong>Incident Config load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="settings-v2-incident-tabs">
-        <button className={activeTab === "sla" ? "active" : ""} type="button" onClick={() => onTabChange("sla")}>SLA Rules</button>
-        <button className={activeTab === "workingHours" ? "active" : ""} type="button" onClick={() => onTabChange("workingHours")}>Working Hours</button>
-        <button className={activeTab === "categories" ? "active" : ""} type="button" onClick={() => onTabChange("categories")}>Category Setup</button>
+      <div className="">
+        <button className="" type="button" onClick={() => onTabChange("sla")}>SLA Rules</button>
+        <button className="" type="button" onClick={() => onTabChange("workingHours")}>Working Hours</button>
+        <button className="" type="button" onClick={() => onTabChange("categories")}>Category Setup</button>
       </div>
 
-      <div className="settings-v2-incident-body">
+      <div className="">
         {activeTab === "sla" && (
-          <section className="settings-v2-incident-panel">
-            <div className="settings-v2-incident-panel-head">
+          <section className="">
+            <div className="">
               <div>
                 <span>SLA Configuration</span>
                 <strong>Priority-based SLA Rules</strong>
@@ -3697,8 +3703,8 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
               </div>
             </div>
 
-            <div className="settings-v2-incident-table settings-v2-sla-readonly">
-              <div className="settings-v2-incident-table-head sla">
+            <div className="">
+              <div className="">
                 <div>Priority</div>
                 <div>Label</div>
                 <div>Response Min</div>
@@ -3707,12 +3713,12 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
               </div>
 
               {slaRows.map((row) => (
-                <div className="settings-v2-incident-table-row sla" key={String(row.id)}>
-                  <div><span className="settings-v2-priority-badge">{row.priority}</span></div>
-                  <div><input className="settings-v2-readonly-input" value={row.label} readOnly disabled /></div>
-                  <div><input className="settings-v2-readonly-input" value={row.responseTimeMin} readOnly disabled /></div>
-                  <div><input className="settings-v2-readonly-input" value={row.resolutionTimeHrs} readOnly disabled /></div>
-                  <div><textarea className="settings-v2-readonly-textarea" value={row.escalationPolicy} readOnly disabled /></div>
+                <div className="" key={String(row.id)}>
+                  <div><span className="">{row.priority}</span></div>
+                  <div><input className="" value={row.label} readOnly disabled /></div>
+                  <div><input className="" value={row.responseTimeMin} readOnly disabled /></div>
+                  <div><input className="" value={row.resolutionTimeHrs} readOnly disabled /></div>
+                  <div><textarea className="" value={row.escalationPolicy} readOnly disabled /></div>
                 </div>
               ))}
             </div>
@@ -3720,8 +3726,8 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
         )}
 
         {activeTab === "workingHours" && (
-          <section className="settings-v2-incident-panel">
-            <div className="settings-v2-incident-panel-head">
+          <section className="">
+            <div className="">
               <div>
                 <span>Working Hours</span>
                 <strong>SLA Counting Window</strong>
@@ -3729,8 +3735,8 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
               </div>
             </div>
 
-            <div className="settings-v2-incident-table">
-              <div className="settings-v2-incident-table-head hours">
+            <div className="">
+              <div className="">
                 <div>Day</div>
                 <div>Status</div>
                 <div>Start Time</div>
@@ -3739,11 +3745,11 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
               </div>
 
               {workingHours.map((row) => (
-                <div className="settings-v2-incident-table-row hours" key={row.id}>
-                  <div><span className="settings-v2-incident-day">{row.day}</span></div>
+                <div className="" key={row.id}>
+                  <div><span className="">{row.day}</span></div>
                   <div>
                     <select
-                      className="settings-v2-incident-native-select"
+                      className=""
                       value={row.enabled ? "enabled" : "rest"}
                       onChange={(event) => onWorkingHourChange(row.id, { enabled: event.target.value === "enabled" })}
                       aria-label={`${row.day} working status`}
@@ -3754,7 +3760,7 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
                   </div>
                   <div><input type="time" value={row.start} disabled={!row.enabled} onChange={(event) => onWorkingHourChange(row.id, { start: event.target.value })} /></div>
                   <div><input type="time" value={row.end} disabled={!row.enabled} onChange={(event) => onWorkingHourChange(row.id, { end: event.target.value })} /></div>
-                  <div><span className={`settings-v2-user-pill ${row.enabled ? "active" : "inactive"}`}><span />{row.enabled ? "Working Day" : "Rest Day"}</span></div>
+                  <div><span className=""><span />{row.enabled ? "Working Day" : "Rest Day"}</span></div>
                 </div>
               ))}
             </div>
@@ -3762,36 +3768,36 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
         )}
 
         {activeTab === "categories" && (
-          <section className="settings-v2-incident-panel settings-v2-incident-category-panel">
-            <div className="settings-v2-incident-panel-head">
+          <section className="">
+            <div className="">
               <div>
                 <span>Category Setup</span>
                 <strong>Incident Category Hierarchy</strong>
                 <small>Maintain Category, Subcategory and Incident Detail options used by Service Desk.</small>
               </div>
 
-              <div className="settings-v2-incident-category-counts">
+              <div className="">
                 <span><strong>{categoryCounts.categoryCount}</strong> Categories</span>
                 <span><strong>{categoryCounts.subcategoryCount}</strong> Subcategories</span>
                 <span><strong>{categoryCounts.detailCount}</strong> Details</span>
               </div>
             </div>
 
-            <div className="settings-v2-incident-category-layout">
-              <aside className="settings-v2-incident-category-list">
-                <div className="settings-v2-incident-inline-form">
+            <div className="">
+              <aside className="">
+                <div className="">
                   <input value={newCategoryName} onChange={(event) => onNewCategoryNameChange(event.target.value)} placeholder="New category name" disabled={categoriesDisabled} />
                   <button type="button" onClick={onAddCategory} disabled={categoriesDisabled || !newCategoryName.trim()}>
                     {categorySavingKey === "category:add" ? "Adding..." : "+ Add"}
                   </button>
                 </div>
 
-                <div className="settings-v2-incident-category-buttons">
+                <div className="">
                   {categories.length === 0 ? (
-                    <div className="settings-v2-empty">No category yet. Add the first incident category.</div>
+                    <div className="">No category yet. Add the first incident category.</div>
                   ) : categories.map((category) => (
                     <button
-                      className={String(category.id) === String(selectedCategory?.id) ? "active" : ""}
+                      className=""
                       key={String(category.id)}
                       type="button"
                       onClick={() => onSelectCategory(String(category.id))}
@@ -3803,86 +3809,86 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
                 </div>
               </aside>
 
-              <div className="settings-v2-incident-category-editor">
+              <div className="">
                 {selectedCategory ? (
                   <>
-                    <section className="settings-v2-incident-edit-card">
-                      <div className="settings-v2-incident-edit-head">
+                    <section className="">
+                      <div className="">
                         <div><span>Category</span><strong>Edit Selected Category</strong></div>
-                        <div className="ema-row-actions">
-                          <button className="ema-action-btn ema-action-btn-edit" type="button" onClick={() => onUpdateCategory(selectedCategory)} disabled={categoriesDisabled || !selectedCategory.name.trim()} title="Save category"><PencilSvg /></button>
-                          <button className="ema-action-btn ema-action-btn-delete" type="button" onClick={() => onDeleteCategory(selectedCategory)} disabled={categoriesDisabled} title="Delete category"><TrashSvg /></button>
+                        <div className="">
+                          <button className="" type="button" onClick={() => onUpdateCategory(selectedCategory)} disabled={categoriesDisabled || !selectedCategory.name.trim()} title="Save category"><PencilSvg /></button>
+                          <button className="" type="button" onClick={() => onDeleteCategory(selectedCategory)} disabled={categoriesDisabled} title="Delete category"><TrashSvg /></button>
                         </div>
                       </div>
                       <input value={selectedCategory.name} onChange={(event) => onCategoryNameChange(selectedCategory.id, event.target.value)} placeholder="Category name" disabled={categoriesDisabled} />
                     </section>
 
-                    <section className="settings-v2-incident-edit-card">
-                      <div className="settings-v2-incident-edit-head">
+                    <section className="">
+                      <div className="">
                         <div><span>Subcategory</span><strong>Subcategories under {selectedCategory.name || "selected category"}</strong></div>
                       </div>
 
-                      <div className="settings-v2-incident-inline-form">
+                      <div className="">
                         <input value={newSubcategoryName} onChange={(event) => onNewSubcategoryNameChange(event.target.value)} placeholder="New subcategory name" disabled={categoriesDisabled} />
                         <button type="button" onClick={onAddSubcategory} disabled={categoriesDisabled || !newSubcategoryName.trim()}>
                           {categorySavingKey === `category:${selectedCategory.id}:subcategory:add` ? "Adding..." : "+ Add Subcategory"}
                         </button>
                       </div>
 
-                      <div className="settings-v2-incident-subcategory-list">
+                      <div className="">
                         {selectedCategory.subcategories.length === 0 ? (
-                          <div className="settings-v2-empty">No subcategory yet for this category.</div>
+                          <div className="">No subcategory yet for this category.</div>
                         ) : selectedCategory.subcategories.map((subcategory) => (
-                          <div className={String(subcategory.id) === String(selectedSubcategory?.id) ? "active" : ""} key={String(subcategory.id)}>
+                          <div className="" key={String(subcategory.id)}>
                             <button type="button" onClick={() => onSelectSubcategory(String(subcategory.id))}>
                               <strong>{subcategory.name || "Untitled Subcategory"}</strong>
                               <small>{subcategory.details.length} details</small>
                             </button>
                             <input value={subcategory.name} onChange={(event) => onSubcategoryNameChange(selectedCategory.id, subcategory.id, event.target.value)} disabled={categoriesDisabled} />
-                            <div className="ema-row-actions">
-                              <button className="ema-action-btn ema-action-btn-edit" type="button" onClick={() => onUpdateSubcategory(selectedCategory.id, subcategory)} disabled={categoriesDisabled || !subcategory.name.trim()} title="Save subcategory"><PencilSvg /></button>
-                              <button className="ema-action-btn ema-action-btn-delete" type="button" onClick={() => onDeleteSubcategory(selectedCategory.id, subcategory)} disabled={categoriesDisabled} title="Delete subcategory"><TrashSvg /></button>
+                            <div className="">
+                              <button className="" type="button" onClick={() => onUpdateSubcategory(selectedCategory.id, subcategory)} disabled={categoriesDisabled || !subcategory.name.trim()} title="Save subcategory"><PencilSvg /></button>
+                              <button className="" type="button" onClick={() => onDeleteSubcategory(selectedCategory.id, subcategory)} disabled={categoriesDisabled} title="Delete subcategory"><TrashSvg /></button>
                             </div>
                           </div>
                         ))}
                       </div>
                     </section>
 
-                    <section className="settings-v2-incident-edit-card">
-                      <div className="settings-v2-incident-edit-head">
+                    <section className="">
+                      <div className="">
                         <div><span>Incident Detail</span><strong>{selectedSubcategory ? `Details under ${selectedSubcategory.name}` : "Select a subcategory"}</strong></div>
                       </div>
 
                       {selectedSubcategory ? (
                         <>
-                          <div className="settings-v2-incident-inline-form">
+                          <div className="">
                             <input value={newDetailName} onChange={(event) => onNewDetailNameChange(event.target.value)} placeholder="New incident detail" disabled={categoriesDisabled} />
                             <button type="button" onClick={onAddDetail} disabled={categoriesDisabled || !newDetailName.trim()}>
                               {categorySavingKey === `subcategory:${selectedSubcategory.id}:detail:add` ? "Adding..." : "+ Add Detail"}
                             </button>
                           </div>
 
-                          <div className="settings-v2-incident-detail-list">
+                          <div className="">
                             {selectedSubcategory.details.length === 0 ? (
-                              <div className="settings-v2-empty">No incident detail yet for this subcategory.</div>
+                              <div className="">No incident detail yet for this subcategory.</div>
                             ) : selectedSubcategory.details.map((detail) => (
                               <div key={String(detail.id)}>
                                 <input value={detail.name} onChange={(event) => onDetailNameChange(selectedCategory.id, selectedSubcategory.id, detail.id, event.target.value)} disabled={categoriesDisabled} />
-                                <div className="ema-row-actions">
-                                  <button className="ema-action-btn ema-action-btn-edit" type="button" onClick={() => onUpdateDetail(selectedCategory.id, selectedSubcategory.id, detail)} disabled={categoriesDisabled || !detail.name.trim()} title="Save detail"><PencilSvg /></button>
-                                  <button className="ema-action-btn ema-action-btn-delete" type="button" onClick={() => onDeleteDetail(selectedCategory.id, selectedSubcategory.id, detail)} disabled={categoriesDisabled} title="Delete detail"><TrashSvg /></button>
+                                <div className="">
+                                  <button className="" type="button" onClick={() => onUpdateDetail(selectedCategory.id, selectedSubcategory.id, detail)} disabled={categoriesDisabled || !detail.name.trim()} title="Save detail"><PencilSvg /></button>
+                                  <button className="" type="button" onClick={() => onDeleteDetail(selectedCategory.id, selectedSubcategory.id, detail)} disabled={categoriesDisabled} title="Delete detail"><TrashSvg /></button>
                                 </div>
                               </div>
                             ))}
                           </div>
                         </>
                       ) : (
-                        <div className="settings-v2-empty">Select or add a subcategory before adding incident details.</div>
+                        <div className="">Select or add a subcategory before adding incident details.</div>
                       )}
                     </section>
                   </>
                 ) : (
-                  <div className="settings-v2-empty">Add a category first to start configuring Service Desk category setup.</div>
+                  <div className="">Add a category first to start configuring Service Desk category setup.</div>
                 )}
               </div>
             </div>
@@ -3892,9 +3898,6 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
     </div>
   );
 }
-
-
-
 
 
 function ResourcePlanningContent(props: any) {
@@ -4078,22 +4081,22 @@ function ResourcePlanningContent(props: any) {
   };
 
   return (
-    <div className="settings-v2-resource-content">
-      <div className="settings-v2-resource-command">
-        <div className="settings-v2-resource-info">
+    <div className="">
+      <div className="">
+        <div className="">
           <span>Resource Planning</span>
           <strong>Engineer Leave & Assignment Visibility</strong>
           <small>Manage engineer leave using EMA users. Service Desk assignment will warn when an engineer is on leave.</small>
         </div>
 
-        <div className="settings-v2-resource-stats">
+        <div className="">
           <div><span>Engineers</span><strong>{engineerOptionsList.length}</strong></div>
           <div><span>Schedules</span><strong>{schedules.length}</strong></div>
           <div><span>Active</span><strong>{activeSchedules}</strong></div>
           <div><span>Filtered</span><strong>{sortedSchedules.length}</strong></div>
         </div>
 
-        <div className="settings-v2-resource-actions">
+        <div className="">
           <button type="button" onClick={onReload} disabled={loading || saving}>
             {loading ? "Loading..." : "Refresh"}
           </button>
@@ -4101,15 +4104,15 @@ function ResourcePlanningContent(props: any) {
       </div>
 
       {error && (
-        <div className="settings-v2-alert">
+        <div className="">
           <strong>Resource Planning load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="settings-v2-resource-body">
-        <section className="settings-v2-resource-form-card">
-          <div className="settings-v2-resource-card-head">
+      <div className="">
+        <section className="">
+          <div className="">
             <div>
               <span>{editingId ? "Update Schedule" : "New Schedule"}</span>
               <strong>{editingId ? "Edit Engineer Leave" : "Add Engineer Leave"}</strong>
@@ -4117,7 +4120,7 @@ function ResourcePlanningContent(props: any) {
             </div>
           </div>
 
-          <div className="settings-v2-resource-form-grid">
+          <div className="">
             <label>
               <span>Engineer</span>
               <select
@@ -4169,7 +4172,7 @@ function ResourcePlanningContent(props: any) {
               />
             </label>
 
-            <label className="settings-v2-resource-full">
+            <label className="">
               <span>Remarks</span>
               <textarea
                 value={form.Remarks || ""}
@@ -4180,7 +4183,7 @@ function ResourcePlanningContent(props: any) {
           </div>
 
           {selectedEngineer && (
-            <div className="settings-v2-resource-selected">
+            <div className="">
               <div>
                 <strong>{getResourceEngineerName(selectedEngineer)}</strong>
                 <span>{selectedRole || "Support"}{getResourceEngineerDepartment(selectedEngineer) ? " ? " + getResourceEngineerDepartment(selectedEngineer) : ""}</span>
@@ -4188,7 +4191,7 @@ function ResourcePlanningContent(props: any) {
             </div>
           )}
 
-          <div className="settings-v2-resource-form-actions">
+          <div className="">
             <button type="button" onClick={onReset} disabled={saving}>Clear</button>
             <button type="button" onClick={onSave} disabled={saving || loading}>
               {saving ? "Saving..." : editingId ? "Update Leave" : "Add Leave"}
@@ -4196,15 +4199,15 @@ function ResourcePlanningContent(props: any) {
           </div>
         </section>
 
-        <section className="settings-v2-resource-table-card">
-          <div className="settings-v2-resource-table-toolbar">
+        <section className="">
+          <div className="">
             <div>
               <span>Schedules</span>
               <strong>Active & Upcoming Leave</strong>
               <small>Latest leave schedules are shown first. Click a table title to sort.</small>
             </div>
 
-            <div className="settings-v2-resource-filters">
+            <div className="">
               <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter leave status">
                 <option value="all">All statuses</option>
                 {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -4219,8 +4222,8 @@ function ResourcePlanningContent(props: any) {
             </div>
           </div>
 
-          <div className="settings-v2-resource-table">
-            <div className="settings-v2-resource-head">
+          <div className="">
+            <div className="">
               <button type="button" onClick={() => updateSort("engineer")}>Engineer <span>{sortIndicator("engineer")}</span></button>
               <button type="button" onClick={() => updateSort("role")}>Role <span>{sortIndicator("role")}</span></button>
               <button type="button" onClick={() => updateSort("period")}>Period <span>{sortIndicator("period")}</span></button>
@@ -4229,37 +4232,37 @@ function ResourcePlanningContent(props: any) {
               <div>Action</div>
             </div>
 
-            {loading && <div className="settings-v2-loading">Loading resource planning...</div>}
-            {!loading && sortedSchedules.length === 0 && <div className="settings-v2-empty">No engineer leave schedule found.</div>}
+            {loading && <div className="">Loading resource planning...</div>}
+            {!loading && sortedSchedules.length === 0 && <div className="">No engineer leave schedule found.</div>}
 
             {!loading && paginatedSchedules.map((row: any) => {
               const scheduleId = getResourceScheduleId(row);
               const status = getResourceScheduleStatus(row);
 
               return (
-                <div className="settings-v2-resource-row" key={scheduleId || String(getResourceScheduleName(row)) + "-" + String(row.StartDate) + "-" + String(row.EndDate)}>
+                <div className="" key={scheduleId || String(getResourceScheduleName(row)) + "-" + String(row.StartDate) + "-" + String(row.EndDate)}>
                   <div>
                     <strong>{getResourceScheduleName(row) || "Unknown engineer"}</strong>
                     <small>{getResourceScheduleDepartment(row) || "No department"}</small>
                   </div>
 
-                  <div><span className="settings-v2-resource-role">{getResourceScheduleRole(row) || "Support"}</span></div>
+                  <div><span className="">{getResourceScheduleRole(row) || "Support"}</span></div>
 
                   <div>
                     <strong>{String(row.StartDate || "").slice(0, 10)}</strong>
                     <small>to {String(row.EndDate || "").slice(0, 10)}</small>
                   </div>
 
-                  <div><span className="settings-v2-resource-status">{status}</span></div>
+                  <div><span className="">{status}</span></div>
 
-                  <div><span className="settings-v2-resource-remarks">{getResourceScheduleRemarks(row) || "-"}</span></div>
+                  <div><span className="">{getResourceScheduleRemarks(row) || "-"}</span></div>
 
                   <div>
-                    <div className="ema-row-actions">
-                      <button className="ema-action-btn ema-action-btn-edit" type="button" onClick={() => onEdit(row)} aria-label="Edit leave schedule" title="Edit">
+                    <div className="">
+                      <button className="" type="button" onClick={() => onEdit(row)} aria-label="Edit leave schedule" title="Edit">
                         <PencilSvg />
                       </button>
-                      <button className="ema-action-btn ema-action-btn-delete" type="button" onClick={() => onDelete(row)} aria-label="Delete leave schedule" title="Delete">
+                      <button className="" type="button" onClick={() => onDelete(row)} aria-label="Delete leave schedule" title="Delete">
                         <TrashSvg />
                       </button>
                     </div>
@@ -4270,18 +4273,18 @@ function ResourcePlanningContent(props: any) {
           </div>
 
           {!loading && sortedSchedules.length > 0 && (
-            <div className="ema-pagination">
-              <div className="ema-pagination-summary">Showing {showingFrom} to {showingTo} of {sortedSchedules.length} leave records</div>
+            <div className="">
+              <div className="">Showing {showingFrom} to {showingTo} of {sortedSchedules.length} leave records</div>
 
-              <div className="ema-pagination-controls" aria-label="Resource planning pagination">
-                <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
-                <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
-                <span className="ema-page-current">{safeCurrentPage}</span>
-                <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
-                <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+              <div className="" aria-label="Resource planning pagination">
+                <button className="" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+                <button className="" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+                <span className="">{safeCurrentPage}</span>
+                <button className="" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+                <button className="" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
               </div>
 
-              <div className="ema-page-size">{pageSize} / page</div>
+              <div className="">{pageSize} / page</div>
             </div>
           )}
         </section>
@@ -4412,25 +4415,25 @@ function RoleContent({ roles, loading, error, search, onEdit, onDelete }: { role
   };
 
   return (
-    <div className="settings-v2-role-content">
+    <div className="">
       {error && (
-        <div className="settings-v2-alert">
+        <div className="">
           <strong>Role load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="settings-v2-data-table settings-v2-role-table">
-        <div className="settings-v2-table-head">
-          <div className="settings-v2-th">No</div>
-          <div className="settings-v2-th">Role</div>
-          <div className="settings-v2-th">Approval</div>
-          <div className="settings-v2-th">Status</div>
-          <div className="settings-v2-th">Action</div>
+      <div className="">
+        <div className="">
+          <div className="">No</div>
+          <div className="">Role</div>
+          <div className="">Approval</div>
+          <div className="">Status</div>
+          <div className="">Action</div>
         </div>
 
-        {loading && <div className="settings-v2-loading">Loading role records from EMA_Roles...</div>}
-        {!loading && filteredRoles.length === 0 && <div className="settings-v2-empty">No role records found.</div>}
+        {loading && <div className="">Loading role records from EMA_Roles...</div>}
+        {!loading && filteredRoles.length === 0 && <div className="">No role records found.</div>}
 
         {!loading && paginatedRoles.map((role, index) => {
           const actualIndex = getActualIndex(role);
@@ -4439,43 +4442,43 @@ function RoleContent({ roles, loading, error, search, onEdit, onDelete }: { role
           const tone = getSettingsRoleTone(role, pageStartIndex + index);
 
           return (
-            <div className="settings-v2-table-row" key={`${role.id || role.roleKey}-${actualIndex}`}>
-              <div className="settings-v2-td">
-                <span className="settings-v2-row-no">{String(pageStartIndex + index + 1).padStart(2, "0")}</span>
+            <div className="" key={`${role.id || role.roleKey}-${actualIndex}`}>
+              <div className="">
+                <span className="">{String(pageStartIndex + index + 1).padStart(2, "0")}</span>
               </div>
 
-              <div className="settings-v2-td">
-                <div className="settings-v2-role-main">
-                  <span className={`settings-v2-role-avatar ${tone}`}>
+              <div className="">
+                <div className="">
+                  <span className="">
                     <SettingsRoleIcon role={role} />
                   </span>
-                  <div className="settings-v2-role-name">
+                  <div className="">
                     <strong>{role.name}</strong>
                     <small>{role.description || "No description set"}</small>
                   </div>
                 </div>
               </div>
 
-              <div className="settings-v2-td">
-                <span className={`settings-v2-pill ${approvalClass}`}>
+              <div className="">
+                <span className="">
                   {role.approvalRequired ? "Required" : "Standard"}
                 </span>
               </div>
 
-              <div className="settings-v2-td">
-                <span className={`settings-v2-pill ${isInactive ? "inactive" : "active"}`}>
-                  <span className="settings-v2-pill-dot" />
+              <div className="">
+                <span className="">
+                  <span className="" />
                   {isInactive ? "Inactive" : "Active"}
                 </span>
               </div>
 
-              <div className="settings-v2-td">
-                <div className="ema-row-actions">
-                  <button className="ema-action-btn ema-action-btn-edit" type="button" title="Edit role" aria-label="Edit role" onClick={() => onEdit(actualIndex)}>
+              <div className="">
+                <div className="">
+                  <button className="" type="button" title="Edit role" aria-label="Edit role" onClick={() => onEdit(actualIndex)}>
                     <PencilSvg />
                   </button>
                   <button
-                    className="ema-action-btn ema-action-btn-delete"
+                    className=""
                     type="button"
                     title={isProtectedSuperAdminRole(role) ? "Super Admin is protected and cannot be deleted" : "Delete role"}
                     aria-label={isProtectedSuperAdminRole(role) ? "Protected role" : "Delete role"}
@@ -4492,20 +4495,20 @@ function RoleContent({ roles, loading, error, search, onEdit, onDelete }: { role
       </div>
 
       {!loading && filteredRoles.length > 0 && (
-        <div className="ema-pagination">
-          <div className="ema-pagination-summary">
+        <div className="">
+          <div className="">
             Showing {showingFrom} to {showingTo} of {filteredRoles.length} roles
           </div>
 
-          <div className="ema-pagination-controls" aria-label="Role based control pagination">
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
-            <span className="ema-page-current">{safeCurrentPage}</span>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+          <div className="" aria-label="Role based control pagination">
+            <button className="" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span className="">{safeCurrentPage}</span>
+            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button className="" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
           </div>
 
-          <div className="ema-page-size">{pageSize} / page</div>
+          <div className="">{pageSize} / page</div>
         </div>
       )}
     </div>
@@ -4809,9 +4812,9 @@ function UserAccessContent({ users, sourceUsers, loading, error, search, onSearc
   };
 
   return (
-    <div className="settings-v2-user-content">
-      <div className="settings-v2-user-toolbar">
-        <label className="settings-v2-user-search">
+    <div className="">
+      <div className="">
+        <label className="">
           <SearchSvg />
           <input
             placeholder="Search users by name, email, username or role..."
@@ -4820,7 +4823,7 @@ function UserAccessContent({ users, sourceUsers, loading, error, search, onSearc
           />
         </label>
 
-        <div className="settings-v2-user-filters">
+        <div className="">
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="User status filter">
             <option>All Status</option>
             <option>Active</option>
@@ -4835,21 +4838,21 @@ function UserAccessContent({ users, sourceUsers, loading, error, search, onSearc
           </select>
         </div>
 
-        <div className="settings-v2-user-actions">
+        <div className="">
           <button type="button" onClick={onReload} disabled={loading}>{loading ? "Loading..." : "Refresh"}</button>
           <button type="button" onClick={onAdd}>Add New User</button>
         </div>
       </div>
 
       {error && (
-        <div className="settings-v2-alert">
+        <div className="">
           <strong>User access load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="settings-v2-user-table">
-        <div className="settings-v2-user-head">
+      <div className="">
+        <div className="">
           <div>No</div>
           <div>User</div>
           <div>Roles</div>
@@ -4860,11 +4863,11 @@ function UserAccessContent({ users, sourceUsers, loading, error, search, onSearc
         </div>
 
         {loading && (
-          <div className="settings-v2-loading">Loading user access records from EMA_Users...</div>
+          <div className="">Loading user access records from EMA_Users...</div>
         )}
 
         {!loading && filteredUsers.length === 0 && (
-          <div className="settings-v2-empty">No user access record found.</div>
+          <div className="">No user access record found.</div>
         )}
 
         {!loading && paginatedUsers.map((user, index) => {
@@ -4876,11 +4879,11 @@ function UserAccessContent({ users, sourceUsers, loading, error, search, onSearc
           const statusTone = getStatusTone(user.status);
 
           return (
-            <div className="settings-v2-user-row" data-user-index={actualIndex} key={`${user.id || user.email}-${actualIndex}`}>
-              <div><span className="settings-v2-row-no">{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
+            <div className="" data-user-index={actualIndex} key={`${user.id || user.email}-${actualIndex}`}>
+              <div><span className="">{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
 
               <div>
-                <div className="settings-v2-user-profile">
+                <div className="">
                   <i>{initials(user.name || user.username || user.email || "U")}</i>
                   <div>
                     <strong>{user.name || user.username || "Unnamed User"}</strong>
@@ -4890,34 +4893,34 @@ function UserAccessContent({ users, sourceUsers, loading, error, search, onSearc
               </div>
 
               <div>
-                <div className="settings-v2-user-role-list">
-                  {visibleRoles.length === 0 && <span className="settings-v2-user-role empty">No Role</span>}
-                  {visibleRoles.map((role) => <span className="settings-v2-user-role" key={role}>{role}</span>)}
-                  {hiddenRoleCount > 0 && <span className="settings-v2-user-role more">+{hiddenRoleCount}</span>}
+                <div className="">
+                  {visibleRoles.length === 0 && <span className="">No Role</span>}
+                  {visibleRoles.map((role) => <span className="" key={role}>{role}</span>)}
+                  {hiddenRoleCount > 0 && <span className="">+{hiddenRoleCount}</span>}
                 </div>
               </div>
 
               <div>
-                <span className={`settings-v2-user-pill ${isMfa ? "mfa-on" : "mfa-off"}`}>{isMfa ? "On" : "Off"}</span>
+                <span className="">{isMfa ? "On" : "Off"}</span>
               </div>
 
               <div>
-                <span className={`settings-v2-user-pill ${statusTone}`}>
+                <span className="">
                   <span />
                   {user.status || "Active"}
                 </span>
               </div>
 
               <div>
-                <span className="settings-v2-user-date">{formatUserDate(user.lastLoginAt)}</span>
+                <span className="">{formatUserDate(user.lastLoginAt)}</span>
               </div>
 
               <div>
-                <div className="ema-row-actions">
-                  <button className="ema-action-btn ema-action-btn-edit" type="button" onClick={() => onEdit(actualIndex)} aria-label="Edit user access" title="Edit">
+                <div className="">
+                  <button className="" type="button" onClick={() => onEdit(actualIndex)} aria-label="Edit user access" title="Edit">
                     <PencilSvg />
                   </button>
-                  <button className="ema-action-btn ema-action-btn-delete" type="button" onClick={() => onDelete(actualIndex)} aria-label="Delete user access" title="Delete">
+                  <button className="" type="button" onClick={() => onDelete(actualIndex)} aria-label="Delete user access" title="Delete">
                     <TrashSvg />
                   </button>
                 </div>
@@ -4928,20 +4931,20 @@ function UserAccessContent({ users, sourceUsers, loading, error, search, onSearc
       </div>
 
       {!loading && filteredUsers.length > 0 && (
-        <div className="ema-pagination">
-          <div className="ema-pagination-summary">
+        <div className="">
+          <div className="">
             Showing {showingFrom} to {showingTo} of {filteredUsers.length} users
           </div>
 
-          <div className="ema-pagination-controls" aria-label="User access pagination">
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
-            <span className="ema-page-current">{safeCurrentPage}</span>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+          <div className="" aria-label="User access pagination">
+            <button className="" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span className="">{safeCurrentPage}</span>
+            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button className="" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
           </div>
 
-          <div className="ema-page-size">{pageSize} / page</div>
+          <div className="">{pageSize} / page</div>
         </div>
       )}
     </div>
@@ -5080,14 +5083,14 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
   const coverage = totalPossible ? Math.round((enabledCount / totalPossible) * 100) : 0;
 
   return (
-    <div className="settings-v2-module-content">
-      <div className="settings-v2-module-toolbar">
-        <div className="settings-v2-module-info">
+    <div className="">
+      <div className="">
+        <div className="">
           <strong>Module Permission Matrix</strong>
           <span>Turn module and submodule access on or off for each active role.</span>
         </div>
 
-        <div className="settings-v2-module-stats">
+        <div className="">
           <div><span>Modules</span><strong>{modules.length}</strong></div>
           <div><span>Roles</span><strong>{roles.length}</strong></div>
           <div><span>Coverage</span><strong>{coverage}%</strong></div>
@@ -5097,31 +5100,31 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
       </div>
 
       {error && (
-        <div className="settings-v2-alert">
+        <div className="">
           <strong>Module access load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="settings-v2-module-matrix" style={matrixStyle}>
-        <div className="settings-v2-module-head">
+      <div className="" style={{}}>
+        <div className="">
           <div>No</div>
           <div>Module</div>
           {roles.length > 0 ? roles.map((role) => (
-            <div className="settings-v2-module-role-head" key={String(getAccessRoleId(role))}>
+            <div className="" key={String(getAccessRoleId(role))}>
               <span>{role.name}</span>
             </div>
-          )) : <div className="settings-v2-module-role-head"><span>Roles</span></div>}
+          )) : <div className=""><span>Roles</span></div>}
         </div>
 
-        {loading && <div className="settings-v2-loading">Loading module access from EMA_Modules...</div>}
-        {!loading && moduleRows.length === 0 && <div className="settings-v2-empty">No module records found.</div>}
-        {!loading && roles.length === 0 && moduleRows.length > 0 && <div className="settings-v2-empty">No active roles found. Create active roles in Role Based Control first.</div>}
+        {loading && <div className="">Loading module access from EMA_Modules...</div>}
+        {!loading && moduleRows.length === 0 && <div className="">No module records found.</div>}
+        {!loading && roles.length === 0 && moduleRows.length > 0 && <div className="">No active roles found. Create active roles in Role Based Control first.</div>}
 
         {!loading && roles.length > 0 && pageRows.map((row) => {
           if (row.type === "group") {
             return (
-              <div className="settings-v2-module-group" key={`group-${row.groupName}`}>
+              <div className="" key={`group-${row.groupName}`}>
                 <span>{row.groupName}</span>
               </div>
             );
@@ -5132,11 +5135,11 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
           const rowNumber = pageStartModuleIndex + displayCounter;
 
           return (
-            <div className={`settings-v2-module-row ${row.isSubmodule ? "submodule" : ""}`} key={String(getModuleId(module))}>
-              <div><span className="settings-v2-row-no">{String(rowNumber).padStart(2, "0")}</span></div>
+            <div className="" key={String(getModuleId(module))}>
+              <div><span className="">{String(rowNumber).padStart(2, "0")}</span></div>
 
               <div>
-                <div className="settings-v2-module-name">
+                <div className="">
                   <i>{row.isSubmodule ? "S" : "M"}</i>
                   <div>
                     <strong>{module.moduleName}</strong>
@@ -5152,9 +5155,9 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
                 const enabled = hasModulePermission(permissions, module, role);
 
                 return (
-                  <div className="settings-v2-module-toggle-cell" key={key}>
+                  <div className="" key={key}>
                     <button
-                      className={`settings-v2-module-toggle ${enabled ? "enabled" : "disabled"}`}
+                      className=""
                       type="button"
                       disabled={savingKey === key}
                       title={`${enabled ? "Disable" : "Enable"} ${module.moduleName} for ${role.name}`}
@@ -5173,18 +5176,18 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
       </div>
 
       {!loading && moduleRows.length > 0 && (
-        <div className="ema-pagination">
-          <div className="ema-pagination-summary">Showing {showingFrom} to {showingTo} of {moduleRows.length} modules</div>
+        <div className="">
+          <div className="">Showing {showingFrom} to {showingTo} of {moduleRows.length} modules</div>
 
-          <div className="ema-pagination-controls" aria-label="Module control pagination">
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
-            <span className="ema-page-current">{safeCurrentPage}</span>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+          <div className="" aria-label="Module control pagination">
+            <button className="" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span className="">{safeCurrentPage}</span>
+            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button className="" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
           </div>
 
-          <div className="ema-page-size">{pageSize} / page</div>
+          <div className="">{pageSize} / page</div>
         </div>
       )}
     </div>
@@ -5233,34 +5236,34 @@ function AccessControlContent({ policies, loading, error, onReload, onAdd, onEdi
   };
 
   return (
-    <div className="settings-v2-access-content">
-      <div className="settings-v2-access-toolbar">
-        <div className="settings-v2-access-info">
+    <div className="">
+      <div className="">
+        <div className="">
           <strong>Access Control Rules</strong>
           <span>Manage MFA, session, IP/VPN and approval enforcement rules from EMA_AccessControls.</span>
         </div>
 
-        <div className="settings-v2-access-stats">
+        <div className="">
           <div><span>Total Policies</span><strong>{policies.length}</strong></div>
           <div><span>Active</span><strong>{activeCount}</strong></div>
           <div><span>MFA Rules</span><strong>{mfaCount}</strong></div>
         </div>
 
-        <div className="settings-v2-access-actions">
+        <div className="">
           <button type="button" onClick={onReload} disabled={loading}>{loading ? "Loading..." : "Refresh"}</button>
           <button type="button" onClick={onAdd}>Add Control</button>
         </div>
       </div>
 
       {error && (
-        <div className="settings-v2-alert">
+        <div className="">
           <strong>Access control load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="settings-v2-access-table">
-        <div className="settings-v2-access-head">
+      <div className="">
+        <div className="">
           <div>No</div>
           <div>Control</div>
           <div>Scope</div>
@@ -5270,8 +5273,8 @@ function AccessControlContent({ policies, loading, error, onReload, onAdd, onEdi
           <div>Action</div>
         </div>
 
-        {loading && <div className="settings-v2-loading">Loading access controls from EMA_AccessControls...</div>}
-        {!loading && filteredPolicies.length === 0 && <div className="settings-v2-empty">No access control records found.</div>}
+        {loading && <div className="">Loading access controls from EMA_AccessControls...</div>}
+        {!loading && filteredPolicies.length === 0 && <div className="">No access control records found.</div>}
 
         {!loading && paginatedPolicies.map((policy, index) => {
           const actualIndex = policies.findIndex((item) => String(getAccessPolicyId(item)) === String(getAccessPolicyId(policy)));
@@ -5279,12 +5282,12 @@ function AccessControlContent({ policies, loading, error, onReload, onAdd, onEdi
           const statusTone = getStatusTone(policy.status);
 
           return (
-            <div className="settings-v2-access-row" key={String(getAccessPolicyId(policy))}>
-              <div><span className="settings-v2-row-no">{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
+            <div className="" key={String(getAccessPolicyId(policy))}>
+              <div><span className="">{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
 
               <div>
-                <div className="settings-v2-access-name">
-                  <i className={tone}>{String(policy.name || "A").slice(0, 2).toUpperCase()}</i>
+                <div className="">
+                  <i className="">{String(policy.name || "A").slice(0, 2).toUpperCase()}</i>
                   <div>
                     <strong>{policy.name}</strong>
                     <small>{policy.description || "Access control policy"}</small>
@@ -5292,20 +5295,20 @@ function AccessControlContent({ policies, loading, error, onReload, onAdd, onEdi
                 </div>
               </div>
 
-              <div><span className="settings-v2-access-chip">{policy.scope || "Global"}</span></div>
-              <div><span className="settings-v2-access-chip enforcement">{policy.enforcement || "Standard"}</span></div>
-              <div><span className="settings-v2-access-date">{policy.reviewCycle || "Monthly"}</span></div>
+              <div><span className="">{policy.scope || "Global"}</span></div>
+              <div><span className="">{policy.enforcement || "Standard"}</span></div>
+              <div><span className="">{policy.reviewCycle || "Monthly"}</span></div>
 
               <div>
-                <span className={`settings-v2-user-pill ${statusTone}`}>
+                <span className="">
                   <span />
                   {policy.status || "Active"}
                 </span>
               </div>
 
               <div>
-                <div className="ema-row-actions">
-                  <button className="ema-action-btn ema-action-btn-edit" type="button" onClick={() => onEdit(actualIndex)} aria-label="Edit access control" title="Edit">
+                <div className="">
+                  <button className="" type="button" onClick={() => onEdit(actualIndex)} aria-label="Edit access control" title="Edit">
                     <PencilSvg />
                   </button>
                 </div>
@@ -5316,18 +5319,18 @@ function AccessControlContent({ policies, loading, error, onReload, onAdd, onEdi
       </div>
 
       {!loading && filteredPolicies.length > 0 && (
-        <div className="ema-pagination">
-          <div className="ema-pagination-summary">Showing {showingFrom} to {showingTo} of {filteredPolicies.length} access controls</div>
+        <div className="">
+          <div className="">Showing {showingFrom} to {showingTo} of {filteredPolicies.length} access controls</div>
 
-          <div className="ema-pagination-controls" aria-label="Access control pagination">
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
-            <span className="ema-page-current">{safeCurrentPage}</span>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+          <div className="" aria-label="Access control pagination">
+            <button className="" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span className="">{safeCurrentPage}</span>
+            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button className="" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
           </div>
 
-          <div className="ema-page-size">{pageSize} / page</div>
+          <div className="">{pageSize} / page</div>
         </div>
       )}
     </div>
@@ -5378,22 +5381,22 @@ function AuditContent(props: any) {
   const latestDate = allLogs?.[0] ? formatAuditTimestamp(allLogs[0].timestamp).split(",")[0] : "-";
 
   return (
-    <div className="settings-v2-audit-content">
-      <div className="settings-v2-audit-toolbar">
-        <div className="settings-v2-audit-info">
+    <div className="">
+      <div className="">
+        <div className="">
           <span>Audit Log</span>
           <h3>System Activity Trail</h3>
           <p>Review user activity, module changes and system events recorded in EMA_AuditLogs.</p>
         </div>
 
-        <div className="settings-v2-audit-stats">
+        <div className="">
           <div><span>Total Logs</span><strong>{totalRecords}</strong></div>
           <div><span>This Page</span><strong>{pageRows.length}</strong></div>
           <div><span>Modules</span><strong>{moduleOptions.length}</strong></div>
           <div><span>Latest</span><strong>{latestDate}</strong></div>
         </div>
 
-        <div className="settings-v2-audit-actions">
+        <div className="">
           <button type="button" onClick={onReload} disabled={loading}>
             {loading ? "Loading..." : "Refresh"}
           </button>
@@ -5404,13 +5407,13 @@ function AuditContent(props: any) {
       </div>
 
       {error && (
-        <div className="settings-v2-alert">
+        <div className="">
           <strong>Audit log load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="settings-v2-audit-filterbar">
+      <div className="">
         <label>
           <span>Main Module</span>
           <select value={moduleFilter} onChange={(event) => onModuleFilterChange(event.target.value)}>
@@ -5442,8 +5445,8 @@ function AuditContent(props: any) {
         </label>
       </div>
 
-      <div className="settings-v2-audit-table">
-        <div className="settings-v2-audit-head">
+      <div className="">
+        <div className="">
           <div>No</div>
           <div>Time</div>
           <div>User</div>
@@ -5452,37 +5455,37 @@ function AuditContent(props: any) {
           <div>Status</div>
         </div>
 
-        {loading && <div className="settings-v2-loading">Loading audit logs from EMA_AuditLogs...</div>}
-        {!loading && pageRows.length === 0 && <div className="settings-v2-empty">No audit log records found.</div>}
+        {loading && <div className="">Loading audit logs from EMA_AuditLogs...</div>}
+        {!loading && pageRows.length === 0 && <div className="">No audit log records found.</div>}
 
         {!loading && pageRows.map((row: any, index: number) => {
           const tone = getSeverityTone(row.severity);
 
           return (
-            <div className="settings-v2-audit-row" key={String(row.id || `${row.timestamp}-${row.user}-${row.action}-${index}`)}>
-              <div><span className="settings-v2-row-no">{String(startIndex + index + 1).padStart(2, "0")}</span></div>
+            <div className="" key={String(row.id || `${row.timestamp}-${row.user}-${row.action}-${index}`)}>
+              <div><span className="">{String(startIndex + index + 1).padStart(2, "0")}</span></div>
 
               <div>
-                <span className="settings-v2-audit-time">{formatAuditTimestamp(row.timestamp)}</span>
+                <span className="">{formatAuditTimestamp(row.timestamp)}</span>
               </div>
 
               <div>
-                <span className="settings-v2-audit-user">{row.user || "-"}</span>
+                <span className="">{row.user || "-"}</span>
               </div>
 
               <div>
-                <span className="settings-v2-audit-module">{row.module || "-"}</span>
+                <span className="">{row.module || "-"}</span>
               </div>
 
               <div>
-                <div className="settings-v2-audit-activity">
+                <div className="">
                   <span>{row.action || "-"}</span>
                   {row.details && <small>{formatAuditDetails(row.details)}</small>}
                 </div>
               </div>
 
               <div>
-                <span className={`settings-v2-user-pill ${tone}`}>
+                <span className="">
                   <span />
                   {row.severity || "Info"}
                 </span>
@@ -5492,23 +5495,22 @@ function AuditContent(props: any) {
         })}
       </div>
 
-      <div className="ema-pagination">
-        <div className="ema-pagination-summary">Showing {shownStart} to {shownEnd} of {totalRecords} audit logs</div>
+      <div className="">
+        <div className="">Showing {shownStart} to {shownEnd} of {totalRecords} audit logs</div>
 
-        <div className="ema-pagination-controls" aria-label="Audit log pagination">
-          <button className="ema-page-btn" type="button" disabled={safePage <= 1 || loading} onClick={() => onPageChange(1)} aria-label="First page"><EmaPageFirstIcon /></button>
-          <button className="ema-page-btn" type="button" disabled={safePage <= 1 || loading} onClick={() => onPageChange(Math.max(1, safePage - 1))} aria-label="Previous page"><EmaPagePrevIcon /></button>
-          <span className="ema-page-current">{safePage}</span>
-          <button className="ema-page-btn" type="button" disabled={safePage >= safeTotalPages || loading} onClick={() => onPageChange(Math.min(safeTotalPages, safePage + 1))} aria-label="Next page"><EmaPageNextIcon /></button>
-          <button className="ema-page-btn" type="button" disabled={safePage >= safeTotalPages || loading} onClick={() => onPageChange(safeTotalPages)} aria-label="Last page"><EmaPageLastIcon /></button>
+        <div className="" aria-label="Audit log pagination">
+          <button className="" type="button" disabled={safePage <= 1 || loading} onClick={() => onPageChange(1)} aria-label="First page"><EmaPageFirstIcon /></button>
+          <button className="" type="button" disabled={safePage <= 1 || loading} onClick={() => onPageChange(Math.max(1, safePage - 1))} aria-label="Previous page"><EmaPagePrevIcon /></button>
+          <span className="">{safePage}</span>
+          <button className="" type="button" disabled={safePage >= safeTotalPages || loading} onClick={() => onPageChange(Math.min(safeTotalPages, safePage + 1))} aria-label="Next page"><EmaPageNextIcon /></button>
+          <button className="" type="button" disabled={safePage >= safeTotalPages || loading} onClick={() => onPageChange(safeTotalPages)} aria-label="Last page"><EmaPageLastIcon /></button>
         </div>
 
-        <div className="ema-page-size">{limit} / page</div>
+        <div className="">{limit} / page</div>
       </div>
     </div>
   );
 }
-
 
 
 function PricingContent(props: PricingContentProps) {
@@ -5564,42 +5566,42 @@ function PricingContent(props: PricingContentProps) {
   };
 
   return (
-    <div className="settings-v2-pricing-content">
-      <div className="settings-v2-pricing-command">
-        <div className="settings-v2-pricing-info">
+    <div className="">
+      <div className="">
+        <div className="">
           <span>Device Pricing</span>
           <strong>Brand & Model Pricing Control</strong>
           <small>Maintain replacement price references used by Management Dashboard CAPEX estimation.</small>
         </div>
 
-        <div className="settings-v2-pricing-stats">
+        <div className="">
           <div><span>Total Rules</span><strong>{rows.length}</strong></div>
           <div><span>CAPEX Active</span><strong>{activeCount}</strong></div>
           <div><span>Excluded</span><strong>{excludedCount}</strong></div>
           <div><span>Average RM</span><strong>{formatMoney(averagePrice)}</strong></div>
         </div>
 
-        <div className="settings-v2-pricing-actions">
+        <div className="">
           <button type="button" onClick={onAdd} disabled={loading || saving}>+ Add Pricing</button>
         </div>
       </div>
 
       {error && (
-        <div className="settings-v2-alert">
+        <div className="">
           <strong>Device pricing load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="settings-v2-pricing-note">
+      <div className="">
         <div>
           <span>Planning Reference</span>
           <p>Market price and replacement-cost values are estimates. Confirm final procurement values with Finance or Procurement before approval.</p>
         </div>
       </div>
 
-      <div className="settings-v2-pricing-table">
-        <div className="settings-v2-pricing-head">
+      <div className="">
+        <div className="">
           <div>No</div>
           <div>Device Category</div>
           <div>Brand</div>
@@ -5609,10 +5611,10 @@ function PricingContent(props: PricingContentProps) {
           <div>Action</div>
         </div>
 
-        {loading && <div className="settings-v2-loading">Loading device pricing...</div>}
+        {loading && <div className="">Loading device pricing...</div>}
 
         {!loading && visibleRows.length === 0 && (
-          <div className="settings-v2-pricing-empty">
+          <div className="">
             <strong>No pricing rules found.</strong>
             <span>Add a custom pricing row, select category, brand and model, then save pricing.</span>
             <button type="button" onClick={onAdd}>+ Add Custom Pricing</button>
@@ -5625,8 +5627,8 @@ function PricingContent(props: PricingContentProps) {
           const rowSaving = saving || savingRowId === row.id;
 
           return (
-            <div className="settings-v2-pricing-row" key={row.id}>
-              <div><span className="settings-v2-row-no">{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
+            <div className="" key={row.id}>
+              <div><span className="">{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
 
               <div>
                 <select
@@ -5665,7 +5667,7 @@ function PricingContent(props: PricingContentProps) {
               </div>
 
               <div>
-                <div className="settings-v2-pricing-price">
+                <div className="">
                   <span>RM</span>
                   <input
                     min={0}
@@ -5679,7 +5681,7 @@ function PricingContent(props: PricingContentProps) {
 
               <div>
                 <button
-                  className={`settings-v2-pricing-toggle ${row.IsExcluded ? "excluded" : "included"}`}
+                  className=""
                   type="button"
                   aria-label="Toggle exclude from CAPEX"
                   onClick={() => onChange(row.id, { IsExcluded: !row.IsExcluded })}
@@ -5690,9 +5692,9 @@ function PricingContent(props: PricingContentProps) {
               </div>
 
               <div>
-                <div className="ema-row-actions">
+                <div className="">
                   <button
-                    className="ema-action-btn ema-action-btn-edit"
+                    className=""
                     type="button"
                     onClick={() => onSaveRow(row.id)}
                     disabled={rowSaving}
@@ -5703,7 +5705,7 @@ function PricingContent(props: PricingContentProps) {
                   </button>
 
                   <button
-                    className="ema-action-btn ema-action-btn-delete"
+                    className=""
                     type="button"
                     title="Delete pricing row"
                     onClick={() => onRequestDelete(row)}
@@ -5720,24 +5722,23 @@ function PricingContent(props: PricingContentProps) {
       </div>
 
       {!loading && visibleRows.length > 0 && (
-        <div className="ema-pagination">
-          <div className="ema-pagination-summary">Showing {showingFrom} to {showingTo} of {visibleRows.length} pricing records</div>
+        <div className="">
+          <div className="">Showing {showingFrom} to {showingTo} of {visibleRows.length} pricing records</div>
 
-          <div className="ema-pagination-controls" aria-label="Device pricing pagination">
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
-            <span className="ema-page-current">{safeCurrentPage}</span>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+          <div className="" aria-label="Device pricing pagination">
+            <button className="" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span className="">{safeCurrentPage}</span>
+            <button className="" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button className="" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
           </div>
 
-          <div className="ema-page-size">{pageSize} / page</div>
+          <div className="">{pageSize} / page</div>
         </div>
       )}
     </div>
   );
 }
-
 
 
 function ManagementPolicyContent({ values, profile, loading, saving, error, onChange, onReload, onReset, onSave }: ManagementPolicyContentProps) {
@@ -5766,59 +5767,59 @@ function ManagementPolicyContent({ values, profile, loading, saving, error, onCh
   };
 
   return (
-    <div className="settings-v2-policy-content">
-      <div className="settings-v2-policy-command">
-        <div className="settings-v2-policy-info">
+    <div className="">
+      <div className="">
+        <div className="">
           <span>Management Policy</span>
           <strong>{profile?.profileName || "Default EMA Management Policy"}</strong>
           <small>Manage assumptions used by Management Dashboard calculation engine without hardcoding values.</small>
         </div>
 
-        <div className="settings-v2-policy-stats">
+        <div className="">
           <div><span>Total Rules</span><strong>{totalRules}</strong></div>
           <div><span>Cost Rules</span><strong>{costRules}</strong></div>
           <div><span>Freshness</span><strong>{freshnessRules}</strong></div>
           <div><span>Risk Rules</span><strong>{riskRules}</strong></div>
         </div>
 
-        <div className="settings-v2-policy-actions">
+        <div className="">
           <button type="button" onClick={onReload} disabled={loading || saving}>{loading ? "Loading..." : "Reload"}</button>
           <button type="button" onClick={onReset} disabled={loading || saving}>Reset</button>
           <button type="button" onClick={onSave} disabled={loading || saving}>{saving ? "Saving..." : "Save Policy"}</button>
         </div>
       </div>
 
-      {loading && <div className="settings-v2-loading">Loading Management Policy...</div>}
+      {loading && <div className="">Loading Management Policy...</div>}
 
       {error && (
-        <div className="settings-v2-alert">
+        <div className="">
           <strong>Management Policy load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="settings-v2-policy-body">
-        <section className="settings-v2-policy-profile">
-          <div className="settings-v2-policy-profile-main">
+      <div className="">
+        <section className="">
+          <div className="">
             <span>Policy Profile</span>
             <strong>{profile?.profileName || "Default EMA Management Policy"}</strong>
             <small>These assumptions feed ROI, CAPEX, stale evidence and risk exposure calculation.</small>
           </div>
 
-          <div className="settings-v2-policy-profile-meta">
+          <div className="">
             <span>{profile?.scopeType || "GLOBAL"}</span>
             <span>{totalRules} rule values</span>
             <span>Updated: {updatedAt}</span>
           </div>
         </section>
 
-        <section className="settings-v2-policy-grid">
+        <section className="">
           {groupedFields.map(({ group, fields }) => {
             const tone = getGroupTone(group);
 
             return (
-              <article className={"settings-v2-policy-group " + tone} key={group}>
-                <div className="settings-v2-policy-group-head">
+              <article className="" key={group}>
+                <div className="">
                   <div>
                     <span>{group}</span>
                     <strong>{fields.length} Rules</strong>
@@ -5826,18 +5827,18 @@ function ManagementPolicyContent({ values, profile, loading, saving, error, onCh
                   </div>
                 </div>
 
-                <div className="settings-v2-policy-fields">
+                <div className="">
                   {fields.map((field) => {
                     const inputValue = managementPolicyInputValue(normalizedValues, field);
 
                     return (
-                      <label className="settings-v2-policy-field" key={field.key}>
-                        <div className="settings-v2-policy-field-label">
+                      <label className="" key={field.key}>
+                        <div className="">
                           <span>{field.label}</span>
                           <small>{field.description}</small>
                         </div>
 
-                        <div className="settings-v2-policy-input">
+                        <div className="">
                           <input
                             type="number"
                             min={field.min}
@@ -5870,7 +5871,6 @@ function ManagementPolicyContent({ values, profile, loading, saving, error, onCh
 }
 
 
-
 function AgingContent({
   rule,
   loading,
@@ -5885,41 +5885,41 @@ function AgingContent({
   const unknownText = rule.includeUnknownAge ? "Included" : "Flag as data gap";
 
   return (
-    <div className="settings-v2-aging-content">
-      <div className="settings-v2-aging-command">
-        <div className="settings-v2-aging-info">
+    <div className="">
+      <div className="">
+        <div className="">
           <span>PC Aging Rule</span>
           <strong>Endpoint Lifecycle Configuration</strong>
           <small>Configure lifecycle thresholds, replacement planning and calculation basis for hardware aging.</small>
         </div>
 
-        <div className="settings-v2-aging-stats">
+        <div className="">
           <div><span>Status</span><strong>{statusText}</strong></div>
           <div><span>Review</span><strong>{rule.monitorMaxYears} yrs</strong></div>
           <div><span>Critical</span><strong>{rule.agingMinYears} yrs</strong></div>
           <div><span>Window</span><strong>{rule.replacementWindowMonths} mo</strong></div>
         </div>
 
-        <div className="settings-v2-aging-actions">
+        <div className="">
           <button type="button" onClick={onReload} disabled={loading || saving}>{loading ? "Loading..." : "Reload"}</button>
           <button type="button" onClick={onReset} disabled={saving}>Reset</button>
           <button type="button" onClick={onSave} disabled={saving || loading}>{saving ? "Saving..." : "Save Changes"}</button>
         </div>
       </div>
 
-      {loading && <div className="settings-v2-loading">Loading PC aging rule from AssetSettings...</div>}
+      {loading && <div className="">Loading PC aging rule from AssetSettings...</div>}
 
       {error && (
-        <div className="settings-v2-alert">
+        <div className="">
           <strong>PC Aging load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="settings-v2-aging-body">
-        <section className="settings-v2-aging-top-grid">
-          <article className="settings-v2-aging-status-card">
-            <div className="settings-v2-aging-card-head">
+      <div className="">
+        <section className="">
+          <article className="">
+            <div className="">
               <div>
                 <span>Rule Status</span>
                 <strong>{rule.enabled ? "Active lifecycle rule" : "Lifecycle rule paused"}</strong>
@@ -5927,7 +5927,7 @@ function AgingContent({
               </div>
 
               <button
-                className={"settings-v2-aging-switch " + (rule.enabled ? "enabled" : "disabled")}
+                className=""
                 aria-label="Toggle PC aging rule"
                 type="button"
                 onClick={() => onChange({ enabled: !rule.enabled })}
@@ -5936,14 +5936,14 @@ function AgingContent({
               </button>
             </div>
 
-            <div className="settings-v2-aging-status-foot">
+            <div className="">
               <span>{formatAgeSourceLabel(rule.ageSource)}</span>
               <b>{statusText}</b>
             </div>
           </article>
 
-          <article className="settings-v2-aging-guide-card">
-            <div className="settings-v2-aging-card-head">
+          <article className="">
+            <div className="">
               <div>
                 <span>Decision Guide</span>
                 <strong>Lifecycle Actions</strong>
@@ -5951,7 +5951,7 @@ function AgingContent({
               </div>
             </div>
 
-            <div className="settings-v2-aging-guide-list">
+            <div className="">
               <AgingActionRow status="Standard" condition={"< " + rule.healthyMaxYears + " years"} action="Monitor" tone="blue" />
               <AgingActionRow status="Aging" condition={">= " + rule.monitorMaxYears + " years"} action="Review" tone="amber" />
               <AgingActionRow status="Critical" condition={">= " + rule.agingMinYears + " years"} action="Replace" tone="red" />
@@ -5959,8 +5959,8 @@ function AgingContent({
           </article>
         </section>
 
-        <section className="settings-v2-aging-threshold-card">
-          <div className="settings-v2-aging-card-head">
+        <section className="">
+          <div className="">
             <div>
               <span>Lifecycle Age Bands</span>
               <strong>Threshold Configuration</strong>
@@ -5968,7 +5968,7 @@ function AgingContent({
             </div>
           </div>
 
-          <div className="settings-v2-aging-threshold-list">
+          <div className="">
             <AgingThresholdLine
               label="Standard Device"
               help="Healthy lifecycle window before review is required."
@@ -5998,9 +5998,9 @@ function AgingContent({
           </div>
         </section>
 
-        <section className="settings-v2-aging-bottom-grid">
-          <article className="settings-v2-aging-config-card">
-            <div className="settings-v2-aging-card-head">
+        <section className="">
+          <article className="">
+            <div className="">
               <div>
                 <span>Calculation Basis</span>
                 <strong>Aging Reference</strong>
@@ -6008,7 +6008,7 @@ function AgingContent({
               </div>
             </div>
 
-            <div className="settings-v2-aging-form-grid">
+            <div className="">
               <label>
                 <span>Primary Date</span>
                 <select
@@ -6036,7 +6036,7 @@ function AgingContent({
 
               <label>
                 <span>Replacement Window</span>
-                <div className="settings-v2-aging-number-field">
+                <div className="">
                   <input
                     type="number"
                     min="0"
@@ -6049,14 +6049,14 @@ function AgingContent({
               </label>
             </div>
 
-            <div className="settings-v2-aging-reference">
+            <div className="">
               <span>{formatAgeSourceLabel(rule.ageSource)}</span>
               <small>Primary age reference ? Missing date: {unknownText}</small>
             </div>
           </article>
 
-          <article className="settings-v2-aging-note-card">
-            <div className="settings-v2-aging-card-head">
+          <article className="">
+            <div className="">
               <div>
                 <span>Admin Note</span>
                 <strong>Operational Note</strong>
@@ -6077,13 +6077,12 @@ function AgingContent({
 }
 
 
-
 function AgingThresholdLine({ label, help, value, display, tone, onChange }: { label: string; help: string; value: number; display: string; tone?: "blue" | "amber" | "red"; onChange: (value: number) => void }) {
   const safeTone = tone || "blue";
 
   return (
-    <div className={"settings-v2-aging-threshold-row " + safeTone}>
-      <div className="settings-v2-aging-threshold-title">
+    <div className="">
+      <div className="">
         <span>{label}</span>
         <small>{help}</small>
       </div>
@@ -6096,7 +6095,7 @@ function AgingThresholdLine({ label, help, value, display, tone, onChange }: { l
         onChange={(event) => onChange(Number(event.target.value))}
       />
 
-      <div className="settings-v2-aging-threshold-value">
+      <div className="">
         <input
           type="number"
           min="1"
@@ -6113,7 +6112,7 @@ function AgingThresholdLine({ label, help, value, display, tone, onChange }: { l
 
 function AgingActionRow({ status, condition, action, tone }: { status: string; condition: string; action: string; tone: "blue" | "amber" | "red" }) {
   return (
-    <div className={"settings-v2-aging-action-row " + tone}>
+    <div className="">
       <div>
         <span>{status}</span>
         <small>{condition}</small>
@@ -6363,25 +6362,25 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
   };
 
   const modalNode = (
-    <div className="settings-modal-backdrop" id="userModalBackdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div className="settings-modal settings-user-modal" role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
-        <header className="settings-modal-header">
+    <div className="" id="userModalBackdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div className="" role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
+        <header className="">
           <div>
-            <span className="settings-modal-eyebrow" id="userModalMode">{mode}</span>
+            <span className="" id="userModalMode">{mode}</span>
             <h3 id="userModalTitle">{title}</h3>
             <p>Configure identity profile and assign one or more RBAC roles from EMA_Roles.</p>
           </div>
-          <button className="settings-modal-close" id="closeUserModal" type="button" onClick={onClose} aria-label="Close user modal">?</button>
+          <button className="" id="closeUserModal" type="button" onClick={onClose} aria-label="Close user modal">?</button>
         </header>
 
-        <div className="settings-modal-body settings-user-modal-body">
-          <section className="settings-modal-section settings-modal-section-full">
-            <div className="settings-modal-section-head">
+        <div className="">
+          <section className="">
+            <div className="">
               <span>Profile</span>
               <small>Basic identity information for this user.</small>
             </div>
 
-            <div className="settings-form-grid four">
+            <div className="">
               <label>Full Name<input id="userFullName" placeholder="Example: Zainul Ariffin" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
               <label>Username<input id="userUsername" placeholder="Example: zainul" value={form.username || ""} onChange={(event) => setForm({ ...form, username: event.target.value })} /></label>
               <label>Email<input id="userEmail" placeholder="user@company.com" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
@@ -6389,14 +6388,14 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
             </div>
           </section>
 
-          <section className="settings-modal-section settings-modal-section-full">
-            <div className="settings-modal-section-head">
+          <section className="">
+            <div className="">
               <span>Access</span>
               <small>Assign one or more RBAC roles. Module access follows the combined role permissions.</small>
             </div>
 
-            <div className="settings-role-assign-box">
-              <div className="settings-role-assign-head">
+            <div className="">
+              <div className="">
                 <strong>Assigned Roles</strong>
                 <button
                   type="button"
@@ -6407,13 +6406,13 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
                 </button>
               </div>
 
-              <div className="settings-role-chip-list">
+              <div className="">
                 {selectedRoles.length === 0 && (
-                  <div className="settings-empty-chip">No role assigned yet</div>
+                  <div className="">No role assigned yet</div>
                 )}
 
                 {selectedRoles.map((role) => (
-                  <span className="settings-role-chip" key={role}>
+                  <span className="" key={role}>
                     {role}
                     <button type="button" onClick={() => removeSelectedRole(role)} aria-label={`Remove ${role}`}>?</button>
                   </span>
@@ -6421,8 +6420,8 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
               </div>
 
               {rolePickerOpen && (
-                <div className="settings-role-picker">
-                  <label className="settings-role-picker-search">
+                <div className="">
+                  <label className="">
                     <SearchSvg />
                     <input
                       value={roleSearchTerm}
@@ -6432,17 +6431,17 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
                     />
                   </label>
 
-                  <div className="settings-role-picker-list">
+                  <div className="">
                     {roleOptions.length === 0 && (
-                      <div className="settings-role-picker-empty">No active roles available. Create a role in Role Based Control first.</div>
+                      <div className="">No active roles available. Create a role in Role Based Control first.</div>
                     )}
 
                     {roleOptions.length > 0 && filteredRoleOptions.length === 0 && (
-                      <div className="settings-role-picker-empty">No matching unassigned roles.</div>
+                      <div className="">No matching unassigned roles.</div>
                     )}
 
                     {filteredRoleOptions.map((role) => (
-                      <button className="settings-role-picker-option" type="button" key={role} onClick={() => addSelectedRole(role)}>
+                      <button className="" type="button" key={role} onClick={() => addSelectedRole(role)}>
                         <span>{role}</span>
                         <b>Assign</b>
                       </button>
@@ -6452,7 +6451,7 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
               )}
             </div>
 
-            <div className="settings-form-grid three">
+            <div className="">
               <label>Department<input id="userDepartment" placeholder="Example: IT Operation" value={form.department || ""} onChange={(event) => setForm({ ...form, department: event.target.value })} /></label>
               <label>Position<input id="userPosition" placeholder="Example: Support Engineer" value={form.position || ""} onChange={(event) => setForm({ ...form, position: event.target.value })} /></label>
               <label>Status
@@ -6466,27 +6465,27 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
             </div>
           </section>
 
-          <section className="settings-modal-section">
-            <div className="settings-modal-section-head">
+          <section className="">
+            <div className="">
               <span>Password</span>
               <small>{isCreateMode ? "Create a login password for immediate testing." : "Fill only when resetting password."}</small>
             </div>
 
-            <div className="settings-form-grid two">
+            <div className="">
               <label>{isCreateMode ? "Initial Password" : "New Password"}<input type="password" id="userPassword" placeholder={isCreateMode ? "Create login password" : "Leave blank to keep current password"} value={form.password || ""} onChange={(event) => setForm({ ...form, password: event.target.value })} /></label>
               <label>Confirm Password<input type="password" id="userConfirmPassword" placeholder="Re-enter password" value={form.confirmPassword || ""} onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })} /></label>
             </div>
           </section>
 
-          <section className="settings-modal-section">
-            <div className="settings-modal-section-head">
+          <section className="">
+            <div className="">
               <span>Security</span>
               <small>Set MFA, lock status, access dates and notes.</small>
             </div>
 
-            <div className="settings-form-grid two">
-              <label className="settings-check-row"><input type="checkbox" checked={Boolean(form.requireMFA || form.mfa)} onChange={(event) => setForm({ ...form, requireMFA: event.target.checked, mfa: event.target.checked })} /><span>Require MFA</span></label>
-              <label className="settings-check-row"><input type="checkbox" checked={Boolean(form.accountLocked)} onChange={(event) => setForm({ ...form, accountLocked: event.target.checked, status: event.target.checked ? "Locked" : form.status === "Locked" ? "Active" : form.status })} /><span>Account Locked</span></label>
+            <div className="">
+              <label className=""><input type="checkbox" checked={Boolean(form.requireMFA || form.mfa)} onChange={(event) => setForm({ ...form, requireMFA: event.target.checked, mfa: event.target.checked })} /><span>Require MFA</span></label>
+              <label className=""><input type="checkbox" checked={Boolean(form.accountLocked)} onChange={(event) => setForm({ ...form, accountLocked: event.target.checked, status: event.target.checked ? "Locked" : form.status === "Locked" ? "Active" : form.status })} /><span>Account Locked</span></label>
               <label>Lock Reason<input id="userLockReason" placeholder="Optional reason shown in audit" value={form.lockReason || ""} onChange={(event) => setForm({ ...form, lockReason: event.target.value })} /></label>
               <label>Access Start<input type="date" id="userAccessStart" value={toDateInputValue(form.accessStartDate)} onChange={(event) => setForm({ ...form, accessStartDate: event.target.value })} /></label>
               <label>Access End<input type="date" id="userAccessEnd" value={toDateInputValue(form.accessEndDate)} onChange={(event) => setForm({ ...form, accessEndDate: event.target.value })} /></label>
@@ -6495,9 +6494,9 @@ function UserModal({ open, mode, title, form, setForm, onClose, onSave, roleOpti
           </section>
         </div>
 
-        <footer className="settings-modal-footer">
-          <button className="settings-secondary-btn" id="cancelUserModal" type="button" onClick={onClose}>Cancel</button>
-          <button className="settings-primary-btn" id="saveUserAccess" type="button" onClick={onSave}>Save User</button>
+        <footer className="">
+          <button className="" id="cancelUserModal" type="button" onClick={onClose}>Cancel</button>
+          <button className="" id="saveUserAccess" type="button" onClick={onSave}>Save User</button>
         </footer>
       </div>
     </div>
@@ -6510,9 +6509,9 @@ function AccessRoleModal({ open, mode, form, setForm, onClose, onSave }: { open:
   if (!open) return null;
 
   const modalNode = (
-    <div className="rbac-role-modal-v3-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="rbac-role-modal-v3" role="dialog" aria-modal="true" aria-labelledby="roleModalTitle">
-        <header className="rbac-role-modal-v3-header">
+    <div className="" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section className="" role="dialog" aria-modal="true" aria-labelledby="roleModalTitle">
+        <header className="">
           <div>
             <span>{mode}</span>
             <h3 id="roleModalTitle">{mode === "ADD ROLE" ? "Add New Role" : "Update Role"}</h3>
@@ -6522,9 +6521,9 @@ function AccessRoleModal({ open, mode, form, setForm, onClose, onSave }: { open:
           <button type="button" onClick={onClose} aria-label="Close role modal">?</button>
         </header>
 
-        <div className="rbac-role-modal-v3-body">
-          <div className="rbac-role-modal-v3-grid">
-            <label className="rbac-role-modal-v3-field">
+        <div className="">
+          <div className="">
+            <label className="">
               <span>Role Name</span>
               <input
                 placeholder="Example: L1 Support"
@@ -6533,7 +6532,7 @@ function AccessRoleModal({ open, mode, form, setForm, onClose, onSave }: { open:
               />
             </label>
 
-            <label className="rbac-role-modal-v3-field">
+            <label className="">
               <span>Status</span>
               <select
                 value={form.status === "Inactive" ? "Inactive" : "Active"}
@@ -6545,7 +6544,7 @@ function AccessRoleModal({ open, mode, form, setForm, onClose, onSave }: { open:
               </select>
             </label>
 
-            <label className="rbac-role-modal-v3-field rbac-role-modal-v3-full">
+            <label className="">
               <span>Description</span>
               <input
                 placeholder="Describe this role"
@@ -6554,7 +6553,7 @@ function AccessRoleModal({ open, mode, form, setForm, onClose, onSave }: { open:
               />
             </label>
 
-            <label className="rbac-role-modal-v3-check rbac-role-modal-v3-full">
+            <label className="">
               <input
                 type="checkbox"
                 checked={Boolean(form.approvalRequired)}
@@ -6568,7 +6567,7 @@ function AccessRoleModal({ open, mode, form, setForm, onClose, onSave }: { open:
           </div>
         </div>
 
-        <footer className="rbac-role-modal-v3-footer">
+        <footer className="">
           <button type="button" onClick={onClose}>Cancel</button>
           <button type="button" onClick={onSave}>Save Role</button>
         </footer>
@@ -6623,9 +6622,9 @@ function AccessPolicyModal(props: any) {
   const isEditMode = String(mode).toUpperCase().includes("EDIT") || String(mode).toUpperCase().includes("UPDATE");
 
   const modalNode = (
-    <div className="access-policy-modal-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="access-policy-modal" role="dialog" aria-modal="true" aria-labelledby="accessPolicyModalTitle">
-        <header className="access-policy-modal-header">
+    <div className="" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section className="" role="dialog" aria-modal="true" aria-labelledby="accessPolicyModalTitle">
+        <header className="">
           <div>
             <span>{mode}</span>
             <h3 id="accessPolicyModalTitle">{isEditMode ? "Update Access Control" : "Add New Access Control"}</h3>
@@ -6635,9 +6634,9 @@ function AccessPolicyModal(props: any) {
           <button type="button" onClick={onClose} aria-label="Close access control modal">?</button>
         </header>
 
-        <div className="access-policy-modal-body">
-          <div className="access-policy-modal-grid">
-            <label className="access-policy-field access-policy-full">
+        <div className="">
+          <div className="">
+            <label className="">
               <span>Control Name</span>
               <input
                 placeholder="Example: MFA Enforcement"
@@ -6646,7 +6645,7 @@ function AccessPolicyModal(props: any) {
               />
             </label>
 
-            <label className="access-policy-field access-policy-full">
+            <label className="">
               <span>Description</span>
               <input
                 placeholder="Describe this access control rule"
@@ -6655,7 +6654,7 @@ function AccessPolicyModal(props: any) {
               />
             </label>
 
-            <label className="access-policy-field">
+            <label className="">
               <span>Scope</span>
               <select
                 value={form.scope || "Global"}
@@ -6669,7 +6668,7 @@ function AccessPolicyModal(props: any) {
               </select>
             </label>
 
-            <label className="access-policy-field">
+            <label className="">
               <span>Enforcement</span>
               <select
                 value={form.enforcement || "Standard"}
@@ -6683,7 +6682,7 @@ function AccessPolicyModal(props: any) {
               </select>
             </label>
 
-            <label className="access-policy-field">
+            <label className="">
               <span>Review Cycle</span>
               <select
                 value={form.reviewCycle || "Monthly"}
@@ -6696,7 +6695,7 @@ function AccessPolicyModal(props: any) {
               </select>
             </label>
 
-            <label className="access-policy-field">
+            <label className="">
               <span>Status</span>
               <select
                 value={form.status || "Active"}
@@ -6710,7 +6709,7 @@ function AccessPolicyModal(props: any) {
           </div>
         </div>
 
-        <footer className="access-policy-modal-footer">
+        <footer className="">
           <button type="button" onClick={onClose}>Cancel</button>
           <button type="button" onClick={onSave}>Save Control</button>
         </footer>
@@ -6720,7 +6719,6 @@ function AccessPolicyModal(props: any) {
 
   return typeof document !== "undefined" ? createPortal(modalNode, document.body) : modalNode;
 }
-
 
 
 function AccessPolicyDeleteConfirmModal({ target, onCancel, onConfirm }: { target: { policy: AccessPolicy; index: number } | null; onCancel: () => void; onConfirm: () => void }) {

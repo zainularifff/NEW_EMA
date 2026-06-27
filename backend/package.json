@@ -10,6 +10,7 @@
     "start:dist": "node server-runner.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.1",

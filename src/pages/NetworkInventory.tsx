@@ -30,10 +30,8 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import "../styles/network-inventory-v2.css";
 
-import "../styles/ema-standard-controls.css";
-import "../styles/ema-table-pagination-standard.css";
+
 type CountKey = "registered" | "notRegistered" | "notInstalled" | "otherDevice";
 type DeviceStatusTab = "device" | "network";
 type NetworkTreeMode = "organization" | "statistics";
@@ -245,8 +243,8 @@ function NetworkCustomSelect({
   const menuNode = open && typeof document !== "undefined" ? createPortal(
     <div
       ref={menuRef}
-      className="uam-filter-menu uam-filter-menu-portal setting-select-menu"
-      style={menuStyle}
+      className=""
+      style={{}}
       role="listbox"
       aria-label={ariaLabel}
     >
@@ -256,7 +254,7 @@ function NetworkCustomSelect({
           <button
             key={option.value}
             type="button"
-            className={cx("uam-filter-option", isSelected && "selected")}
+            className=""
             role="option"
             aria-selected={isSelected}
             onClick={() => {
@@ -265,7 +263,7 @@ function NetworkCustomSelect({
             }}
           >
             <span>{option.label}</span>
-            {isSelected && <span className="uam-filter-check">✓</span>}
+            {isSelected && <span className="">✓</span>}
           </button>
         );
       })}
@@ -274,11 +272,11 @@ function NetworkCustomSelect({
   ) : null;
 
   return (
-    <div className={cx("uam-filter-dropdown setting-select-dropdown", open && "open", className)} style={style}>
+    <div className="" style={{}}>
       <button
         ref={triggerRef}
         type="button"
-        className="uam-filter-trigger setting-select-trigger"
+        className=""
         aria-label={ariaLabel}
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
@@ -1023,106 +1021,21 @@ export default function NetworkInventory() {
   };
 
   return (
-    <main className="settings-module-root network-inventory-module ema-settings-pro container-fluid p-3 p-xl-4" data-section="users">
-      <style>{`
-        /* Network page canvas only. Do not override AppShell/topbar/global sidebar colors. */
-        .network-inventory-module.settings-module-root {
-          background:
-            radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.055), transparent 24rem),
-            radial-gradient(circle at 100% 10%, rgba(8, 126, 164, 0.045), transparent 24rem),
-            linear-gradient(135deg, #eef3f9 0%, #f9fbfd 45%, #e8eff7 100%) !important;
-        }
-
-        /* Network sidebar: intentionally mirrors Hardware sidebar structure/spacing. */
-        .network-inventory-module .settings-layout.network-settings-layout {
-          grid-template-columns: minmax(300px, 322px) minmax(0, 1fr) !important;
-        }
-
-        .network-inventory-module .settings-menu.network-left-panel {
-          min-width: 300px !important;
-        }
-
-        .network-inventory-module .settings-menu > .ema-module-sidebar-switcher {
-          flex: 0 0 auto !important;
-          margin: 0 !important;
-          display: grid !important;
-          grid-template-columns: 1fr !important;
-          width: 100% !important;
-        }
-
-        .network-inventory-module .settings-menu > .ema-module-sidebar-switcher .setting-btn {
-          width: 100% !important;
-          min-height: 86px !important;
-          justify-content: flex-start !important;
-        }
-        .network-inventory-module .ema-module-sidebar-switcher .setting-btn.active {
-          min-height: 86px !important;
-          width: 100% !important;
-        }
-
-        .network-inventory-module .ema-module-sidebar-switcher .setting-btn:not(.active) {
-          display: none !important;
-        }
-
-
-        .network-inventory-module .settings-menu > .ema-sidebar-content {
-          flex: 1 1 auto !important;
-          padding-top: 0.65rem !important;
-        }
-
-        .network-inventory-module .ema-sidebar-subpanel {
-          justify-content: flex-start !important;
-        }
-
-        .network-inventory-module .ema-sidebar-tree {
-          min-height: 0 !important;
-        }
-
-        .network-inventory-module .network-tree-shell {
-          display: contents !important;
-        }
-
-        /* Root node must look like Hardware root: no expand arrow, no count badge, no menu. */
-        .network-inventory-module .ema-sidebar-tree-node.is-network-root {
-          grid-template-columns: 24px minmax(0, 1fr) !important;
-        }
-
-        .network-inventory-module .ema-sidebar-tree-node.is-network-root .ema-sidebar-tree-toggle svg,
-        .network-inventory-module .ema-sidebar-tree-node.is-network-root .ema-sidebar-tree-count,
-        .network-inventory-module .ema-sidebar-tree-node.is-network-root .ema-sidebar-tree-menu-wrap {
-          display: none !important;
-        }
-
-        .network-inventory-module .network-folder-modal.hardware-modal.hardware-folder-modal {
-          max-width: 520px !important;
-          border-radius: 22px !important;
-        }
-
-        @media (max-width: 1100px) {
-          .network-inventory-module .settings-layout.network-settings-layout {
-            grid-template-columns: 1fr !important;
-          }
-
-          .network-inventory-module .settings-menu.network-left-panel {
-            min-width: 0 !important;
-            max-width: none !important;
-          }
-        }
-      `}</style>
-      <input aria-hidden="true" id="globalSearch" type="hidden" />
+    <main className="" data-section="users">
+<input aria-hidden="true" id="globalSearch" type="hidden" />
       <button hidden id="themeBtn" type="button">
         <span id="themeLabel">Dark Mode</span>
       </button>
 
       {notice && (
-        <div className="settings-toast-layer">
-          <div className="settings-toast settings-toast-success" role="status" aria-live="polite">
-            <span className="settings-toast-icon"><CheckCircle2 size={18} /></span>
+        <div className="">
+          <div className="" role="status" aria-live="polite">
+            <span className=""><CheckCircle2 size={18} /></span>
             <div>
               <strong>Success</strong>
               <span>{notice}</span>
             </div>
-            <button type="button" className="settings-toast-close" onClick={() => setNotice(null)} aria-label="Close notification">
+            <button type="button" className="" onClick={() => setNotice(null)} aria-label="Close notification">
               <X size={14} />
             </button>
           </div>
@@ -1130,32 +1043,32 @@ export default function NetworkInventory() {
       )}
 
       {error && (
-        <div className="settings-toast-layer">
-          <div className="settings-toast settings-toast-error" role="alert">
-            <span className="settings-toast-icon"><AlertCircle size={18} /></span>
+        <div className="">
+          <div className="" role="alert">
+            <span className=""><AlertCircle size={18} /></span>
             <div>
               <strong>Error</strong>
               <span>{error}</span>
             </div>
-            <button type="button" className="settings-toast-close" onClick={() => setError(null)} aria-label="Close error">
+            <button type="button" className="" onClick={() => setError(null)} aria-label="Close error">
               <X size={14} />
             </button>
           </div>
         </div>
       )}
 
-      <div className="settings-layout network-settings-layout d-grid gap-3">
-        <aside className="settings-menu network-left-panel ema-panel-surface">
-          <div className="panel-head">
+      <div className="">
+        <aside className="">
+          <div className="">
             <span>NETWORK INVENTORY</span>
             <strong>Network Control</strong>
             <small>IP/subnet hierarchy and synchronized device records.</small>
           </div>
 
-          <nav className="settings-menu-list ema-module-sidebar-nav ema-module-sidebar-switcher" role="tablist" aria-label="Network navigation">
+          <nav className="" role="tablist" aria-label="Network navigation">
             <button
               type="button"
-              className={cx("setting-btn", treeMode === "organization" && "active")}
+              className=""
               onClick={() => {
                 setTreeMode("organization");
                 setTreeSearch("");
@@ -1163,16 +1076,16 @@ export default function NetworkInventory() {
                 setFolderMenuId(null);
               }}
             >
-              <span className="setting-icon"><FolderOpen size={16} /></span>
+              <span className=""><FolderOpen size={16} /></span>
               <span><strong>Network</strong><small>IP / subnet scope</small></span>
             </button>
           </nav>
 
-          <div className="ema-sidebar-content">
-            <div className="ema-sidebar-subpanel">
+          <div className="">
+            <div className="">
               {(
                 <>
-                  <div className="section-search ema-sidebar-field">
+                  <div className="">
                     <Search size={15} />
                     <input
                       placeholder="Search IP / subnet..."
@@ -1184,16 +1097,16 @@ export default function NetworkInventory() {
                     />
                   </div>
 
-                  <button type="button" className="soft-btn d-inline-flex align-items-center gap-1 px-2" onClick={() => openAddFolderDialog()} disabled={!hierarchy || busy}>
+                  <button type="button" className="" onClick={() => openAddFolderDialog()} disabled={!hierarchy || busy}>
                     <FolderPlus size={13} />
                     New Network Path
                   </button>
 
-                  <div className="ema-sidebar-tree" aria-label="Network IP and subnet tree">
+                  <div className="" aria-label="Network IP and subnet tree">
                     {loading ? (
-                      <div className="ema-sidebar-empty"><Loader2 className="me-2" size={14} /> Loading network hierarchy...</div>
+                      <div className=""><Loader2 className="" size={14} /> Loading network hierarchy...</div>
                     ) : filteredHierarchy ? (
-                      <div className="network-tree-shell">
+                      <div className="">
                         <NetworkTree
                           key={treeSearch.trim() ? `search-${treeSearch.trim()}` : hierarchy?.id || "network-tree"}
                           node={filteredHierarchy}
@@ -1208,7 +1121,7 @@ export default function NetworkInventory() {
                         />
                       </div>
                     ) : (
-                      <div className="ema-sidebar-empty">No IP segment found.</div>
+                      <div className="">No IP segment found.</div>
                     )}
                   </div>
                 </>
@@ -1217,15 +1130,15 @@ export default function NetworkInventory() {
           </div>
         </aside>
 
-        <section className="settings-content">
-          <section className="settings-hero ema-panel-surface">
+        <section className="">
+          <section className="">
             <div>
-              <span className="section-tag">Network Operations</span>
+              <span className="">Network Operations</span>
               <h2>Network Inventory</h2>
               <p>Monitor IP scope status, discover endpoint agents, and maintain network device records.</p>
             </div>
 
-            <div className="settings-score users-hero-score">
+            <div className="">
               <KpiCard label="Total IPs" value={totalNetworkRecords.toLocaleString()} note="Network records" icon={<Database />} />
               <KpiCard label="Subnets" value={subnetCount.toLocaleString()} note="Network paths" icon={<Network />} />
               <KpiCard label="Registered" value={rootCounts.registered.toLocaleString()} note="Active agents" icon={<CheckCircle2 />} />
@@ -1233,27 +1146,27 @@ export default function NetworkInventory() {
             </div>
           </section>
 
-          <main className="content-shell ema-panel-surface content-panel clean">
-            <header className="content-head">
+          <main className="">
+            <header className="">
               <div>
-                <span className="section-tag">{activeTab === "device" ? "Device Status" : "Network Device Status"}</span>
+                <span className="">{activeTab === "device" ? "Device Status" : "Network Device Status"}</span>
                 <h3>{activeTab === "device" ? `Device Status${getNetworkBranchLabel(selectedNode) ? `: ${getNetworkBranchLabel(selectedNode)}` : ""}` : "Network Device Registry"}</h3>
                 <p>{activeTab === "device" ? "Registered, not registered, not installed, and other network object counts." : `Showing ${manualFilteredRows.length.toLocaleString()} managed network devices.`}</p>
               </div>
 
-              <div className="content-actions justify-content-center flex-nowrap">
-                <button type="button" className={cx("soft-btn", activeTab === "device" && "primary-btn")} onClick={() => setActiveTab("device")}>Device Status</button>
-                <button type="button" className={cx("soft-btn", activeTab === "network" && "primary-btn")} onClick={() => setActiveTab("network")}>Network Device Status</button>
+              <div className="">
+                <button type="button" className="" onClick={() => setActiveTab("device")}>Device Status</button>
+                <button type="button" className="" onClick={() => setActiveTab("network")}>Network Device Status</button>
               </div>
             </header>
 
             <div
-              className="d-flex align-items-center gap-2 flex-nowrap px-3 py-2"
-              style={{ width: "100%", minWidth: 0, overflowX: "auto" }}
+              className=""
+              style={{}}
             >
               {activeTab === "network" ? (
                 <>
-                  <label className="section-search flex-grow-1 mb-0" style={{ minWidth: 360 }}>
+                  <label className="" style={{}}>
                     <Search size={15} />
                     <input
                       placeholder="Search device, brand, location..."
@@ -1272,30 +1185,30 @@ export default function NetworkInventory() {
                     ]}
                     ariaLabel="Filter network device status"
                     onChange={(nextValue) => setManualStatusFilter(nextValue as "All" | ManualDeviceStatus)}
-                    className="mb-0"
-                    style={{ width: 220, flex: "0 0 220px" }}
+                    className=""
+                    style={{}}
                   />
                 </>
               ) : (
-                <div className="d-flex align-items-center flex-grow-1" style={{ minWidth: 260 }}>
-                  <strong className="user-pill info">Reference: {lastSearchDate}</strong>
+                <div className="" style={{}}>
+                  <strong className="">Reference: {lastSearchDate}</strong>
                 </div>
               )}
 
               <button
                 type="button"
-                className="soft-btn flex-shrink-0"
+                className=""
                 onClick={() => activeTab === "device" ? void loadInventory(true) : void loadManualDevices()}
                 disabled={refreshing || manualLoading || busy}
               >
-                {(refreshing || manualLoading) ? <Loader2 size={15} className="me-1" /> : <RefreshCw size={15} />}
+                {(refreshing || manualLoading) ? <Loader2 size={15} className="" /> : <RefreshCw size={15} />}
                 Refresh
               </button>
 
               {activeTab === "device" ? (
                 <button
                   type="button"
-                  className="primary-btn flex-shrink-0"
+                  className=""
                   onClick={() => openScanDialog(selectedNode?.id === hierarchy?.id ? "all" : isIpAddress(selectedNode?.label) ? "ip" : "subnet", selectedNode)}
                   disabled={!selectedNode || busy}
                 >
@@ -1303,14 +1216,14 @@ export default function NetworkInventory() {
                   Scan Network
                 </button>
               ) : (
-                <button type="button" className="primary-btn flex-shrink-0" onClick={openAddDevice} disabled={busy}>
+                <button type="button" className="" onClick={openAddDevice} disabled={busy}>
                   <Plus size={16} />
                   Add New
                 </button>
               )}
             </div>
 
-            <div className="content-body">
+            <div className="">
               {activeTab === "device" ? (
                 ipDetail ? (
                   <NetworkPathDetail detail={ipDetail} onScan={() => openScanDialog("ip", selectedNode)} />
@@ -1386,9 +1299,9 @@ export default function NetworkInventory() {
       {recordDetail && <RecordDetailModal detail={recordDetail} onClose={() => setRecordDetail(null)} />}
       {scanDialog && <ScanJobModal dialog={scanDialog} busy={busy} targetCount={scanDialog.mode === "all" ? totalNetworkRecords : collectIpTargets(scanDialog.node).length} onClose={() => setScanDialog(null)} onSubmit={(commandType, scheduleTime, description) => void submitScan(commandType, scheduleTime, description)} />}
       {busy && (
-        <div className="settings-toast-layer">
-          <div className="settings-toast settings-toast-info">
-            <span className="settings-toast-icon"><Loader2 size={16} /></span>
+        <div className="">
+          <div className="">
+            <span className=""><Loader2 size={16} /></span>
             <div><strong>Processing</strong><span>Please wait...</span></div>
           </div>
         </div>
@@ -1409,17 +1322,17 @@ function DeleteDeviceConfirmModal({
   onConfirm: () => void;
 }) {
   return (
-    <div className="settings-confirm-backdrop" onMouseDown={busy ? undefined : onCancel}>
-      <section className="settings-confirm-modal" onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="delete-device-title">
+    <div className="" onMouseDown={busy ? undefined : onCancel}>
+      <section className="" onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="delete-device-title">
         <h3 id="delete-device-title">Remove network device?</h3>
         <p>This action will remove the selected device from Network Device Registry.</p>
-        <div className="settings-helper-card my-3">
+        <div className="">
           <strong>{device.deviceName}</strong>
           <span>{device.deviceBrand || "-"} • {device.location || "-"} • {device.deviceStatus || "-"}</span>
         </div>
-        <div className="settings-confirm-actions">
-          <button type="button" className="soft-btn" onClick={onCancel} disabled={busy}>Cancel</button>
-          <button type="button" className="danger-btn" onClick={onConfirm} disabled={busy}>
+        <div className="">
+          <button type="button" className="" onClick={onCancel} disabled={busy}>Cancel</button>
+          <button type="button" className="" onClick={onConfirm} disabled={busy}>
             {busy ? <Loader2 size={15} /> : <Trash2 size={15} />}
             Remove
           </button>
@@ -1431,11 +1344,11 @@ function DeleteDeviceConfirmModal({
 
 function KpiCard({ label, value, note, icon }: { label: string; value: ReactNode; note: ReactNode; icon: ReactNode }) {
   return (
-    <div className="score-box ema-kpi-card text-start" title={`${label}: ${value}`}>
+    <div className="" title={`${label}: ${value}`}>
       <span>{label}</span>
       <strong>{value}</strong>
       <small>{note}</small>
-      <i className="d-none">{icon}</i>
+      <i className="">{icon}</i>
     </div>
   );
 }
@@ -1479,11 +1392,11 @@ function NetworkTree({
   };
 
   return (
-    <div className="ema-sidebar-tree-branch">
-      <div className={cx("ema-sidebar-tree-node", `depth-${Math.min(level, 8)}`, isSelected && "is-selected is-active", hasChildren && "is-expandable", isLeafIp && "is-leaf-ip", isRootNode && "is-network-root")}>
+    <div className="">
+      <div className="">
         <button
           type="button"
-          className="ema-sidebar-tree-toggle"
+          className=""
           onClick={(event) => {
             event.stopPropagation();
             if (hasChildren) onToggle(node);
@@ -1493,19 +1406,19 @@ function NetworkTree({
           {!isRootNode && hasChildren ? isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} /> : <span />}
         </button>
 
-        <button type="button" className="ema-sidebar-tree-main" onClick={handleMainClick} title={displayLabel}>
-          <span className="ema-sidebar-tree-icon">
+        <button type="button" className="" onClick={handleMainClick} title={displayLabel}>
+          <span className="">
             <Icon size={15} />
           </span>
-          <span className="ema-sidebar-tree-label">{displayLabel}</span>
-          {!isRootNode && total > 0 && <span className="ema-sidebar-tree-count">{total.toLocaleString()}</span>}
+          <span className="">{displayLabel}</span>
+          {!isRootNode && total > 0 && <span className="">{total.toLocaleString()}</span>}
         </button>
 
         {!isLeafIp && !isRootNode ? (
-          <div className="ema-sidebar-tree-menu-wrap">
+          <div className="">
             <button
               type="button"
-              className="ema-sidebar-tree-menu-btn"
+              className=""
               onClick={(event) => {
                 event.stopPropagation();
                 onMenu(folderMenuId === node.id ? null : node.id);
@@ -1516,7 +1429,7 @@ function NetworkTree({
             </button>
 
             {folderMenuId === node.id && (
-              <div className="ema-sidebar-tree-menu">
+              <div className="">
                 <button
                   type="button"
                   onClick={(event) => {
@@ -1535,7 +1448,7 @@ function NetworkTree({
       </div>
 
       {hasChildren && isOpen && (
-        <div className="ema-sidebar-tree-children is-nested">
+        <div className="">
           {(node.children || []).map((child) => (
             <NetworkTree
               key={child.id}
@@ -1558,13 +1471,13 @@ function NetworkTree({
 }
 
 function WorkgroupStatisticList({ rows, selected, onSelect }: { rows: WorkgroupStat[]; selected: string; onSelect: (name: string) => void }) {
-  if (!rows.length) return <div className="settings-helper-card">No statistics found.</div>;
+  if (!rows.length) return <div className="">No statistics found.</div>;
 
   return (
-    <div className="d-grid gap-2">
+    <div className="">
       {rows.map((row) => (
-        <button key={row.name} type="button" className={cx("setting-btn", selected === row.name && "active")} onClick={() => onSelect(row.name)}>
-          <span className="setting-icon"><Database /></span>
+        <button key={row.name} type="button" className="" onClick={() => onSelect(row.name)}>
+          <span className=""><Database /></span>
           <span>
             <strong>{row.name}</strong>
             <small>{row.registered} registered • {row.notRegistered} not registered</small>
@@ -1597,19 +1510,19 @@ function DeviceStatusOverview({
   ];
 
   return (
-    <div className="d-grid gap-3">
-      <div className="settings-helper-card">
+    <div className="">
+      <div className="">
         <strong>Selected Scope</strong>
         <span>{selectedLabel} • {targetCount.toLocaleString()} scan target(s) • {total.toLocaleString()} network object(s)</span>
       </div>
 
-      <div className="pricing-table-card table-responsive">
-        <table className="table table-hover align-middle mb-0">
+      <div className="">
+        <table className="">
           <thead>
             <tr>
               <th>Status</th>
               <th>Count</th>
-              <th className="text-end">Action</th>
+              <th className="">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -1618,19 +1531,19 @@ function DeviceStatusOverview({
               return (
                 <tr key={row.type}>
                   <td>
-                    <div className="user-name">
-                      <span className="user-mini-avatar"><Icon size={14} /></span>
+                    <div className="">
+                      <span className=""><Icon size={14} /></span>
                       <span>
                         <strong>{row.label}</strong>
                         <small>{row.actionLabel}</small>
                       </span>
                     </div>
                   </td>
-                  <td><span className={cx("user-pill", row.tone)}>{row.count.toLocaleString()}</span></td>
-                  <td className="text-end">
+                  <td><span className="">{row.count.toLocaleString()}</span></td>
+                  <td className="">
                     <button
                       type="button"
-                      className="mini-btn icon-only edit"
+                      className=""
                       onClick={() => onOpenStatus(row.type)}
                       aria-label={row.actionLabel}
                       title={row.actionLabel}
@@ -1660,20 +1573,20 @@ function StatusDetailModal({
   onOpenRecord: (row: DeviceDetail) => void;
 }) {
   return (
-    <div className="user-modal-backdrop open" onMouseDown={onClose}>
-      <section className="user-modal advanced" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="user-modal-head">
+    <div className="" onMouseDown={onClose}>
+      <section className="" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="">
           <div>
             <span>{detail.source}</span>
             <h2>{detail.title}</h2>
             <p>{detail.totalRecords} record(s) • paginated detail list.</p>
           </div>
-          <button type="button" className="modal-close" onClick={onClose} aria-label="Close status detail">
+          <button type="button" className="" onClick={onClose} aria-label="Close status detail">
             <X size={18} />
           </button>
         </div>
-        <div className="user-modal-body content-body">
-          <div className="wide"><StatusDetailTable detail={detail} onPage={onPage} onOpenRecord={onOpenRecord} /></div>
+        <div className="">
+          <div className=""><StatusDetailTable detail={detail} onPage={onPage} onOpenRecord={onOpenRecord} /></div>
         </div>
       </section>
     </div>
@@ -1758,17 +1671,17 @@ function StatusDetailTable({
   };
 
   return (
-    <div className="d-grid gap-3">
-      <div className="content-head">
+    <div className="">
+      <div className="">
         <div>
           <h3>{detail.title}</h3>
           <span>{detail.totalRecords} record(s) • source: {detail.source}</span>
         </div>
-        {detail.loading && <Loader2 size={17} className="spinner-border spinner-border-sm" />}
+        {detail.loading && <Loader2 size={17} className="" />}
       </div>
 
-      <div className="user-access-commandbar">
-        <label className="section-search user-search-inline">
+      <div className="">
+        <label className="">
           <Search size={16} />
           <input
             value={searchText}
@@ -1782,14 +1695,14 @@ function StatusDetailTable({
           )}
         </label>
 
-        <select className="setting-select" value={agentFilter} onChange={(event) => setAgentFilter(event.target.value)}>
+        <select className="" value={agentFilter} onChange={(event) => setAgentFilter(event.target.value)}>
           <option value="All">All agents</option>
           {agentOptions.map((option) => (
             <option value={option} key={option}>Agent {option}</option>
           ))}
         </select>
 
-        <select className="setting-select" value={workgroupFilter} onChange={(event) => setWorkgroupFilter(event.target.value)}>
+        <select className="" value={workgroupFilter} onChange={(event) => setWorkgroupFilter(event.target.value)}>
           <option value="All">All workgroups</option>
           {workgroupOptions.map((option) => (
             <option value={option} key={option}>{option}</option>
@@ -1797,18 +1710,18 @@ function StatusDetailTable({
         </select>
 
         {isFiltering && (
-          <button type="button" className="soft-btn" onClick={clearFilters}>
+          <button type="button" className="" onClick={clearFilters}>
             Clear
           </button>
         )}
 
-        <span className="user-pill info">
+        <span className="">
           {visibleTotalRows} shown
         </span>
       </div>
 
-      <div className="pricing-table-card table-responsive">
-        <table className="table table-hover align-middle mb-0">
+      <div className="">
+        <table className="">
           <thead>
             <tr>
               <th>#</th>
@@ -1826,8 +1739,8 @@ function StatusDetailTable({
               <tr key={`${row.ipAddress || row.computerName || "row"}-${activePage}-${index}`}>
                 <td>{String((activePage - 1) * statusDetailPageSize + index + 1).padStart(2, "0")}</td>
                 <td>
-                  <div className="user-name">
-                    <span className="user-mini-avatar"><Monitor size={13} /></span>
+                  <div className="">
+                    <span className=""><Monitor size={13} /></span>
                     <div>
                       <strong>{row.computerName || row.username || "-"}</strong>
                       <small>{row.username || row.email || "-"}</small>
@@ -1840,7 +1753,7 @@ function StatusDetailTable({
                 <td>{row.clientAgent || "-"}</td>
                 <td>{row.recentSearchTime || row.lastConnection || "-"}</td>
                 <td>
-                  <button type="button" className="mini-btn" onClick={() => onOpenRecord(row)}>
+                  <button type="button" className="" onClick={() => onOpenRecord(row)}>
                     <Eye size={13} />
                     Detail
                   </button>
@@ -1877,20 +1790,20 @@ function NetworkPathDetail({ detail, onScan }: { detail: IpDetailState; onScan: 
   if (!detail) return null;
 
   return (
-    <div className="d-grid gap-3">
-      <div className="content-head">
+    <div className="">
+      <div className="">
         <div>
           <h2>DEVICE STATUS : {detail.ip}</h2>
           <span>{detail.loading ? "Loading fresh IP detail..." : `Source: ${detail.source}`}</span>
         </div>
-        <button type="button" className="primary-btn" onClick={onScan}>
+        <button type="button" className="" onClick={onScan}>
           <Play size={15} />
           Scan IP
         </button>
       </div>
 
-      <div className="pricing-table-card table-responsive">
-        <table className="table table-hover align-middle mb-0">
+      <div className="">
+        <table className="">
           <thead>
             <tr>
               <th>nPoints Agent</th>
@@ -1927,8 +1840,8 @@ function DeviceRegistryTable({
   onDelete: (device: ManualNetworkDevice) => void;
 }) {
   return (
-    <div className="pricing-table-card table-responsive">
-      <table className="table table-hover align-middle mb-0">
+    <div className="">
+      <table className="">
         <thead>
           <tr>
             <th>#</th>
@@ -1945,11 +1858,11 @@ function DeviceRegistryTable({
         </thead>
         <tbody>
           {rows.map((device, index) => (
-            <tr key={device.id} className={selectedId === device.id ? "selected" : ""}>
+            <tr key={device.id} className="">
               <td>{String((page - 1) * pageSize + index + 1).padStart(2, "0")}</td>
               <td>
-                <div className="user-name">
-                  <span className="user-mini-avatar"><Router size={13} /></span>
+                <div className="">
+                  <span className=""><Router size={13} /></span>
                   <div>
                     <strong>{device.deviceName}</strong>
                     <small>{device.location}</small>
@@ -1958,7 +1871,7 @@ function DeviceRegistryTable({
               </td>
               <td>{device.deviceBrand}</td>
               <td>
-                <span className={cx("user-pill", statusTone(device.deviceStatus) === "inactive" ? "locked" : statusTone(device.deviceStatus) === "maintenance" ? "review" : "active")}>{device.deviceStatus}</span>
+                <span className="">{device.deviceStatus}</span>
               </td>
               <td>{device.deviceVersion}</td>
               <td>{device.location}</td>
@@ -1966,11 +1879,11 @@ function DeviceRegistryTable({
               <td>{device.patchDate}</td>
               <td>{device.remarks || "-"}</td>
               <td>
-                <div className="user-row-action-wrap clean justify-content-end">
-                  <button type="button" className="mini-btn icon-only edit" title="Edit device" aria-label={`Edit ${device.deviceName}`} onClick={() => onEdit(device)}>
+                <div className="">
+                  <button type="button" className="" title="Edit device" aria-label={`Edit ${device.deviceName}`} onClick={() => onEdit(device)}>
                     <Edit3 size={15} aria-hidden="true" />
                   </button>
-                  <button type="button" className="mini-btn icon-only delete" title="Remove device" aria-label={`Remove ${device.deviceName}`} onClick={() => onDelete(device)}>
+                  <button type="button" className="" title="Remove device" aria-label={`Remove ${device.deviceName}`} onClick={() => onDelete(device)}>
                     <Trash2 size={15} aria-hidden="true" />
                   </button>
                 </div>
@@ -2021,21 +1934,21 @@ function Pagination({
   const pageText = pageSize ? `${from}-${to} of ${totalRows} ${itemLabel}` : `${totalRows} ${itemLabel}`;
 
   return (
-    <footer className="uam-pagination global-style">
-      <span className="uam-page-summary">Page {safePage} of {safeTotalPages}</span>
-      <span className="uam-page-status">{pageText}</span>
-      <nav className="uam-pagination-controls global-style" aria-label="Network inventory pagination">
-        <button className="uam-page-icon" type="button" disabled={safePage <= 1} onClick={() => onChange(1)} aria-label="First page">
+    <footer className="">
+      <span className="">Page {safePage} of {safeTotalPages}</span>
+      <span className="">{pageText}</span>
+      <nav className="" aria-label="Network inventory pagination">
+        <button className="" type="button" disabled={safePage <= 1} onClick={() => onChange(1)} aria-label="First page">
           <ChevronsLeft size={14} />
         </button>
-        <button className="uam-page-icon" type="button" disabled={safePage <= 1} onClick={() => onChange(Math.max(1, safePage - 1))} aria-label="Previous page">
+        <button className="" type="button" disabled={safePage <= 1} onClick={() => onChange(Math.max(1, safePage - 1))} aria-label="Previous page">
           <ChevronLeft size={14} />
         </button>
-        <b className="uam-page-current">{safePage}</b>
-        <button className="uam-page-icon" type="button" disabled={safePage >= safeTotalPages} onClick={() => onChange(Math.min(safeTotalPages, safePage + 1))} aria-label="Next page">
+        <b className="">{safePage}</b>
+        <button className="" type="button" disabled={safePage >= safeTotalPages} onClick={() => onChange(Math.min(safeTotalPages, safePage + 1))} aria-label="Next page">
           <ChevronRight size={14} />
         </button>
-        <button className="uam-page-icon" type="button" disabled={safePage >= safeTotalPages} onClick={() => onChange(safeTotalPages)} aria-label="Last page">
+        <button className="" type="button" disabled={safePage >= safeTotalPages} onClick={() => onChange(safeTotalPages)} aria-label="Last page">
           <ChevronsRight size={14} />
         </button>
       </nav>
@@ -2070,36 +1983,36 @@ function AddFolderModal({
   };
 
   return (
-    <div className="hardware-modal-overlay" onClick={onClose}>
-      <div className="hardware-modal hardware-folder-modal network-folder-modal" onClick={(event) => event.stopPropagation()}>
-        <div className="hardware-modal-header blue">
-          <div className="hardware-modal-title">
+    <div className="" onClick={onClose}>
+      <div className="" onClick={(event) => event.stopPropagation()}>
+        <div className="">
+          <div className="">
             <FolderPlus size={20} />
             <div>
               <strong>{safeParentLabel === "All Network" ? "CREATE MAIN NETWORK PATH" : "CREATE SUBPATH"}</strong>
               <span>{safeParentLabel === "All Network" ? "Create a new top-level network path." : `Parent network path: ${safeParentLabel}`}</span>
             </div>
           </div>
-          <button type="button" className="hardware-modal-close inverse" onClick={onClose} disabled={busy} aria-label="Close add branch path">
+          <button type="button" className="" onClick={onClose} disabled={busy} aria-label="Close add branch path">
             <X size={18} />
           </button>
         </div>
 
-        <form className="hardware-modal-body" onSubmit={submit}>
-          <div className="hardware-form-group">
+        <form className="" onSubmit={submit}>
+          <div className="">
             <label>Network Path Name</label>
             <input autoFocus type="text" value={folderName} disabled={busy} onChange={(event) => setFolderName(event.target.value)} placeholder="Example: 10.10.0.0, HQ Network, Server VLAN" />
-            {folderNameError && <div className="hardware-form-error">{folderNameError}</div>}
+            {folderNameError && <div className="">{folderNameError}</div>}
           </div>
-          <div className="hardware-preview-card">
+          <div className="">
             <span>Preview</span>
             <strong>{safeParentLabel === "All Network" ? folderName.trim() || "New Network Path" : `${safeParentLabel} \\ ${folderName.trim() || "New Subpath"}`}</strong>
           </div>
-          <div className="hardware-modal-footer embedded">
-            <button type="button" className="hardware-btn link" onClick={onClose} disabled={busy}>
+          <div className="">
+            <button type="button" className="" onClick={onClose} disabled={busy}>
               Cancel
             </button>
-            <button type="submit" className="hardware-btn primary" disabled={busy || !folderName.trim()}>
+            <button type="submit" className="" disabled={busy || !folderName.trim()}>
               {busy ? "Creating..." : "Create Path"}
             </button>
           </div>
@@ -2141,33 +2054,33 @@ function DeviceFormModal({
   };
 
   return (
-    <div className="user-modal-backdrop open" onMouseDown={onClose}>
-      <form className="user-modal advanced network-folder-modal" onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}>
-        <div className="user-modal-head">
+    <div className="" onMouseDown={onClose}>
+      <form className="" onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}>
+        <div className="">
           <div>
             <span>{mode === "edit" ? "Edit Network Device" : "Register Network Device"}</span>
             <h2>{mode === "edit" ? device?.deviceName || "Edit Device" : "Add New Device"}</h2>
             <p>{mode === "edit" ? "Update the selected network device record." : "Register a router, switch, access point, firewall or other network device."}</p>
           </div>
-          <button type="button" className="modal-close" onClick={onClose} aria-label="Close form">
+          <button type="button" className="" onClick={onClose} aria-label="Close form">
             <X size={18} />
           </button>
         </div>
 
-        <div className="user-modal-body content-body">
-          <label className="form-field wide">
+        <div className="">
+          <label className="">
             <span>Device Name</span>
-            <input required value={form.deviceName} onChange={(event) => update("deviceName", event.target.value)} placeholder="Core Router 01" className="setting-input" />
+            <input required value={form.deviceName} onChange={(event) => update("deviceName", event.target.value)} placeholder="Core Router 01" className="" />
           </label>
 
-          <div className="form-grid wide">
-            <label className="form-field">
+          <div className="">
+            <label className="">
               <span>Device Brand</span>
-              <input value={form.deviceBrand} onChange={(event) => update("deviceBrand", event.target.value)} placeholder="Cisco / ASUS / Fortinet" className="setting-input" />
+              <input value={form.deviceBrand} onChange={(event) => update("deviceBrand", event.target.value)} placeholder="Cisco / ASUS / Fortinet" className="" />
             </label>
-            <label className="form-field">
+            <label className="">
               <span>Device Status</span>
-              <select className="setting-select" value={form.deviceStatus} onChange={(event) => update("deviceStatus", event.target.value)}>
+              <select className="" value={form.deviceStatus} onChange={(event) => update("deviceStatus", event.target.value)}>
                 <option>Active</option>
                 <option>Inactive</option>
                 <option>Maintenance</option>
@@ -2175,40 +2088,40 @@ function DeviceFormModal({
             </label>
           </div>
 
-          <div className="form-grid wide">
-            <label className="form-field">
+          <div className="">
+            <label className="">
               <span>Version</span>
-              <input value={form.deviceVersion} onChange={(event) => update("deviceVersion", event.target.value)} placeholder="V2.0" className="setting-input" />
+              <input value={form.deviceVersion} onChange={(event) => update("deviceVersion", event.target.value)} placeholder="V2.0" className="" />
             </label>
-            <label className="form-field">
+            <label className="">
               <span>Patch Date</span>
-              <input value={form.patchDate} onChange={(event) => update("patchDate", event.target.value)} type="date" className="setting-input" />
+              <input value={form.patchDate} onChange={(event) => update("patchDate", event.target.value)} type="date" className="" />
             </label>
           </div>
 
-          <div className="form-grid wide">
-            <label className="form-field">
+          <div className="">
+            <label className="">
               <span>Location</span>
-              <input value={form.location} onChange={(event) => update("location", event.target.value)} placeholder="Server Room / HQ" className="setting-input" />
+              <input value={form.location} onChange={(event) => update("location", event.target.value)} placeholder="Server Room / HQ" className="" />
             </label>
-            <label className="form-field">
+            <label className="">
               <span>Purpose</span>
-              <input value={form.purpose} onChange={(event) => update("purpose", event.target.value)} placeholder="Router / Switch / Firewall" className="setting-input" />
+              <input value={form.purpose} onChange={(event) => update("purpose", event.target.value)} placeholder="Router / Switch / Firewall" className="" />
             </label>
           </div>
 
-          <label className="form-field wide">
+          <label className="">
             <span>Remarks</span>
-            <textarea value={form.remarks} onChange={(event) => update("remarks", event.target.value)} rows={3} placeholder="Operational note or device description" className="setting-textarea" />
+            <textarea value={form.remarks} onChange={(event) => update("remarks", event.target.value)} rows={3} placeholder="Operational note or device description" className="" />
           </label>
         </div>
 
-        <div className="user-modal-foot">
-          <button type="button" className="soft-btn" onClick={onClose} disabled={busy}>
+        <div className="">
+          <button type="button" className="" onClick={onClose} disabled={busy}>
             Cancel
           </button>
-          <button type="submit" className="primary-btn" disabled={busy}>
-            {busy ? <Loader2 size={16} className="spinner-border spinner-border-sm" /> : mode === "edit" ? <Edit3 size={16} /> : <Plus size={16} />}
+          <button type="submit" className="" disabled={busy}>
+            {busy ? <Loader2 size={16} className="" /> : mode === "edit" ? <Edit3 size={16} /> : <Plus size={16} />}
             {mode === "edit" ? "Save Changes" : "Add Device"}
           </button>
         </div>
@@ -2219,20 +2132,20 @@ function DeviceFormModal({
 
 function RecordDetailModal({ detail, onClose }: { detail: NonNullable<RecordDetailState>; onClose: () => void }) {
   return (
-    <div className="user-modal-backdrop open" onMouseDown={onClose}>
-      <section className="user-modal advanced" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="user-modal-head">
+    <div className="" onMouseDown={onClose}>
+      <section className="" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="">
           <div>
             <span>{detail.source}</span>
             <h2>{detail.title}</h2>
             <p>Detailed network inventory information.</p>
           </div>
-          <button type="button" className="modal-close" onClick={onClose} aria-label="Close detail">
+          <button type="button" className="" onClick={onClose} aria-label="Close detail">
             <X size={18} />
           </button>
         </div>
-        <div className="user-modal-body content-body">
-          <table className="table table-hover align-middle mb-0">
+        <div className="">
+          <table className="">
             <tbody>
               {detail.rows.map(([key, value]) => (
                 <tr key={key}>
@@ -2277,21 +2190,21 @@ function ScanJobModal({
   };
 
   return (
-    <div className="user-modal-backdrop open" onMouseDown={onClose}>
-      <form className="user-modal advanced network-folder-modal" onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}>
-        <div className="user-modal-head">
+    <div className="" onMouseDown={onClose}>
+      <form className="" onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}>
+        <div className="">
           <div>
             <span>Network Inventory Scan Job</span>
             <h2>{dialog.mode === "all" ? "Scan All Network IPs" : dialog.mode === "subnet" ? `Scan Subnet ${dialog.node?.label || ""}` : `Scan IP ${dialog.ipAddress || dialog.node?.label || ""}`}</h2>
             <p>Creates a network scan job for the selected scope.</p>
           </div>
-          <button type="button" className="modal-close" onClick={onClose} aria-label="Close scan modal">
+          <button type="button" className="" onClick={onClose} aria-label="Close scan modal">
             <X size={18} />
           </button>
         </div>
 
-        <div className="user-modal-body content-body">
-          <div className="audit-kpi-strip wide">
+        <div className="">
+          <div className="">
             <div>
               <span>Scan Mode</span>
               <strong>{dialog.mode.toUpperCase()}</strong>
@@ -2306,33 +2219,33 @@ function ScanJobModal({
             </div>
           </div>
 
-          <div className="form-grid wide">
-            <label className="form-field">
+          <div className="">
+            <label className="">
               <span>Command Type</span>
-              <select className="setting-select" value={commandType} onChange={(event) => setCommandType(event.target.value as CommandType)}>
+              <select className="" value={commandType} onChange={(event) => setCommandType(event.target.value as CommandType)}>
                 <option value="push">Push Now</option>
                 <option value="schedule">Schedule</option>
               </select>
             </label>
 
-            <label className="form-field">
+            <label className="">
               <span>Schedule Time</span>
-              <input type="datetime-local" value={scheduleTime} onChange={(event) => setScheduleTime(event.target.value)} disabled={commandType !== "schedule"} required={commandType === "schedule"} className="setting-input" />
+              <input type="datetime-local" value={scheduleTime} onChange={(event) => setScheduleTime(event.target.value)} disabled={commandType !== "schedule"} required={commandType === "schedule"} className="" />
             </label>
           </div>
 
-          <label className="form-field wide">
+          <label className="">
             <span>Description</span>
-            <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} className="setting-textarea" />
+            <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} className="" />
           </label>
         </div>
 
-        <div className="user-modal-foot">
-          <button type="button" className="soft-btn" onClick={onClose} disabled={busy}>
+        <div className="">
+          <button type="button" className="" onClick={onClose} disabled={busy}>
             Cancel
           </button>
-          <button type="submit" className="primary-btn" disabled={busy}>
-            {busy ? <Loader2 size={16} className="spinner-border spinner-border-sm" /> : <Play size={16} />}
+          <button type="submit" className="" disabled={busy}>
+            {busy ? <Loader2 size={16} className="" /> : <Play size={16} />}
             Create Scan Job
           </button>
         </div>
@@ -2343,8 +2256,8 @@ function ScanJobModal({
 
 function EmptyState({ icon, title, subtitle }: { icon?: "loading"; title: string; subtitle: string }) {
   return (
-    <div className="settings-helper-card text-center py-4">
-      {icon === "loading" ? <Loader2 size={28} className="spinner-border spinner-border-sm" /> : <Database size={28} />}
+    <div className="">
+      {icon === "loading" ? <Loader2 size={28} className="" /> : <Database size={28} />}
       <strong>{title}</strong>
       <span>{subtitle}</span>
     </div>

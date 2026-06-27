@@ -1,649 +1,1347 @@
 /* =========================================================
-   EMA UI Design System
-   Single shared CSS source for Settings first migration
+   EMA SHELL UI
+   Standard reusable classes for sidebar, topbar and app shell.
 ========================================================= */
 
 :root {
-  --ema-blue: #2563eb;
-  --ema-blue-dark: #1d4ed8;
-  --ema-text: #0f2746;
-  --ema-muted: #64748b;
-  --ema-soft: #f8fbff;
-  --ema-line: rgba(203, 213, 225, 0.82);
-  --ema-line-soft: rgba(226, 232, 240, 0.92);
-  --ema-danger: #dc2626;
-  --ema-warning: #d97706;
-  --ema-success: #16a34a;
-  --ema-radius-lg: 24px;
-  --ema-radius-md: 16px;
-  --ema-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
-  --ema-shadow-strong: 0 32px 90px rgba(15, 23, 42, 0.32);
+  --ema-sidebar-width: 204px;
+  --ema-topbar-height: 58px;
+
+  --ema-bg: #f6f8fc;
+  --ema-card: #ffffff;
+  --ema-border: #e1e8f3;
+  --ema-border-soft: #eef2f8;
+
+  --ema-text: #102647;
+  --ema-muted: #667791;
+
+  --ema-navy-1: #07152d;
+  --ema-navy-2: #041122;
+  --ema-orange: #ff9800;
+  --ema-orange-2: #ff8a00;
+
+  --ema-blue: #4d63f5;
+  --ema-purple: #6847f5;
+  --ema-red: #ef3f5f;
+
+  --ema-radius: 16px;
+  --ema-shadow: 0 8px 22px rgba(15, 23, 42, 0.045);
+  --ema-font: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 html,
 body,
 #root {
-  min-height: 100%;
+  margin: 0 !important;
+  width: 100% !important;
+  min-height: 100vh !important;
+  background: var(--ema-bg) !important;
+  font-family: var(--ema-font) !important;
+  -webkit-font-smoothing: antialiased !important;
+  text-rendering: geometricPrecision !important;
 }
 
-body {
-  background: #f4f7fb;
-  color: var(--ema-text);
+button,
+input,
+select,
+textarea {
+  font-family: var(--ema-font) !important;
 }
 
-/* Page */
-.ema-page,
-.settings-module-root,
-.ema-settings-pro {
-  min-height: 100%;
-  color: var(--ema-text);
-}
+/* =========================================================
+   APP SHELL
+========================================================= */
 
-.ema-panel,
-.ema-panel-surface,
-.content-shell,
-.content-panel,
-.settings-menu,
-.settings-hero,
-.settings-helper-card,
-.score-box {
-  background: #ffffff;
-  border: 1px solid var(--ema-line);
-  border-radius: var(--ema-radius-lg);
-  box-shadow: var(--ema-shadow);
-}
-
-.settings-layout {
-  display: grid;
-  grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
-  align-items: start;
-  gap: 1rem;
-}
-
-.settings-content {
-  min-width: 0;
-}
-
-.panel-head,
-.content-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 1.1rem;
-  border-bottom: 1px solid var(--ema-line-soft);
-}
-
-.panel-head span,
-.eyebrow,
-.section-tag {
-  display: inline-flex;
-  width: fit-content;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: #eef5ff;
-  border: 1px solid #c9dbff;
-  color: var(--ema-blue);
-  font-size: 10px;
-  font-weight: 950;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  line-height: 1;
-}
-
-.panel-head strong,
-.content-head h2,
-.settings-hero h2 {
-  margin: 0;
-  color: var(--ema-text);
-  font-weight: 950;
-  letter-spacing: -0.045em;
-}
-
-.panel-head small,
-.content-head p,
-.settings-hero p {
-  margin: .25rem 0 0;
-  color: var(--ema-muted);
-  font-size: .78rem;
-  font-weight: 720;
-}
-
-/* Sidebar menu */
-.settings-menu-list {
-  display: grid;
-  gap: .55rem;
-  padding: .85rem;
-}
-
-.setting-btn {
-  width: 100%;
-  border: 1px solid transparent;
-  border-radius: 16px;
-  background: transparent;
-  color: var(--ema-text);
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: .7rem;
-  padding: .72rem;
-  text-align: left;
-  cursor: pointer;
-}
-
-.setting-btn:hover {
-  background: #f8fbff;
-  border-color: var(--ema-line-soft);
-}
-
-.setting-btn.active {
-  background: #eef5ff;
-  border-color: #c9dbff;
-  color: var(--ema-blue-dark);
-}
-
-.setting-icon,
-.task-panel-icon,
-.ema-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #eef5ff;
-  color: var(--ema-blue);
-  border: 1px solid #c9dbff;
-}
-
-/* Hero */
-.settings-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.1rem 1.2rem;
-}
-
-.settings-score {
-  display: flex;
-  align-items: stretch;
-  gap: .7rem;
-}
-
-.score-box {
-  min-width: 140px;
-  padding: .8rem .9rem;
-  display: grid;
-  gap: .22rem;
-}
-
-.score-box span {
-  color: var(--ema-muted);
-  font-size: .7rem;
-  font-weight: 850;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-}
-
-.score-box strong {
-  color: var(--ema-text);
-  font-size: 1.5rem;
-  font-weight: 950;
-  line-height: 1;
-}
-
-.score-box small {
-  color: var(--ema-muted);
-  font-size: .7rem;
-  font-weight: 720;
-}
-
-/* Toolbar */
-.content-toolbar,
-.content-actions,
-.toolbar-actions {
-  display: flex;
-  align-items: center;
-  gap: .55rem;
-}
-
-.content-toolbar {
-  justify-content: space-between;
-  padding: .95rem 1rem;
-  border-bottom: 1px solid var(--ema-line-soft);
-}
-
-.section-search,
-.ema-search-field {
-  min-height: 2.55rem;
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: .55rem;
-  padding: 0 .85rem;
-  border: 1px solid rgba(148, 163, 184, 0.34);
-  border-radius: 14px;
-  background: #ffffff;
-  color: var(--ema-muted);
-}
-
-.section-search input,
-.ema-search-field input {
-  min-width: 0;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--ema-text);
-  font-weight: 720;
-}
-
-/* Buttons */
-.primary-btn,
-.soft-btn,
-.danger-btn,
-.ema-button {
-  min-height: 2.45rem;
-  border-radius: 13px;
-  border: 1px solid transparent;
-  padding: 0 .9rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: .45rem;
-  font-size: .78rem;
-  font-weight: 900;
-  cursor: pointer;
-  transition: 120ms ease;
-}
-
-.primary-btn,
-.ema-button-primary {
-  background: var(--ema-blue);
-  border-color: var(--ema-blue);
-  color: #ffffff;
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
-}
-
-.primary-btn:hover {
-  background: var(--ema-blue-dark);
-}
-
-.soft-btn,
-.ema-button-secondary {
-  background: #ffffff;
-  border-color: rgba(148, 163, 184, 0.32);
-  color: var(--ema-text);
-}
-
-.soft-btn:hover {
-  background: #f8fbff;
-  border-color: rgba(37, 99, 235, 0.34);
-  color: var(--ema-blue-dark);
-}
-
-.danger-btn,
-.ema-button-danger {
-  background: #fff1f2;
-  border-color: #fecaca;
-  color: var(--ema-danger);
-}
-
-button:disabled,
-.primary-btn:disabled,
-.soft-btn:disabled,
-.danger-btn:disabled {
-  opacity: .55;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.mini-btn,
-.icon-only,
-.uam-page-icon {
-  width: 2.35rem;
-  min-width: 2.35rem;
-  height: 2.35rem;
-  min-height: 2.35rem;
-  padding: 0;
-  border-radius: 13px;
-  border: 1px solid rgba(148, 163, 184, 0.32);
-  background: #ffffff;
-  color: var(--ema-text);
-  display: inline-grid;
-  place-items: center;
-}
-
-/* Forms */
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: .75rem;
-}
-
-.form-grid.single {
-  grid-template-columns: 1fr;
-}
-
-.form-field,
-.form-grid label {
-  display: grid;
-  gap: .35rem;
-}
-
-.form-field span,
-.form-grid label span {
-  color: #475569;
-  font-size: .66rem;
-  font-weight: 950;
-  text-transform: uppercase;
-  letter-spacing: .055em;
-}
-
-.setting-input,
-.setting-select,
-.form-control,
-.form-select,
-.form-grid input,
-.form-grid textarea,
-.form-grid select {
-  width: 100%;
-  min-height: 2.55rem;
-  border: 1px solid rgba(148, 163, 184, 0.34);
-  border-radius: 14px;
-  background: #f8fafc;
-  color: var(--ema-text);
-  padding: 0 .85rem;
-  font-size: .78rem;
-  font-weight: 760;
-  outline: none;
-}
-
-.form-grid textarea,
-textarea.setting-input {
-  min-height: 7rem;
-  padding: .85rem;
-  resize: vertical;
-  line-height: 1.5;
-}
-
-.setting-input:focus,
-.setting-select:focus,
-.form-control:focus,
-.form-select:focus,
-.form-grid input:focus,
-.form-grid textarea:focus,
-.form-grid select:focus {
-  border-color: rgba(37, 99, 235, 0.55);
-  background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.09);
-}
-
-/* Table */
-.user-access-table,
-.ema-table {
-  width: 100%;
-  overflow: hidden;
-  border: 1px solid var(--ema-line-soft);
-  border-radius: 18px;
-  background: #ffffff;
-}
-
-.user-row,
-.ema-table-row {
-  display: grid;
-  align-items: center;
-  min-height: 3.2rem;
-  border-bottom: 1px solid var(--ema-line-soft);
-}
-
-.user-row:last-child {
-  border-bottom: 0;
-}
-
-.user-row.head,
-.ema-table-head {
-  min-height: 2.8rem;
-  background: #f8fafc;
-  color: #475569;
-  font-size: .68rem;
-  font-weight: 950;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-}
-
-.user-cell,
-.ema-table-cell {
-  min-width: 0;
-  padding: .72rem .85rem;
-}
-
-.row-index-pill {
-  min-width: 2.2rem;
-  min-height: 2rem;
-  display: inline-grid;
-  place-items: center;
-  border-radius: .78rem;
-  background: #eef5ff;
-  border: 1px solid #c9dbff;
-  color: var(--ema-blue-dark);
-  font-size: .72rem;
-  font-weight: 950;
-}
-
-/* Pagination */
-.uam-pagination,
-.ema-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: .75rem;
-  padding: .85rem 1rem;
-  border-top: 1px solid var(--ema-line-soft);
-}
-
-.uam-pagination-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: .35rem;
-}
-
-.uam-page-current {
-  min-width: 2.35rem;
-  height: 2.35rem;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 13px;
-  background: var(--ema-blue);
-  color: #fff;
-  font-weight: 950;
-}
-
-.uam-page-summary,
-.uam-pagination-info {
-  color: var(--ema-muted);
-  font-size: .78rem;
-  font-weight: 780;
-}
-
-/* Toast */
-.ema-notify-host {
-  position: fixed !important;
-  top: 86px !important;
-  right: 24px !important;
-  left: auto !important;
-  bottom: auto !important;
-  width: min(420px, calc(100vw - 32px)) !important;
-  z-index: 2147483600 !important;
-  pointer-events: none !important;
-}
-
-.ema-notify-card {
-  pointer-events: auto !important;
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) 28px;
-  align-items: center;
-  gap: .75rem;
-  padding: 12px 14px;
-  border-radius: 18px;
-  background: #ffffff;
-  border: 1px solid var(--ema-line);
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
-}
-
-.ema-notify-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  background: #eef5ff;
-  border: 1px solid #c9dbff;
-  color: var(--ema-blue);
-  font-weight: 950;
-}
-
-.ema-notify-copy {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.ema-notify-copy strong {
-  color: var(--ema-text);
-  font-size: .86rem;
-  font-weight: 950;
-}
-
-.ema-notify-copy span {
-  color: var(--ema-muted);
-  font-size: .76rem;
-  font-weight: 720;
-}
-
-.ema-notify-close {
-  width: 28px;
-  height: 28px;
-  border-radius: 10px;
-  border: 1px solid var(--ema-line-soft);
-  background: #f8fafc;
-  color: var(--ema-text);
-}
-
-/* Confirmation / modal */
-.ema-confirm-backdrop,
-.settings-confirm-backdrop.open,
-.settings-confirm-backdrop {
-  position: fixed !important;
-  inset: 0 !important;
+.ema-shell {
   width: 100vw !important;
-  height: 100dvh !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 24px !important;
-  background: rgba(15, 23, 42, 0.42) !important;
-  backdrop-filter: blur(12px) saturate(112%) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(112%) !important;
-  z-index: 2147483000 !important;
-}
-
-.ema-confirm-modal,
-.settings-confirm-modal {
-  position: relative !important;
-  width: min(520px, calc(100vw - 48px)) !important;
-  max-height: min(88dvh, 720px) !important;
+  min-height: 100vh !important;
   display: grid !important;
-  gap: 12px !important;
-  padding: 22px !important;
-  border-radius: 22px !important;
-  background: #ffffff !important;
-  border: 1px solid var(--ema-line) !important;
-  box-shadow: var(--ema-shadow-strong) !important;
-  color: var(--ema-text) !important;
+  grid-template-columns: var(--ema-sidebar-width) minmax(0, 1fr) !important;
+  background: var(--ema-bg) !important;
+  overflow: hidden !important;
 }
 
-.modal-close {
-  position: absolute !important;
-  top: 14px !important;
-  right: 14px !important;
-  width: 34px !important;
-  height: 34px !important;
-  border-radius: 12px !important;
-  border: 1px solid #d8e4f5 !important;
-  background: #f7fbff !important;
-  color: var(--ema-blue) !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+.ema-main {
+  min-width: 0 !important;
+  min-height: 100vh !important;
+  display: grid !important;
+  grid-template-rows: var(--ema-topbar-height) minmax(0, 1fr) 0px !important;
+  background: var(--ema-bg) !important;
+  overflow: hidden !important;
 }
 
-.ema-confirm-icon,
-.settings-toast-icon {
-  width: 44px !important;
-  height: 44px !important;
-  border-radius: 16px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: #eef5ff !important;
-  border: 1px solid #c9dbff !important;
-  color: var(--ema-blue) !important;
+.ema-page {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 12px !important;
+  background: var(--ema-bg) !important;
+  overflow: auto !important;
 }
 
-.ema-confirm-actions,
-.settings-confirm-actions,
-.content-actions.service-desk-row-actions {
-  width: 100%;
+/* =========================================================
+   SIDEBAR
+========================================================= */
+
+.ema-sidebar {
+  width: var(--ema-sidebar-width) !important;
+  height: 100vh !important;
+  padding: 14px 12px 12px !important;
   display: flex !important;
-  justify-content: flex-end !important;
+  flex-direction: column !important;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(85, 113, 255, 0.18), transparent 24%),
+    linear-gradient(180deg, var(--ema-navy-1) 0%, var(--ema-navy-2) 100%) !important;
+  color: #ffffff !important;
+  border-right: 1px solid rgba(15, 23, 42, 0.16) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: none !important;
+}
+
+.ema-sidebar::-webkit-scrollbar,
+.ema-nav::-webkit-scrollbar {
+  display: none !important;
+}
+
+.ema-sidebar * {
+  box-sizing: border-box !important;
+  text-transform: none !important;
+}
+
+.ema-sidebar-brand {
+  min-height: 58px !important;
+  display: flex !important;
   align-items: center !important;
+  gap: 10px !important;
+  padding: 2px 4px 14px !important;
+  margin: 0 0 14px !important;
+  border-bottom: 1px solid rgba(255,255,255,0.09) !important;
+}
+
+.ema-logo {
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  border-radius: 13px !important;
+  display: grid !important;
+  place-items: center !important;
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #4d6bff 0%, #7a52ff 100%) !important;
+  box-shadow: 0 12px 28px rgba(77, 107, 255, 0.28) !important;
+}
+
+.ema-logo svg {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+.ema-sidebar-title {
+  color: #ffffff !important;
+  font-size: 15px !important;
+  font-weight: 850 !important;
+  line-height: 1.05 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.ema-sidebar-subtitle {
+  margin-top: 3px !important;
+  color: rgba(255, 255, 255, 0.72) !important;
+  font-size: 10px !important;
+  line-height: 1.15 !important;
+  font-weight: 600 !important;
+}
+
+.ema-sidebar-section {
+  padding: 8px 4px 10px !important;
+  color: rgba(255, 255, 255, 0.58) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+}
+
+.ema-nav {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  display: grid !important;
+  align-content: start !important;
+  gap: 5px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 0 0 10px !important;
+  scrollbar-width: none !important;
+}
+
+.ema-nav > .d-grid {
+  gap: 5px !important;
+}
+
+.ema-nav-link {
+  width: 100% !important;
+  min-height: 38px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 0 10px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  color: rgba(255,255,255,0.86) !important;
+  text-decoration: none !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1.12 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.ema-nav-link svg {
+  width: 16px !important;
+  height: 16px !important;
+  flex: 0 0 16px !important;
+}
+
+.ema-nav-link:hover {
+  background: rgba(255,255,255,0.07) !important;
+  color: #ffffff !important;
+}
+
+.ema-nav-link.active {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, var(--ema-orange) 0%, var(--ema-orange-2) 100%) !important;
+  box-shadow: 0 14px 28px rgba(255, 152, 0, 0.28) !important;
+}
+
+.ema-nav-link > svg:last-child {
+  margin-left: auto !important;
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.ema-nav .ps-4 {
+  padding-left: 14px !important;
+  margin-left: 14px !important;
+  border-left: 1px solid rgba(255,255,255,0.08) !important;
+}
+
+.ema-nav .ps-4 .ema-nav-link {
+  min-height: 33px !important;
+  font-size: 11.5px !important;
+  font-weight: 650 !important;
+  color: rgba(255,255,255,0.74) !important;
+}
+
+.ema-nav .ps-4 .ema-nav-link.active {
+  background: rgba(255, 152, 0, 0.18) !important;
+  box-shadow: none !important;
+  color: #ffffff !important;
+}
+
+.ema-sidebar-footer {
+  flex: 0 0 auto !important;
+  padding: 12px 2px 0 !important;
+  border-top: 1px solid rgba(255,255,255,0.08) !important;
+  display: grid !important;
   gap: 10px !important;
 }
 
-/* Alerts / empty */
-.settings-inline-alert,
-.ema-alert {
-  display: flex;
-  align-items: center;
-  gap: .55rem;
-  padding: .78rem .92rem;
-  border-radius: 15px;
-  border: 1px solid #c9dbff;
-  background: #eef5ff;
-  color: var(--ema-blue-dark);
-  font-size: .78rem;
-  font-weight: 800;
+.ema-user-card {
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: 38px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 10px !important;
+  border-radius: 14px !important;
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
 }
 
-.settings-empty-state {
-  min-height: 12rem;
-  display: grid;
-  place-items: center;
-  text-align: center;
-  gap: .55rem;
-  padding: 2rem;
-  color: var(--ema-muted);
+.ema-user-avatar {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 13px !important;
+  display: grid !important;
+  place-items: center !important;
+  color: #dbe4ff !important;
+  background: rgba(99, 102, 241, 0.28) !important;
 }
 
-/* Responsive */
-@media (max-width: 960px) {
-  .settings-layout {
-    grid-template-columns: 1fr;
+.ema-user-card .fw-bold {
+  color: #ffffff !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  line-height: 1.05 !important;
+}
+
+.ema-user-card .small,
+.ema-user-role-label {
+  margin-top: 3px !important;
+  color: rgba(255,255,255,0.75) !important;
+  font-size: 10px !important;
+  font-weight: 650 !important;
+}
+
+.ema-sidebar-footer .btn {
+  min-height: 42px !important;
+  border-radius: 13px !important;
+  border: 1px solid rgba(255,255,255,0.09) !important;
+  background: rgba(255,255,255,0.06) !important;
+  color: rgba(255,255,255,0.92) !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  box-shadow: none !important;
+}
+
+/* =========================================================
+   TOPBAR
+========================================================= */
+
+.ema-topbar {
+  height: var(--ema-topbar-height) !important;
+  min-height: var(--ema-topbar-height) !important;
+  display: grid !important;
+  grid-template-columns: minmax(220px, 310px) minmax(360px, 1fr) 38px 38px max-content max-content !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 0 16px !important;
+  background: rgba(255,255,255,0.96) !important;
+  border-bottom: 1px solid var(--ema-border) !important;
+  backdrop-filter: blur(18px) saturate(120%) !important;
+  z-index: 45 !important;
+}
+
+.ema-topbar-title {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.ema-topbar-title h1 {
+  margin: 0 !important;
+  color: var(--ema-text) !important;
+  font-size: 15px !important;
+  line-height: 1.1 !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.025em !important;
+  white-space: nowrap !important;
+}
+
+.ema-topbar-title p {
+  margin: 4px 0 0 !important;
+  color: var(--ema-muted) !important;
+  font-size: 10.5px !important;
+  line-height: 1.1 !important;
+  font-weight: 550 !important;
+  white-space: nowrap !important;
+}
+
+.ema-global-search,
+.ema-global-search-form {
+  justify-self: center !important;
+  width: min(560px, 100%) !important;
+  height: 38px !important;
+  display: grid !important;
+  grid-template-columns: 38px minmax(0, 1fr) 30px !important;
+  align-items: center !important;
+  padding: 0 6px 0 0 !important;
+  border: 1px solid #d9e3f1 !important;
+  border-radius: 999px !important;
+  background: #fbfdff !important;
+  overflow: hidden !important;
+}
+
+.ema-global-search-submit,
+.ema-global-search-clear {
+  width: 38px !important;
+  height: 38px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #6d7d96 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.ema-global-search input,
+.ema-global-search-form input {
+  width: 100% !important;
+  height: 36px !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  color: var(--ema-text) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+.ema-icon-btn {
+  position: relative !important;
+  width: 38px !important;
+  height: 38px !important;
+  border: 1px solid #dfe7f2 !important;
+  border-radius: 13px !important;
+  background: #ffffff !important;
+  color: var(--ema-text) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: none !important;
+}
+
+.ema-notification-badge {
+  position: absolute !important;
+  top: -5px !important;
+  right: -4px !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  padding: 0 4px !important;
+  border-radius: 999px !important;
+  border: 2px solid #ffffff !important;
+  background: var(--ema-red) !important;
+  color: #ffffff !important;
+  font-size: 9px !important;
+  font-weight: 850 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.ema-ai-topbar-btn {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 16px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, var(--ema-blue), var(--ema-purple)) !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  box-shadow: 0 12px 24px rgba(104, 71, 245, 0.26) !important;
+}
+
+.ema-admin-topbar-btn {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 13px 0 8px !important;
+  border: 1px solid #dfe7f2 !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  color: var(--ema-text) !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  box-shadow: none !important;
+}
+
+.ema-admin-avatar {
+  width: 25px !important;
+  height: 25px !important;
+  min-width: 25px !important;
+  border-radius: 50% !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #eef3ff !important;
+  color: var(--ema-text) !important;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 1500px) {
+  :root {
+    --ema-sidebar-width: 196px;
+    --ema-topbar-height: 56px;
   }
 
-  .settings-hero,
-  .content-toolbar {
-    flex-direction: column;
-    align-items: stretch;
+  .ema-page {
+    padding: 10px !important;
   }
 
-  .settings-score,
-  .content-actions {
-    flex-wrap: wrap;
+  .ema-topbar {
+    grid-template-columns: minmax(190px, 280px) minmax(300px, 1fr) 36px 36px max-content max-content !important;
+    gap: 8px !important;
+    padding: 0 12px !important;
   }
 
-  .form-grid {
-    grid-template-columns: 1fr;
+  .ema-global-search,
+  .ema-global-search-form {
+    width: min(460px, 100%) !important;
+    height: 36px !important;
+  }
+
+  .ema-icon-btn,
+  .ema-ai-topbar-btn,
+  .ema-admin-topbar-btn {
+    height: 36px !important;
+    min-height: 36px !important;
   }
 }
+
+@media (max-width: 1024px) {
+  :root {
+    --ema-sidebar-width: 74px;
+  }
+
+  .ema-sidebar {
+    padding: 12px 9px !important;
+  }
+
+  .ema-sidebar-brand {
+    justify-content: center !important;
+    padding: 0 0 12px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .ema-sidebar-title,
+  .ema-sidebar-subtitle,
+  .ema-sidebar-section,
+  .ema-nav-link span,
+  .ema-nav-link > svg:last-child,
+  .ema-user-card .min-w-0,
+  .ema-user-card .fw-bold,
+  .ema-user-card .small,
+  .ema-sidebar-footer .btn span {
+    display: none !important;
+  }
+
+  .ema-nav-link {
+    min-height: 42px !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    border-radius: 14px !important;
+  }
+
+  .ema-nav .ps-4 {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    border-left: 0 !important;
+  }
+
+  .ema-user-card {
+    grid-template-columns: 1fr !important;
+    justify-items: center !important;
+    padding: 8px !important;
+  }
+
+  .ema-topbar {
+    grid-template-columns: minmax(160px, 1fr) 36px 36px max-content !important;
+  }
+
+  .ema-global-search,
+  .ema-global-search-form {
+    display: none !important;
+  }
+
+  .ema-ai-topbar-btn {
+    padding: 0 12px !important;
+  }
+}
+
+@media (max-width: 820px) {
+  :root {
+    --ema-sidebar-width: 64px;
+  }
+
+  .ema-page {
+    padding: 8px !important;
+  }
+
+  .ema-topbar {
+    grid-template-columns: minmax(0, 1fr) 34px 34px !important;
+    gap: 7px !important;
+    padding: 0 10px !important;
+  }
+
+  .ema-ai-topbar-btn,
+  .ema-admin-topbar-btn {
+    display: none !important;
+  }
+
+  .ema-topbar-title h1 {
+    font-size: 14px !important;
+  }
+
+  .ema-topbar-title p {
+    max-width: 260px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .ema-logo {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  :root {
+    --ema-sidebar-width: 0px;
+    --ema-topbar-height: 54px;
+  }
+
+  .ema-shell {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ema-sidebar {
+    display: none !important;
+  }
+
+  .ema-main {
+    width: 100vw !important;
+  }
+
+  .ema-topbar {
+    grid-template-columns: 1fr 34px 34px !important;
+    min-height: 54px !important;
+    height: 54px !important;
+  }
+
+  .ema-topbar-title p {
+    display: none !important;
+  }
+
+  .ema-page {
+    padding: 7px !important;
+  }
+}
+
+@media (max-height: 760px) {
+  .ema-sidebar {
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .ema-sidebar-brand {
+    min-height: 50px !important;
+    margin-bottom: 8px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .ema-nav-link {
+    min-height: 34px !important;
+  }
+
+  .ema-nav .ps-4 .ema-nav-link {
+    min-height: 30px !important;
+  }
+
+  .ema-user-card {
+    padding: 8px !important;
+  }
+
+  .ema-sidebar-footer .btn {
+    min-height: 38px !important;
+  }
+}
+
+/* =========================================================
+   EMA SIDEBAR TOPBAR LOCK
+   Sidebar + topbar locked. Right content scroll only.
+========================================================= */
+
+html,
+body,
+#root {
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+}
+
+.ema-shell {
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  max-height: 100vh !important;
+  display: grid !important;
+  grid-template-columns: var(--ema-sidebar-width) minmax(0, 1fr) !important;
+  overflow: hidden !important;
+}
+
+.ema-sidebar {
+  position: relative !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  max-height: 100vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.ema-main {
+  height: 100vh !important;
+  min-height: 100vh !important;
+  max-height: 100vh !important;
+  display: grid !important;
+  grid-template-rows: var(--ema-topbar-height) minmax(0, 1fr) !important;
+  overflow: hidden !important;
+}
+
+.ema-topbar {
+  position: relative !important;
+  top: 0 !important;
+  z-index: 100 !important;
+  height: var(--ema-topbar-height) !important;
+  min-height: var(--ema-topbar-height) !important;
+  max-height: var(--ema-topbar-height) !important;
+  overflow: visible !important;
+}
+
+.ema-page {
+  height: calc(100vh - var(--ema-topbar-height)) !important;
+  min-height: 0 !important;
+  max-height: calc(100vh - var(--ema-topbar-height)) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* right-side page content can expand naturally */
+.ema-screen,
+.ema-inner,
+.ema-layout,
+.ema-main-panel,
+.ema-content-card,
+.ema-content-body {
+  min-height: 0 !important;
+}
+
+/* jangan paksa content card lock sampai table tak scroll */
+.ema-content-card,
+.ema-content-body {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* table besar scroll horizontal dalam content kanan */
+.ema-user-table,
+.ema-module-table,
+.ema-role-table,
+.ema-policy-table,
+.ema-table-wrap {
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+}
+
+/* mobile: still right content scroll */
+@media (max-width: 560px) {
+  .ema-shell {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ema-sidebar {
+    display: none !important;
+  }
+
+  .ema-page {
+    height: calc(100vh - var(--ema-topbar-height)) !important;
+    max-height: calc(100vh - var(--ema-topbar-height)) !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* END EMA SIDEBAR TOPBAR LOCK */
+
+/* =========================================================
+   EMA RESPONSIVE THEME LAYER
+   Light / Dark mode + responsive behavior.
+========================================================= */
+
+/* ---------- LIGHT DEFAULT ---------- */
+
+:root,
+html[data-theme="light"],
+body[data-theme="light"],
+[data-bs-theme="light"] {
+  --ema-bg: #f6f8fc;
+  --ema-card: #ffffff;
+  --ema-card-2: #fbfdff;
+  --ema-border: #e1e8f3;
+  --ema-border-soft: #eef2f8;
+
+  --ema-text: #102647;
+  --ema-muted: #667791;
+  --ema-muted-2: #8290a5;
+
+  --ema-field-bg: #ffffff;
+  --ema-field-border: #d9e3f1;
+
+  --ema-sidebar-bg-1: #07152d;
+  --ema-sidebar-bg-2: #041122;
+  --ema-sidebar-text: #ffffff;
+  --ema-sidebar-muted: rgba(255, 255, 255, 0.72);
+  --ema-sidebar-soft: rgba(255, 255, 255, 0.08);
+
+  --ema-topbar-bg: rgba(255, 255, 255, 0.96);
+  --ema-hover: #f6f8ff;
+
+  --ema-blue-soft: #edf5ff;
+  --ema-purple-soft: #f1edff;
+  --ema-green-soft: #e7f8ef;
+  --ema-red-soft: #ffe8ee;
+
+  color-scheme: light;
+}
+
+/* ---------- DARK MODE SUPPORT ---------- */
+
+html.dark,
+body.dark,
+.dark-mode,
+.ema-dark,
+html[data-theme="dark"],
+body[data-theme="dark"],
+[data-theme="dark"],
+html[data-bs-theme="dark"],
+body[data-bs-theme="dark"],
+[data-bs-theme="dark"] {
+  --ema-bg: #08111f;
+  --ema-card: #0f1a2b;
+  --ema-card-2: #111f33;
+  --ema-border: #24324a;
+  --ema-border-soft: #1b2a40;
+
+  --ema-text: #eef5ff;
+  --ema-muted: #a9b8ce;
+  --ema-muted-2: #8292aa;
+
+  --ema-field-bg: #0b1626;
+  --ema-field-border: #263650;
+
+  --ema-sidebar-bg-1: #030816;
+  --ema-sidebar-bg-2: #020611;
+  --ema-sidebar-text: #ffffff;
+  --ema-sidebar-muted: rgba(255, 255, 255, 0.68);
+  --ema-sidebar-soft: rgba(255, 255, 255, 0.08);
+
+  --ema-topbar-bg: rgba(15, 26, 43, 0.96);
+  --ema-hover: #17263c;
+
+  --ema-blue-soft: rgba(77, 99, 245, 0.16);
+  --ema-purple-soft: rgba(104, 71, 245, 0.16);
+  --ema-green-soft: rgba(18, 163, 111, 0.16);
+  --ema-red-soft: rgba(239, 63, 95, 0.16);
+
+  color-scheme: dark;
+}
+
+html.dark body,
+body.dark,
+.dark-mode body,
+[data-theme="dark"] body,
+[data-bs-theme="dark"] body {
+  background: var(--ema-bg) !important;
+  color: var(--ema-text) !important;
+}
+
+/* ---------- APPLY VARIABLES TO SHELL ---------- */
+
+.ema-shell,
+.ema-main,
+.ema-page {
+  background: var(--ema-bg) !important;
+  color: var(--ema-text) !important;
+}
+
+.ema-sidebar {
+  background:
+    radial-gradient(circle at 18% 8%, rgba(85, 113, 255, 0.18), transparent 24%),
+    linear-gradient(180deg, var(--ema-sidebar-bg-1) 0%, var(--ema-sidebar-bg-2) 100%) !important;
+  color: var(--ema-sidebar-text) !important;
+}
+
+.ema-sidebar-subtitle,
+.ema-user-card .small,
+.ema-user-role-label {
+  color: var(--ema-sidebar-muted) !important;
+}
+
+.ema-topbar {
+  background: var(--ema-topbar-bg) !important;
+  border-bottom-color: var(--ema-border) !important;
+}
+
+.ema-topbar-title h1,
+.ema-icon-btn,
+.ema-admin-topbar-btn {
+  color: var(--ema-text) !important;
+}
+
+.ema-topbar-title p {
+  color: var(--ema-muted) !important;
+}
+
+.ema-icon-btn,
+.ema-admin-topbar-btn,
+.ema-global-search,
+.ema-global-search-form {
+  background: var(--ema-card) !important;
+  border-color: var(--ema-border) !important;
+}
+
+.ema-global-search input,
+.ema-global-search-form input {
+  color: var(--ema-text) !important;
+}
+
+.ema-global-search input::placeholder,
+.ema-global-search-form input::placeholder {
+  color: var(--ema-muted-2) !important;
+}
+
+/* ---------- STANDARD CONTENT THEME ---------- */
+
+.ema-side-panel,
+.ema-content-card,
+.ema-card,
+.ema-panel,
+.ema-box,
+.ema-section {
+  background: var(--ema-card) !important;
+  border-color: var(--ema-border) !important;
+  color: var(--ema-text) !important;
+}
+
+.ema-hero {
+  background:
+    radial-gradient(circle at 6% 35%, rgba(77, 99, 245, 0.14), transparent 22%),
+    linear-gradient(135deg, var(--ema-card) 0%, var(--ema-card-2) 100%) !important;
+  border-color: var(--ema-border) !important;
+  color: var(--ema-text) !important;
+}
+
+.ema-hero h1,
+.ema-hero h2,
+.ema-hero h3,
+.ema-card h1,
+.ema-card h2,
+.ema-card h3,
+.ema-panel h1,
+.ema-panel h2,
+.ema-panel h3,
+.ema-content-card h1,
+.ema-content-card h2,
+.ema-content-card h3 {
+  color: var(--ema-text) !important;
+}
+
+.ema-hero p,
+.ema-card p,
+.ema-panel p,
+.ema-content-card p,
+.ema-muted {
+  color: var(--ema-muted) !important;
+}
+
+.ema-menu-item {
+  color: var(--ema-text) !important;
+}
+
+.ema-menu-item:hover {
+  background: var(--ema-hover) !important;
+}
+
+.ema-menu-item.active {
+  background: linear-gradient(90deg, rgba(77, 99, 245, 0.16) 0%, transparent 100%) !important;
+}
+
+.ema-menu-icon {
+  background: var(--ema-card-2) !important;
+  color: var(--ema-muted) !important;
+}
+
+.ema-score-grid > div,
+.ema-stat-card,
+.ema-kpi-card {
+  background: var(--ema-card) !important;
+  border-color: var(--ema-border) !important;
+  color: var(--ema-text) !important;
+}
+
+.ema-score-grid > div span,
+.ema-score-grid > div small,
+.ema-stat-card span,
+.ema-kpi-card span {
+  color: var(--ema-muted) !important;
+}
+
+.ema-score-grid > div strong,
+.ema-stat-card strong,
+.ema-kpi-card strong {
+  color: var(--ema-text) !important;
+}
+
+/* ---------- FORM / TABLE THEME ---------- */
+
+input,
+select,
+textarea,
+.ema-input,
+.ema-select,
+.ema-textarea {
+  background: var(--ema-field-bg) !important;
+  border-color: var(--ema-field-border) !important;
+  color: var(--ema-text) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--ema-muted-2) !important;
+}
+
+.ema-user-toolbar,
+.ema-toolbar,
+.ema-table-toolbar {
+  background: var(--ema-card) !important;
+  border-color: var(--ema-border-soft) !important;
+}
+
+.ema-user-search,
+.ema-search {
+  background: var(--ema-field-bg) !important;
+  border-color: var(--ema-field-border) !important;
+}
+
+.ema-user-table,
+.ema-table-wrap {
+  background: var(--ema-card) !important;
+}
+
+.ema-user-head,
+.ema-table-head,
+.ema-table-header {
+  background: var(--ema-card-2) !important;
+  border-color: var(--ema-border-soft) !important;
+  color: var(--ema-muted) !important;
+}
+
+.ema-user-row,
+.ema-table-row {
+  background: var(--ema-card) !important;
+  border-color: var(--ema-border-soft) !important;
+  color: var(--ema-text) !important;
+}
+
+.ema-user-row:hover,
+.ema-table-row:hover {
+  background: var(--ema-hover) !important;
+}
+
+.ema-user-profile strong,
+.ema-row-no,
+.ema-user-date {
+  color: var(--ema-text) !important;
+}
+
+.ema-user-profile small {
+  color: var(--ema-muted) !important;
+}
+
+.ema-action-btn,
+.ema-page-btn,
+.ema-page-size {
+  background: var(--ema-card) !important;
+  border-color: var(--ema-border) !important;
+  color: var(--ema-text) !important;
+}
+
+.ema-pagination {
+  color: var(--ema-muted) !important;
+}
+
+/* ---------- SCREEN LOCK: ONLY RIGHT CONTENT SCROLL ---------- */
+
+html,
+body,
+#root {
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+}
+
+.ema-shell {
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  max-height: 100vh !important;
+  grid-template-columns: var(--ema-sidebar-width) minmax(0, 1fr) !important;
+  overflow: hidden !important;
+}
+
+.ema-sidebar {
+  height: 100vh !important;
+  min-height: 100vh !important;
+  max-height: 100vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.ema-main {
+  height: 100vh !important;
+  min-height: 100vh !important;
+  max-height: 100vh !important;
+  grid-template-rows: var(--ema-topbar-height) minmax(0, 1fr) !important;
+  overflow: hidden !important;
+}
+
+.ema-topbar {
+  height: var(--ema-topbar-height) !important;
+  min-height: var(--ema-topbar-height) !important;
+  max-height: var(--ema-topbar-height) !important;
+  z-index: 100 !important;
+}
+
+.ema-page {
+  height: calc(100vh - var(--ema-topbar-height)) !important;
+  min-height: 0 !important;
+  max-height: calc(100vh - var(--ema-topbar-height)) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* ---------- RESPONSIVE DESKTOP ---------- */
+
+@media (max-width: 1500px) {
+  :root {
+    --ema-sidebar-width: 196px;
+    --ema-topbar-height: 56px;
+  }
+
+  .ema-page {
+    padding: 10px !important;
+  }
+
+  .ema-topbar {
+    grid-template-columns: minmax(190px, 280px) minmax(300px, 1fr) 36px 36px max-content max-content !important;
+    gap: 8px !important;
+    padding: 0 12px !important;
+  }
+
+  .ema-global-search,
+  .ema-global-search-form {
+    width: min(460px, 100%) !important;
+    height: 36px !important;
+  }
+
+  .ema-icon-btn,
+  .ema-ai-topbar-btn,
+  .ema-admin-topbar-btn {
+    height: 36px !important;
+    min-height: 36px !important;
+  }
+}
+
+/* ---------- RESPONSIVE TABLET ---------- */
+
+@media (max-width: 1024px) {
+  :root {
+    --ema-sidebar-width: 74px;
+  }
+
+  .ema-shell {
+    grid-template-columns: var(--ema-sidebar-width) minmax(0, 1fr) !important;
+  }
+
+  .ema-sidebar {
+    padding: 12px 9px !important;
+  }
+
+  .ema-sidebar-brand {
+    justify-content: center !important;
+    padding: 0 0 12px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .ema-sidebar-title,
+  .ema-sidebar-subtitle,
+  .ema-sidebar-section,
+  .ema-nav-link span,
+  .ema-nav-link > svg:last-child,
+  .ema-user-card .min-w-0,
+  .ema-user-card .fw-bold,
+  .ema-user-card .small,
+  .ema-sidebar-footer .btn span {
+    display: none !important;
+  }
+
+  .ema-nav-link {
+    min-height: 42px !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    border-radius: 14px !important;
+  }
+
+  .ema-nav .ps-4 {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    border-left: 0 !important;
+  }
+
+  .ema-user-card {
+    grid-template-columns: 1fr !important;
+    justify-items: center !important;
+    padding: 8px !important;
+  }
+
+  .ema-topbar {
+    grid-template-columns: minmax(160px, 1fr) 36px 36px max-content !important;
+  }
+
+  .ema-global-search,
+  .ema-global-search-form {
+    display: none !important;
+  }
+
+  .ema-ai-topbar-btn {
+    padding: 0 12px !important;
+  }
+
+  .ema-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ema-score-grid {
+    grid-template-columns: repeat(2, minmax(130px, 1fr)) !important;
+  }
+}
+
+/* ---------- RESPONSIVE SMALL TABLET ---------- */
+
+@media (max-width: 820px) {
+  :root {
+    --ema-sidebar-width: 64px;
+  }
+
+  .ema-page {
+    padding: 8px !important;
+  }
+
+  .ema-topbar {
+    grid-template-columns: minmax(0, 1fr) 34px 34px !important;
+    gap: 7px !important;
+    padding: 0 10px !important;
+  }
+
+  .ema-ai-topbar-btn,
+  .ema-admin-topbar-btn {
+    display: none !important;
+  }
+
+  .ema-topbar-title h1 {
+    font-size: 14px !important;
+  }
+
+  .ema-topbar-title p {
+    max-width: 260px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .ema-logo {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+  }
+
+  .ema-score-grid {
+    grid-template-columns: repeat(2, minmax(120px, 1fr)) !important;
+  }
+
+  .ema-user-table,
+  .ema-table-wrap {
+    overflow-x: auto !important;
+  }
+}
+
+/* ---------- RESPONSIVE MOBILE ---------- */
+
+@media (max-width: 560px) {
+  :root {
+    --ema-sidebar-width: 0px;
+    --ema-topbar-height: 54px;
+  }
+
+  .ema-shell {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ema-sidebar {
+    display: none !important;
+  }
+
+  .ema-main {
+    width: 100vw !important;
+  }
+
+  .ema-topbar {
+    grid-template-columns: 1fr 34px 34px !important;
+    min-height: 54px !important;
+    height: 54px !important;
+  }
+
+  .ema-topbar-title p {
+    display: none !important;
+  }
+
+  .ema-page {
+    height: calc(100vh - var(--ema-topbar-height)) !important;
+    max-height: calc(100vh - var(--ema-topbar-height)) !important;
+    padding: 7px !important;
+    overflow-y: auto !important;
+  }
+
+  .ema-layout {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .ema-side-panel,
+  .ema-hero,
+  .ema-content-card {
+    border-radius: 13px !important;
+  }
+
+  .ema-score-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ---------- LOW HEIGHT ---------- */
+
+@media (max-height: 760px) {
+  .ema-sidebar {
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .ema-sidebar-brand {
+    min-height: 50px !important;
+    margin-bottom: 8px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .ema-nav-link {
+    min-height: 34px !important;
+  }
+
+  .ema-nav .ps-4 .ema-nav-link {
+    min-height: 30px !important;
+  }
+
+  .ema-user-card {
+    padding: 8px !important;
+  }
+
+  .ema-sidebar-footer .btn {
+    min-height: 38px !important;
+  }
+}
+
+/* END EMA RESPONSIVE THEME LAYER */

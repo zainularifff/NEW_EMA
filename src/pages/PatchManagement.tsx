@@ -48,11 +48,8 @@ import {
   type OnlinePatchStatusFilter,
   type OnlinePatchSummary,
 } from '../services/patchService';
-import '../styles/patch-management-v2.css';
 
-import "../styles/ema-standard-table.css";
-import "../styles/ema-standard-controls.css";
-import "../styles/ema-table-pagination-standard.css";
+
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
 }
@@ -552,119 +549,49 @@ function PatchManagement() {
   };
 
   return (
-    <main className="settings-module-root hardware-module-root patch-module-root ema-settings-pro container-fluid p-3 p-xl-4" data-section="patch-management">
-      <style>{`
-        /* Patch page shell: match Hardware without touching the global AppShell sidebar. */
-        .patch-module-root.settings-module-root {
-          background:
-            radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.055), transparent 24rem),
-            radial-gradient(circle at 100% 10%, rgba(8, 126, 164, 0.045), transparent 24rem),
-            linear-gradient(135deg, #eef3f9 0%, #f9fbfd 45%, #e8eff7 100%) !important;
-        }
-
-        /* Patch sidebar: mirror Hardware sidebar panel. */
-        .patch-module-root .settings-layout.patch-settings-layout {
-          grid-template-columns: minmax(300px, 322px) minmax(0, 1fr) !important;
-        }
-
-        .patch-module-root .settings-menu.patch-left-panel {
-          min-width: 300px !important;
-        }
-
-        .patch-module-root .settings-menu > .ema-module-sidebar-switcher {
-          flex: 0 0 auto !important;
-          margin: 0 !important;
-        }
-
-        .patch-module-root .settings-menu > .ema-sidebar-content {
-          flex: 1 1 auto !important;
-          padding-top: 0.65rem !important;
-        }
-
-        .patch-module-root .ema-sidebar-subpanel {
-          justify-content: flex-start !important;
-        }
-
-        .patch-module-root .ema-sidebar-tree {
-          min-height: 0 !important;
-        }
-
-        .patch-module-root .patch-tree-root {
-          display: contents !important;
-        }
-
-        .patch-module-root .ema-sidebar-tree-node.is-patch-root {
-          grid-template-columns: 24px minmax(0, 1fr) !important;
-        }
-
-        .patch-module-root .ema-sidebar-tree-node.is-patch-root .ema-sidebar-tree-toggle svg,
-        .patch-module-root .ema-sidebar-tree-node.is-patch-root .ema-sidebar-tree-count,
-        .patch-module-root .ema-sidebar-tree-node.is-patch-root .ema-sidebar-tree-menu-wrap {
-          display: none !important;
-        }
-
-        .patch-module-root .patch-stat-list {
-          display: grid !important;
-          gap: 0.55rem !important;
-        }
-
-        .patch-module-root .patch-stat-list .setting-btn {
-          width: 100% !important;
-        }
-
-        @media (max-width: 1100px) {
-          .patch-module-root .settings-layout.patch-settings-layout {
-            grid-template-columns: 1fr !important;
-          }
-
-          .patch-module-root .settings-menu.patch-left-panel {
-            min-width: 0 !important;
-            max-width: none !important;
-          }
-        }
-      `}</style>
-      <input aria-hidden="true" id="globalSearch" type="hidden" />
+    <main className="" data-section="patch-management">
+<input aria-hidden="true" id="globalSearch" type="hidden" />
       <button hidden id="themeBtn" type="button">
         <span id="themeLabel">Dark Mode</span>
       </button>
 
       {toast && <PatchToast toast={toast} onClose={() => setToast(null)} />}
 
-      <div className="settings-layout patch-settings-layout d-grid gap-3">
-        <aside className="settings-menu patch-left-panel ema-panel-surface">
-          <div className="panel-head">
+      <div className="">
+        <aside className="">
+          <div className="">
             <span>PATCH MANAGEMENT</span>
             <strong>Patch Management</strong>
             <small>Manage patch scope and update records.</small>
           </div>
 
-          <nav className="settings-menu-list ema-module-sidebar-nav ema-module-sidebar-switcher" role="tablist" aria-label="Patch navigation">
+          <nav className="" role="tablist" aria-label="Patch navigation">
             <button
               type="button"
-              className={cx('setting-btn', sidebarMode === 'organization' && 'active')}
+              className=""
               onClick={() => {
                 setSidebarMode('organization');
                 setScopeSearch('');
               }}
             >
-              <span className="setting-icon"><FolderOpen size={16} /></span>
+              <span className=""><FolderOpen size={16} /></span>
               <span><strong>Branch</strong><small>Patch endpoint scope</small></span>
             </button>
             <button
               type="button"
-              className={cx('setting-btn', sidebarMode === 'statistics' && 'active')}
+              className=""
               onClick={() => setSidebarMode('statistics')}
             >
-              <span className="setting-icon"><Database size={16} /></span>
+              <span className=""><Database size={16} /></span>
               <span><strong>Statistics</strong><small>Patch operational views</small></span>
             </button>
           </nav>
 
-          <div className="ema-sidebar-content">
-            <div className="ema-sidebar-subpanel">
+          <div className="">
+            <div className="">
               {sidebarMode === 'organization' ? (
                 <>
-                  <div className="section-search ema-sidebar-field">
+                  <div className="">
                     <Search size={15} />
                     <input
                       placeholder="Search branches..."
@@ -675,24 +602,24 @@ function PatchManagement() {
 
                   <button
                     type="button"
-                    className="soft-btn d-inline-flex align-items-center gap-1 px-2"
+                    className=""
                     onClick={() => showToast({ type: 'info', message: 'Branch path creation is managed from the organization settings.' })}
                   >
                     <FolderPlus size={13} />
                     New Branch Path
                   </button>
 
-                  <div className="ema-sidebar-tree" aria-label="Patch scope tree">
-                    <div className="patch-tree-root">
-                      <div className={cx('ema-sidebar-tree-node depth-0 is-patch-root', selectedScope.scope === 'all' && 'is-selected is-active')}>
-                        <button type="button" className="ema-sidebar-tree-toggle" aria-label="All Branches"><span /></button>
-                        <button type="button" className="ema-sidebar-tree-main" onClick={selectOrganization} title="All Branches">
-                          <span className="ema-sidebar-tree-icon"><Folder size={15} /></span>
-                          <span className="ema-sidebar-tree-label">All Branches</span>
+                  <div className="" aria-label="Patch scope tree">
+                    <div className="">
+                      <div className="">
+                        <button type="button" className="" aria-label="All Branches"><span /></button>
+                        <button type="button" className="" onClick={selectOrganization} title="All Branches">
+                          <span className=""><Folder size={15} /></span>
+                          <span className="">All Branches</span>
                         </button>
                       </div>
 
-                      <div className="ema-sidebar-tree-children is-nested">
+                      <div className="">
                         {filteredDepartments.map((node) => (
                           <TreeNode
                             key={node.Object_Rel_Idn}
@@ -710,33 +637,33 @@ function PatchManagement() {
                       </div>
                     </div>
 
-                    {treeLoading && <div className="settings-helper-card"><Loader2 className="me-2" size={14} /> Loading organization...</div>}
-                    {!treeLoading && filteredDepartments.length === 0 && <div className="settings-helper-card">No organization scope available.</div>}
+                    {treeLoading && <div className=""><Loader2 className="" size={14} /> Loading organization...</div>}
+                    {!treeLoading && filteredDepartments.length === 0 && <div className="">No organization scope available.</div>}
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="settings-helper-card ema-sidebar-scope-card">
+                  <div className="">
                     <strong>{selectedScope.label}</strong>
                     <span>{selectedScope.scope === 'all' ? 'All departments' : selectedScope.scope === 'relation' ? 'Selected branch' : 'Selected device'}</span>
                   </div>
 
-                  <div className="ema-sidebar-tree patch-stat-list" aria-label="Patch statistics tree">
-                    <div className="ema-sidebar-section-title"><Database size={14} /><span>Statistics</span></div>
-                    <button className={cx('setting-btn', activeKpi === 'coverage' && 'active')} type="button" onClick={() => handleKpiClick('coverage')}>
-                      <span className="setting-icon"><ShieldCheck size={15} /></span>
+                  <div className="" aria-label="Patch statistics tree">
+                    <div className=""><Database size={14} /><span>Statistics</span></div>
+                    <button className="" type="button" onClick={() => handleKpiClick('coverage')}>
+                      <span className=""><ShieldCheck size={15} /></span>
                       <span><strong>Coverage</strong><small>{patchCoverage}% installed rate</small></span>
                     </button>
-                    <button className={cx('setting-btn', activeKpi === 'applicable' && 'active')} type="button" onClick={() => handleKpiClick('applicable')}>
-                      <span className="setting-icon"><ListChecks size={15} /></span>
+                    <button className="" type="button" onClick={() => handleKpiClick('applicable')}>
+                      <span className=""><ListChecks size={15} /></span>
                       <span><strong>Applicable</strong><small>{formatNumber(summary.ApplicablePatches)} detected updates</small></span>
                     </button>
-                    <button className={cx('setting-btn', (activeKpi === 'missing' || statusFilter === 'missing') && 'active')} type="button" onClick={() => handleKpiClick('missing')}>
-                      <span className="setting-icon"><ShieldAlert size={15} /></span>
+                    <button className="" type="button" onClick={() => handleKpiClick('missing')}>
+                      <span className=""><ShieldAlert size={15} /></span>
                       <span><strong>Missing</strong><small>{formatNumber(summary.MissingPatches)} pending patches</small></span>
                     </button>
-                    <button className={cx('setting-btn', (activeKpi === 'installed' || statusFilter === 'installed') && 'active')} type="button" onClick={() => handleKpiClick('installed')}>
-                      <span className="setting-icon"><PackageCheck size={15} /></span>
+                    <button className="" type="button" onClick={() => handleKpiClick('installed')}>
+                      <span className=""><PackageCheck size={15} /></span>
                       <span><strong>Installed</strong><small>{formatNumber(summary.InstalledPatches)} completed updates</small></span>
                     </button>
                   </div>
@@ -746,15 +673,15 @@ function PatchManagement() {
           </div>
         </aside>
 
-        <section className="settings-content hardware-settings-content d-grid gap-3">
-          <section className="settings-hero hardware-hero ema-panel-surface">
+        <section className="">
+          <section className="">
             <div>
-              <span className="eyebrow">PATCH OPERATIONS</span>
+              <span className="">PATCH OPERATIONS</span>
               <h2>Patch Management</h2>
               <p>Review update coverage, scan selected endpoints, and install missing patches from one workspace.</p>
             </div>
 
-            <div className="hardware-hero-score">
+            <div className="">
               <KpiCard color="is-total" label="Coverage" value={`${patchCoverage}%`} note="Installed rate" icon={<ShieldCheck size={17} />} active={activeKpi === 'coverage'} onClick={() => handleKpiClick('coverage')} />
               <KpiCard color="is-connected" label="Applicable" value={formatNumber(summary.ApplicablePatches)} note="Detected updates" icon={<ListChecks size={17} />} active={activeKpi === 'applicable'} onClick={() => handleKpiClick('applicable')} />
               <KpiCard color="is-stale" attention label="Missing" value={formatNumber(summary.MissingPatches)} note={`${installableMissingCount} action row(s)`} icon={<ShieldAlert size={17} />} active={activeKpi === 'missing' || statusFilter === 'missing'} onClick={() => handleKpiClick('missing')} />
@@ -763,70 +690,70 @@ function PatchManagement() {
             </div>
           </section>
 
-          <main className="content-shell ema-panel-surface content-panel clean">
-            <header className="content-head">
+          <main className="">
+            <header className="">
               <div>
-                <span className="section-tag">Online patching</span>
+                <span className="">Online patching</span>
                 <h3>Patch Registry</h3>
                 <p>Current scope: <strong>{selectedScope.label}</strong></p>
               </div>
 
-              <div className="content-actions">
-                <button className="soft-btn" type="button" onClick={loadPatchData} disabled={loadingData || mode !== 'online'}>
-                  {loadingData ? <Loader2 className="me-1" size={15} /> : <RefreshCw size={15} />}
+              <div className="">
+                <button className="" type="button" onClick={loadPatchData} disabled={loadingData || mode !== 'online'}>
+                  {loadingData ? <Loader2 className="" size={15} /> : <RefreshCw size={15} />}
                   Refresh
                 </button>
-                <button className="primary-btn" type="button" onClick={() => setConfirmState({ type: 'scan' })} disabled={mode !== 'online'}>
+                <button className="" type="button" onClick={() => setConfirmState({ type: 'scan' })} disabled={mode !== 'online'}>
                   <Search size={15} />
                   Scan / Rescan
                 </button>
               </div>
             </header>
 
-            <div className="user-access-commandbar">
-              <label className="section-search user-search-inline">
+            <div className="">
+              <label className="">
                 <Search size={15} />
                 <input value={searchTerm} onChange={(event) => { setActiveKpi(null); setSearchTerm(event.target.value); }} placeholder="Search KB, title, update id" />
               </label>
 
-              <select className="setting-select" value={severityFilter} onChange={(event) => { setActiveKpi(null); setSeverityFilter(event.target.value); }}>
+              <select className="" value={severityFilter} onChange={(event) => { setActiveKpi(null); setSeverityFilter(event.target.value); }}>
                 <option value="">All severity</option>
                 {severityOptions.map((severity) => <option key={severity} value={severity}>{severity}</option>)}
               </select>
 
-              <select className="setting-select" value={statusFilter} onChange={(event) => { setActiveKpi(null); setStatusFilter(event.target.value as OnlinePatchStatusFilter); }} disabled={activeTab === 'catalog'}>
+              <select className="" value={statusFilter} onChange={(event) => { setActiveKpi(null); setStatusFilter(event.target.value as OnlinePatchStatusFilter); }} disabled={activeTab === 'catalog'}>
                 <option value="all">All status</option>
                 <option value="missing">Missing</option>
                 <option value="installed">Installed</option>
               </select>
 
-              <select className="setting-select" value={activeTab} onChange={(event) => setActiveTab(event.target.value as PatchTab)}>
+              <select className="" value={activeTab} onChange={(event) => setActiveTab(event.target.value as PatchTab)}>
                 <option value="status">Device status</option>
                 <option value="catalog">Update catalog</option>
               </select>
 
-              <select className="setting-select" value={limit} onChange={(event) => { setActiveKpi(null); setLimit(Number(event.target.value)); }}>
+              <select className="" value={limit} onChange={(event) => { setActiveKpi(null); setLimit(Number(event.target.value)); }}>
                 {pageSizeOptions.map((size) => <option key={size} value={size}>{size} / page</option>)}
               </select>
             </div>
 
-            <div className="content-body">
-              <div className="settings-helper-card mb-3 d-flex align-items-center justify-content-between gap-3 flex-wrap">
-                <div className="d-grid gap-1 flex-grow-1" style={{ minWidth: 0 }}>
+            <div className="">
+              <div className="">
+                <div className="" style={{}}>
                   <strong>{mode === 'online' ? 'Online patching' : 'Offline patching'}</strong>
                   <span>{mode === 'online' ? 'Agents scan and report update status for the selected scope.' : 'Offline patching is kept separate from the online scan and install flow.'}</span>
                 </div>
-                <div className="content-actions d-flex align-items-center justify-content-end gap-2 flex-wrap ms-auto">
-                  <button type="button" className={cx('soft-btn text-nowrap', mode === 'online' && 'primary-btn')} onClick={() => setMode('online')}>
+                <div className="">
+                  <button type="button" className="" onClick={() => setMode('online')}>
                     <Cloud size={15} /> Online
                   </button>
-                  <button type="button" className={cx('soft-btn text-nowrap', mode === 'offline' && 'primary-btn')} onClick={() => setMode('offline')}>
+                  <button type="button" className="" onClick={() => setMode('offline')}>
                     <Server size={15} /> Offline
                   </button>
-                  <button type="button" className="soft-btn text-nowrap" onClick={() => handleKpiClick('devices')}>
+                  <button type="button" className="" onClick={() => handleKpiClick('devices')}>
                     <Laptop size={15} /> {formatNumber(summary.DeviceCount)} devices
                   </button>
-                  <button type="button" className="soft-btn text-nowrap" onClick={() => handleKpiClick('lastScan')}>
+                  <button type="button" className="" onClick={() => handleKpiClick('lastScan')}>
                     <Clock3 size={15} /> Last scan: {formatDateTime(summary.LastScanTime)}
                   </button>
                 </div>
@@ -835,8 +762,8 @@ function PatchManagement() {
               {mode === 'offline' ? (
                 <OfflinePlaceholder />
               ) : loadingData ? (
-                <div className="settings-helper-card">
-                  <Loader2 className="me-2" size={18} /> Loading patch data...
+                <div className="">
+                  <Loader2 className="" size={18} /> Loading patch data...
                 </div>
               ) : (
                 <PatchTable
@@ -849,15 +776,15 @@ function PatchManagement() {
                 />
               )}
 
-              <footer className="uam-pagination global-style">
-                <span className="uam-page-summary">Page {page} of {totalPages}</span>
-                <span className="uam-page-status">{formatNumber(displayTotalRecords)} record(s)</span>
-                <nav className="uam-pagination-controls global-style" aria-label="Patch pagination">
-                  <button className="uam-page-icon" type="button" onClick={() => goToPage(1)} disabled={page <= 1} aria-label="First page"><ChevronsLeft size={14} /></button>
-                  <button className="uam-page-icon" type="button" onClick={() => goToPage(page - 1)} disabled={page <= 1} aria-label="Previous page"><ChevronLeft size={14} /></button>
-                  <b className="uam-page-current">{page}</b>
-                  <button className="uam-page-icon" type="button" onClick={() => goToPage(page + 1)} disabled={page >= totalPages} aria-label="Next page"><ChevronRight size={14} /></button>
-                  <button className="uam-page-icon" type="button" onClick={() => goToPage(totalPages)} disabled={page >= totalPages} aria-label="Last page"><ChevronsRight size={14} /></button>
+              <footer className="">
+                <span className="">Page {page} of {totalPages}</span>
+                <span className="">{formatNumber(displayTotalRecords)} record(s)</span>
+                <nav className="" aria-label="Patch pagination">
+                  <button className="" type="button" onClick={() => goToPage(1)} disabled={page <= 1} aria-label="First page"><ChevronsLeft size={14} /></button>
+                  <button className="" type="button" onClick={() => goToPage(page - 1)} disabled={page <= 1} aria-label="Previous page"><ChevronLeft size={14} /></button>
+                  <b className="">{page}</b>
+                  <button className="" type="button" onClick={() => goToPage(page + 1)} disabled={page >= totalPages} aria-label="Next page"><ChevronRight size={14} /></button>
+                  <button className="" type="button" onClick={() => goToPage(totalPages)} disabled={page >= totalPages} aria-label="Last page"><ChevronsRight size={14} /></button>
                 </nav>
               </footer>
             </div>
@@ -925,11 +852,11 @@ function TreeNode({
   const Icon = isExpanded ? FolderOpen : Folder;
 
   return (
-    <div className="ema-sidebar-tree-branch">
-      <div className={cx('ema-sidebar-tree-node', `depth-${Math.min(level, 8)}`, isSelected && 'is-selected is-active', canExpand && 'is-expandable')}>
+    <div className="">
+      <div className="">
         <button
           type="button"
-          className="ema-sidebar-tree-toggle"
+          className=""
           onClick={(event) => {
             event.stopPropagation();
             onToggle(node);
@@ -941,20 +868,20 @@ function TreeNode({
 
         <button
           type="button"
-          className="ema-sidebar-tree-main"
+          className=""
           onClick={() => {
             onToggle(node);
             onSelectDepartment(node);
           }}
           title={label}
         >
-          <span className="ema-sidebar-tree-icon"><Icon size={15} /></span>
-          <span className="ema-sidebar-tree-label">{shortLabel}</span>
+          <span className=""><Icon size={15} /></span>
+          <span className="">{shortLabel}</span>
         </button>
       </div>
 
       {isExpanded && (
-        <div className="ema-sidebar-tree-children is-nested">
+        <div className="">
           {children.map((child) => (
             <TreeNode
               key={child.Object_Rel_Idn}
@@ -970,24 +897,24 @@ function TreeNode({
             />
           ))}
 
-          {isLoading && <div className="settings-helper-card"><Loader2 className="me-2" size={14} /> Loading devices...</div>}
-          {!isLoading && hasLoadedDevices && devices.length === 0 && <div className="settings-helper-card">No devices in this scope.</div>}
+          {isLoading && <div className=""><Loader2 className="" size={14} /> Loading devices...</div>}
+          {!isLoading && hasLoadedDevices && devices.length === 0 && <div className="">No devices in this scope.</div>}
 
           {devices.map((asset) => {
             const deviceID = getDeviceId(asset);
             const isDeviceSelected = selectedScope.scope === 'device' && selectedScope.Object_Root_Idn === deviceID;
             return (
-              <div className="ema-sidebar-tree-branch" key={`${relationID}-${deviceID}-${getDeviceName(asset)}`}>
-                <div className={cx('ema-sidebar-tree-node', `depth-${Math.min(level + 1, 8)}`, isDeviceSelected && 'is-selected is-active', 'is-leaf-ip')}>
-                  <button type="button" className="ema-sidebar-tree-toggle" aria-label={getDeviceName(asset)}><span /></button>
+              <div className="" key={`${relationID}-${deviceID}-${getDeviceName(asset)}`}>
+                <div className="">
+                  <button type="button" className="" aria-label={getDeviceName(asset)}><span /></button>
                   <button
                     type="button"
-                    className="ema-sidebar-tree-main"
+                    className=""
                     onClick={() => onSelectDevice(asset, relationID)}
                     title={getDeviceName(asset)}
                   >
-                    <span className="ema-sidebar-tree-icon"><Laptop size={14} /></span>
-                    <span className="ema-sidebar-tree-label">{getDeviceName(asset)}</span>
+                    <span className=""><Laptop size={14} /></span>
+                    <span className="">{getDeviceName(asset)}</span>
                   </button>
                 </div>
               </div>
@@ -1020,17 +947,17 @@ function KpiCard({
 }) {
   return (
     <button
-      className={cx('hardware-kpi-card', color, active && 'is-active', attention && 'is-attention')}
+      className=""
       type="button"
       onClick={onClick}
       aria-pressed={Boolean(active)}
       title={`${label}: click to filter patch table`}
     >
-      <div className="hardware-kpi-content">
-        <i className="hardware-kpi-icon">{icon}</i>
-        <span className="hardware-kpi-label">{label}</span>
-        <strong className="hardware-kpi-value">{value}</strong>
-        <small className="hardware-kpi-note">{note}</small>
+      <div className="">
+        <i className="">{icon}</i>
+        <span className="">{label}</span>
+        <strong className="">{value}</strong>
+        <small className="">{note}</small>
       </div>
     </button>
   );
@@ -1039,7 +966,7 @@ function KpiCard({
 function PatchTable({ rows, activeTab, page, limit, onOpenDetails, onInstall }: { rows: OnlinePatchRow[]; activeTab: PatchTab; page: number; limit: number; onOpenDetails: (row: OnlinePatchRow) => void; onInstall: (row: OnlinePatchRow) => void }) {
   if (!rows.length) {
     return (
-      <div className="settings-helper-card text-center py-4">
+      <div className="">
         <strong>No online patch data found</strong>
         <span>Try a different scope or run scan again.</span>
       </div>
@@ -1047,8 +974,8 @@ function PatchTable({ rows, activeTab, page, limit, onOpenDetails, onInstall }: 
   }
 
   return (
-    <div className="pricing-table-card table-responsive">
-      <table className="table table-hover align-middle mb-0">
+    <div className="">
+      <table className="">
         <thead>
           <tr>
             <th>No.</th>
@@ -1060,7 +987,7 @@ function PatchTable({ rows, activeTab, page, limit, onOpenDetails, onInstall }: 
             {activeTab === 'status' && <th>Last Scan</th>}
             {activeTab === 'catalog' && <th>Files</th>}
             {activeTab === 'catalog' && <th>Devices</th>}
-            <th className="text-end text-nowrap">Action</th>
+            <th className="">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -1071,11 +998,11 @@ function PatchTable({ rows, activeTab, page, limit, onOpenDetails, onInstall }: 
 
             return (
               <tr key={getPatchRowKey(row, index)}>
-                <td><span className="row-index-pill">{number}</span></td>
+                <td><span className="">{number}</span></td>
                 {activeTab === 'status' && (
                   <td>
-                    <div className="user-name">
-                      <span className="user-mini-avatar"><Laptop size={14} /></span>
+                    <div className="">
+                      <span className=""><Laptop size={14} /></span>
                       <span>
                         <strong>{row.DeviceName || row.ComputerName || row.Object_Client_Name || '-'}</strong>
                         <small>{row.Department || row.Object_Full_Name || row.IP || '-'}</small>
@@ -1084,25 +1011,25 @@ function PatchTable({ rows, activeTab, page, limit, onOpenDetails, onInstall }: 
                   </td>
                 )}
                 <td>
-                  <button className="border-0 bg-transparent p-0 text-start" type="button" onClick={() => onOpenDetails(row)}>
-                    <span className="user-pill info mb-1">{getKbText(row)}</span>
-                    <strong className="d-block">{row.Title || 'Untitled update'}</strong>
+                  <button className="" type="button" onClick={() => onOpenDetails(row)}>
+                    <span className="">{getKbText(row)}</span>
+                    <strong className="">{row.Title || 'Untitled update'}</strong>
                   </button>
                 </td>
-                <td><span className={`user-pill ${getSeverityPillClass(row.MsrcSeverity)}`}>{row.MsrcSeverity || 'Unspecified'}</span></td>
+                <td><span className="">{row.MsrcSeverity || 'Unspecified'}</span></td>
                 <td>{formatDateOnly(row.ReleaseDate)}</td>
-                {activeTab === 'status' && <td><span className={`user-pill ${getStatusPillClass(status)}`}>{status}</span></td>}
+                {activeTab === 'status' && <td><span className="">{status}</span></td>}
                 {activeTab === 'status' && <td>{formatDateTime(row.LastScanTime)}</td>}
                 {activeTab === 'catalog' && <td>{formatNumber(row.FileCount)} / {formatFileSize(row.TotalFileSize)}</td>}
                 {activeTab === 'catalog' && <td>{formatNumber(row.DeviceCount)} devices</td>}
-                <td className="text-end text-nowrap">
-                  <div className="user-row-action-wrap clean justify-content-end flex-nowrap gap-1">
+                <td className="">
+                  <div className="">
                     {canInstall && (
-                      <button className="primary-btn px-3" type="button" onClick={() => onInstall(row)}>
+                      <button className="" type="button" onClick={() => onInstall(row)}>
                         <Play size={13} /> Install
                       </button>
                     )}
-                    <button className="mini-btn" type="button" onClick={() => onOpenDetails(row)}>
+                    <button className="" type="button" onClick={() => onOpenDetails(row)}>
                       <Info size={13} /> Details
                     </button>
                   </div>
@@ -1124,33 +1051,33 @@ function PatchDetailDrawer({ row, detail, loading, onClose, onInstall }: { row: 
   const canInstall = status === 'Missing' && Number(row.Object_Root_Idn || 0) > 0;
 
   return (
-    <div className="user-modal-backdrop open">
-      <section className="user-modal advanced">
-        <div className="user-modal-head">
+    <div className="">
+      <section className="">
+        <div className="">
           <div>
-            <span className="section-tag">Patch Detail</span>
+            <span className="">Patch Detail</span>
             <h3>{getKbText(patch)} - Revision {patch.RevisionNumber || row.RevisionNumber}</h3>
             <p>{patch.Title || row.Title}</p>
           </div>
-          <button className="modal-close" type="button" onClick={onClose} aria-label="Close"><X size={18} /></button>
+          <button className="" type="button" onClick={onClose} aria-label="Close"><X size={18} /></button>
         </div>
 
-        <div className="user-modal-body content-body">
+        <div className="">
           {loading ? (
-            <div className="settings-helper-card wide"><Loader2 className="me-2" size={18} /> Loading patch detail...</div>
+            <div className=""><Loader2 className="" size={18} /> Loading patch detail...</div>
           ) : (
             <>
-              <section className="policy-card wide p-3">
-                <div className="policy-top">
+              <section className="">
+                <div className="">
                   <div>
                     <h4>Patch Overview</h4>
                     <p>{patch.Description || 'No description available.'}</p>
                   </div>
-                  <div className="content-actions">
-                    <span className={`user-pill ${getSeverityPillClass(patch.MsrcSeverity)}`}>{patch.MsrcSeverity || 'Unspecified'}</span>
-                    <span className={`user-pill ${getStatusPillClass(status)}`}>{status}</span>
+                  <div className="">
+                    <span className="">{patch.MsrcSeverity || 'Unspecified'}</span>
+                    <span className="">{status}</span>
                     {canInstall && (
-                      <button className="primary-btn" type="button" onClick={() => onInstall(row)}>
+                      <button className="" type="button" onClick={() => onInstall(row)}>
                         <Play size={15} /> Install
                       </button>
                     )}
@@ -1158,7 +1085,7 @@ function PatchDetailDrawer({ row, detail, loading, onClose, onInstall }: { row: 
                 </div>
               </section>
 
-              <section className="policy-card p-3">
+              <section className="">
                 <h4>Patch metadata</h4>
                 <InfoGrid rows={[
                   ['UpdateID:', patch.UpdateID || row.UpdateID],
@@ -1170,7 +1097,7 @@ function PatchDetailDrawer({ row, detail, loading, onClose, onInstall }: { row: 
                 ]} />
               </section>
 
-              <section className="policy-card p-3">
+              <section className="">
                 <h4>Device status</h4>
                 <InfoGrid rows={[
                   ['Device:', row.DeviceName || row.ComputerName || row.Object_Client_Name || '-'],
@@ -1182,32 +1109,32 @@ function PatchDetailDrawer({ row, detail, loading, onClose, onInstall }: { row: 
                 ]} />
               </section>
 
-              <section className="policy-card p-3">
+              <section className="">
                 <h4>Products & classifications</h4>
                 <TagList values={[...products, ...classifications]} emptyText="No product/category data returned." />
               </section>
 
-              <section className="policy-card p-3">
+              <section className="">
                 <h4>Security references</h4>
                 <TagList values={[...(patch.CVEIDs || []), ...(patch.SecurityBulletinIDs || [])]} emptyText="No CVE/security bulletin data returned." />
               </section>
 
-              <section className="policy-card wide p-3">
+              <section className="">
                 <h4>Online source files</h4>
-                <div className="pricing-grid">
+                <div className="">
                   {(detail?.files || []).length ? detail?.files.map((file) => (
-                    <div className="settings-helper-card" key={`${file.UpdateID}-${file.RevisionNumber}-${file.FileName}`}>
+                    <div className="" key={`${file.UpdateID}-${file.RevisionNumber}-${file.FileName}`}>
                       <strong>{file.FileName || 'Unnamed file'}</strong>
                       <span>{file.ShortLanguage || 'neutral'} - {formatFileSize(file.FileSize)}</span>
-                      {file.DownloadUrl && <a className="soft-btn mt-2" href={file.DownloadUrl} target="_blank" rel="noreferrer"><ExternalLink size={15} /> Open</a>}
+                      {file.DownloadUrl && <a className="" href={file.DownloadUrl} target="_blank" rel="noreferrer"><ExternalLink size={15} /> Open</a>}
                     </div>
                   )) : <p>No file list returned.</p>}
                 </div>
               </section>
 
-              <section className="policy-card wide p-3">
+              <section className="">
                 <h4>Links</h4>
-                <div className="pricing-grid">
+                <div className="">
                   {patch.SupportUrl && <ExternalRow label="Support URL" url={patch.SupportUrl} />}
                   {(patch.KBArticleUrls || []).map((url) => <ExternalRow key={url} label="KB Article" url={url} />)}
                   {!patch.SupportUrl && !(patch.KBArticleUrls || []).length && <p>No support links returned.</p>}
@@ -1217,8 +1144,8 @@ function PatchDetailDrawer({ row, detail, loading, onClose, onInstall }: { row: 
           )}
         </div>
 
-        <div className="user-modal-foot">
-          <button className="soft-btn" type="button" onClick={onClose}>Close</button>
+        <div className="">
+          <button className="" type="button" onClick={onClose}>Close</button>
         </div>
       </section>
     </div>
@@ -1232,18 +1159,18 @@ function ConfirmModal({ state, scope, loading, onCancel, onConfirm }: { state: N
     : scope.label;
 
   return (
-    <div className="user-modal-backdrop open">
-      <section className="settings-confirm-modal">
+    <div className="">
+      <section className="">
         <h3>{isInstall ? 'Install selected patch?' : 'Create patch scan job?'}</h3>
         <p>{isInstall ? 'This will create an install action for the selected endpoint.' : 'This will create a scan job for the selected scope.'}</p>
-        <div className="settings-helper-card my-3">
+        <div className="">
           <strong>Target: {target}</strong>
           <span>{isInstall ? `${getKbText(state.row)} - ${state.row.Title}` : scope.scope === 'all' ? 'Whole company' : scope.scope === 'relation' ? 'Branch' : 'Device'}</span>
         </div>
-        <div className="settings-confirm-actions">
-          <button className="soft-btn" type="button" onClick={onCancel} disabled={loading}>Cancel</button>
-          <button className="primary-btn" type="button" onClick={onConfirm} disabled={loading}>
-            {loading && <Loader2 className="me-1" size={15} />}
+        <div className="">
+          <button className="" type="button" onClick={onCancel} disabled={loading}>Cancel</button>
+          <button className="" type="button" onClick={onConfirm} disabled={loading}>
+            {loading && <Loader2 className="" size={15} />}
             {isInstall ? 'Install Patch' : 'Create Scan Job'}
           </button>
         </div>
@@ -1254,7 +1181,7 @@ function ConfirmModal({ state, scope, loading, onCancel, onConfirm }: { state: N
 
 function OfflinePlaceholder() {
   return (
-    <div className="settings-helper-card text-center py-4">
+    <div className="">
       <strong>Offline patching is separated</strong>
       <span>Use online patching for scan and install actions from this workspace.</span>
     </div>
@@ -1265,14 +1192,14 @@ function PatchToast({ toast, onClose }: { toast: NonNullable<ToastState>; onClos
   const title = toast.type === 'success' ? 'Success' : toast.type === 'error' ? 'Error' : 'Info';
   const toastClass = toast.type === 'success' ? 'settings-toast-success' : toast.type === 'error' ? 'settings-toast-error' : 'settings-toast-info';
   return (
-    <div className="settings-toast-layer">
-      <div className={cx('settings-toast', toastClass)}>
-        <span className="settings-toast-icon">{toast.type === 'success' ? '✓' : toast.type === 'error' ? '!' : 'i'}</span>
+    <div className="">
+      <div className="">
+        <span className="">{toast.type === 'success' ? '✓' : toast.type === 'error' ? '!' : 'i'}</span>
         <div>
           <strong>{title}</strong>
           <span>{toast.message}</span>
         </div>
-        <button className="settings-toast-close" type="button" onClick={onClose} aria-label="Close toast"><X size={15} /></button>
+        <button className="" type="button" onClick={onClose} aria-label="Close toast"><X size={15} /></button>
       </div>
     </div>
   );
@@ -1280,9 +1207,9 @@ function PatchToast({ toast, onClose }: { toast: NonNullable<ToastState>; onClos
 
 function InfoGrid({ rows }: { rows: Array<[string, ReactNode]> }) {
   return (
-    <div className="pricing-grid mt-3">
+    <div className="">
       {rows.map(([label, value]) => (
-        <div className="settings-helper-card" key={label}>
+        <div className="" key={label}>
           <strong>{label}</strong>
           <span>{value}</span>
         </div>
@@ -1295,15 +1222,15 @@ function TagList({ values, emptyText }: { values: string[]; emptyText: string })
   const cleaned = values.filter(Boolean);
   if (!cleaned.length) return <p>{emptyText}</p>;
   return (
-    <div className="role-chip-stack mt-2">
-      {cleaned.map((value) => <span className="user-pill info" key={value}>{value}</span>)}
+    <div className="">
+      {cleaned.map((value) => <span className="" key={value}>{value}</span>)}
     </div>
   );
 }
 
 function ExternalRow({ label, url }: { label: string; url: string }) {
   return (
-    <a className="settings-helper-card text-decoration-none" href={url} target="_blank" rel="noreferrer">
+    <a className="" href={url} target="_blank" rel="noreferrer">
       <strong>{label}</strong>
       <span>{url}</span>
       <small><ExternalLink size={15} /> Open link</small>

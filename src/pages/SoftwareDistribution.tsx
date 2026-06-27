@@ -25,11 +25,8 @@ import {
   X,
 } from "lucide-react";
 import softwareDistributionService from "../services/softwareDistributionService";
-import "../styles/software-distribution-v2.css";
 
-import "../styles/ema-standard-table.css";
-import "../styles/ema-standard-controls.css";
-import "../styles/ema-table-pagination-standard.css";
+
 type PackageStatus = "Ready" | "Draft" | "Deployed" | "Archived";
 type DeliveryMethod = "onprem" | "cloud" | "network";
 type SortKey =
@@ -302,15 +299,15 @@ function CompactPagination({
   }
 
   return (
-    <footer className={cx("uam-pagination global-style", className)}>
-      <div className="uam-page-status" aria-live="polite">
+    <footer className="">
+      <div className="" aria-live="polite">
         <span>Page {safeCurrentPage} of {safeTotalPages}</span>
       </div>
 
-      <nav className="uam-pagination-controls global-style" aria-label={ariaLabel}>
+      <nav className="" aria-label={ariaLabel}>
         <button
           type="button"
-          className="uam-page-icon"
+          className=""
           aria-label="First page"
           disabled={safeCurrentPage === 1}
           onClick={() => goToPage(1)}
@@ -319,7 +316,7 @@ function CompactPagination({
         </button>
         <button
           type="button"
-          className="uam-page-icon"
+          className=""
           aria-label="Previous page"
           disabled={safeCurrentPage === 1}
           onClick={() => goToPage(safeCurrentPage - 1)}
@@ -327,11 +324,11 @@ function CompactPagination({
           <ChevronLeft size={14} strokeWidth={2.8} />
         </button>
 
-        <b className="uam-page-current" aria-current="page">{safeCurrentPage}</b>
+        <b className="" aria-current="page">{safeCurrentPage}</b>
 
         <button
           type="button"
-          className="uam-page-icon"
+          className=""
           aria-label="Next page"
           disabled={safeCurrentPage === safeTotalPages}
           onClick={() => goToPage(safeCurrentPage + 1)}
@@ -340,7 +337,7 @@ function CompactPagination({
         </button>
         <button
           type="button"
-          className="uam-page-icon"
+          className=""
           aria-label="Last page"
           disabled={safeCurrentPage === safeTotalPages}
           onClick={() => goToPage(safeTotalPages)}
@@ -430,31 +427,31 @@ function NewPackageModal({
   };
 
   return (
-    <div className="user-modal-backdrop open" onMouseDown={onClose}>
-      <div className="user-modal advanced w-75" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="user-modal-head">
+    <div className="" onMouseDown={onClose}>
+      <div className="" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="">
           <div>
             <h3>New Package</h3>
             <p>Create a new software distribution package</p>
           </div>
-          <button type="button" className="modal-close" onClick={onClose}>
+          <button type="button" className="" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
 
-        <div className="user-modal-body">
-          <label className="form-field">
+        <div className="">
+          <label className="">
             <span>Package Name</span>
-            <input className="setting-input"
+            <input className=""
               value={form.name}
               onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
               placeholder="e.g. Google Chrome Enterprise"
             />
           </label>
 
-          <label className="form-field">
+          <label className="">
             <span>Description</span>
-            <textarea className="setting-textarea"
+            <textarea className=""
               value={form.description}
               onChange={(event) =>
                 setForm((current) => ({ ...current, description: event.target.value }))
@@ -464,9 +461,9 @@ function NewPackageModal({
             />
           </label>
 
-          <label className="form-field wide">
+          <label className="">
             <span>Destination Directory</span>
-            <input className="setting-input"
+            <input className=""
               value={form.destinationDirectory}
               onChange={(event) =>
                 setForm((current) => ({
@@ -479,9 +476,9 @@ function NewPackageModal({
             <small>Install path on target device, for example C:\ or C:\Program Files\AppName.</small>
           </label>
 
-          <label className="form-field wide">
+          <label className="">
             <span>Source Path</span>
-            <input className="setting-input"
+            <input className=""
               value={form.sourcePath}
               onChange={(event) =>
                 setForm((current) => ({
@@ -494,10 +491,10 @@ function NewPackageModal({
             <small>This value is repeated for every uploaded file unless file-path mapping is expanded.</small>
           </label>
 
-          <div className="form-grid wide">
-            <label className="form-field">
+          <div className="">
+            <label className="">
               <span>Owner Console ID</span>
-              <input className="setting-input"
+              <input className=""
                 value={form.owner}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, owner: event.target.value }))
@@ -505,10 +502,10 @@ function NewPackageModal({
               />
             </label>
 
-            <label className="form-field">
+            <label className="">
               <span>Execution Order</span>
               <select
-                className="setting-select"
+                className=""
                 value={form.executionOrder}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, executionOrder: event.target.value }))
@@ -521,10 +518,10 @@ function NewPackageModal({
             </label>
           </div>
 
-          <div className="form-grid wide">
-            <label className="form-field">
+          <div className="">
+            <label className="">
               <span>Command Line</span>
-              <input className="setting-input"
+              <input className=""
                 value={form.cmdline}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, cmdline: event.target.value }))
@@ -533,9 +530,9 @@ function NewPackageModal({
               />
             </label>
 
-            <label className="form-field">
+            <label className="">
               <span>File Version</span>
-              <input className="setting-input"
+              <input className=""
                 value={form.fileVersion}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, fileVersion: event.target.value }))
@@ -545,10 +542,10 @@ function NewPackageModal({
             </label>
           </div>
 
-          <div className="form-grid wide">
-            <label className="form-field">
+          <div className="">
+            <label className="">
               <span>OS Name</span>
-              <input className="setting-input"
+              <input className=""
                 value={form.osname}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, osname: event.target.value }))
@@ -557,10 +554,10 @@ function NewPackageModal({
               />
             </label>
 
-            <label className="form-field">
+            <label className="">
               <span>Exclude</span>
               <select
-                className="setting-select"
+                className=""
                 value={form.exclude}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, exclude: Number(event.target.value) }))
@@ -573,7 +570,7 @@ function NewPackageModal({
             </label>
           </div>
 
-          <input className="setting-input"
+          <input className=""
             ref={fileInputRef}
             type="file"
             multiple
@@ -583,7 +580,7 @@ function NewPackageModal({
 
           <button
             type="button"
-            className="settings-helper-card wide"
+            className=""
             onClick={() => fileInputRef.current?.click()}
           >
             <UploadCloud size={24} />
@@ -592,11 +589,11 @@ function NewPackageModal({
           </button>
         </div>
 
-        <div className="user-modal-foot">
-          <button type="button" className="soft-btn" onClick={onClose}>
+        <div className="">
+          <button type="button" className="" onClick={onClose}>
             Cancel
           </button>
-          <button type="button" className="primary-btn" disabled={!canCreate} onClick={create}>
+          <button type="button" className="" disabled={!canCreate} onClick={create}>
             Create Package
           </button>
         </div>
@@ -824,23 +821,16 @@ function DeployPackageModal({
 
   const deployModalNode = (
     <div
-      className="user-modal-backdrop open"
-      style={{ position: "fixed", inset: 0, zIndex: 2147483647 }}
+      className=""
+      style={{}}
       onMouseDown={onClose}
     >
       <div
-        className="user-modal advanced"
-        style={{
-          width: "min(1840px, calc(100vw - 24px))",
-          maxWidth: "calc(100vw - 24px)",
-          height: "calc(100vh - 12px)",
-          maxHeight: "calc(100vh - 12px)",
-          display: "flex",
-          flexDirection: "column",
-        }}
+        className=""
+        style={{}}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="user-modal-head">
+        <div className="">
           <div>
             <h3>{packages.length > 1 ? "Deploy Packages" : "Deploy Package"}</h3>
             <p>
@@ -849,17 +839,17 @@ function DeployPackageModal({
                 : `${packages[0]?.name} • ${packages[0]?.version}`}
             </p>
           </div>
-          <button type="button" className="modal-close" onClick={onClose}>
+          <button type="button" className="" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
 
         <div
-          className="user-modal-body content-body gap-3"
-          style={{ flex: "1 1 auto", minHeight: 0, overflowY: "auto" }}
+          className=""
+          style={{}}
         >
-          <section className="policy-card wide p-4">
-            <div className="policy-top">
+          <section className="">
+            <div className="">
               <div>
                 <strong>{packages.length > 1 ? "Selected Package Batch" : "Selected Package"}</strong>
                 <p>
@@ -868,87 +858,83 @@ function DeployPackageModal({
                     : "Review the package that will be deployed."}
                 </p>
               </div>
-              <span className="user-pill info">{packages.length} selected</span>
+              <span className="">{packages.length} selected</span>
             </div>
 
             {packages.length > 1 && (
-              <div className="settings-helper-card wide p-3 mb-3">
-                <div className="policy-top mb-2">
+              <div className="">
+                <div className="">
                   <div>
                     <strong>Batch Summary</strong>
                     <span>{packagePreviewText}</span>
                   </div>
-                  <span className="user-pill info">{packageStatusSummary.total} packages</span>
+                  <span className="">{packageStatusSummary.total} packages</span>
                 </div>
-                <div className="content-actions justify-content-start gap-2">
-                  {packageStatusSummary.ready > 0 && <span className="user-pill active">Ready {packageStatusSummary.ready}</span>}
-                  {packageStatusSummary.deployed > 0 && <span className="user-pill info">Deployed {packageStatusSummary.deployed}</span>}
-                  {packageStatusSummary.draft > 0 && <span className="user-pill review">Draft {packageStatusSummary.draft}</span>}
-                  {packageStatusSummary.archived > 0 && <span className="user-pill inactive">Archived {packageStatusSummary.archived}</span>}
+                <div className="">
+                  {packageStatusSummary.ready > 0 && <span className="">Ready {packageStatusSummary.ready}</span>}
+                  {packageStatusSummary.deployed > 0 && <span className="">Deployed {packageStatusSummary.deployed}</span>}
+                  {packageStatusSummary.draft > 0 && <span className="">Draft {packageStatusSummary.draft}</span>}
+                  {packageStatusSummary.archived > 0 && <span className="">Archived {packageStatusSummary.archived}</span>}
                 </div>
               </div>
             )}
 
             <div
-              className="policy-list gap-2"
-              style={
-                packages.length > 1
-                  ? { maxHeight: "132px", overflowY: "auto", paddingRight: "4px" }
-                  : undefined
-              }
+              className=""
+              style={{}}
             >
               {packages.map((item) => (
-                <div key={item.id} className="inline-check">
+                <div key={item.id} className="">
                   <Package size={16} />
-                  <div className="flex-grow-1">
+                  <div className="">
                     <strong>{item.name}</strong>
                     <span>
                       {item.version} • {item.status} • {item.sizeAfterCompression} • {item.destinationDirectory}
                     </span>
                   </div>
-                  <em className={cx("user-pill", statusPillClass(item.status))}>{item.status}</em>
+                  <em className="">{item.status}</em>
                 </div>
               ))}
             </div>
 
             {hasDeployedPackage && (
-              <div className="settings-inline-alert wide mt-3">
+              <div className="">
                 <ShieldCheck size={15} />
                 <span>Some selected packages are already deployed. This action will redeploy them.</span>
               </div>
             )}
           </section>
 
-          <section className="policy-card wide p-4">
-            <div className="policy-top">
+          <section className="">
+            <div className="">
               <div>
                 <strong>Target User Scope</strong>
                 <p>Select departments, operating systems, or individual endpoint targets.</p>
               </div>
-              <span className="user-pill info">{finalTargetCount} final target(s)</span>
+              <span className="">{finalTargetCount} final target(s)</span>
             </div>
 
-            <div className="row g-3 align-items-stretch">
-              <div className="col-12 col-xl-3">
-                <section className="resource-form-card p-4 h-100">
-                  <div className="resource-card-head mb-3">
+            <div className="">
+              <div className="">
+                <section className="">
+                  <div className="">
                     <div>
                       <h4>Scope Selection</h4>
                       <p>Choose the grouping method and target scope.</p>
                     </div>
                   </div>
 
-                  <div className="content-actions mb-3 justify-content-start">
+                  <div className="">
                     <button
                       type="button"
-                      className={cx("soft-btn", targetView === "organization" && "active")}
+                      className=""
                       onClick={() => switchTargetView("organization")}
                     >
                       Organization
                     </button>
                     <button
                       type="button"
-                      className={cx("soft-btn", targetView === "os" && "active")}
+                      className=""
                       onClick={() => switchTargetView("os")}
                     >
                       Operating System
@@ -956,7 +942,7 @@ function DeployPackageModal({
                   </div>
 
                   {targetView === "organization" && (
-                    <label className="inline-check">
+                    <label className="">
                       <input
                         type="checkbox"
                         checked={includeLowerDepartment}
@@ -969,24 +955,24 @@ function DeployPackageModal({
                     </label>
                   )}
 
-                  <div className="policy-list gap-3 mt-3">
+                  <div className="">
                     {scopeGroups.length > 0 ? (
                       scopeGroups.map((scope) => (
-                        <label key={scope.id} className="inline-check">
+                        <label key={scope.id} className="">
                           <input
                             type="checkbox"
                             checked={selectedScopes.has(scope.id)}
                             onChange={() => toggleScope(scope.id)}
                           />
-                          <div className="flex-grow-1">
+                          <div className="">
                             <strong>{scope.name}</strong>
                             <span>{scope.type}</span>
                           </div>
-                          <em className="user-pill info">{scope.count}</em>
+                          <em className="">{scope.count}</em>
                         </label>
                       ))
                     ) : (
-                      <div className="settings-helper-card">
+                      <div className="">
                         <Search size={20} />
                         <strong>No target scope</strong>
                         <span>No devices are available for this scope.</span>
@@ -996,20 +982,20 @@ function DeployPackageModal({
                 </section>
               </div>
 
-              <div className="col-12 col-xl-6">
-                <section className="resource-table-card p-4 h-100">
-                  <div className="resource-card-head mb-3">
+              <div className="">
+                <section className="">
+                  <div className="">
                     <div>
                       <h4>Endpoint Targets</h4>
                       <p>Refine devices before deployment.</p>
                     </div>
-                    <button type="button" className="soft-btn" onClick={clearTargetSelection}>
+                    <button type="button" className="" onClick={clearTargetSelection}>
                       Clear Selection
                     </button>
                   </div>
 
-                  <div className="policy-list gap-3 mb-3">
-                    <label className="section-search">
+                  <div className="">
+                    <label className="">
                       <Search size={15} />
                       <input
                         value={targetSearch}
@@ -1020,15 +1006,15 @@ function DeployPackageModal({
                         placeholder="Search user, IP, department"
                       />
                       {targetSearch && (
-                        <button type="button" className="mini-btn icon-only" onClick={() => setTargetSearch("")}>
+                        <button type="button" className="" onClick={() => setTargetSearch("")}>
                           <X size={13} />
                         </button>
                       )}
                     </label>
 
-                    <div className="uam-filter-grid clean compact">
+                    <div className="">
                       <select
-                        className="setting-select"
+                        className=""
                         value={targetStatusFilter}
                         onChange={(event) => {
                           setTargetStatusFilter(event.target.value as "All" | "Online" | "Offline");
@@ -1041,7 +1027,7 @@ function DeployPackageModal({
                       </select>
 
                       <select
-                        className="setting-select"
+                        className=""
                         value={targetOsFilter}
                         onChange={(event) => {
                           setTargetOsFilter(event.target.value);
@@ -1058,8 +1044,8 @@ function DeployPackageModal({
                     </div>
                   </div>
 
-                  <div className="resource-table-wrap">
-                    <table className="resource-table">
+                  <div className="">
+                    <table className="">
                       <thead>
                         <tr>
                           <th>
@@ -1080,7 +1066,7 @@ function DeployPackageModal({
 
                       <tbody>
                         {targetPageRows.map((device) => (
-                          <tr key={device.id} className={includedTargetIds.has(device.id) ? "included" : ""}>
+                          <tr key={device.id} className="">
                             <td>
                               <input
                                 type="checkbox"
@@ -1096,14 +1082,14 @@ function DeployPackageModal({
                             <td>{device.ip}</td>
                             <td>{device.os}</td>
                             <td>
-                              <span className={cx("user-pill", device.status === "Online" ? "active" : "inactive")}>
+                              <span className="">
                                 {device.status}
                               </span>
                             </td>
                             <td>
                               <button
                                 type="button"
-                                className={cx("mini-btn", excludedDevices.has(device.id) && "active")}
+                                className=""
                                 onClick={() => toggleExcludedUser(device.id)}
                               >
                                 {excludedDevices.has(device.id) ? "Excluded" : "Exclude"}
@@ -1118,47 +1104,47 @@ function DeployPackageModal({
                   <CompactPagination
                     currentPage={targetPage}
                     totalPages={targetTotalPages}
-                    className="resource-pagination"
+                    className=""
                     ariaLabel="Target device pagination"
                     onPageChange={setTargetPage}
                   />
                 </section>
               </div>
 
-              <div className="col-12 col-xl-3">
-                <section className="policy-card p-4 h-100">
-                  <div className="policy-top">
+              <div className="">
+                <section className="">
+                  <div className="">
                     <div>
                       <strong>Deployment Review</strong>
                       <p>Confirm targets and deployment options.</p>
                     </div>
                   </div>
 
-                  <div className="pricing-grid gap-3">
-                    <div className="score-box is-compact">
+                  <div className="">
+                    <div className="">
                       <span>Final Target</span>
                       <strong>{finalTargetCount}</strong>
                       <small>Ready to receive package</small>
                     </div>
-                    <div className="score-box is-compact">
+                    <div className="">
                       <span>Scopes</span>
                       <strong>{selectedScopeCount}</strong>
                       <small>Selected groups</small>
                     </div>
-                    <div className="score-box is-compact">
+                    <div className="">
                       <span>Manual</span>
                       <strong>{manualUserCount}</strong>
                       <small>Direct devices</small>
                     </div>
-                    <div className="score-box is-compact">
+                    <div className="">
                       <span>Excluded</span>
                       <strong>{excludedUserCount}</strong>
                       <small>Skipped targets</small>
                     </div>
                   </div>
 
-                  <div className="pricing-grid gap-3 mt-3">
-                    <div className="settings-helper-card">
+                  <div className="">
+                    <div className="">
                       <strong>Included Preview</strong>
                       <span>
                         {includedTargetList.slice(0, 3).map((device) => device.name).join(", ") ||
@@ -1167,7 +1153,7 @@ function DeployPackageModal({
                       </span>
                     </div>
 
-                    <div className="settings-helper-card">
+                    <div className="">
                       <strong>Excluded Preview</strong>
                       <span>
                         {excludedTargetList.slice(0, 3).map((device) => device.name).join(", ") ||
@@ -1177,17 +1163,17 @@ function DeployPackageModal({
                     </div>
                   </div>
 
-                  <div className="content-actions justify-content-start gap-2 mt-3">
+                  <div className="">
                     <button
                       type="button"
-                      className={cx("soft-btn", scheduleType === "now" && "active")}
+                      className=""
                       onClick={() => setScheduleType("now")}
                     >
                       Send Now
                     </button>
                     <button
                       type="button"
-                      className={cx("soft-btn", scheduleType === "schedule" && "active")}
+                      className=""
                       onClick={() => setScheduleType("schedule")}
                     >
                       Schedule
@@ -1195,28 +1181,28 @@ function DeployPackageModal({
                   </div>
 
                   {scheduleType === "schedule" && (
-                    <label className="form-field mt-3">
+                    <label className="">
                       <span>Schedule Time</span>
-                      <input className="setting-input" type="datetime-local" />
+                      <input className="" type="datetime-local" />
                     </label>
                   )}
 
-                  <div className="policy-list gap-3 mt-3">
-                    <label className="inline-check">
+                  <div className="">
+                    <label className="">
                       <input type="checkbox" defaultChecked />
                       <span>Force installation</span>
                     </label>
-                    <label className="inline-check">
+                    <label className="">
                       <input type="checkbox" />
                       <span>Reboot after installation</span>
                     </label>
-                    <label className="inline-check">
+                    <label className="">
                       <input type="checkbox" defaultChecked />
                       <span>Notify user</span>
                     </label>
                   </div>
 
-                  <div className="settings-helper-card p-3 mt-3">
+                  <div className="">
                     <span>Deployment Summary</span>
                     <strong>
                       {packages.length} package(s) • {finalTargetCount} target(s)
@@ -1231,13 +1217,13 @@ function DeployPackageModal({
           </section>
         </div>
 
-        <div className="user-modal-foot">
-          <button type="button" className="soft-btn" onClick={onClose}>
+        <div className="">
+          <button type="button" className="" onClick={onClose}>
             Cancel
           </button>
           <button
             type="button"
-            className="primary-btn"
+            className=""
             disabled={finalTargetCount === 0}
             onClick={() => onDeploy(includedTargetList, method, scheduleType)}
           >
@@ -1264,9 +1250,9 @@ function DeletePackageModal({
   const [confirm, setConfirm] = useState("");
 
   return (
-    <div className="user-modal-backdrop open" onMouseDown={onClose}>
-      <div className="user-modal role-delete-modal" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="user-modal-head">
+    <div className="" onMouseDown={onClose}>
+      <div className="" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="">
           <div>
             <h3>{packages.length > 1 ? "Delete Packages" : "Delete Package"}</h3>
             <p>
@@ -1275,13 +1261,13 @@ function DeletePackageModal({
                 : packages[0]?.name}
             </p>
           </div>
-          <button type="button" className="modal-close" onClick={onClose}>
+          <button type="button" className="" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
 
-        <div className="user-modal-body">
-          <div className="settings-inline-alert">
+        <div className="">
+          <div className="">
             <Trash2 size={18} />
             <div>
               <strong>Confirm delete action</strong>
@@ -1289,7 +1275,7 @@ function DeletePackageModal({
             </div>
           </div>
 
-          <div className="policy-list wide">
+          <div className="">
             {packages.map((item) => (
               <div key={item.id}>
                 <strong>{item.name}</strong>
@@ -1298,19 +1284,19 @@ function DeletePackageModal({
             ))}
           </div>
 
-          <label className="form-field">
+          <label className="">
             <span>Type delete to confirm</span>
-            <input className="setting-input" value={confirm} onChange={(event) => setConfirm(event.target.value)} />
+            <input className="" value={confirm} onChange={(event) => setConfirm(event.target.value)} />
           </label>
         </div>
 
-        <div className="user-modal-foot">
-          <button type="button" className="soft-btn" onClick={onClose}>
+        <div className="">
+          <button type="button" className="" onClick={onClose}>
             Cancel
           </button>
           <button
             type="button"
-            className="danger-btn"
+            className=""
             disabled={confirm.toLowerCase() !== "delete"}
             onClick={onDelete}
           >
@@ -1695,39 +1681,39 @@ export default function SoftwareDistribution() {
   };
 
   const SortButton = ({ label, columnKey }: { label: string; columnKey: SortKey }) => (
-    <button type="button" className="resource-sort-button" onClick={() => handleSort(columnKey)}>
+    <button type="button" className="" onClick={() => handleSort(columnKey)}>
       <span>{label}</span>
       <i>{sortKey === columnKey ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</i>
     </button>
   );
 
   return (
-    <div className="settings-module-root ema-settings-pro" data-section="software-distribution">
+    <div className="" data-section="software-distribution">
       {toast && (
-        <div className={cx("settings-toast", `settings-toast-${toast.type}`)}>
-          <CheckCircle2 className="settings-toast-icon" size={18} />
+        <div className="">
+          <CheckCircle2 className="" size={18} />
           <div>
             <strong>{toast.title}</strong>
             <span>{toast.message}</span>
           </div>
-          <button type="button" className="settings-toast-close" onClick={() => setToast(null)}>
+          <button type="button" className="" onClick={() => setToast(null)}>
             <X size={14} />
           </button>
         </div>
       )}
 
-      <div className="settings-layout">
-        <aside className="settings-menu ema-panel-surface">
-          <div className="panel-head">
+      <div className="">
+        <aside className="">
+          <div className="">
             <span>EMA / Software Distribution</span>
             <strong>Package Library</strong>
             <small>Browse packages and available versions.</small>
           </div>
 
-          <div className="settings-menu-list">
+          <div className="">
             {/* <button
               type="button"
-              className="primary-btn"
+              className=""
               onClick={() => {
                 setOpenTreeMenuId(null);
                 setOpenVersionMenuId(null);
@@ -1739,7 +1725,7 @@ export default function SoftwareDistribution() {
               New Package
             </button> */}
 
-            <label className="section-search">
+            <label className="">
               <Search size={15} />
               <input
                 value={searchTerm}
@@ -1750,7 +1736,7 @@ export default function SoftwareDistribution() {
                 placeholder="Search package"
               />
               {searchTerm && (
-                <button type="button" className="mini-btn" onClick={() => setSearchTerm("")}>
+                <button type="button" className="" onClick={() => setSearchTerm("")}>
                   <X size={13} />
                 </button>
               )}
@@ -1764,7 +1750,7 @@ export default function SoftwareDistribution() {
                 <div key={item.id}>
                   <button
                     type="button"
-                    className={cx("setting-btn", isSelected && "active")}
+                    className=""
                     title="Click to expand or collapse versions"
                     onClick={() => {
                       setSelectedPackageId(item.id);
@@ -1774,7 +1760,7 @@ export default function SoftwareDistribution() {
                       toggleExpand(item.id);
                     }}
                   >
-                    <span className="setting-icon">
+                    <span className="">
                       {isExpanded ? <FolderOpen size={15} /> : <FolderClosed size={15} />}
                     </span>
                     <span>
@@ -1784,11 +1770,11 @@ export default function SoftwareDistribution() {
                   </button>
 
                   {openTreeMenuId === item.id && (
-                    <div className="settings-helper-card">
-                      <div className="content-actions">
+                    <div className="">
+                      <div className="">
                         <button
                           type="button"
-                          className="soft-btn"
+                          className=""
                           onClick={() => {
                             setOpenTreeMenuId(null);
                             setOpenVersionMenuId(null);
@@ -1801,7 +1787,7 @@ export default function SoftwareDistribution() {
                         </button>
                         <button
                           type="button"
-                          className="primary-btn"
+                          className=""
                           onClick={() => {
                             setOpenTreeMenuId(null);
                             setOpenVersionMenuId(null);
@@ -1815,7 +1801,7 @@ export default function SoftwareDistribution() {
                         </button>
                         <button
                           type="button"
-                          className="danger-btn"
+                          className=""
                           onClick={() => {
                             setOpenTreeMenuId(null);
                             setOpenVersionMenuId(null);
@@ -1831,16 +1817,16 @@ export default function SoftwareDistribution() {
                   )}
 
                   {isExpanded && (
-                    <div className="policy-list">
+                    <div className="">
                       {item.versions.map((version) => {
                         const versionMenuId = `${item.id}::${version}`;
 
                         return (
-                          <div className="settings-helper-card" key={version}>
-                            <div className="content-actions">
+                          <div className="" key={version}>
+                            <div className="">
                               <button
                                 type="button"
-                                className={cx("soft-btn", selectedPackageId === item.id && "active")}
+                                className=""
                                 onClick={() => {
                                   setSelectedPackageId(item.id);
                                   setOpenTreeMenuId(null);
@@ -1853,7 +1839,7 @@ export default function SoftwareDistribution() {
                               </button>
                               <button
                                 type="button"
-                                className="mini-btn"
+                                className=""
                                 title="Version actions"
                                 onClick={(event) => {
                                   event.stopPropagation();
@@ -1869,10 +1855,10 @@ export default function SoftwareDistribution() {
                             </div>
 
                             {openVersionMenuId === versionMenuId && (
-                              <div className="content-actions">
+                              <div className="">
                                 <button
                                   type="button"
-                                  className="soft-btn"
+                                  className=""
                                   onClick={() => {
                                     setSelectedPackageId(item.id);
                                     setOpenVersionMenuId(null);
@@ -1885,7 +1871,7 @@ export default function SoftwareDistribution() {
                                 </button>
                                 <button
                                   type="button"
-                                  className="danger-btn"
+                                  className=""
                                   onClick={() => {
                                     setOpenVersionMenuId(null);
                                     setOpenTreeMenuId(null);
@@ -1908,11 +1894,11 @@ export default function SoftwareDistribution() {
             })}
 
             {hasMoreTreeRows && (
-              <div className="settings-helper-card">
-                <div className="content-actions">
+              <div className="">
+                <div className="">
                   <button
                     type="button"
-                    className="soft-btn"
+                    className=""
                     onClick={() =>
                       setTreeVisibleCount((current) =>
                         Math.min(current + TREE_PAGE_SIZE, treePackages.length)
@@ -1928,7 +1914,7 @@ export default function SoftwareDistribution() {
             {hasMoreTreeRows && (
               <button
                 type="button"
-                className="soft-btn"
+                className=""
                 onClick={() =>
                   setTreeVisibleCount((current) =>
                     Math.min(current + TREE_PAGE_SIZE, treePackages.length)
@@ -1941,23 +1927,23 @@ export default function SoftwareDistribution() {
           </div>
         </aside>
 
-        <section className="settings-content">
-          <section className="settings-hero ema-hero-kpi-right">
+        <section className="">
+          <section className="">
             <div>
-              <span className="eyebrow">Software Distribution</span>
+              <span className="">Software Distribution</span>
               <h2>Package Registry</h2>
               <p>Prepare, organise and deploy software packages to selected target devices.</p>
             </div>
 
-            <div className="settings-score ema-kpi-right-pair">
-              <button type="button" className="score-box is-info" onClick={resetFilters}>
+            <div className="">
+              <button type="button" className="" onClick={resetFilters}>
                 <span>Total Packages</span>
                 <strong>{summary.total}</strong>
                 <small>All registered packages</small>
               </button>
               <button
                 type="button"
-                className="score-box is-success"
+                className=""
                 onClick={() => {
                   setStatusFilter("Ready");
                   setPage(1);
@@ -1969,7 +1955,7 @@ export default function SoftwareDistribution() {
               </button>
               <button
                 type="button"
-                className="score-box is-info"
+                className=""
                 onClick={() => {
                   setStatusFilter("Deployed");
                   setPage(1);
@@ -1981,7 +1967,7 @@ export default function SoftwareDistribution() {
               </button>
               <button
                 type="button"
-                className="score-box is-warning"
+                className=""
                 onClick={() => {
                   setStatusFilter("Draft");
                   setPage(1);
@@ -1994,8 +1980,8 @@ export default function SoftwareDistribution() {
             </div>
           </section>
 
-          <main className="content-shell content-panel clean">
-            <div className="content-head">
+          <main className="">
+            <div className="">
               <div>
                 <h3>Package Registry</h3>
                 <p>
@@ -2004,10 +1990,10 @@ export default function SoftwareDistribution() {
                 </p>
               </div>
 
-              <div className="content-actions">
+              <div className="">
                 <button
                   type="button"
-                  className="primary-btn"
+                  className=""
                   onClick={() => {
                     setOpenTreeMenuId(null);
                     setOpenVersionMenuId(null);
@@ -2018,15 +2004,15 @@ export default function SoftwareDistribution() {
                   <Plus size={14} />
                   New Package
                 </button>
-                <button type="button" className="soft-btn" onClick={exportCsv} title="Export CSV">
+                <button type="button" className="" onClick={exportCsv} title="Export CSV">
                   <Download size={16} />
                   Export
                 </button>
               </div>
             </div>
 
-            <div className="content-toolbar users-toolbar">
-              <label className="section-search user-search-inline">
+            <div className="">
+              <label className="">
                 <Search size={15} />
                 <input
                   value={searchTerm}
@@ -2037,14 +2023,14 @@ export default function SoftwareDistribution() {
                   placeholder="Search package or owner"
                 />
                 {searchTerm && (
-                  <button type="button" className="mini-btn" onClick={() => setSearchTerm("")}>
+                  <button type="button" className="" onClick={() => setSearchTerm("")}>
                     <X size={13} />
                   </button>
                 )}
               </label>
 
               <select
-                className="setting-select"
+                className=""
                 value={statusFilter}
                 onChange={(event) => {
                   setStatusFilter(event.target.value as "all" | PackageStatus);
@@ -2060,7 +2046,7 @@ export default function SoftwareDistribution() {
             </div>
 
             {apiError && (
-              <div className="settings-inline-alert">
+              <div className="">
                 <Server size={18} />
                 <div>
                   <strong>Data unavailable</strong>
@@ -2070,16 +2056,16 @@ export default function SoftwareDistribution() {
             )}
 
             {selectedPackages.length > 0 && (
-              <div className="settings-helper-card">
+              <div className="">
                 <strong>{selectedPackages.length} package(s) selected</strong>
                 <span>Bulk deployment uses one target scope and one schedule.</span>
-                <div className="content-actions">
-                  <button type="button" className="soft-btn" onClick={() => setSelectedIds(new Set())}>
+                <div className="">
+                  <button type="button" className="" onClick={() => setSelectedIds(new Set())}>
                     Clear
                   </button>
                   <button
                     type="button"
-                    className="primary-btn"
+                    className=""
                     onClick={() => setModal({ type: "send", packageIds: selectedPackages.map((item) => item.id) })}
                   >
                     <Send size={15} />
@@ -2087,7 +2073,7 @@ export default function SoftwareDistribution() {
                   </button>
                   <button
                     type="button"
-                    className="danger-btn"
+                    className=""
                     onClick={() => setModal({ type: "delete", packageIds: selectedPackages.map((item) => item.id) })}
                   >
                     <Trash2 size={15} />
@@ -2097,8 +2083,8 @@ export default function SoftwareDistribution() {
               </div>
             )}
 
-            <div className="pricing-table-card">
-              <table className="table">
+            <div className="">
+              <table className="">
                 <thead>
                   <tr>
                     <th>
@@ -2145,10 +2131,10 @@ export default function SoftwareDistribution() {
                             onChange={() => toggleSelected(item.id)}
                           />
                         </td>
-                        <td><span className="row-index-pill">{(page - 1) * PAGE_SIZE + index + 1}</span></td>
+                        <td><span className="">{(page - 1) * PAGE_SIZE + index + 1}</span></td>
                         <td>
-                          <div className="user-name">
-                            <span className="user-mini-avatar"><Package size={15} /></span>
+                          <div className="">
+                            <span className=""><Package size={15} /></span>
                             <div>
                               <strong>{item.name}</strong>
                               <small>{item.description}</small>
@@ -2157,7 +2143,7 @@ export default function SoftwareDistribution() {
                         </td>
                         <td>{item.version}</td>
                         <td>
-                          <span className={cx("user-pill", statusPillClass(item.status))}>
+                          <span className="">
                             {item.status}
                           </span>
                         </td>
@@ -2166,7 +2152,7 @@ export default function SoftwareDistribution() {
                         <td onClick={(event) => event.stopPropagation()}>
                           <button
                             type="button"
-                            className="primary-btn"
+                            className=""
                             disabled={!canSelect}
                             title={canSelect ? "Deploy package" : "Archived packages cannot be deployed"}
                             onClick={() => {
@@ -2199,70 +2185,70 @@ export default function SoftwareDistribution() {
       </div>
 
       {selectedPackage && (
-        <div className="user-modal-backdrop open" onMouseDown={() => setSelectedPackageId(null)}>
-          <aside className="user-modal advanced w-75" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="user-modal-head">
-              <div className="user-name">
-                <span className="user-mini-avatar"><Package size={18} /></span>
+        <div className="" onMouseDown={() => setSelectedPackageId(null)}>
+          <aside className="" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="">
+              <div className="">
+                <span className=""><Package size={18} /></span>
                 <div>
                   <h3>{selectedPackage.name}</h3>
                   <p>{selectedPackage.version} • {selectedPackage.status} • {selectedPackage.owner}</p>
                 </div>
               </div>
 
-              <button type="button" className="modal-close" onClick={() => setSelectedPackageId(null)}>
+              <button type="button" className="" onClick={() => setSelectedPackageId(null)}>
                 <X size={18} />
               </button>
             </div>
 
-            <div className="user-modal-body content-body gap-3">
-              <section className="wide audit-kpi-strip gap-3">
-                <div className="score-box"><span>Status:</span><strong>{selectedPackage.status}</strong><small>Current package state</small></div>
-                <div className="score-box"><span>Delivery Method:</span><strong>{deliveryMethodLabels[selectedPackage.lastDeliveryMethod]}</strong><small>Last selected channel</small></div>
-                <div className="score-box"><span>Targets:</span><strong>{selectedPackage.targetCount}</strong><small>Total assigned devices</small></div>
-                <div className="score-box"><span>Package Size:</span><strong>{selectedPackage.sizeAfterCompression}</strong><small>After compression</small></div>
+            <div className="">
+              <section className="">
+                <div className=""><span>Status:</span><strong>{selectedPackage.status}</strong><small>Current package state</small></div>
+                <div className=""><span>Delivery Method:</span><strong>{deliveryMethodLabels[selectedPackage.lastDeliveryMethod]}</strong><small>Last selected channel</small></div>
+                <div className=""><span>Targets:</span><strong>{selectedPackage.targetCount}</strong><small>Total assigned devices</small></div>
+                <div className=""><span>Package Size:</span><strong>{selectedPackage.sizeAfterCompression}</strong><small>After compression</small></div>
               </section>
 
-              <section className="policy-card wide p-4">
-                <div className="pricing-top"><div><h4>Basic Information</h4><p>Package identity and ownership details</p></div></div>
-                <div className="pricing-grid gap-3">
-                  <label className="form-field"><span>Package Name:</span><strong>{selectedPackage.name}</strong></label>
-                  <label className="form-field"><span>Version:</span><strong>{selectedPackage.version}</strong></label>
-                  <label className="form-field"><span>Owner:</span><strong>{selectedPackage.owner}</strong></label>
-                  <label className="form-field"><span>Registered Date:</span><strong>{formatDate(selectedPackage.registeredDate)}</strong></label>
-                  <label className="form-field wide"><span>Destination Directory:</span><strong>{selectedPackage.destinationDirectory}</strong></label>
-                  <label className="form-field wide"><span>Description:</span><strong>{selectedPackage.description}</strong></label>
+              <section className="">
+                <div className=""><div><h4>Basic Information</h4><p>Package identity and ownership details</p></div></div>
+                <div className="">
+                  <label className=""><span>Package Name:</span><strong>{selectedPackage.name}</strong></label>
+                  <label className=""><span>Version:</span><strong>{selectedPackage.version}</strong></label>
+                  <label className=""><span>Owner:</span><strong>{selectedPackage.owner}</strong></label>
+                  <label className=""><span>Registered Date:</span><strong>{formatDate(selectedPackage.registeredDate)}</strong></label>
+                  <label className=""><span>Destination Directory:</span><strong>{selectedPackage.destinationDirectory}</strong></label>
+                  <label className=""><span>Description:</span><strong>{selectedPackage.description}</strong></label>
                 </div>
               </section>
 
-              <section className="policy-card wide p-4">
-                <div className="pricing-top"><div><h4>Package Details</h4><p>Files, compression and execution scope</p></div></div>
-                <div className="pricing-grid gap-3">
-                  <label className="form-field"><span>Files:</span><strong>{selectedPackage.fileCount}</strong></label>
-                  <label className="form-field"><span>Versions:</span><strong>{selectedPackage.versions.join(", ")}</strong></label>
-                  <label className="form-field"><span>Before Compression:</span><strong>{selectedPackage.sizeBeforeCompression}</strong></label>
-                  <label className="form-field"><span>After Compression:</span><strong>{selectedPackage.sizeAfterCompression}</strong></label>
-                  <label className="form-field"><span>Remote Execute File:</span><strong>{selectedPackage.remoteExecuteFile}</strong></label>
-                  <label className="form-field"><span>Exclude OS:</span><strong>{selectedPackage.excludeOS}</strong></label>
+              <section className="">
+                <div className=""><div><h4>Package Details</h4><p>Files, compression and execution scope</p></div></div>
+                <div className="">
+                  <label className=""><span>Files:</span><strong>{selectedPackage.fileCount}</strong></label>
+                  <label className=""><span>Versions:</span><strong>{selectedPackage.versions.join(", ")}</strong></label>
+                  <label className=""><span>Before Compression:</span><strong>{selectedPackage.sizeBeforeCompression}</strong></label>
+                  <label className=""><span>After Compression:</span><strong>{selectedPackage.sizeAfterCompression}</strong></label>
+                  <label className=""><span>Remote Execute File:</span><strong>{selectedPackage.remoteExecuteFile}</strong></label>
+                  <label className=""><span>Exclude OS:</span><strong>{selectedPackage.excludeOS}</strong></label>
                 </div>
               </section>
 
-              <section className="policy-card wide p-4">
-                <div className="pricing-top"><div><h4>Last Deployment</h4><p>Read-only deployment reference</p></div></div>
-                <div className="pricing-grid gap-3">
-                  <label className="form-field"><span>Last Method:</span><strong>{deliveryMethodLabels[selectedPackage.lastDeliveryMethod]}</strong></label>
-                  <label className="form-field"><span>Last Deployment:</span><strong>{formatDate(selectedPackage.lastDeployment)}</strong></label>
+              <section className="">
+                <div className=""><div><h4>Last Deployment</h4><p>Read-only deployment reference</p></div></div>
+                <div className="">
+                  <label className=""><span>Last Method:</span><strong>{deliveryMethodLabels[selectedPackage.lastDeliveryMethod]}</strong></label>
+                  <label className=""><span>Last Deployment:</span><strong>{formatDate(selectedPackage.lastDeployment)}</strong></label>
                 </div>
               </section>
             </div>
 
-            <div className="user-modal-foot">
-              <button type="button" className="soft-btn" onClick={() => setSelectedPackageId(null)}>
+            <div className="">
+              <button type="button" className="" onClick={() => setSelectedPackageId(null)}>
                 Close
               </button>
               <button
                 type="button"
-                className="primary-btn"
+                className=""
                 disabled={!isDeployable(selectedPackage)}
                 onClick={() => {
                   const packageId = selectedPackage.id;

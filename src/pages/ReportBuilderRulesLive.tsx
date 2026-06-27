@@ -1,8 +1,6 @@
 import { DragEvent, useMemo, useState, type CSSProperties } from "react";
 import { previewReport } from "../services/reportService";
 import { buildBuilderReportHtml } from "../utils/reportPdfBuilderOutput";
-import "../styles/report-builder-rules.css";
-
 type Category = "Standard" | "Dynamic";
 type Pack = { id: string; title: string; subtitle: string; category: Category; tone: string; icon: string; standalone?: boolean; dynamic?: boolean };
 type RangePreset = "today" | "this-week" | "this-month" | "last-30-days" | "custom";

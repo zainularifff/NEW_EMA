@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import "../styles/ema-layout.css";
 import worldtechLogoColor from "../assets/logo-worldtech-color.png";
 import npointsLogo from "../assets/npoints-logo.png";
 

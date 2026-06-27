@@ -18,7 +18,7 @@ const defaultPageMeta: PageMeta = {
 
 const pageMeta: Record<string, PageMeta> = {
   "/dashboard": {
-    title: "IT OperationDashboard",
+    title: "IT Operation Dashboard",
     subtitle: "Overview of your EMA workspace.",
     searchPlaceholder: "Search assets, users, devices...",
   },

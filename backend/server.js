@@ -47715,6 +47715,13 @@ console.log("Software Policy API registered");
 // ============================================================
 
 
+// 1. Import router AI Assist
+const aiAssistRouter = require('./routes/aiAssist'); 
+
+// 2. Daftarkan laluan (route) AI Assist
+app.use('/api/ai-assist', authenticateToken, aiAssistRouter);
+
+console.log("AI Assist API registered");
 
 
 /*

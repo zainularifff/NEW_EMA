@@ -47,11 +47,8 @@ import restrictionService, {
   WebGroupUrl,
   WhitelistSoftware,
 } from '../services/restrictionService';
-import '../styles/app-restriction-v2.css';
 
-import "../styles/ema-standard-controls.css";
-import "../styles/ema-table-pagination-standard.css";
-import "../styles/appweb-restriction-final.css";
+
 type SubTab = 'status' | 'settings' | 'policyStatus';
 type NoticeTone = 'success' | 'warning' | 'error' | 'info';
 type NoticeState = { id: number; text: string; tone: NoticeTone } | null;
@@ -193,25 +190,25 @@ function CompactPagination({
   });
 
   return (
-    <div className="uam-pagination global-style appweb-compact-pagination">
-      <span className="uam-page-status appweb-page-range">{start}-{end} of {totalCount}</span>
-      <div className="appweb-page-controls" aria-label="Pagination controls">
-        <button type="button" className="uam-page-icon" disabled={safePage === 1} onClick={() => onPageChange(safePage - 1)}>
+    <div className="">
+      <span className="">{start}-{end} of {totalCount}</span>
+      <div className="" aria-label="Pagination controls">
+        <button type="button" className="" disabled={safePage === 1} onClick={() => onPageChange(safePage - 1)}>
           Prev
         </button>
         {pages.map((item, index) => {
           const previous = pages[index - 1];
           const needsGap = previous && item - previous > 1;
           return (
-            <span key={item} className="appweb-page-item">
-              {needsGap && <span className="uam-page-status appweb-page-gap">...</span>}
-              <button type="button" className={clsx('uam-page-icon', item === safePage && 'uam-page-current')} onClick={() => onPageChange(item)}>
+            <span key={item} className="">
+              {needsGap && <span className="">...</span>}
+              <button type="button" className="" onClick={() => onPageChange(item)}>
                 {item}
               </button>
             </span>
           );
         })}
-        <button type="button" className="uam-page-icon" disabled={safePage === totalPages} onClick={() => onPageChange(safePage + 1)}>
+        <button type="button" className="" disabled={safePage === totalPages} onClick={() => onPageChange(safePage + 1)}>
           Next
         </button>
       </div>
@@ -255,11 +252,11 @@ function AppButton({
   return (
     <button
       type="button"
-      className={clsx(variantClass, sizeClass, className)}
+      className=""
       disabled={disabled || loading}
       {...props}
     >
-      {loading ? <Loader2 size={13} className="animate-spin" /> : leftIcon}
+      {loading ? <Loader2 size={13} className="" /> : leftIcon}
       {children}
     </button>
   );
@@ -299,17 +296,17 @@ function AppTable<RowType extends { [key: string]: any }>({
   const pageEnd = Math.min(rows.length, startIndex + APPWEB_TABLE_PAGE_SIZE);
 
   return (
-    <div className={clsx('pricing-table-card', className)}>
-      {summary && <div className="content-head">{summary}</div>}
-      <div className="table-responsive">
-        <table className="table align-middle mb-0">
+    <div className="">
+      {summary && <div className="">{summary}</div>}
+      <div className="">
+        <table className="">
           <thead>
             <tr>
               {columns.map((column) => (
                 <th
                   key={String(column.key)}
-                  style={{ width: column.width }}
-                  className={clsx(column.align === 'end' && 'text-end', column.align === 'center' && 'text-center')}
+                  style={{}}
+                  className=""
                 >
                   {column.header}
                 </th>
@@ -319,17 +316,17 @@ function AppTable<RowType extends { [key: string]: any }>({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={columns.length} className="py-5 text-center">
-                  <span className="d-inline-flex align-items-center gap-2 text-muted fw-bold small">
-                    <Loader2 size={16} className="animate-spin" /> Loading records...
+                <td colSpan={columns.length} className="">
+                  <span className="">
+                    <Loader2 size={16} className="" /> Loading records...
                   </span>
                 </td>
               </tr>
             ) : pagedRows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="py-5 text-center">
-                  <div className="fw-black text-slate-700">{emptyTitle}</div>
-                  <div className="mt-1 text-[11px] font-bold text-slate-400">{emptyDescription}</div>
+                <td colSpan={columns.length} className="">
+                  <div className="">{emptyTitle}</div>
+                  <div className="">{emptyDescription}</div>
                 </td>
               </tr>
             ) : (
@@ -340,7 +337,7 @@ function AppTable<RowType extends { [key: string]: any }>({
                     return (
                       <td
                         key={String(column.key)}
-                        className={clsx(column.align === 'end' && 'text-end', column.align === 'center' && 'text-center')}
+                        className=""
                       >
                         {value as ReactNode}
                       </td>
@@ -354,25 +351,25 @@ function AppTable<RowType extends { [key: string]: any }>({
       </div>
 
       {rows.length > APPWEB_TABLE_PAGE_SIZE && (
-        <div className="uam-pagination global-style appweb-compact-pagination appweb-table-pagination">
-          <span className="uam-page-status appweb-page-range">{pageStart}-{pageEnd} of {rows.length}</span>
-          <div className="appweb-page-controls" aria-label="Table pagination controls">
-            <button type="button" className="uam-page-icon" disabled={safePage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
+        <div className="">
+          <span className="">{pageStart}-{pageEnd} of {rows.length}</span>
+          <div className="" aria-label="Table pagination controls">
+            <button type="button" className="" disabled={safePage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
               Prev
             </button>
             {pages.map((item, index) => {
               const previous = pages[index - 1];
               const needsGap = previous && item - previous > 1;
               return (
-                <span key={item} className="appweb-page-item">
-                  {needsGap && <span className="uam-page-status appweb-page-gap">...</span>}
-                  <button type="button" className={clsx('uam-page-icon', item === safePage && 'uam-page-current')} onClick={() => setPage(item)}>
+                <span key={item} className="">
+                  {needsGap && <span className="">...</span>}
+                  <button type="button" className="" onClick={() => setPage(item)}>
                     {item}
                   </button>
                 </span>
               );
             })}
-            <button type="button" className="uam-page-icon" disabled={safePage === totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>
+            <button type="button" className="" disabled={safePage === totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>
               Next
             </button>
           </div>
@@ -1811,7 +1808,7 @@ export default function AppRestriction() {
   };
 
   const renderTree = (nodes: RestrictionTreeNode[], depth = 0) => (
-    <div className={depth > 0 ? 'ema-sidebar-tree-children is-nested' : 'ema-sidebar-tree-level'}>
+    <div className="">
       {nodes.map((node) => {
         const hasChildren = Boolean(node.children?.length);
         const isOpen = expandedGroups.has(node.id);
@@ -1829,17 +1826,11 @@ export default function AppRestriction() {
         };
 
         return (
-          <div key={node.id} className="ema-sidebar-tree-branch">
-            <div className={clsx(
-              'ema-sidebar-tree-node',
-              `depth-${Math.min(depth, 8)}`,
-              isSelected && 'is-selected is-active',
-              hasChildren && 'is-expandable',
-              isDevice && 'is-device-node',
-            )}>
+          <div key={node.id} className="">
+            <div className="">
               <button
                 type="button"
-                className="ema-sidebar-tree-toggle"
+                className=""
                 aria-label={hasChildren ? (isOpen ? `Collapse ${displayLabel}` : `Expand ${displayLabel}`) : displayLabel}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -1851,13 +1842,13 @@ export default function AppRestriction() {
 
               <button
                 type="button"
-                className="ema-sidebar-tree-main"
+                className=""
                 title={node.Object_Full_Name || displayLabel}
                 onClick={handleNodeAction}
               >
-                <span className="ema-sidebar-tree-icon"><Icon size={15} /></span>
-                <span className="ema-sidebar-tree-label">{displayLabel}</span>
-                {!isRootNode && countLabel ? <span className="ema-sidebar-tree-count">{countLabel}</span> : null}
+                <span className=""><Icon size={15} /></span>
+                <span className="">{displayLabel}</span>
+                {!isRootNode && countLabel ? <span className="">{countLabel}</span> : null}
               </button>
 
               <span />
@@ -1872,317 +1863,11 @@ export default function AppRestriction() {
 
 
   return (
-    <main className="settings-module-root hardware-module-root ema-settings-pro appwebrestriction-module apprestriction-v2-scope container-fluid p-3 p-xl-4" data-section="appwebrestriction">
-      <style>{`
-
-
-        /* Hardware sidebar fix: wider panel + keep Branch/Statistics switcher compact. */
-        .hardware-module-root .settings-layout.hardware-settings-layout {
-          grid-template-columns: minmax(300px, 322px) minmax(0, 1fr) !important;
-        }
-
-        .hardware-module-root .settings-menu.hardware-left-panel {
-          min-width: 300px !important;
-        }
-
-        .hardware-module-root .settings-menu > .ema-module-sidebar-switcher {
-          flex: 0 0 auto !important;
-          margin: 0 !important;
-        }
-
-        .hardware-module-root .settings-menu > .ema-sidebar-content {
-          flex: 1 1 auto !important;
-          padding-top: 0.65rem !important;
-        }
-
-        .hardware-module-root .ema-sidebar-subpanel {
-          justify-content: flex-start !important;
-        }
-
-        .hardware-module-root .ema-sidebar-tree {
-          min-height: 0 !important;
-        }
-
-
-        /* Sidebar search fix: keep only one visible search container. */
-        .hardware-module-root .settings-menu.hardware-left-panel .ema-sidebar-field.section-search {
-          width: 100% !important;
-          display: flex !important;
-          align-items: center !important;
-          gap: 0.5rem !important;
-          min-height: 42px !important;
-          padding: 0.55rem 0.65rem !important;
-          border: 1px solid rgba(148, 163, 184, 0.32) !important;
-          border-radius: 14px !important;
-          background: rgba(248, 250, 252, 0.92) !important;
-          box-shadow: none !important;
-        }
-
-        .hardware-module-root .settings-menu.hardware-left-panel .ema-sidebar-field.section-search svg {
-          flex: 0 0 auto !important;
-          color: #64748b !important;
-        }
-
-        .hardware-module-root .settings-menu.hardware-left-panel .ema-sidebar-field.section-search input {
-          flex: 1 1 auto !important;
-          width: 100% !important;
-          min-width: 0 !important;
-          height: auto !important;
-          min-height: 0 !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          border: 0 !important;
-          border-radius: 0 !important;
-          outline: none !important;
-          background: transparent !important;
-          box-shadow: none !important;
-          color: #0f172a !important;
-        }
-
-        .hardware-module-root .settings-menu.hardware-left-panel .ema-sidebar-field.section-search input:focus,
-        .hardware-module-root .settings-menu.hardware-left-panel .ema-sidebar-field.section-search input:focus-visible {
-          border: 0 !important;
-          outline: none !important;
-          background: transparent !important;
-          box-shadow: none !important;
-        }
-
-        .hardware-module-root .settings-menu.hardware-left-panel .ema-sidebar-search-clear {
-          flex: 0 0 auto !important;
-          width: 24px !important;
-          height: 24px !important;
-          display: inline-flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          padding: 0 !important;
-          border: 0 !important;
-          border-radius: 999px !important;
-          background: transparent !important;
-          color: #64748b !important;
-          box-shadow: none !important;
-        }
-
-        .hardware-module-root .settings-menu.hardware-left-panel .ema-sidebar-search-clear:hover {
-          background: rgba(148, 163, 184, 0.16) !important;
-          color: #0f172a !important;
-        }
-
-
-
-        /* App Restriction hero KPI fix: keep header KPI cards above the main card after save/toast messages. */
-        .appwebrestriction-module .settings-hero.ema-hero-kpi-right {
-          position: relative !important;
-          z-index: 5 !important;
-          display: grid !important;
-          grid-template-columns: minmax(260px, 1fr) minmax(560px, 58%) !important;
-          align-items: center !important;
-          gap: 1rem !important;
-          min-height: 124px !important;
-          overflow: hidden !important;
-          isolation: isolate !important;
-        }
-
-        .appwebrestriction-module .settings-hero.ema-hero-kpi-right > div:first-child {
-          min-width: 0 !important;
-          position: relative !important;
-          z-index: 2 !important;
-        }
-
-        .appwebrestriction-module .settings-hero.ema-hero-kpi-right h2,
-        .appwebrestriction-module .settings-hero.ema-hero-kpi-right p {
-          max-width: 100% !important;
-          overflow: hidden !important;
-          text-overflow: ellipsis !important;
-          white-space: nowrap !important;
-        }
-
-        .appwebrestriction-module .settings-hero.ema-hero-kpi-right .settings-inline-alert {
-          display: none !important;
-        }
-
-        .appwebrestriction-module .settings-score.ema-kpi-right-pair {
-          position: relative !important;
-          z-index: 6 !important;
-          width: 100% !important;
-          min-width: 0 !important;
-          display: grid !important;
-          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-          gap: 0.75rem !important;
-          align-items: stretch !important;
-          justify-content: stretch !important;
-        }
-
-        .appwebrestriction-module .settings-score.ema-kpi-right-pair .score-box {
-          width: 100% !important;
-          min-width: 0 !important;
-          min-height: 76px !important;
-          height: 76px !important;
-          margin: 0 !important;
-          overflow: hidden !important;
-        }
-
-        .appwebrestriction-module .settings-score.ema-kpi-right-pair .score-box span,
-        .appwebrestriction-module .settings-score.ema-kpi-right-pair .score-box strong,
-        .appwebrestriction-module .settings-score.ema-kpi-right-pair .score-box small {
-          max-width: 100% !important;
-          overflow: hidden !important;
-          text-overflow: ellipsis !important;
-          white-space: nowrap !important;
-        }
-
-        .appwebrestriction-module .appweb-main-card {
-          position: relative !important;
-          z-index: 1 !important;
-        }
-
-        @media (max-width: 1280px) {
-          .appwebrestriction-module .settings-hero.ema-hero-kpi-right {
-            grid-template-columns: 1fr !important;
-            min-height: auto !important;
-            overflow: visible !important;
-          }
-
-          .appwebrestriction-module .settings-score.ema-kpi-right-pair {
-            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-          }
-        }
-
-
-
-        /* App Restriction pagination fix: keep every pagination control in one clean row. */
-        .appwebrestriction-module .appweb-compact-pagination {
-          width: 100% !important;
-          min-width: 0 !important;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: space-between !important;
-          gap: 0.75rem !important;
-          flex-wrap: nowrap !important;
-          margin: 0 !important;
-          padding: 0.72rem 0.95rem !important;
-          border-top: 1px solid rgba(226, 232, 240, 0.95) !important;
-          background: rgba(248, 250, 252, 0.92) !important;
-          overflow-x: auto !important;
-          overflow-y: hidden !important;
-          scrollbar-width: thin !important;
-        }
-
-        .appwebrestriction-module .appweb-compact-pagination .appweb-page-range {
-          flex: 0 0 auto !important;
-          min-width: max-content !important;
-          margin: 0 !important;
-          white-space: nowrap !important;
-          font-size: 0.72rem !important;
-          font-weight: 800 !important;
-          color: #64748b !important;
-        }
-
-        .appwebrestriction-module .appweb-page-controls {
-          flex: 0 0 auto !important;
-          min-width: max-content !important;
-          display: inline-flex !important;
-          align-items: center !important;
-          justify-content: flex-end !important;
-          gap: 0.45rem !important;
-          white-space: nowrap !important;
-        }
-
-        .appwebrestriction-module .appweb-page-item {
-          flex: 0 0 auto !important;
-          display: inline-flex !important;
-          align-items: center !important;
-          gap: 0.35rem !important;
-          margin: 0 !important;
-          white-space: nowrap !important;
-        }
-
-        .appwebrestriction-module .appweb-page-gap {
-          flex: 0 0 auto !important;
-          display: inline-flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          min-width: 22px !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          color: #64748b !important;
-        }
-
-        .appwebrestriction-module .appweb-compact-pagination .uam-page-icon {
-          flex: 0 0 auto !important;
-          width: auto !important;
-          min-width: 34px !important;
-          height: 34px !important;
-          display: inline-flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          margin: 0 !important;
-          padding: 0 0.7rem !important;
-          border-radius: 999px !important;
-          white-space: nowrap !important;
-          line-height: 1 !important;
-        }
-
-        .appwebrestriction-module .appweb-compact-pagination .uam-page-current {
-          min-width: 34px !important;
-          width: 34px !important;
-          padding: 0 !important;
-        }
-
-        .appwebrestriction-module .pricing-table-card .appweb-table-pagination {
-          border-top: 1px solid rgba(226, 232, 240, 0.95) !important;
-          border-radius: 0 0 16px 16px !important;
-        }
-
-        .appwebrestriction-module .pricing-table-card .appweb-table-pagination .appweb-page-controls {
-          gap: 0.5rem !important;
-        }
-
-        .appwebrestriction-module .appweb-list-panel .appweb-compact-pagination {
-          border-top: 1px solid rgba(226, 232, 240, 0.95) !important;
-          border-radius: 0 0 16px 16px !important;
-        }
-
-        .appwebrestriction-module .appweb-list-panel .appweb-list-scroll {
-          min-height: 0 !important;
-          max-height: 432px !important;
-          overflow-y: auto !important;
-          overflow-x: hidden !important;
-        }
-
-        .appwebrestriction-module .appweb-list-panel .user-row {
-          min-width: 0 !important;
-        }
-
-        @media (max-width: 900px) {
-          .appwebrestriction-module .appweb-compact-pagination {
-            align-items: flex-start !important;
-            flex-direction: column !important;
-            gap: 0.55rem !important;
-          }
-
-          .appwebrestriction-module .appweb-page-controls {
-            width: 100% !important;
-            justify-content: flex-start !important;
-            overflow-x: auto !important;
-            padding-bottom: 0.1rem !important;
-          }
-        }
-
-        @media (max-width: 1100px) {
-          .hardware-module-root .settings-layout.hardware-settings-layout {
-            grid-template-columns: 1fr !important;
-          }
-
-          .hardware-module-root .settings-menu.hardware-left-panel {
-            min-width: 0 !important;
-          }
-        }
-
-      `}</style>
-      {notice && (
-        <div className="settings-toast-layer">
-          <div className={clsx('settings-toast', `settings-toast-${notice.tone}`)}>
-            <span className="settings-toast-icon"><Info size={17} /></span>
+    <main className="" data-section="appwebrestriction">
+{notice && (
+        <div className="">
+          <div className="">
+            <span className=""><Info size={17} /></span>
             <div>
               <strong>
                 {notice.tone === 'error' ? 'Action failed' : notice.tone === 'warning' ? 'Action needed' : notice.tone === 'info' ? 'Status update' : 'Action completed'}
@@ -2195,16 +1880,16 @@ export default function AppRestriction() {
           </div>
         </div>
       )}
-      <div className="settings-layout hardware-settings-layout d-grid gap-3">
-        <aside className="settings-menu hardware-left-panel ema-panel-surface">
-          <div className="panel-head">
+      <div className="">
+        <aside className="">
+          <div className="">
             <span>APP RESTRICTION</span>
             <strong>Restriction Control</strong>
             <small>Device scope and application policies.</small>
           </div>
 
           <nav
-            className="settings-menu-list ema-module-sidebar-nav ema-module-sidebar-switcher"
+            className=""
             role="tablist"
             aria-label="Restriction module navigation"
           >
@@ -2215,7 +1900,7 @@ export default function AppRestriction() {
                 <button
                   key={item.id}
                   type="button"
-                  className={clsx('setting-btn', selected && 'active')}
+                  className=""
                   title={`${item.label} - ${item.helper}`}
                   onClick={() => {
                     setActiveModule(item.id);
@@ -2224,16 +1909,16 @@ export default function AppRestriction() {
                     setMessage(null);
                   }}
                 >
-                  <span className="setting-icon"><Icon size={16} /></span>
+                  <span className=""><Icon size={16} /></span>
                   <span><strong>{item.label}</strong><small>{item.helper}</small></span>
                 </button>
               );
             })}
           </nav>
 
-          <div className="ema-sidebar-content">
-            <div className="ema-sidebar-subpanel">
-              <div className="section-search ema-sidebar-field">
+          <div className="">
+            <div className="">
+              <div className="">
                 <Search size={15} />
                 <input
                   id="restrictionSidebarSearch"
@@ -2241,26 +1926,26 @@ export default function AppRestriction() {
                   onChange={(event) => setTargetTreeSearch(event.target.value)}
                   placeholder="Search branch / device..."
                 />
-                {targetTreeSearch && <button type="button" className="ema-sidebar-search-clear" onClick={() => setTargetTreeSearch('')}><X size={14} /></button>}
+                {targetTreeSearch && <button type="button" className="" onClick={() => setTargetTreeSearch('')}><X size={14} /></button>}
               </div>
 
-              <div className="ema-sidebar-tree" role="tree" aria-label="App restriction branch tree">
+              <div className="" role="tree" aria-label="App restriction branch tree">
                 {loading && treeNodes.length === 0 ? (
-                  <div className="ema-sidebar-empty"><Loader2 className="me-2 animate-spin" size={14} /> Loading branch scope...</div>
+                  <div className=""><Loader2 className="" size={14} /> Loading branch scope...</div>
                 ) : filteredTreeNodes.length > 0 ? (
                   renderTree(filteredTreeNodes)
                 ) : (
-                  <div className="ema-sidebar-empty">No branch or device found.</div>
+                  <div className="">No branch or device found.</div>
                 )}
               </div>
             </div>
           </div>
         </aside>
 
-        <section className="settings-content appweb-settings-content d-grid gap-3">
-          <div className="settings-hero ema-hero-kpi-right ema-panel-surface">
+        <section className="">
+          <div className="">
             <div>
-              <div className="eyebrow d-inline-flex align-items-center gap-1 mb-2">
+              <div className="">
                 <span>Policy Management</span>
                 <ChevronRight size={12} />
                 <span>{moduleConfig.label}</span>
@@ -2272,9 +1957,9 @@ export default function AppRestriction() {
               </p>
             </div>
 
-            <div className="settings-score ema-kpi-right-pair">
+            <div className="">
               {summaryCards.map((card) => (
-                <button key={card.label} className="score-box text-start" type="button">
+                <button key={card.label} className="" type="button">
                   <span>{card.label}</span>
                   <strong>{card.value}</strong>
                   <small>{card.helper}</small>
@@ -2285,15 +1970,15 @@ export default function AppRestriction() {
 
 
 
-          <div className="content-shell ema-panel-surface appweb-main-card">
-            <div className="content-head">
-              <div className="content-actions">
+          <div className="">
+            <div className="">
+              <div className="">
                 {moduleConfig.tabs.map((tab) => (
                   <button
                     key={tab}
                     type="button"
                     onClick={() => setActiveTab(tab)}
-                    className={clsx('soft-btn', activeTab === tab && 'is-active')}
+                    className=""
                   >
                     {tabLabels[tab]}
                   </button>
@@ -2301,11 +1986,11 @@ export default function AppRestriction() {
               </div>
 
               {(activeModule === 'appBlacklist' || activeModule === 'appWhitelist') && (
-                <div className="flex flex-wrap gap-2">
+                <div className="">
                   <button
                     type="button"
                     onClick={openPackageManager}
-                    className="app-btn btn btn-sm btn-primary"
+                    className=""
                   >
                     <Package size={13} /> Package Manager
                   </button>
@@ -2313,7 +1998,7 @@ export default function AppRestriction() {
               )}
             </div>
 
-            <div className="content-body appweb-main-body">
+            <div className="">
               {activeTab === 'status' && activeModule !== 'webRestriction' && renderRestrictionStatus()}
               {activeTab === 'settings' && renderPolicySettings()}
               {activeTab === 'policyStatus' && renderPolicyStatus()}
@@ -2389,24 +2074,24 @@ export default function AppRestriction() {
     ];
 
     return (
-      <div className="d-grid gap-3">
-        <div className="content-toolbar users-toolbar">
-          <div className="row g-2 align-items-end w-100 m-0">
-            <div className="col-12 col-sm-auto">
-              <label className="form-field-label">Start Date</label>
-              <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="setting-input" />
+      <div className="">
+        <div className="">
+          <div className="">
+            <div className="">
+              <label className="">Start Date</label>
+              <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="" />
             </div>
-            <div className="col-12 col-sm-auto">
-              <label className="form-field-label">End Date</label>
-              <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="setting-input" />
+            <div className="">
+              <label className="">End Date</label>
+              <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="" />
             </div>
-            <div className="col-12 col-sm-auto">
-              <label className="inline-check mb-0">
-                <input className="form-check-input" type="checkbox" checked={includeSub} onChange={(event) => setIncludeSub(event.target.checked)} />
-                <span className="form-check-label">Include Sub-Dept</span>
+            <div className="">
+              <label className="">
+                <input className="" type="checkbox" checked={includeSub} onChange={(event) => setIncludeSub(event.target.checked)} />
+                <span className="">Include Sub-Dept</span>
               </label>
             </div>
-            <div className="col-12 col-sm-auto">
+            <div className="">
               <AppButton size="sm" variant="primary" onClick={loadPolicyData} loading={loading} leftIcon={<RefreshCw size={13} />}>
                 Refresh
               </AppButton>
@@ -2425,10 +2110,10 @@ export default function AppRestriction() {
           summary={(
             <>
               <div>
-                <strong className="ema-title">{statusTitle}</strong>
+                <strong className="">{statusTitle}</strong>
                 <span>{selectedTarget?.label || 'All Branches'} · {startDate} until {endDate}</span>
               </div>
-              <span className="badge rounded-pill text-bg-light border">
+              <span className="">
                 {loading ? 'Loading...' : `${rows.length} record${rows.length === 1 ? '' : 's'}`}
               </span>
             </>
@@ -2440,7 +2125,7 @@ export default function AppRestriction() {
 
   function renderPolicyActionButtons() {
     return (
-      <div className="content-actions justify-content-end border-top pt-3">
+      <div className="">
         <AppButton
           size="sm"
           variant="secondary"
@@ -2465,42 +2150,42 @@ export default function AppRestriction() {
 
   function renderBasicSettingsSection(layout: 'default' | 'whitelist' = 'default') {
     return (
-      <section className={clsx('policy-card h-100', layout === 'whitelist' && 'h-100')}>
-        <div className="policy-top">
+      <section className="">
+        <div className="">
           <div>
             <h4>Basic Setting</h4>
             <p>Policy assignment, update interval and inheritance control.</p>
           </div>
-          <span className={clsx('user-pill info text-capitalize', tone.soft)}>
+          <span className="">
             {policyDetail?.source || 'none'} policy
           </span>
         </div>
 
-        <div className="row g-3">
-          <div className="col-12 col-md-6">
-            <label className={labelClass}>Policy ID</label>
-            <input value={form.policyId || 'New Policy'} disabled className={fieldClass} />
+        <div className="">
+          <div className="">
+            <label className="">Policy ID</label>
+            <input value={form.policyId || 'New Policy'} disabled className="" />
           </div>
-          <div className="col-12 col-md-6">
-            <label className={labelClass}>Result Update Interval (min.)</label>
-            <input value={form.updateInterval} onChange={(event) => updateForm('updateInterval', event.target.value)} disabled={isInherited} className={fieldClass} />
+          <div className="">
+            <label className="">Result Update Interval (min.)</label>
+            <input value={form.updateInterval} onChange={(event) => updateForm('updateInterval', event.target.value)} disabled={isInherited} className="" />
           </div>
-          <div className="col-12 col-md-6">
-            <label className="inline-check mb-0 h-100">
-              <input className="form-check-input" type="checkbox" checked={form.inheritPolicy} disabled={selectedTarget?.type === 'root'} onChange={(event) => updateForm('inheritPolicy', event.target.checked)} />
+          <div className="">
+            <label className="">
+              <input className="" type="checkbox" checked={form.inheritPolicy} disabled={selectedTarget?.type === 'root'} onChange={(event) => updateForm('inheritPolicy', event.target.checked)} />
               <span>Inherit Policy</span>
             </label>
           </div>
-          <div className="col-12 col-md-6">
-            <label className="inline-check mb-0 h-100">
-              <input className="form-check-input" type="checkbox" checked={form.exception} disabled={isInherited} onChange={(event) => updateForm('exception', event.target.checked)} />
+          <div className="">
+            <label className="">
+              <input className="" type="checkbox" checked={form.exception} disabled={isInherited} onChange={(event) => updateForm('exception', event.target.checked)} />
               <span>Do not apply restriction / Exception</span>
             </label>
           </div>
         </div>
 
         {isInherited && (
-          <div className="settings-inline-alert mt-3">
+          <div className="">
             This target is currently using an inherited policy{policyDetail?.sourceLabel ? ` from ${policyDetail.sourceLabel}` : ''}. Uncheck Inherit Policy to create or update a custom policy for the selected target.
           </div>
         )}
@@ -2517,13 +2202,13 @@ export default function AppRestriction() {
 
     if (activeModule === 'appWhitelist') {
       return (
-        <div className="d-grid gap-3">
-          <div className="settings-helper-card">
+        <div className="">
+          <div className="">
             <strong>{moduleConfig.label} Policy Settings</strong>
             <span>{settingsIntro}</span>
           </div>
 
-          <div className="role-grid">
+          <div className="">
             {renderBasicSettingsSection('whitelist')}
             {renderWhitelistRestrictionSettings()}
           </div>
@@ -2535,13 +2220,13 @@ export default function AppRestriction() {
     }
 
     return (
-      <div className="d-grid gap-3">
-        <div className="settings-helper-card">
+      <div className="">
+        <div className="">
           <strong>{moduleConfig.label} Policy Settings</strong>
           <span>{settingsIntro}</span>
         </div>
 
-        <div className="role-grid">
+        <div className="">
           {renderBasicSettingsSection()}
           {activeModule === 'appBlacklist' && renderAppRestrictionSettings()}
           {activeModule === 'webRestriction' && renderWebRestrictionSettings()}
@@ -2564,36 +2249,36 @@ export default function AppRestriction() {
     ];
 
     return (
-      <section className="policy-card h-100">
-        <div className="policy-top">
+      <section className="">
+        <div className="">
           <div>
             <h4>Restriction Method</h4>
             <p>Choose how the app restriction policy responds when a selected package is detected.</p>
           </div>
-          <span className="user-pill info">{appRestrictionLabel(form.appRestrictType)}</span>
+          <span className="">{appRestrictionLabel(form.appRestrictType)}</span>
         </div>
 
-        <div className="row g-2">
+        <div className="">
           {options.map(([value, label, helper]) => (
-            <div key={value} className="col-12 col-xl-4">
-              <label className={clsx('inline-check mb-0 h-100', form.appRestrictType === value && 'border-primary bg-primary-subtle text-primary')}>
-                <input className="form-check-input" type="radio" name="appRestrictType" checked={form.appRestrictType === value} disabled={isInherited} onChange={() => updateForm('appRestrictType', value)} />
+            <div key={value} className="">
+              <label className="">
+                <input className="" type="radio" name="appRestrictType" checked={form.appRestrictType === value} disabled={isInherited} onChange={() => updateForm('appRestrictType', value)} />
                 <span>
-                  <strong className="d-block">{label}</strong>
-                  <small className="d-block text-muted fw-bold">{helper}</small>
+                  <strong className="">{label}</strong>
+                  <small className="">{helper}</small>
                 </span>
               </label>
             </div>
           ))}
         </div>
 
-        <div className="mt-3">
-          <label className={labelClass}>Warning Message</label>
-          <textarea value={form.appNoticeMessage} onChange={(event) => updateForm('appNoticeMessage', event.target.value)} disabled={isInherited} className="setting-textarea" placeholder="Message shown to the user when this policy triggers." />
+        <div className="">
+          <label className="">Warning Message</label>
+          <textarea value={form.appNoticeMessage} onChange={(event) => updateForm('appNoticeMessage', event.target.value)} disabled={isInherited} className="" placeholder="Message shown to the user when this policy triggers." />
         </div>
 
-        <label className="inline-check mt-3 mb-0">
-          <input className="form-check-input" type="checkbox" checked={form.versionCompare} disabled={isInherited} onChange={(event) => updateForm('versionCompare', event.target.checked)} />
+        <label className="">
+          <input className="" type="checkbox" checked={form.versionCompare} disabled={isInherited} onChange={(event) => updateForm('versionCompare', event.target.checked)} />
           <span>Version comparison</span>
         </label>
       </section>
@@ -2617,61 +2302,61 @@ export default function AppRestriction() {
 
     return (
       <>
-        <section className="policy-card h-100">
-          <div className="policy-top">
+        <section className="">
+          <div className="">
             <div>
               <h4>Restriction of Process</h4>
               <p>Control process behaviour for software outside the permitted list.</p>
             </div>
-            <span className="user-pill info">{whitelistProcessLabel(form.processRestrictType)}</span>
+            <span className="">{whitelistProcessLabel(form.processRestrictType)}</span>
           </div>
 
-          <div className="row g-2">
+          <div className="">
             {processOptions.map(([value, label]) => (
-              <div key={value} className="col-12 col-sm-6">
-                <label className={clsx('inline-check mb-0 h-100', form.processRestrictType === value && 'border-primary bg-primary-subtle text-primary')}>
-                  <input className="form-check-input" type="radio" name="processRestrictType" checked={form.processRestrictType === value} disabled={isInherited} onChange={() => updateForm('processRestrictType', value)} />
+              <div key={value} className="">
+                <label className="">
+                  <input className="" type="radio" name="processRestrictType" checked={form.processRestrictType === value} disabled={isInherited} onChange={() => updateForm('processRestrictType', value)} />
                   <span>{label}</span>
                 </label>
               </div>
             ))}
           </div>
 
-          <div className="mt-3">
-            <div className="d-flex align-items-center justify-content-between gap-2">
-              <label className={labelClass}>Notice Message (max 249 characters)</label>
-              <span className="user-pill muted-cell">{form.processNoticeMessage.length}/249</span>
+          <div className="">
+            <div className="">
+              <label className="">Notice Message (max 249 characters)</label>
+              <span className="">{form.processNoticeMessage.length}/249</span>
             </div>
-            <textarea maxLength={249} value={form.processNoticeMessage} onChange={(event) => updateForm('processNoticeMessage', event.target.value)} disabled={isInherited} className="setting-textarea" placeholder="Message shown when the process policy triggers." />
+            <textarea maxLength={249} value={form.processNoticeMessage} onChange={(event) => updateForm('processNoticeMessage', event.target.value)} disabled={isInherited} className="" placeholder="Message shown when the process policy triggers." />
           </div>
         </section>
 
-        <section className="policy-card h-100">
-          <div className="policy-top">
+        <section className="">
+          <div className="">
             <div>
               <h4>Restriction of Font</h4>
               <p>Control font file handling for software outside the permitted list.</p>
             </div>
-            <span className="user-pill info">{whitelistFontLabel(form.fontRestrictType)}</span>
+            <span className="">{whitelistFontLabel(form.fontRestrictType)}</span>
           </div>
 
-          <div className="row g-2">
+          <div className="">
             {fontOptions.map(([value, label]) => (
-              <div key={value} className="col-12 col-sm-6">
-                <label className={clsx('inline-check mb-0 h-100', form.fontRestrictType === value && 'border-primary bg-primary-subtle text-primary')}>
-                  <input className="form-check-input" type="radio" name="fontRestrictType" checked={form.fontRestrictType === value} disabled={isInherited} onChange={() => updateForm('fontRestrictType', value)} />
+              <div key={value} className="">
+                <label className="">
+                  <input className="" type="radio" name="fontRestrictType" checked={form.fontRestrictType === value} disabled={isInherited} onChange={() => updateForm('fontRestrictType', value)} />
                   <span>{label}</span>
                 </label>
               </div>
             ))}
           </div>
 
-          <div className="mt-3">
-            <div className="d-flex align-items-center justify-content-between gap-2">
-              <label className={labelClass}>Notice Message (max 249 characters)</label>
-              <span className="user-pill muted-cell">{form.fontNoticeMessage.length}/249</span>
+          <div className="">
+            <div className="">
+              <label className="">Notice Message (max 249 characters)</label>
+              <span className="">{form.fontNoticeMessage.length}/249</span>
             </div>
-            <textarea maxLength={249} value={form.fontNoticeMessage} onChange={(event) => updateForm('fontNoticeMessage', event.target.value)} disabled={isInherited} className="setting-textarea" placeholder="Message shown when the font policy triggers." />
+            <textarea maxLength={249} value={form.fontNoticeMessage} onChange={(event) => updateForm('fontNoticeMessage', event.target.value)} disabled={isInherited} className="" placeholder="Message shown when the font policy triggers." />
           </div>
         </section>
       </>
@@ -2685,32 +2370,32 @@ export default function AppRestriction() {
     ];
 
     return (
-      <section className="policy-card h-100">
-        <div className="policy-top">
+      <section className="">
+        <div className="">
           <div>
             <h4>Restriction Type</h4>
             <p>Choose whether the website list is treated as a block list or an allow list.</p>
           </div>
-          <span className="user-pill info">{webRestrictionLabel(form.webRestrictType)}</span>
+          <span className="">{webRestrictionLabel(form.webRestrictType)}</span>
         </div>
 
-        <div className="row g-2">
+        <div className="">
           {options.map(([value, label, helper]) => (
-            <div key={value} className="col-12 col-md-6">
-              <label className={clsx('inline-check mb-0 h-100', form.webRestrictType === value && 'border-primary bg-primary-subtle text-primary')}>
-                <input className="form-check-input" type="radio" name="webRestrictType" checked={form.webRestrictType === value} disabled={isInherited} onChange={() => updateForm('webRestrictType', value)} />
+            <div key={value} className="">
+              <label className="">
+                <input className="" type="radio" name="webRestrictType" checked={form.webRestrictType === value} disabled={isInherited} onChange={() => updateForm('webRestrictType', value)} />
                 <span>
-                  <strong className="d-block">{label}</strong>
-                  <small className="d-block text-muted fw-bold">{helper}</small>
+                  <strong className="">{label}</strong>
+                  <small className="">{helper}</small>
                 </span>
               </label>
             </div>
           ))}
         </div>
 
-        <div className="mt-3">
-          <label className={labelClass}>Move to default URL</label>
-          <input value={form.defaultUrl} onChange={(event) => updateForm('defaultUrl', event.target.value)} disabled={isInherited} className={fieldClass} placeholder="127.0.0.1" />
+        <div className="">
+          <label className="">Move to default URL</label>
+          <input value={form.defaultUrl} onChange={(event) => updateForm('defaultUrl', event.target.value)} disabled={isInherited} className="" placeholder="127.0.0.1" />
         </div>
       </section>
     );
@@ -2718,27 +2403,27 @@ export default function AppRestriction() {
 
   function renderWeeklyAndSchedule() {
     return (
-      <section className="role-grid">
-        <div className="policy-card h-100">
-          <div className="policy-top">
+      <section className="">
+        <div className="">
+          <div className="">
             <div>
               <h4>Weekly Policy</h4>
               <p>Select the days where this policy should be active.</p>
             </div>
-            <label className="inline-check mb-0">
-              <input className="form-check-input" type="checkbox" checked={form.weeklyPolicy} disabled={isInherited} onChange={(event) => updateForm('weeklyPolicy', event.target.checked)} />
+            <label className="">
+              <input className="" type="checkbox" checked={form.weeklyPolicy} disabled={isInherited} onChange={(event) => updateForm('weeklyPolicy', event.target.checked)} />
               <span>Enable</span>
             </label>
           </div>
 
-          <div className="row g-2 row-cols-2 row-cols-sm-4 row-cols-lg-7">
+          <div className="">
             {dayOptions.map((day) => (
-              <div key={day} className="col">
+              <div key={day} className="">
                 <button
                   type="button"
                   disabled={!form.weeklyPolicy || isInherited}
                   onClick={() => toggleDay(day)}
-                  className={clsx('w-100', selectedDays.includes(day) ? 'primary-btn' : 'soft-btn')}
+                  className=""
                 >
                   {day}
                 </button>
@@ -2747,23 +2432,23 @@ export default function AppRestriction() {
           </div>
         </div>
 
-        <div className="policy-card h-100">
-          <div className="policy-top">
+        <div className="">
+          <div className="">
             <div>
               <h4>Restricted Time</h4>
               <p>Run the policy all day or only during selected time ranges.</p>
             </div>
-            <div className="content-actions">
-              <button type="button" disabled={isInherited} onClick={() => updateForm('useSchedule', false)} className={clsx(!form.useSchedule ? 'primary-btn' : 'soft-btn')}>All Day</button>
-              <button type="button" disabled={isInherited} onClick={() => updateForm('useSchedule', true)} className={clsx(form.useSchedule ? 'primary-btn' : 'soft-btn')}>Schedule</button>
+            <div className="">
+              <button type="button" disabled={isInherited} onClick={() => updateForm('useSchedule', false)} className="">All Day</button>
+              <button type="button" disabled={isInherited} onClick={() => updateForm('useSchedule', true)} className="">Schedule</button>
             </div>
           </div>
 
-          <div className="row g-3">
+          <div className="">
             {(['schedule1', 'schedule2', 'schedule3', 'schedule4'] as const).map((key, index) => (
-              <div key={key} className="col-12 col-md-6">
-                <label className={labelClass}>Schedule {index + 1} (HH:mm-HH:mm)</label>
-                <input value={form[key]} onChange={(event) => updateForm(key, event.target.value)} placeholder="09:00-18:00" disabled={!form.useSchedule || isInherited} className={fieldClass} />
+              <div key={key} className="">
+                <label className="">Schedule {index + 1} (HH:mm-HH:mm)</label>
+                <input value={form[key]} onChange={(event) => updateForm(key, event.target.value)} placeholder="09:00-18:00" disabled={!form.useSchedule || isInherited} className="" />
               </div>
             ))}
           </div>
@@ -2811,34 +2496,34 @@ export default function AppRestriction() {
     const groupUrlPagination = getPaginationState<WebGroupUrl>(webGroupUrls, webGroupUrlPage);
 
     return (
-      <section className="role-grid">
-        <div className="policy-card h-100">
-          <div className="policy-top">
+      <section className="">
+        <div className="">
+          <div className="">
             <div>
               <h4>Website List</h4>
               <p>Add website domains for the selected web restriction policy.</p>
             </div>
-            <span className="user-pill info">{webUrls.length} URL{webUrls.length === 1 ? '' : 's'}</span>
+            <span className="">{webUrls.length} URL{webUrls.length === 1 ? '' : 's'}</span>
           </div>
 
-          <div className="d-flex gap-2 mb-3">
-            <input value={newUrl} onChange={(event) => setNewUrl(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && addPolicyUrl()} placeholder="example.com" disabled={isInherited} className={fieldClass} />
+          <div className="">
+            <input value={newUrl} onChange={(event) => setNewUrl(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && addPolicyUrl()} placeholder="example.com" disabled={isInherited} className="" />
             <AppButton size="sm" variant="primary" onClick={addPolicyUrl} disabled={isInherited} leftIcon={<Plus size={13} />}>
               Add
             </AppButton>
           </div>
 
-          <div className="appweb-list-panel rounded-2xl border border-slate-200 overflow-hidden">
-            <div className="appweb-list-scroll p-0">
+          <div className="">
+            <div className="">
               {webUrls.length === 0 ? (
-                <div className="p-4 text-center text-muted fw-bold small">No URLs added to this policy.</div>
+                <div className="">No URLs added to this policy.</div>
               ) : policyUrlPagination.pageItems.map((url) => (
-                <div key={url} className="user-row" style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}>
-                  <div className="user-cell user-name">
-                    <span className="user-mini-avatar"><LinkIcon size={13} /></span>
+                <div key={url} className="" style={{}}>
+                  <div className="">
+                    <span className=""><LinkIcon size={13} /></span>
                     <strong>{url}</strong>
                   </div>
-                  <div className="user-cell text-end">
+                  <div className="">
                     <button
                       type="button"
                       disabled={isInherited}
@@ -2846,7 +2531,7 @@ export default function AppRestriction() {
                         setWebUrls((previous) => previous.filter((item) => item !== url));
                         setMessage(`${url} removed from website list.`);
                       }}
-                      className="icon-delete-btn"
+                      className=""
                       aria-label={`Remove ${url}`}
                     >
                       <Trash2 size={13} />
@@ -2864,16 +2549,16 @@ export default function AppRestriction() {
           </div>
         </div>
 
-        <div className="policy-card h-100">
-          <div className="policy-top">
+        <div className="">
+          <div className="">
             <div>
               <h4>Website Group</h4>
               <p>Select a saved website group and add its URLs into this policy.</p>
             </div>
-            <span className="user-pill info">{webGroupUrls.length} URL{webGroupUrls.length === 1 ? '' : 's'}</span>
+            <span className="">{webGroupUrls.length} URL{webGroupUrls.length === 1 ? '' : 's'}</span>
           </div>
 
-          <div className="content-actions justify-content-start mb-3">
+          <div className="">
             <AppButton size="sm" variant="secondary" onClick={openWebGroupManager} leftIcon={<Globe size={13} />}>
               Edit Website Group
             </AppButton>
@@ -2882,9 +2567,9 @@ export default function AppRestriction() {
             </AppButton>
           </div>
 
-          <div className="mb-3">
-            <label className={labelClass}>Website Group</label>
-            <select value={selectedWebsiteGroupId || ''} onChange={(event) => setSelectedWebsiteGroupId(Number(event.target.value) || null)} className={fieldClass}>
+          <div className="">
+            <label className="">Website Group</label>
+            <select value={selectedWebsiteGroupId || ''} onChange={(event) => setSelectedWebsiteGroupId(Number(event.target.value) || null)} className="">
               <option value="">Select group</option>
               {webGroups.map((group) => (
                 <option key={group.idx} value={group.idx}>{group.name} ({group.url_count || 0})</option>
@@ -2892,14 +2577,14 @@ export default function AppRestriction() {
             </select>
           </div>
 
-          <div className="appweb-list-panel rounded-2xl border border-slate-200 overflow-hidden">
-            <div className="appweb-list-scroll p-0">
+          <div className="">
+            <div className="">
               {webGroupUrls.length === 0 ? (
-                <div className="p-4 text-center text-muted fw-bold small">No URLs found in selected website group.</div>
+                <div className="">No URLs found in selected website group.</div>
               ) : groupUrlPagination.pageItems.map((item) => (
-                <div key={`${item.idx}-${item.seq}`} className="user-row" style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>
-                  <div className="user-cell user-name">
-                    <span className="user-mini-avatar"><Globe size={13} /></span>
+                <div key={`${item.idx}-${item.seq}`} className="" style={{}}>
+                  <div className="">
+                    <span className=""><Globe size={13} /></span>
                     <strong>{item.url}</strong>
                   </div>
                 </div>
@@ -2938,7 +2623,7 @@ export default function AppRestriction() {
         width: 110,
         align: 'center',
         render: (row) => (
-          <span className={clsx('badge rounded-pill', row.use_policy === 'X' || row.use_policy === '0' ? 'text-bg-secondary' : 'text-bg-success')}>
+          <span className="">
             {row.use_policy || 'O'}
           </span>
         ),
@@ -2947,13 +2632,13 @@ export default function AppRestriction() {
         key: 'Version',
         header: 'Policy Version',
         width: 170,
-        render: (row) => <code className="user-pill info">{row.Version || row.version || '-'}</code>,
+        render: (row) => <code className="">{row.Version || row.version || '-'}</code>,
       },
     ];
 
     return (
-      <div className="d-grid gap-3">
-        <div className="alert alert-primary settings-helper-card mb-3" role="alert">
+      <div className="">
+        <div className="" role="alert">
           This policy list shows policy information for clients or departments that do not inherit their parent policies.
         </div>
 
@@ -2968,10 +2653,10 @@ export default function AppRestriction() {
           summary={(
             <>
               <div>
-                <strong className="ema-title">Policy Status List</strong>
+                <strong className="">Policy Status List</strong>
                 <span>{moduleConfig.label} · {selectedTarget?.label || 'All Branches'}</span>
               </div>
-              <span className="badge rounded-pill text-bg-light border">
+              <span className="">
                 {loading ? 'Loading...' : `${rows.length} record${rows.length === 1 ? '' : 's'}`}
               </span>
             </>
@@ -2986,44 +2671,44 @@ export default function AppRestriction() {
     const canEditUrls = Boolean(activeGroupId);
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-        <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+      <div className="">
+        <div className="">
+          <div className="">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Website Restriction</p>
-              <h3 className="text-base font-black text-slate-900">Edit Website Group</h3>
-              <p className="text-[11px] font-bold text-slate-500">Create a website category, enter domain names without http:// or https://, then add the group URLs into the policy list.</p>
+              <p className="">Website Restriction</p>
+              <h3 className="">Edit Website Group</h3>
+              <p className="">Create a website category, enter domain names without http:// or https://, then add the group URLs into the policy list.</p>
             </div>
-            <button type="button" onClick={() => setShowWebGroupManager(false)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+            <button type="button" onClick={() => setShowWebGroupManager(false)} className="">
               <X size={18} />
             </button>
           </div>
 
-          <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[0.9fr_1.25fr]">
-            <aside className="min-h-0 border-r border-slate-100 bg-slate-50 p-4">
-              <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="">
+            <aside className="">
+              <div className="">
                 <div>
-                  <h4 className={sectionTitleClass}>Website Group</h4>
-                  <p className="text-[10px] font-bold text-slate-400">Reusable URL categories stored in TSWB_URL_GROUP.</p>
+                  <h4 className="">Website Group</h4>
+                  <p className="">Reusable URL categories stored in TSWB_URL_GROUP.</p>
                 </div>
-                <button type="button" onClick={resetWebGroupEditor} className="h-8 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-600">
+                <button type="button" onClick={resetWebGroupEditor} className="">
                   New
                 </button>
               </div>
 
-              <div className="max-h-[66vh] overflow-auto rounded-2xl border border-slate-200 bg-white">
+              <div className="">
                 {webGroups.length === 0 ? (
-                  <div className="p-8 text-center text-[11px] font-bold text-slate-400">No website group yet. Click New, enter a group name, then Save Group.</div>
+                  <div className="">No website group yet. Click New, enter a group name, then Save Group.</div>
                 ) : webGroups.map((group) => {
                   const selected = activeGroupId === group.idx;
                   return (
-                    <button key={group.idx} type="button" onClick={() => selectWebGroupForEditing(group)} className={clsx('block w-full border-b border-slate-100 px-3 py-3 text-left last:border-b-0 hover:bg-blue-50', selected && 'bg-blue-50')}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="truncate text-[11px] font-black text-slate-800">{group.name}</p>
-                          <p className="truncate text-[10px] font-bold text-slate-400">{group.description || 'Website restriction group'}</p>
+                    <button key={group.idx} type="button" onClick={() => selectWebGroupForEditing(group)} className="">
+                      <div className="">
+                        <div className="">
+                          <p className="">{group.name}</p>
+                          <p className="">{group.description || 'Website restriction group'}</p>
                         </div>
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-black text-slate-500">{group.url_count || 0} URLs</span>
+                        <span className="">{group.url_count || 0} URLs</span>
                       </div>
                     </button>
                   );
@@ -3031,69 +2716,69 @@ export default function AppRestriction() {
               </div>
             </aside>
 
-            <main className="min-h-0 overflow-auto p-5">
-              <div className="mb-4 grid gap-3 md:grid-cols-2">
+            <main className="">
+              <div className="">
                 <div>
-                  <label className={labelClass}>Group Name</label>
-                  <input value={webGroupName} onChange={(event) => setWebGroupName(event.target.value)} className={fieldClass} placeholder="Example: Social Networking" />
+                  <label className="">Group Name</label>
+                  <input value={webGroupName} onChange={(event) => setWebGroupName(event.target.value)} className="" placeholder="Example: Social Networking" />
                 </div>
                 <div>
-                  <label className={labelClass}>Description</label>
-                  <input value={webGroupDescription} onChange={(event) => setWebGroupDescription(event.target.value)} className={fieldClass} placeholder="Optional note" />
+                  <label className="">Description</label>
+                  <input value={webGroupDescription} onChange={(event) => setWebGroupDescription(event.target.value)} className="" placeholder="Optional note" />
                 </div>
               </div>
 
-              <div className="mb-4 flex flex-wrap gap-2">
-                <button type="button" onClick={saveWebGroup} disabled={loading} className="inline-flex h-9 items-center gap-2 rounded-xl bg-blue-600 px-4 text-[10px] font-black text-white disabled:bg-slate-300">
-                  {loading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} {editingWebGroup ? 'Save Group' : 'Create Group'}
+              <div className="">
+                <button type="button" onClick={saveWebGroup} disabled={loading} className="">
+                  {loading ? <Loader2 size={14} className="" /> : <Save size={14} />} {editingWebGroup ? 'Save Group' : 'Create Group'}
                 </button>
                 {editingWebGroup && (
-                  <button type="button" onClick={() => deleteWebGroup(editingWebGroup)} disabled={loading} className="inline-flex h-9 items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 text-[10px] font-black text-rose-700 disabled:opacity-50">
+                  <button type="button" onClick={() => deleteWebGroup(editingWebGroup)} disabled={loading} className="">
                     <Trash2 size={14} /> Delete Group
                   </button>
                 )}
               </div>
 
               {!canEditUrls && (
-                <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] font-bold text-amber-800">
+                <div className="">
                   Create or select a website group first. After that, add domain names into the group.
                 </div>
               )}
 
-              <section className={clsx('rounded-2xl border p-4', canEditUrls ? 'border-slate-200' : 'border-slate-200 bg-slate-50/70')}>
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <section className="">
+                <div className="">
                   <div>
-                    <h4 className={sectionTitleClass}>Domain names in this group</h4>
-                    <p className="text-[10px] font-bold text-slate-400">Enter domain names only. Do not include http:// or https://.</p>
+                    <h4 className="">Domain names in this group</h4>
+                    <p className="">Enter domain names only. Do not include http:// or https://.</p>
                   </div>
-                  <span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black text-slate-500">{webGroupUrls.length} URLs</span>
+                  <span className="">{webGroupUrls.length} URLs</span>
                 </div>
 
-                <div className="mb-3 flex gap-2">
-                  <input value={webGroupDomainInput} onChange={(event) => setWebGroupDomainInput(event.target.value)} onKeyDown={(event) => canEditUrls && event.key === 'Enter' && addUrlToWebGroup()} disabled={!canEditUrls || loading} placeholder={canEditUrls ? 'example.com' : 'Create or select a group first'} className={fieldClass} />
-                  <button type="button" onClick={addUrlToWebGroup} disabled={!canEditUrls || loading} className="inline-flex h-8 items-center gap-1 rounded-lg bg-blue-600 px-3 text-[10px] font-black text-white disabled:bg-slate-300">
+                <div className="">
+                  <input value={webGroupDomainInput} onChange={(event) => setWebGroupDomainInput(event.target.value)} onKeyDown={(event) => canEditUrls && event.key === 'Enter' && addUrlToWebGroup()} disabled={!canEditUrls || loading} placeholder={canEditUrls ? 'example.com' : 'Create or select a group first'} className="" />
+                  <button type="button" onClick={addUrlToWebGroup} disabled={!canEditUrls || loading} className="">
                     <Plus size={13} /> Add
                   </button>
                 </div>
 
-                <div className="max-h-72 overflow-auto rounded-xl border border-slate-200 bg-white">
+                <div className="">
                   {webGroupUrls.length === 0 ? (
-                    <div className="p-8 text-center text-[11px] font-bold text-slate-400">No domain names in this group.</div>
+                    <div className="">No domain names in this group.</div>
                   ) : webGroupUrls.map((item) => (
-                    <div key={`${item.idx}-${item.seq}`} className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 last:border-b-0">
-                      <div className="flex min-w-0 items-center gap-2 text-[11px] font-bold text-slate-700">
-                        <Globe size={13} className="shrink-0 text-slate-400" />
-                        <span className="truncate">{item.url}</span>
+                    <div key={`${item.idx}-${item.seq}`} className="">
+                      <div className="">
+                        <Globe size={13} className="" />
+                        <span className="">{item.url}</span>
                       </div>
-                      <button type="button" onClick={() => deleteUrlFromWebGroup(item)} disabled={loading} className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-40">
+                      <button type="button" onClick={() => deleteUrlFromWebGroup(item)} disabled={loading} className="">
                         <Trash2 size={13} />
                       </button>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-4 flex justify-end">
-                  <button type="button" onClick={() => { addGroupUrlsToPolicy(); setShowWebGroupManager(false); }} disabled={isInherited || webGroupUrls.length === 0} className="inline-flex h-9 items-center gap-2 rounded-xl bg-slate-900 px-4 text-[10px] font-black text-white disabled:bg-slate-300">
+                <div className="">
+                  <button type="button" onClick={() => { addGroupUrlsToPolicy(); setShowWebGroupManager(false); }} disabled={isInherited || webGroupUrls.length === 0} className="">
                     <ArrowLeft size={14} /> Add this group to policy website list
                   </button>
                 </div>
@@ -3457,31 +3142,22 @@ export default function AppRestriction() {
           key={id || `${getPackageName(item)}-${item.sample_file || ''}`}
           type="button"
           onClick={() => selectManagerPackage(item)}
-          style={{
-            display: 'block',
-            width: '100%',
-            border: 'none',
-            borderBottom: '1px solid #eef2f7',
-            background: selected ? '#eff6ff' : '#ffffff',
-            padding: '12px 13px',
-            textAlign: 'left',
-            cursor: 'pointer',
-          }}
+          style={{}}
         >
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, lineHeight: '16px', fontWeight: 900, color: '#0f172a' }}>
+          <div style={{}}>
+            <div style={{}}>
+              <p style={{}}>
                 {getPackageName(item) || 'Unnamed Package'}
               </p>
-              <p style={{ margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10, lineHeight: '14px', fontWeight: 800, color: '#64748b' }}>
+              <p style={{}}>
                 {item.SW_Pkg_Company || item.sample_file || '-'}
               </p>
             </div>
-            <div style={{ display: 'flex', flexShrink: 0, gap: 5, alignItems: 'center' }}>
-              <span style={{ borderRadius: 999, background: '#f1f5f9', color: '#64748b', padding: '3px 8px', fontSize: 9, fontWeight: 900, whiteSpace: 'nowrap' }}>
+            <div style={{}}>
+              <span style={{}}>
                 {item.file_count || 0} files
               </span>
-              <span style={{ borderRadius: 999, background: policies > 0 ? '#fef3c7' : '#d1fae5', color: policies > 0 ? '#b45309' : '#047857', padding: '3px 8px', fontSize: 9, fontWeight: 900, whiteSpace: 'nowrap' }}>
+              <span style={{}}>
                 {item.used_policy_count || 0} policies
               </span>
             </div>
@@ -3491,87 +3167,87 @@ export default function AppRestriction() {
     };
 
     return (
-      <div style={s.overlay} onMouseDown={closePackageManager} role="dialog" aria-modal="true" aria-label="Package Manager">
-        <div style={s.modal} onMouseDown={stopModalClick}>
-          <div style={s.header}>
+      <div style={{}} onMouseDown={closePackageManager} role="dialog" aria-modal="true" aria-label="Package Manager">
+        <div style={{}} onMouseDown={stopModalClick}>
+          <div style={{}}>
             <div>
-              <p style={s.eyebrow}>Application Package Editor</p>
-              <h3 style={s.title}>Package Manager</h3>
-              <p style={s.subtitle}>Step 1: create or select a package. Step 2: search Software Inventory EXE records and add them into that package.</p>
+              <p style={{}}>Application Package Editor</p>
+              <h3 style={{}}>Package Manager</h3>
+              <p style={{}}>Step 1: create or select a package. Step 2: search Software Inventory EXE records and add them into that package.</p>
             </div>
-            <button type="button" onClick={closePackageManager} style={s.closeButton} aria-label="Close package manager">
+            <button type="button" onClick={closePackageManager} style={{}} aria-label="Close package manager">
               <X size={18} />
             </button>
           </div>
 
-          <div style={s.body}>
-            <aside style={s.left}>
-              <div style={s.searchRow}>
-                <div style={s.searchBoxWrap}>
-                  <Search size={14} style={s.searchIcon} />
+          <div style={{}}>
+            <aside style={{}}>
+              <div style={{}}>
+                <div style={{}}>
+                  <Search size={14} style={{}} />
                   <input
                     value={packageManagerSearch}
                     onChange={(event) => setPackageManagerSearch(event.target.value)}
                     onKeyDown={(event) => event.key === 'Enter' && loadPackageManager(packageManagerSearch)}
                     placeholder="Search package or file"
-                    style={s.searchInput}
+                    style={{}}
                   />
                 </div>
-                <button type="button" onClick={() => loadPackageManager(packageManagerSearch)} style={s.darkButton}>Search</button>
-                <button type="button" onClick={resetPackageForm} style={s.lightButton}>New</button>
+                <button type="button" onClick={() => loadPackageManager(packageManagerSearch)} style={{}}>Search</button>
+                <button type="button" onClick={resetPackageForm} style={{}}>New</button>
               </div>
 
-              <div style={s.packageList}>
+              <div style={{}}>
                 {packageManagerLoading && packageManagerRows.length === 0 ? (
-                  <div style={s.emptyList}>Loading packages...</div>
+                  <div style={{}}>Loading packages...</div>
                 ) : filteredPackageManagerRows.length === 0 ? (
-                  <div style={s.emptyList}>No packages found.</div>
+                  <div style={{}}>No packages found.</div>
                 ) : filteredPackageManagerRows.map(renderPackageRow)}
               </div>
             </aside>
 
-            <main style={s.right}>
-              <div style={s.formGrid}>
+            <main style={{}}>
+              <div style={{}}>
                 <div>
-                  <label style={s.label}>Package Name</label>
-                  <input value={packageForm.SW_Pkg_Name} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Pkg_Name: event.target.value }))} style={s.input} placeholder="Example: Google Chrome" />
+                  <label style={{}}>Package Name</label>
+                  <input value={packageForm.SW_Pkg_Name} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Pkg_Name: event.target.value }))} style={{}} placeholder="Example: Google Chrome" />
                 </div>
                 <div>
-                  <label style={s.label}>Company / Vendor</label>
-                  <input value={packageForm.SW_Pkg_Company || ''} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Pkg_Company: event.target.value }))} style={s.input} placeholder="Example: Google LLC" />
+                  <label style={{}}>Company / Vendor</label>
+                  <input value={packageForm.SW_Pkg_Company || ''} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Pkg_Company: event.target.value }))} style={{}} placeholder="Example: Google LLC" />
                 </div>
                 <div>
-                  <label style={s.label}>Category ID</label>
-                  <input type="number" value={packageForm.SW_Catg || 0} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Catg: Number(event.target.value || 0) }))} style={s.input} />
+                  <label style={{}}>Category ID</label>
+                  <input type="number" value={packageForm.SW_Catg || 0} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Catg: Number(event.target.value || 0) }))} style={{}} />
                 </div>
                 <div>
-                  <label style={s.label}>Active</label>
-                  <select value={String(packageForm.Selected ?? 1)} onChange={(event) => setPackageForm((prev) => ({ ...prev, Selected: Number(event.target.value) }))} style={s.input}>
+                  <label style={{}}>Active</label>
+                  <select value={String(packageForm.Selected ?? 1)} onChange={(event) => setPackageForm((prev) => ({ ...prev, Selected: Number(event.target.value) }))} style={{}}>
                     <option value="1">Yes</option>
                     <option value="0">No</option>
                   </select>
                 </div>
-                <div style={s.fullCol}>
-                  <label style={s.label}>Etc Info / Description</label>
-                  <input value={packageForm.SW_Package_EtcInfo || ''} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Package_EtcInfo: event.target.value }))} style={s.input} placeholder="Usually first executable name or package note" />
+                <div style={{}}>
+                  <label style={{}}>Etc Info / Description</label>
+                  <input value={packageForm.SW_Package_EtcInfo || ''} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Package_EtcInfo: event.target.value }))} style={{}} placeholder="Usually first executable name or package note" />
                 </div>
               </div>
 
-              <div style={s.actionRow}>
+              <div style={{}}>
                 <button
                   type="button"
                   onClick={saveManagerPackage}
                   disabled={packageManagerLoading}
-                  style={{ ...s.primaryButton, ...(packageManagerLoading ? s.disabledButton : {}) }}
+                  style={{}}
                 >
-                  {packageManagerLoading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} {selectedManagerPackage ? 'Save Package' : 'Create Package'}
+                  {packageManagerLoading ? <Loader2 size={14} className="" /> : <Save size={14} />} {selectedManagerPackage ? 'Save Package' : 'Create Package'}
                 </button>
                 {selectedManagerPackage && (
                   <button
                     type="button"
                     onClick={() => deleteManagerPackage(selectedManagerPackage)}
                     disabled={packageManagerLoading}
-                    style={{ ...s.dangerButton, ...(packageManagerLoading ? s.disabledButton : {}) }}
+                    style={{}}
                   >
                     <Trash2 size={14} /> Delete Package
                   </button>
@@ -3579,34 +3255,34 @@ export default function AppRestriction() {
               </div>
 
               {!isPackageSaved && (
-                <div style={s.warning}>
+                <div style={{}}>
                   Create the package first. After the package is saved and has a Package ID, the Software Inventory EXE search and Add buttons will be enabled.
                 </div>
               )}
 
-              <section style={s.filesCard}>
-                <div style={s.filesHead}>
+              <section style={{}}>
+                <div style={{}}>
                   <div>
-                    <h4 style={s.sectionTitle}>Files inside package</h4>
-                    <p style={s.smallMuted}>Files are copied from collected Software Inventory EXE data into TSSI_PACKAGE_FILES.</p>
+                    <h4 style={{}}>Files inside package</h4>
+                    <p style={{}}>Files are copied from collected Software Inventory EXE data into TSSI_PACKAGE_FILES.</p>
                   </div>
-                  <span style={s.badge}>{files.length} files</span>
+                  <span style={{}}>{files.length} files</span>
                 </div>
 
-                <div style={s.fileSearchRow}>
+                <div style={{}}>
                   <input
                     value={packageFileSearch}
                     onChange={(event) => setPackageFileSearch(event.target.value)}
                     onKeyDown={(event) => isPackageSaved && event.key === 'Enter' && searchInventoryFilesForPackage()}
                     disabled={!isPackageSaved}
                     placeholder={isPackageSaved ? 'Search inventory file name, e.g. chrome' : 'Create the package first before searching EXE files'}
-                    style={{ ...s.input, flex: 1, minWidth: 0, background: isPackageSaved ? '#ffffff' : '#f1f5f9', color: isPackageSaved ? '#334155' : '#94a3b8' }}
+                    style={{}}
                   />
                   <button
                     type="button"
                     onClick={searchInventoryFilesForPackage}
                     disabled={!isPackageSaved || packageManagerLoading}
-                    style={{ ...s.darkButton, height: 34, borderRadius: 10, ...(isPackageSaved && !packageManagerLoading ? {} : s.disabledButton) }}
+                    style={{}}
                   >
                     Search Inventory
                   </button>
@@ -3614,56 +3290,56 @@ export default function AppRestriction() {
                     type="button"
                     onClick={addManualFileToPackage}
                     disabled={!isPackageSaved || packageManagerLoading}
-                    style={{ ...s.lightButton, height: 34, borderRadius: 10, ...(isPackageSaved && !packageManagerLoading ? {} : s.disabledButton) }}
+                    style={{}}
                   >
                     Manual Add
                   </button>
                 </div>
 
                 {isPackageSaved && packageInventoryFiles.length > 0 && (
-                  <div style={s.resultsBox}>
+                  <div style={{}}>
                     {packageInventoryFiles.map((file, index) => (
-                      <div key={`${file.SW_Idn || file.FileName}-${index}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderBottom: '1px solid #bfdbfe', padding: '10px 12px' }}>
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, fontWeight: 900, color: '#334155' }}>{file.FileName}</p>
-                          <p style={{ margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10, fontWeight: 800, color: '#64748b' }}>Version: {file.FileVersion || '-'} {file.OriginalFileName ? ` / ${file.OriginalFileName}` : ''}</p>
+                      <div key={`${file.SW_Idn || file.FileName}-${index}`} style={{}}>
+                        <div style={{}}>
+                          <p style={{}}>{file.FileName}</p>
+                          <p style={{}}>Version: {file.FileVersion || '-'} {file.OriginalFileName ? ` / ${file.OriginalFileName}` : ''}</p>
                         </div>
-                        <button type="button" onClick={() => addInventoryFileToPackage(file)} disabled={!isPackageSaved || packageManagerLoading} style={{ ...s.primaryButton, height: 30, borderRadius: 10, padding: '0 12px', boxShadow: 'none', ...(packageManagerLoading ? s.disabledButton : {}) }}>Add</button>
+                        <button type="button" onClick={() => addInventoryFileToPackage(file)} disabled={!isPackageSaved || packageManagerLoading} style={{}}>Add</button>
                       </div>
                     ))}
                   </div>
                 )}
 
                 {isPackageSaved && packageInventoryFiles.length === 0 && packageFileSearch.trim() && (
-                  <div style={{ marginBottom: 16, borderRadius: 12, border: '1px solid #dbe5f1', background: '#ffffff', padding: '10px 12px', fontSize: 10, fontWeight: 800, color: '#64748b' }}>
+                  <div style={{}}>
                     No search result is shown yet. Click Search Inventory to find collected EXE records from Software Inventory.
                   </div>
                 )}
 
-                <div style={s.tableWrap}>
-                  <table style={s.table}>
+                <div style={{}}>
+                  <table style={{}}>
                     <thead>
                       <tr>
-                        <th style={s.th}>File Name</th>
-                        <th style={s.th}>Version</th>
-                        <th style={s.th}>Size</th>
-                        <th style={{ ...s.th, textAlign: 'right' }}>Action</th>
+                        <th style={{}}>File Name</th>
+                        <th style={{}}>Version</th>
+                        <th style={{}}>Size</th>
+                        <th style={{}}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {files.length === 0 ? (
                         <tr>
-                          <td colSpan={4} style={{ ...s.td, padding: '34px 12px', textAlign: 'center', color: '#94a3b8', fontWeight: 900 }}>
+                          <td colSpan={4} style={{}}>
                             No files in this package.
                           </td>
                         </tr>
                       ) : files.map((file) => (
                         <tr key={file.ID || file.FileName}>
-                          <td style={{ ...s.td, color: '#334155', fontWeight: 900 }}>{file.FileName}</td>
-                          <td style={s.td}>{file.FileVersion || '-'}</td>
-                          <td style={s.td}>{file.FileSize || 0}</td>
-                          <td style={{ ...s.td, textAlign: 'right' }}>
-                            <button type="button" onClick={() => deletePackageFile(file)} style={{ width: 30, height: 30, borderRadius: 10, border: 'none', background: 'transparent', color: '#94a3b8', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <td style={{}}>{file.FileName}</td>
+                          <td style={{}}>{file.FileVersion || '-'}</td>
+                          <td style={{}}>{file.FileSize || 0}</td>
+                          <td style={{}}>
+                            <button type="button" onClick={() => deletePackageFile(file)} style={{}}>
                               <Trash2 size={13} />
                             </button>
                           </td>
@@ -3682,21 +3358,21 @@ export default function AppRestriction() {
 
   function renderManageSoftwareModal() {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-        <div className="flex max-h-[92vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-          <div className="flex items-center justify-between border-b border-slate-100 p-4">
+      <div className="">
+        <div className="">
+          <div className="">
             <div>
-              <h3 className="text-base font-black text-slate-900">Manage Software List</h3>
-              <p className="text-[11px] font-bold text-slate-500">Default permitted software and registered process/font file rules.</p>
+              <h3 className="">Manage Software List</h3>
+              <p className="">Default permitted software and registered process/font file rules.</p>
             </div>
-            <button type="button" onClick={() => setShowManageSoftware(false)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+            <button type="button" onClick={() => setShowManageSoftware(false)} className="">
               <X size={18} />
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rose-100 bg-rose-50 px-4 py-3">
-            <div className="flex items-center gap-2 text-[11px] font-bold text-rose-700">
-              <Info size={16} className="shrink-0" />
+          <div className="">
+            <div className="">
+              <Info size={16} className="" />
               <span>After changing the Use Restriction, use the information update button to refresh permitted software data before saving the related policy.</span>
             </div>
             <button
@@ -3705,90 +3381,90 @@ export default function AppRestriction() {
                 loadLookups();
                 setMessage('Whitelist restriction information refresh requested.');
               }}
-              className="inline-flex h-9 items-center gap-2 rounded-xl bg-blue-600 px-4 text-[10px] font-black text-white shadow-lg shadow-blue-200 hover:bg-blue-700"
+              className=""
             >
               <RefreshCw size={14} /> Use Restriction Information Update
             </button>
           </div>
 
-          <div className="grid min-h-0 flex-1 gap-4 overflow-auto p-4 xl:grid-cols-[0.72fr_1.3fr_1.25fr]">
-            <section className="flex min-h-[560px] flex-col rounded-2xl border border-slate-200 p-3">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <h4 className={sectionTitleClass}>Software</h4>
-                <div className="flex items-center gap-1">
-                  <button type="button" className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50" title="Save">
+          <div className="">
+            <section className="">
+              <div className="">
+                <h4 className="">Software</h4>
+                <div className="">
+                  <button type="button" className="" title="Save">
                     <Save size={13} />
                   </button>
-                  <button type="button" className="rounded-lg border border-emerald-100 bg-emerald-50 p-1.5 text-emerald-600" title="Add">
+                  <button type="button" className="" title="Add">
                     <Plus size={13} />
                   </button>
-                  <button type="button" className="rounded-lg border border-rose-100 bg-rose-50 p-1.5 text-rose-600" title="Remove">
+                  <button type="button" className="" title="Remove">
                     <Trash2 size={13} />
                   </button>
                 </div>
               </div>
 
-              <label className={labelClass}>S/W Name</label>
-              <div className="mb-3 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
-                <Search size={13} className="text-slate-400" />
+              <label className="">S/W Name</label>
+              <div className="">
+                <Search size={13} className="" />
                 <input
                   value={manageSearchText}
                   onChange={(event) => setManageSearchText(event.target.value)}
                   placeholder="Search software name"
-                  className="h-6 min-w-0 flex-1 bg-transparent text-[11px] font-bold text-slate-700 outline-none placeholder:text-slate-400"
+                  className=""
                 />
               </div>
 
-              <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200">
+              <div className="">
                 {filteredManageWhitelistSoftware.length === 0 ? (
-                  <div className="flex h-full min-h-[220px] items-center justify-center p-6 text-center text-[11px] font-bold text-slate-400">No whitelist software found.</div>
+                  <div className="">No whitelist software found.</div>
                 ) : filteredManageWhitelistSoftware.map((item, index) => (
-                  <div key={`${getWhitelistId(item)}-${index}`} className="flex items-center gap-2 border-b border-slate-100 px-3 py-2 last:border-b-0 hover:bg-slate-50">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-100 text-[9px] font-black text-slate-500">{index + 1}</span>
-                    <ShieldCheck size={13} className="shrink-0 text-emerald-600" />
-                    <div className="min-w-0">
-                      <p className="truncate text-[11px] font-black text-slate-800">{getWhitelistName(item) || `Software ${getWhitelistId(item)}`}</p>
-                      <p className="truncate text-[10px] font-bold text-slate-400">ID: {getWhitelistId(item) || '-'}</p>
+                  <div key={`${getWhitelistId(item)}-${index}`} className="">
+                    <span className="">{index + 1}</span>
+                    <ShieldCheck size={13} className="" />
+                    <div className="">
+                      <p className="">{getWhitelistName(item) || `Software ${getWhitelistId(item)}`}</p>
+                      <p className="">ID: {getWhitelistId(item) || '-'}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </section>
 
-            <section className="grid min-h-[560px] grid-rows-[1fr_0.42fr] gap-4">
-              <div className="flex min-h-0 flex-col rounded-2xl border border-slate-200 p-3">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <h4 className={sectionTitleClass}>Register File <span className="normal-case tracking-normal text-slate-400">(Permitted to run or use this registered file)</span></h4>
-                  <div className="flex items-center gap-1">
-                    <button type="button" className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50" title="Edit">
+            <section className="">
+              <div className="">
+                <div className="">
+                  <h4 className="">Register File <span className="">(Permitted to run or use this registered file)</span></h4>
+                  <div className="">
+                    <button type="button" className="" title="Edit">
                       <ListChecks size={13} />
                     </button>
-                    <button type="button" className="rounded-lg border border-rose-100 bg-rose-50 p-1.5 text-rose-600" title="Remove">
+                    <button type="button" className="" title="Remove">
                       <Trash2 size={13} />
                     </button>
                   </div>
                 </div>
-                <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200">
-                  <table className="w-full text-left text-[11px]">
-                    <thead className="sticky top-0 bg-slate-50 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                <div className="">
+                  <table className="">
+                    <thead className="">
                       <tr>
-                        <th className="px-3 py-2">Type</th>
-                        <th className="px-3 py-2">Process / Font Name</th>
-                        <th className="px-3 py-2">File Size (Compare)</th>
-                        <th className="px-3 py-2">File Version (Compare)</th>
+                        <th className="">Type</th>
+                        <th className="">Process / Font Name</th>
+                        <th className="">File Size (Compare)</th>
+                        <th className="">File Version (Compare)</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="">
                       {selectedWhitelist.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-3 py-10 text-center text-[11px] font-bold text-slate-400">No registered permitted software selected in current policy.</td>
+                          <td colSpan={4} className="">No registered permitted software selected in current policy.</td>
                         </tr>
                       ) : selectedWhitelist.map((item) => (
-                        <tr key={`registered-${getWhitelistId(item)}`} className="hover:bg-slate-50">
-                          <td className="px-3 py-2 font-bold text-slate-500">{item.Type || 'Process'}</td>
-                          <td className="px-3 py-2 font-black text-slate-700">{getWhitelistName(item) || '-'}</td>
-                          <td className="px-3 py-2 font-bold text-slate-500">-</td>
-                          <td className="px-3 py-2 font-bold text-slate-500">-</td>
+                        <tr key={`registered-${getWhitelistId(item)}`} className="">
+                          <td className="">{item.Type || 'Process'}</td>
+                          <td className="">{getWhitelistName(item) || '-'}</td>
+                          <td className="">-</td>
+                          <td className="">-</td>
                         </tr>
                       ))}
                     </tbody>
@@ -3796,35 +3472,35 @@ export default function AppRestriction() {
                 </div>
               </div>
 
-              <div className="flex min-h-0 flex-col rounded-2xl border border-slate-200 p-3">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <h4 className={sectionTitleClass}>Register File <span className="normal-case tracking-normal text-slate-400">(Hash rule)</span></h4>
-                  <div className="flex items-center gap-1">
-                    <button type="button" className="rounded-lg border border-emerald-100 bg-emerald-50 p-1.5 text-emerald-600" title="Add hash">
+              <div className="">
+                <div className="">
+                  <h4 className="">Register File <span className="">(Hash rule)</span></h4>
+                  <div className="">
+                    <button type="button" className="" title="Add hash">
                       <Plus size={13} />
                     </button>
-                    <button type="button" className="rounded-lg border border-rose-100 bg-rose-50 p-1.5 text-rose-600" title="Remove hash">
+                    <button type="button" className="" title="Remove hash">
                       <Trash2 size={13} />
                     </button>
                   </div>
                 </div>
-                <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200">
-                  <table className="w-full text-left text-[11px]">
-                    <thead className="sticky top-0 bg-slate-50 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                <div className="">
+                  <table className="">
+                    <thead className="">
                       <tr>
-                        <th className="px-3 py-2">File Name</th>
-                        <th className="px-3 py-2">Hash (MD5)</th>
+                        <th className="">File Name</th>
+                        <th className="">Hash (MD5)</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="">
                       {selectedWhitelist.length === 0 ? (
                         <tr>
-                          <td colSpan={2} className="px-3 py-8 text-center text-[11px] font-bold text-slate-400">No hash rules found.</td>
+                          <td colSpan={2} className="">No hash rules found.</td>
                         </tr>
                       ) : selectedWhitelist.map((item) => (
-                        <tr key={`hash-${getWhitelistId(item)}`} className="hover:bg-slate-50">
-                          <td className="px-3 py-2 font-bold text-slate-700">{getWhitelistName(item) || '-'}</td>
-                          <td className="px-3 py-2 font-mono text-[10px] font-bold text-slate-500">-</td>
+                        <tr key={`hash-${getWhitelistId(item)}`} className="">
+                          <td className="">{getWhitelistName(item) || '-'}</td>
+                          <td className="">-</td>
                         </tr>
                       ))}
                     </tbody>
@@ -3833,68 +3509,68 @@ export default function AppRestriction() {
               </div>
             </section>
 
-            <section className="flex min-h-[560px] flex-col rounded-2xl border border-slate-200 p-3">
-              <h4 className={sectionTitleClass}>File information collected <span className="normal-case tracking-normal text-slate-400">(List of files registered in collector)</span></h4>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <label className="text-[10px] font-black text-slate-500">File Name :</label>
-                <div className="min-w-[220px] flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2">
+            <section className="">
+              <h4 className="">File information collected <span className="">(List of files registered in collector)</span></h4>
+              <div className="">
+                <label className="">File Name :</label>
+                <div className="">
                   <input
                     value={manageSearchText}
                     onChange={(event) => setManageSearchText(event.target.value)}
                     placeholder="Find collected file"
-                    className="h-6 w-full bg-transparent text-[11px] font-bold text-slate-700 outline-none placeholder:text-slate-400"
+                    className=""
                   />
                 </div>
-                <button type="button" className="h-9 rounded-xl border border-slate-200 bg-white px-4 text-[10px] font-black text-slate-600 shadow-sm">Find</button>
-                <button type="button" className="inline-flex h-9 items-center gap-1 rounded-xl border border-blue-100 bg-blue-50 px-3 text-[10px] font-black text-blue-700">
+                <button type="button" className="">Find</button>
+                <button type="button" className="">
                   <ArrowLeft size={13} /> Add to allowed file list
                 </button>
               </div>
 
-              <div className="mt-3 flex gap-1 rounded-xl bg-slate-100 p-1 self-start">
+              <div className="">
                 <button
                   type="button"
                   onClick={() => setManageFileTab('process')}
-                  className={clsx('h-8 rounded-lg px-3 text-[10px] font-black', manageFileTab === 'process' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500')}
+                  className=""
                 >
                   Process
                 </button>
                 <button
                   type="button"
                   onClick={() => setManageFileTab('font')}
-                  className={clsx('h-8 rounded-lg px-3 text-[10px] font-black', manageFileTab === 'font' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500')}
+                  className=""
                 >
                   Font
                 </button>
               </div>
 
-              <div className="mt-3 min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200">
-                <table className="min-w-[760px] w-full text-left text-[11px]">
-                  <thead className="sticky top-0 bg-slate-50 text-[9px] font-black uppercase tracking-widest text-slate-400">
+              <div className="">
+                <table className="">
+                  <thead className="">
                     <tr>
-                      <th className="px-3 py-2">{manageFileTab === 'process' ? 'Process Name' : 'Font Name'}</th>
-                      <th className="px-3 py-2">Original File Name</th>
-                      <th className="px-3 py-2">File Size</th>
-                      <th className="px-3 py-2">File Version</th>
-                      <th className="px-3 py-2">Company</th>
-                      <th className="px-3 py-2">S/W Type</th>
-                      <th className="px-3 py-2">Remark</th>
+                      <th className="">{manageFileTab === 'process' ? 'Process Name' : 'Font Name'}</th>
+                      <th className="">Original File Name</th>
+                      <th className="">File Size</th>
+                      <th className="">File Version</th>
+                      <th className="">Company</th>
+                      <th className="">S/W Type</th>
+                      <th className="">Remark</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="">
                     {filteredManageWhitelistSoftware.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-3 py-12 text-center text-[11px] font-bold text-slate-400">No collected file information found.</td>
+                        <td colSpan={7} className="">No collected file information found.</td>
                       </tr>
                     ) : filteredManageWhitelistSoftware.map((item) => (
-                      <tr key={`collected-${getWhitelistId(item)}`} className="hover:bg-slate-50">
-                        <td className="px-3 py-2 font-black text-slate-700">{getWhitelistName(item) || '-'}</td>
-                        <td className="px-3 py-2 font-bold text-slate-500">{getWhitelistName(item) || '-'}</td>
-                        <td className="px-3 py-2 font-bold text-slate-500">-</td>
-                        <td className="px-3 py-2 font-bold text-slate-500">-</td>
-                        <td className="px-3 py-2 font-bold text-slate-500">{item.Vendor || '-'}</td>
-                        <td className="px-3 py-2 font-bold text-slate-500">{item.Type || '-'}</td>
-                        <td className="px-3 py-2 font-bold text-slate-500">-</td>
+                      <tr key={`collected-${getWhitelistId(item)}`} className="">
+                        <td className="">{getWhitelistName(item) || '-'}</td>
+                        <td className="">{getWhitelistName(item) || '-'}</td>
+                        <td className="">-</td>
+                        <td className="">-</td>
+                        <td className="">{item.Vendor || '-'}</td>
+                        <td className="">{item.Type || '-'}</td>
+                        <td className="">-</td>
                       </tr>
                     ))}
                   </tbody>
@@ -3936,29 +3612,29 @@ function DualListSection({
   onMoveRight,
 }: DualListSectionProps) {
   return (
-    <section className="policy-card">
-      <div className="policy-top">
+    <section className="">
+      <div className="">
         <div>
           <h4>{title}</h4>
           <p>Move items between the available list and the policy selection list.</p>
         </div>
-        <label className="section-search mb-0" style={{ maxWidth: '22rem' }}>
+        <label className="" style={{}}>
           <Search size={14} />
           <input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="Search software or package" />
         </label>
       </div>
 
-      <div className="row g-3 align-items-stretch">
-        <div className="col-12 col-lg-5">
+      <div className="">
+        <div className="">
           <ListPanel title={leftTitle} items={leftItems} emptyText="No selected items." actionIcon={ArrowRight} disabled={disabled} onAction={onMoveRight} />
         </div>
-        <div className="col-12 col-lg-2 d-flex align-items-center justify-content-center">
-          <div className="d-flex flex-lg-column gap-2 text-muted">
+        <div className="">
+          <div className="">
             <ArrowLeft size={18} />
             <ArrowRight size={18} />
           </div>
         </div>
-        <div className="col-12 col-lg-5">
+        <div className="">
           <ListPanel title={rightTitle} items={rightItems} emptyText="No available items." actionIcon={ArrowLeft} disabled={disabled} onAction={onMoveLeft} />
         </div>
       </div>
@@ -3985,27 +3661,27 @@ function ListPanel({ title, items, emptyText, actionIcon: ActionIcon, disabled, 
   }, [itemSignature, title]);
 
   return (
-    <div className="appweb-list-panel rounded-2xl border border-slate-200 overflow-hidden h-100">
-      <div className="user-row head" style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}>
-        <div className="user-cell">{title}</div>
-        <div className="user-cell text-end">
-          <span className="row-index-pill">{items.length}</span>
+    <div className="">
+      <div className="" style={{}}>
+        <div className="">{title}</div>
+        <div className="">
+          <span className="">{items.length}</span>
         </div>
       </div>
-      <div className="appweb-list-scroll p-0">
+      <div className="">
         {items.length === 0 ? (
-          <div className="p-4 text-center text-muted fw-bold small">{emptyText}</div>
+          <div className="">{emptyText}</div>
         ) : pagination.pageItems.map((item) => (
-          <div key={item.id} className="user-row" style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}>
-            <div className="user-cell user-name">
-              <span className="user-mini-avatar"><Package size={13} /></span>
-              <span className="min-w-0">
+          <div key={item.id} className="" style={{}}>
+            <div className="">
+              <span className=""><Package size={13} /></span>
+              <span className="">
                 <strong>{item.title}</strong>
                 <small>{item.meta || '-'}</small>
               </span>
             </div>
-            <div className="user-cell text-end">
-              <button type="button" disabled={disabled} onClick={() => onAction(item.id)} className="icon-action-btn edit" aria-label={`Move ${item.title}`}>
+            <div className="">
+              <button type="button" disabled={disabled} onClick={() => onAction(item.id)} className="" aria-label={`Move ${item.title}`}>
                 <ActionIcon size={13} />
               </button>
             </div>

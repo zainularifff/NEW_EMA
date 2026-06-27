@@ -1,10 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   AlertCircle,
-  AlertTriangle,
   CheckCircle,
-  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -25,19 +23,12 @@ import {
   X,
 } from "lucide-react";
 import appMeteringService from "../services/appMeteringService";
-import "../styles/app-metering-v2.css";
 
-import "../styles/ema-standard-table.css";
-import "../styles/ema-standard-controls.css";
-import "../styles/ema-table-pagination-standard.css";
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
 type ViewMode = "device" | "package";
-type UsageStatus = "Productive" | "Review" | "Restricted" | "Unused";
-type RiskLevel = "Low" | "Medium" | "High";
-type LicenseType = "Free" | "Paid" | "Enterprise" | "Unknown";
 type ToastType = "success" | "error" | "info";
 
 type ToastState = {
@@ -124,10 +115,6 @@ type UsageRow = {
   usedTimeSeconds: number;
   launchCount: number;
   lastUsed: string;
-  status: UsageStatus;
-  risk: RiskLevel;
-  licenseType: LicenseType;
-  recommendation: string;
   raw?: Record<string, unknown>;
 };
 
@@ -153,11 +140,6 @@ type AppMeteringStats = {
   uniqueApplications?: number;
   totalUsageSeconds?: number;
   rows?: unknown[];
-};
-
-type FilterState = {
-  status: string;
-  license: string;
 };
 
 type MeteringActiveRecord = {
@@ -201,16 +183,7 @@ const emptyUsageRow: UsageRow = {
   usedTimeSeconds: 0,
   launchCount: 0,
   lastUsed: "-",
-  status: "Unused",
-  risk: "Low",
-  licenseType: "Unknown",
-  recommendation: "Select an application usage row to review operational recommendation.",
 };
-
-const statusOrder: UsageStatus[] = ["Productive", "Review", "Restricted", "Unused"];
-const restrictedKeywords = ["torrent", "utorrent", "bittorrent", "anydesk", "teamviewer", "remote", "vpn", "cracker", "keygen"];
-const paidKeywords = ["visio", "project", "autocad", "adobe", "photoshop", "illustrator", "acrobat", "sap"];
-const enterpriseKeywords = ["office", "teams", "outlook", "excel", "word", "powerpoint", "sap"];
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
@@ -281,6 +254,12 @@ function getEnvelopeData<T>(payload: unknown, fallback: T): T {
   return (envelope.data as T) ?? (envelope as T) ?? fallback;
 }
 
+function isBlankValue(value: unknown) {
+  if (value === undefined || value === null) return true;
+  const text = String(value).trim();
+  return !text || text === "-" || text.toLowerCase() === "null" || text.toLowerCase() === "undefined";
+}
+
 function pickValue(record: Record<string, unknown> | null | undefined, keys: string[], fallback = "") {
   if (!record) return fallback;
   const lowerMap = new Map(Object.keys(record).map((key) => [key.toLowerCase(), key]));
@@ -288,14 +267,15 @@ function pickValue(record: Record<string, unknown> | null | undefined, keys: str
   for (const key of keys) {
     const actualKey = lowerMap.get(key.toLowerCase());
     const value = actualKey ? record[actualKey] : undefined;
-    if (value !== undefined && value !== null && String(value).trim() !== "") return String(value).trim();
+    if (!isBlankValue(value)) return String(value).trim();
   }
 
   return fallback;
 }
 
 function parseNumber(value: unknown, fallback = 0) {
-  const parsed = Number(value);
+  if (isBlankValue(value)) return fallback;
+  const parsed = Number(String(value).replace(/,/g, ""));
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
@@ -419,36 +399,6 @@ function formatUsageDuration(seconds: number) {
   }
 
   return `${remainingSeconds}s`;
-}
-
-function getStatus(application: string, launchCount: number, usedTimeHours: number, usedTimeSeconds = 0): UsageStatus {
-  const app = application.toLowerCase();
-  if (restrictedKeywords.some((keyword) => app.includes(keyword))) return "Restricted";
-  if (launchCount <= 0 && usedTimeSeconds <= 0) return "Unused";
-  if (usedTimeSeconds <= 0) return "Unused";
-  if (usedTimeHours < 2 || launchCount < 5) return "Review";
-  return "Productive";
-}
-
-function getRisk(status: UsageStatus): RiskLevel {
-  if (status === "Restricted") return "High";
-  if (status === "Review" || status === "Unused") return "Medium";
-  return "Low";
-}
-
-function getLicenseType(application: string): LicenseType {
-  const app = application.toLowerCase();
-  if (enterpriseKeywords.some((keyword) => app.includes(keyword))) return "Enterprise";
-  if (paidKeywords.some((keyword) => app.includes(keyword))) return "Paid";
-  if (["chrome", "firefox", "edge"].some((keyword) => app.includes(keyword))) return "Free";
-  return "Unknown";
-}
-
-function getRecommendation(status: UsageStatus, risk: RiskLevel, licenseType: LicenseType) {
-  if (risk === "High") return "Validate business need immediately or move this application into policy restriction review.";
-  if (status === "Unused" && licenseType === "Paid") return "Candidate for license reclaim because no usage was detected in the selected window.";
-  if (status === "Review") return "Review usage pattern before renewal or standardization decision.";
-  return "Keep monitored. Usage is aligned with normal application metering baseline.";
 }
 
 function normalizePackageRow(row: unknown, index = 0): PackageRow {
@@ -575,6 +525,21 @@ function getTreeNodeValue(node: TreeNode, keys: string[], fallback = "-") {
   return pickValue(node.raw || {}, keys, fallback);
 }
 
+function getTreeStatusClass(status = "") {
+  const value = status.trim().toLowerCase();
+  if (value === "online" || value === "connected") return "online";
+  if (value === "offline" || value === "disconnected") return "offline";
+  return "unknown";
+}
+
+function getTreeStatusPillClass(status = "") {
+  const treeStatus = getTreeStatusClass(status);
+  if (treeStatus === "online") return "user-pill active";
+  if (treeStatus === "offline") return "user-pill hardware-status-pill is-offline appm-status-offline";
+  return "user-pill muted-cell";
+}
+
+
 
 function collectRelationIds(nodes: TreeNode[], ids = new Set<number>()): Set<number> {
   for (const node of nodes) {
@@ -633,32 +598,40 @@ function findTreeNodeById(nodes: TreeNode[], nodeId: string): TreeNode | null {
   return null;
 }
 
-function normalizeUsageRow(row: unknown, index = 0): UsageRow {
+function mergeUsageRecord(row: unknown): Record<string, unknown> {
   const record = asRecord(row) || {};
+  const raw = asRecord(record.raw);
+  return raw ? { ...record, ...raw } : record;
+}
+
+function normalizeUsageRow(row: unknown, index = 0, scopeNode?: TreeNode): UsageRow {
+  const record = mergeUsageRecord(row);
+  const isDeviceScope = scopeNode?.type === "device";
+  const scopeRaw = scopeNode?.raw || {};
 
   const application = pickValue(record, [
-    "application",
-    "Application",
     "SW_FileName",
     "SW_File_Name",
     "FileName",
     "fileName",
     "ProcessName",
     "SW_OrgFileName",
+    "application",
+    "Application",
+    "SW_Pkg_Name",
     "applicationPackage",
     "ApplicationPackage",
     "Application Package",
-    "SW_Pkg_Name",
     "SWPkgName",
     "PackageName",
     "Pkg_Name",
-  ], "-");
+  ], `Application ${index + 1}`);
 
   const fileName = pickValue(record, [
     "SW_FileName",
     "SW_File_Name",
-    "fileName",
     "FileName",
+    "fileName",
     "File_Name",
     "ProcessName",
     "EXE_Name",
@@ -699,99 +672,45 @@ function normalizeUsageRow(row: unknown, index = 0): UsageRow {
     "RunCount",
   ], "0"), 0);
 
+  const fallbackDevice = isDeviceScope
+    ? pickValue(scopeRaw, ["ComputerName", "DeviceName", "DeviceDisplayName", "MDM_DeviceName", "Object_DeviceID"], scopeNode?.label || "-")
+    : "-";
+  const fallbackUser = isDeviceScope
+    ? pickValue(scopeRaw, ["Object_Client_Name", "DisplayName", "OwnerName", "DeviceOwner", "UserName", "LastLoggedInUser", "Owner"], scopeNode?.subLabel || "-")
+    : "-";
+  const fallbackSite = pickValue(scopeRaw, ["Object_Full_Name", "Object_Rel_Name", "Department", "Site", "GroupName", "Location", "Workgroup"], scopeNode?.type === "folder" ? scopeNode.label : "-");
+  const fallbackIp = isDeviceScope ? pickValue(scopeRaw, ["IP", "IPAddress", "DeviceIPAddress", "DeviceLocalIPAddress"], "-") : "-";
+
+  const device = pickValue(record, ["ComputerName", "computerName", "device", "DeviceName", "MachineName", "Object_DeviceID", "MDM_DeviceName"], fallbackDevice);
+  const user = pickValue(record, ["Object_Client_Name", "ClientName", "UserName", "user", "User", "LoginUser", "Owner", "OwnerName", "Email"], fallbackUser);
+  const site = pickValue(record, ["Object_Full_Name", "Object_Rel_Name", "site", "Department", "GroupName", "Location", "Workgroup"], fallbackSite);
+  const ip = pickValue(record, ["IP", "IPAddress", "DeviceIPAddress", "DeviceLocalIPAddress"], fallbackIp);
+  const filePath = pickValue(record, ["SW_Path", "Path", "FilePath", "File_Path", "InstallPath"], "-");
+
   const usedTimeHours = secondsToHours(rawSeconds);
-  const status = getStatus(application, launchCount, usedTimeHours, rawSeconds);
-  const risk = getRisk(status);
-  const licenseType = getLicenseType(`${application} ${fileName}`);
-  const lastUsedRaw = pickValue(record, [
-    "App_EndTime",
-    "AppEndTime",
-    "EndTime",
-    "LastUsed",
-    "Last_Used",
-    "date",
-    "MeterDate",
-    "Meter_Date",
-    "Date",
-    "SearchDate",
-    "UseDate",
-    "App_StartTime",
-    "ConnectionTime",
-  ], "-");
-  const appStartTime = formatApiDate(pickValue(record, ["App_StartTime", "AppStartTime", "StartTime"], ""));
-  const appEndTime = formatApiDate(pickValue(record, ["App_EndTime", "AppEndTime", "EndTime"], ""));
+  const startTimeRaw = pickValue(record, ["App_StartTime", "AppStartTime", "StartTime", "MeterDate", "Meter_Date", "SearchDate", "UseDate"], "");
+  const endTimeRaw = pickValue(record, ["App_EndTime", "AppEndTime", "EndTime", "LastUsed", "Last_Used", "date", "Date", "ConnectionTime"], "");
 
   return {
     id: String(pickValue(record, ["IDN", "idn", "id", "ID", "RowNumber", "No"], String(index + 1))),
     application,
-    publisher: pickValue(record, ["publisher", "Publisher", "Manufacturer", "CompanyName", "Vendor", "SW_Pkg_Name"], "-"),
+    publisher: pickValue(record, ["publisher", "Publisher", "Manufacturer", "CompanyName", "Vendor"], "-"),
     version: pickValue(record, ["SW_VerInfo", "version", "Version", "FileVersion", "SW_Version", "VerInfo"], "-"),
     fileName,
     originalFileName,
-    device: pickValue(record, ["ComputerName", "computerName", "device", "DeviceName", "MachineName", "Object_DeviceID", "MDM_DeviceName"], "-"),
-    user: pickValue(record, ["Object_Client_Name", "ClientName", "UserName", "user", "User", "LoginUser", "Owner", "OwnerName", "Email"], "-"),
-    site: pickValue(record, ["Object_Full_Name", "Object_Rel_Name", "site", "Department", "GroupName", "Location", "Workgroup"], "-"),
-    ip: pickValue(record, ["IP", "IPAddress", "DeviceIPAddress", "DeviceLocalIPAddress"], "-"),
-    filePath: pickValue(record, ["SW_Path", "Path", "FilePath", "File_Path", "InstallPath"], "-"),
-    appStartTime,
-    appEndTime,
+    device,
+    user,
+    site,
+    ip,
+    filePath,
+    appStartTime: formatApiDate(startTimeRaw),
+    appEndTime: formatApiDate(endTimeRaw),
     usedTimeHours,
     usedTimeSeconds: rawSeconds,
     launchCount,
-    lastUsed: formatApiDate(lastUsedRaw),
-    status,
-    risk,
-    licenseType,
-    recommendation: getRecommendation(status, risk, licenseType),
+    lastUsed: endTimeRaw ? formatApiDate(endTimeRaw) : startTimeRaw ? formatApiDate(startTimeRaw) : "-",
     raw: record,
   };
-}
-
-function statusClass(status: UsageStatus) {
-  return status.toLowerCase();
-}
-
-function riskClass(risk: RiskLevel) {
-  return risk.toLowerCase();
-}
-
-function getTreeStatusClass(status = "") {
-  const value = status.trim().toLowerCase();
-  if (value === "online" || value === "connected") return "online";
-  if (value === "offline" || value === "disconnected") return "offline";
-  return "unknown";
-}
-
-function getTreeDepthClass(depth: number) {
-  return ["ps-0", "ps-2", "ps-3", "ps-4", "ps-5", "ps-5"][Math.min(depth, 5)] || "ps-0";
-}
-
-function getTreeStatusPillClass(status = "") {
-  const treeStatus = getTreeStatusClass(status);
-  if (treeStatus === "online") return "user-pill active";
-  if (treeStatus === "offline") return "user-pill hardware-status-pill is-offline appm-status-offline";
-  return "user-pill muted-cell";
-}
-
-function getUsageStatusPillClass(status: UsageStatus) {
-  const value = statusClass(status);
-  return cx(
-    "user-pill",
-    value === "productive" && "active",
-    value === "restricted" && "locked",
-    value === "review" && "review",
-    value === "unused" && "muted-cell",
-  );
-}
-
-function getRiskPillClass(risk: RiskLevel) {
-  const value = riskClass(risk);
-  return cx(
-    "user-pill",
-    value === "low" && "active",
-    value === "medium" && "review",
-    value === "high" && "locked",
-  );
 }
 
 function getSelectedDeviceOwner(node: TreeNode) {
@@ -853,7 +772,7 @@ function formatMeteringStartedAt(value = "") {
 }
 
 function exportCsv(rows: UsageRow[]) {
-  const header = ["Application", "Publisher", "Version", "File", "Original File", "Device", "User", "Site", "IP", "Path", "Start Time", "End Time", "Used Hours", "Used Seconds", "Launch Count", "Last Used", "Status", "Risk", "License", "Recommendation"];
+  const header = ["Application", "Publisher", "Version", "File", "Original File", "Device", "User", "Site", "IP", "Path", "Start Time", "End Time", "Used Hours", "Used Seconds", "Launch Count", "Last Used"];
   const csv = [
     header.join(","),
     ...rows.map((row) => [
@@ -873,10 +792,6 @@ function exportCsv(rows: UsageRow[]) {
       row.usedTimeSeconds,
       row.launchCount,
       row.lastUsed,
-      row.status,
-      row.risk,
-      row.licenseType,
-      row.recommendation,
     ].map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")),
   ].join("\n");
 
@@ -992,7 +907,6 @@ export default function AppMetering() {
   const [stats, setStats] = useState<AppMeteringStats>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [treeSearch, setTreeSearch] = useState("");
-  const [filters, setFilters] = useState<FilterState>({ status: "all", license: "all" });
   const [startDate, setStartDate] = useState(defaultStartDate());
   const [endDate, setEndDate] = useState(formatDateInput(new Date()));
   const [oneYearMode, setOneYearMode] = useState(false);
@@ -1173,13 +1087,21 @@ export default function AppMetering() {
 
     try {
       const usagePayload = await appMeteringService.getUsage(Object.fromEntries(activeFilters.entries()));
-      const normalizedUsage = getUsageDataArray<unknown>(usagePayload).map(normalizeUsageRow);
+      const normalizedUsage = getUsageDataArray<unknown>(usagePayload).map((row, index) => normalizeUsageRow(row, index, selectedNode));
       setUsageRows(normalizedUsage);
       setSelectedRowId((prev) => (normalizedUsage.some((row) => row.id === prev) ? prev : normalizedUsage[0]?.id || ""));
 
       const statsPayload = await appMeteringService.getStats(Object.fromEntries(activeFilters.entries()));
       const statsData = getEnvelopeData<AppMeteringStats>(statsPayload, {});
       setStats(statsData || {});
+
+      if (normalizedUsage.length === 0) {
+        const statsRows = getUsageDataArray<unknown>(statsPayload).map((row, index) => normalizeUsageRow(row, index, selectedNode));
+        if (statsRows.length > 0) {
+          setUsageRows(statsRows);
+          setSelectedRowId((prev) => (statsRows.some((row) => row.id === prev) ? prev : statsRows[0]?.id || ""));
+        }
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load application metering usage.";
       setError(message);
@@ -1188,7 +1110,7 @@ export default function AppMetering() {
     } finally {
       setLoading((prev) => ({ ...prev, usage: false }));
     }
-  }, [activeFilters]);
+  }, [activeFilters, selectedNode]);
 
   useEffect(() => {
     loadHierarchy();
@@ -1228,13 +1150,10 @@ export default function AppMetering() {
     const text = searchTerm.trim().toLowerCase();
 
     return usageRows.filter((row) => {
-      const matchesText = !text || [row.application, row.publisher, row.version, row.fileName, row.originalFileName, row.device, row.user, row.site, row.ip, row.filePath]
+      return !text || [row.application, row.publisher, row.version, row.fileName, row.originalFileName, row.device, row.user, row.site, row.ip, row.filePath]
         .some((value) => value.toLowerCase().includes(text));
-      const matchesStatus = filters.status === "all" || row.status === filters.status;
-      const matchesLicense = filters.license === "all" || row.licenseType === filters.license;
-      return matchesText && matchesStatus && matchesLicense;
     });
-  }, [usageRows, searchTerm, filters]);
+  }, [usageRows, searchTerm]);
 
   const usagePageCount = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const selectedRow = filteredRows.find((row) => row.id === selectedRowId) ?? filteredRows[0] ?? emptyUsageRow;
@@ -1266,7 +1185,7 @@ export default function AppMetering() {
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, filters, selectedNode.id, selectedPackageId]);
+  }, [searchTerm, selectedNode.id, selectedPackageId]);
 
   useEffect(() => {
     setPage((prev) => Math.min(Math.max(1, prev), pageCount));
@@ -1279,26 +1198,20 @@ export default function AppMetering() {
     const statsUniqueApplications = typeof stats.uniqueApplications === "number" && stats.uniqueApplications > 0 ? stats.uniqueApplications : 0;
     const uniqueApplications = Math.max(statsUniqueApplications, rowUniqueApplications);
     const launchCount = usageRows.reduce((sum, row) => sum + row.launchCount, 0);
-    const restricted = usageRows.filter((row) => row.status === "Restricted").length;
-    const unused = usageRows.filter((row) => row.status === "Unused").length;
-    const review = usageRows.filter((row) => row.status === "Review").length;
 
     return {
       uniqueApplications,
       totalSeconds,
       totalHours: secondsToHours(totalSeconds),
       launchCount,
-      restricted,
-      unused,
-      review,
+      recordCount: usageRows.length,
     };
   }, [stats, usageRows]);
 
-  const statusCounts = statusOrder.map((status) => ({ status, count: usageRows.filter((row) => row.status === status).length }));
   const kpiScopeType = selectedNode.type === "package" ? "Package" : selectedNode.type === "device" ? "Device" : "Scope";
   const kpiScopeLabel = selectedNode.label || "Organization";
   const kpiPeriodLabel = oneYearMode ? `One year window${nextPageMode ? " · next page" : ""}` : `${startDate} to ${endDate}`;
-  const kpiFilterLabel = `${filters.status === "all" ? "All status" : filters.status} · ${filters.license === "all" ? "All licenses" : filters.license}`;
+  const kpiFilterLabel = "API fields only";
 
   const handleTreeSearch = (value: string) => {
     setTreeSearch(value);
@@ -1432,12 +1345,12 @@ export default function AppMetering() {
   };
 
   useEffect(() => {
-    document.documentElement.classList.add("ema-settings-page-active");
-    document.body.classList.add("ema-settings-page-active");
+    document.documentElement.classList.add("ema-settings-page-active", "appmetering-page-active");
+    document.body.classList.add("ema-settings-page-active", "appmetering-page-active");
 
     return () => {
-      document.documentElement.classList.remove("ema-settings-page-active");
-      document.body.classList.remove("ema-settings-page-active");
+      document.documentElement.classList.remove("ema-settings-page-active", "appmetering-page-active");
+      document.body.classList.remove("ema-settings-page-active", "appmetering-page-active");
     };
   }, []);
 
@@ -1482,6 +1395,194 @@ export default function AppMetering() {
           color: #64748b !important;
           background: rgba(100, 116, 139, 0.12) !important;
           border: 1px solid rgba(100, 116, 139, 0.22) !important;
+        }
+
+
+        /* Server-safe App Metering table/pagination isolation.
+           Hosted builds can load older global table/uam styles after this component.
+           Keep Application Metering columns horizontal and scrollable. */
+        body.appmetering-page-active .appmetering-module-root {
+          min-width: 0 !important;
+          height: 100% !important;
+          min-height: 0 !important;
+          overflow: hidden !important;
+        }
+
+        body.appmetering-page-active .appmetering-module-root .appmetering-settings-layout {
+          height: 100% !important;
+          min-height: 0 !important;
+          overflow: hidden !important;
+        }
+
+        body.appmetering-page-active .appmetering-module-root .appmetering-settings-content {
+          min-width: 0 !important;
+          min-height: 0 !important;
+          overflow: hidden !important;
+        }
+
+        body.appmetering-page-active .appmetering-module-root .content-shell {
+          display: flex !important;
+          flex-direction: column !important;
+          min-width: 0 !important;
+          min-height: 0 !important;
+          max-height: calc(100dvh - 210px) !important;
+          overflow: hidden !important;
+        }
+
+        body.appmetering-page-active .appmetering-module-root .content-head,
+        body.appmetering-page-active .appmetering-module-root .user-action-bar,
+        body.appmetering-page-active .appmetering-module-root .row.g-2,
+        body.appmetering-page-active .appmetering-module-root .appmetering-pagination {
+          flex: 0 0 auto !important;
+        }
+
+        body.appmetering-page-active .appmetering-module-root .content-body {
+          display: flex !important;
+          flex-direction: column !important;
+          flex: 1 1 auto !important;
+          min-height: 0 !important;
+          overflow: hidden !important;
+        }
+
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card {
+          display: block !important;
+          flex: 1 1 auto !important;
+          width: calc(100% - 0.25rem) !important;
+          max-width: calc(100% - 0.25rem) !important;
+          min-height: 260px !important;
+          max-height: min(52vh, 560px) !important;
+          margin: 0 !important;
+          overflow-x: auto !important;
+          overflow-y: auto !important;
+          white-space: normal !important;
+          scrollbar-gutter: stable !important;
+          -webkit-overflow-scrolling: touch !important;
+          contain: layout paint !important;
+        }
+
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card table {
+          display: table !important;
+          table-layout: fixed !important;
+          width: 100% !important;
+          min-width: 1040px !important;
+          max-width: none !important;
+          border-collapse: separate !important;
+          border-spacing: 0 !important;
+        }
+
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card thead {
+          display: table-header-group !important;
+        }
+
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card tbody {
+          display: table-row-group !important;
+        }
+
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card tr {
+          display: table-row !important;
+          width: auto !important;
+          min-width: 0 !important;
+        }
+
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card th,
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card td {
+          display: table-cell !important;
+          vertical-align: middle !important;
+          width: auto !important;
+          min-width: 0 !important;
+          max-width: none !important;
+          padding: 0.85rem 0.8rem !important;
+          white-space: nowrap !important;
+          word-break: normal !important;
+          overflow-wrap: normal !important;
+          writing-mode: horizontal-tb !important;
+          text-orientation: mixed !important;
+          line-height: 1.25 !important;
+        }
+
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card th {
+          position: sticky !important;
+          top: 0 !important;
+          z-index: 4 !important;
+          background: #ffffff !important;
+          color: #0f172a !important;
+          font-size: 0.78rem !important;
+          font-weight: 900 !important;
+          text-transform: none !important;
+          letter-spacing: 0 !important;
+        }
+
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card td small,
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card td .text-muted {
+          max-width: 420px !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+          word-break: normal !important;
+        }
+
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card th:nth-child(1),
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card td:nth-child(1) { width: 22% !important; }
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card th:nth-child(2),
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card td:nth-child(2) { width: 34% !important; }
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card th:nth-child(3),
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card td:nth-child(3) { width: 16% !important; }
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card th:nth-child(4),
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card td:nth-child(4) { width: 7% !important; }
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card th:nth-child(5),
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card td:nth-child(5) { width: 7% !important; }
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card th:nth-child(6),
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card td:nth-child(6) { width: 10% !important; }
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card th:nth-child(7),
+        body.appmetering-page-active .appmetering-module-root .appmetering-table-card td:nth-child(7) { width: 8% !important; }
+
+        body.appmetering-page-active .appmetering-module-root .appmetering-pagination {
+          position: relative !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 0.75rem !important;
+          width: 100% !important;
+          min-height: 58px !important;
+          padding: 0.75rem 0.4rem 0 !important;
+          margin: 0 !important;
+          overflow: visible !important;
+          transform: none !important;
+        }
+
+        body.appmetering-page-active .appmetering-module-root .appmetering-pagination .uam-pagination-controls {
+          position: static !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 0.38rem !important;
+          width: auto !important;
+          min-width: 0 !important;
+          height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          transform: none !important;
+        }
+
+        body.appmetering-page-active .appmetering-module-root .appmetering-pagination .uam-page-icon,
+        body.appmetering-page-active .appmetering-module-root .appmetering-pagination .uam-page-current {
+          position: static !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          width: 34px !important;
+          min-width: 34px !important;
+          max-width: 34px !important;
+          height: 34px !important;
+          min-height: 34px !important;
+          max-height: 34px !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border-radius: 10px !important;
+          line-height: 1 !important;
+          white-space: nowrap !important;
+          transform: none !important;
+          float: none !important;
         }
 
         @media (max-width: 1100px) {
@@ -1566,15 +1667,15 @@ export default function AppMetering() {
                 <strong>{formatUsageDuration(summary.totalSeconds)}</strong>
                 <small>Selected date range</small>
               </button>
-              <button className="score-box text-start" type="button" onClick={() => setFilters((prev) => ({ ...prev, status: "Review" }))}>
-                <span>Review Apps</span>
-                <strong>{summary.review}</strong>
-                <small>Low or unusual use</small>
+              <button className="score-box text-start" type="button" onClick={loadUsage}>
+                <span>Launch Events</span>
+                <strong>{summary.launchCount.toLocaleString()}</strong>
+                <small>Total CCount from API</small>
               </button>
-              <button className="score-box text-start" type="button" onClick={() => setFilters((prev) => ({ ...prev, status: "Restricted" }))}>
-                <span>Restricted</span>
-                <strong>{summary.restricted}</strong>
-                <small>Policy review needed</small>
+              <button className="score-box text-start" type="button" onClick={loadUsage}>
+                <span>Records</span>
+                <strong>{summary.recordCount.toLocaleString()}</strong>
+                <small>Rows returned by API</small>
               </button>
             </div>
           </div>
@@ -1605,7 +1706,7 @@ export default function AppMetering() {
                 </label>
 
                 <div className="content-actions">
-                  <button className="soft-btn" type="button" onClick={() => { setFilters({ status: "all", license: "all" }); setSelectedPackageId(0); setSearchTerm(""); setOneYearMode(false); setNextPageMode(false); }}>
+                  <button className="soft-btn" type="button" onClick={() => { setSelectedPackageId(0); setSearchTerm(""); setOneYearMode(false); setNextPageMode(false); }}>
                     <Filter size={14} /> Clear
                   </button>
                   <button
@@ -1641,23 +1742,6 @@ export default function AppMetering() {
                   </select>
                 </label>
                 <label className="form-field col-12 col-md-6 col-xl">
-                  <span>Status</span>
-                  <select className="setting-select" value={filters.status} onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}>
-                    <option value="all">All Status</option>
-                    {statusOrder.map((status) => <option key={status} value={status}>{status}</option>)}
-                  </select>
-                </label>
-                <label className="form-field col-12 col-md-6 col-xl">
-                  <span>License</span>
-                  <select className="setting-select" value={filters.license} onChange={(event) => setFilters((prev) => ({ ...prev, license: event.target.value }))}>
-                    <option value="all">All License</option>
-                    <option value="Free">Free</option>
-                    <option value="Paid">Paid</option>
-                    <option value="Enterprise">Enterprise</option>
-                    <option value="Unknown">Unknown</option>
-                  </select>
-                </label>
-                <label className="form-field col-12 col-md-6 col-xl">
                   <span>SP Mode</span>
                   <select className="setting-select" value={oneYearMode ? "oneYear" : "normal"} onChange={(event) => setOneYearMode(event.target.value === "oneYear")}>
                     <option value="normal">Normal</option>
@@ -1675,7 +1759,7 @@ export default function AppMetering() {
 
               {error ? <div className="settings-inline-alert mb-3"><AlertCircle size={15} /> {error}</div> : null}
 
-              <div className="table-responsive pricing-table-card">
+              <div className="table-responsive pricing-table-card appmetering-table-card">
                 {showDeviceRegistry ? (
                   <table className="table table-hover align-middle mb-0">
                     <thead>
@@ -1723,16 +1807,14 @@ export default function AppMetering() {
                         <th>Usage</th>
                         <th>Launch</th>
                         <th>Last Used</th>
-                        <th>Status</th>
-                        <th>Risk</th>
                         <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {loading.usage ? (
-                        <tr><td colSpan={9}><div className="settings-helper-card"><strong>Loading usage records</strong><span>Please wait while the application metering registry is refreshed.</span></div></td></tr>
+                        <tr><td colSpan={7}><div className="settings-helper-card"><strong>Loading usage records</strong><span>Please wait while the application metering registry is refreshed.</span></div></td></tr>
                       ) : pagedRows.length === 0 ? (
-                        <tr><td colSpan={9}><div className="settings-helper-card"><strong>No records found</strong><span>No application metering records found for current filter.</span></div></td></tr>
+                        <tr><td colSpan={7}><div className="settings-helper-card"><strong>No records found</strong><span>No application metering records found for current filter.</span></div></td></tr>
                       ) : pagedRows.map((row) => (
                         <tr key={`${row.id}-${row.application}-${row.device}`} className={cx(row.id === selectedRow.id && "table-active")} onClick={() => setSelectedRowId(row.id)}>
                           <td><button type="button" className="btn btn-link p-0 text-decoration-none fw-bold" onClick={(event) => { event.stopPropagation(); setDrawerRow(row); }}>{row.application}</button><small className="d-block text-muted">{row.version !== "-" ? `Version ${row.version}` : row.originalFileName}</small></td>
@@ -1741,8 +1823,6 @@ export default function AppMetering() {
                           <td><strong>{formatUsageDuration(row.usedTimeSeconds)}</strong></td>
                           <td>{row.launchCount}</td>
                           <td>{row.lastUsed}</td>
-                          <td><span className={getUsageStatusPillClass(row.status)}>{row.status}</span></td>
-                          <td><span className={getRiskPillClass(row.risk)}>{row.risk}</span></td>
                           <td><button type="button" className="soft-btn" onClick={(event) => { event.stopPropagation(); setDrawerRow(row); }}>Details</button></td>
                         </tr>
                       ))}
@@ -1751,7 +1831,7 @@ export default function AppMetering() {
                 )}
               </div>
 
-              <div className="uam-pagination global-style" aria-label="Application metering pagination">
+              <div className="uam-pagination global-style appmetering-pagination" aria-label="Application metering pagination">
                 <div className="uam-page-summary">
                   <strong>Page {safePage} of {pageCount}</strong>
                 </div>
@@ -1786,8 +1866,6 @@ export default function AppMetering() {
             <div className="user-modal-body">
               <div className="score-box"><span>Usage Time</span><strong>{formatUsageDuration(drawerRow.usedTimeSeconds)}</strong><small>{drawerRow.usedTimeSeconds.toLocaleString()} seconds</small></div>
               <div className="score-box"><span>Launch Count</span><strong>{drawerRow.launchCount}</strong><small>Execution events</small></div>
-              <div className="score-box"><span>Risk Level</span><strong>{drawerRow.risk}</strong><small>{drawerRow.status}</small></div>
-              <div className="score-box"><span>License Type</span><strong>{drawerRow.licenseType}</strong><small>Metering classification</small></div>
 
               <div className="modal-section-title">Application Information</div>
               <label className="form-field"><span>Application</span><input className="setting-input" value={drawerRow.application} readOnly /></label>
@@ -1820,19 +1898,12 @@ export default function AppMetering() {
                   </div>
                 )}
               </div>
-
-              <div className="modal-section-title">Recommended Action</div>
-              <div className="settings-helper-card wide">
-                <strong><AlertTriangle size={16} /> Recommendation</strong>
-                <span>{drawerRow.recommendation}</span>
-              </div>
             </div>
 
             <div className="user-modal-foot">
               <button type="button" className="soft-btn" onClick={loadUsage}><RefreshCw size={14} /> Refresh Meter</button>
               <button type="button" className="soft-btn" onClick={() => exportCsv([drawerRow])}><Download size={14} /> Export Detail</button>
               <button type="button" className={isSelectedScopeMeteringActive ? "danger-btn" : "primary-btn"} onClick={() => handleScopeMeteringToggle()} disabled={loading.action}>{isSelectedScopeMeteringActive ? <StopCircle size={14} /> : <Play size={14} />} {isSelectedScopeMeteringActive ? "Stop Metering" : "Start Metering"}</button>
-              <button type="button" className="soft-btn" onClick={() => showToast("success", "Review updated", "The selected application has been marked for review in the UI.")}><CheckCircle2 size={14} /> Mark Reviewed</button>
             </div>
           </section>
         </div>

@@ -171,24 +171,32 @@ async function loadIdleTimeoutConfig(token: string): Promise<IdleTimeoutConfig> 
 }
 
 function mergeFreshUserWithStoredAccess(freshUser: AccessUser, storedUser: AccessUser | null): AccessUser {
+  const freshAllowedModules = Array.isArray(freshUser.allowedModules) && freshUser.allowedModules.length
+    ? freshUser.allowedModules
+    : undefined;
+
+  const freshAllowedRoutes = Array.isArray(freshUser.allowedRoutes) && freshUser.allowedRoutes.length
+    ? freshUser.allowedRoutes
+    : undefined;
+
+  const freshModuleAccess = freshUser.moduleAccess && Object.keys(freshUser.moduleAccess).length
+    ? freshUser.moduleAccess
+    : undefined;
+
+  const freshPermissions = freshUser.permissions && Object.keys(freshUser.permissions).length
+    ? freshUser.permissions
+    : undefined;
+
   return {
     ...freshUser,
-    allowedModules:
-      Array.isArray(freshUser.allowedModules) && freshUser.allowedModules.length
-        ? freshUser.allowedModules
-        : storedUser?.allowedModules,
-    allowedRoutes:
-      Array.isArray(freshUser.allowedRoutes) && freshUser.allowedRoutes.length
-        ? freshUser.allowedRoutes
-        : storedUser?.allowedRoutes,
-    moduleAccess:
-      freshUser.moduleAccess && Object.keys(freshUser.moduleAccess).length
-        ? freshUser.moduleAccess
-        : storedUser?.moduleAccess,
-    permissions:
-      freshUser.permissions && Object.keys(freshUser.permissions).length
-        ? freshUser.permissions
-        : storedUser?.permissions,
+    allowedModules: freshAllowedModules || storedUser?.allowedModules || [],
+    allowedRoutes: freshAllowedRoutes || storedUser?.allowedRoutes || [],
+    moduleAccess: freshModuleAccess || storedUser?.moduleAccess || {},
+    permissions: freshPermissions || storedUser?.permissions || {},
+    hasModuleAccessConfig:
+      freshUser.hasModuleAccessConfig ??
+      storedUser?.hasModuleAccessConfig ??
+      Boolean(freshAllowedModules || freshAllowedRoutes || freshModuleAccess || storedUser?.allowedModules?.length || storedUser?.allowedRoutes?.length),
   };
 }
 
@@ -348,22 +356,31 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!canViewPath(user, path)) {
-    const redirectTo = getDefaultAccessiblePath(user);
+    const redirectTo = getDefaultAccessiblePath(user, "");
 
-    if (cleanPath(redirectTo) === path) {
-      return children ? <>{children}</> : <Outlet />;
+    if (redirectTo && cleanPath(redirectTo) !== path) {
+      return (
+        <Navigate
+          to={redirectTo}
+          replace
+          state={{
+            accessDenied: true,
+            deniedPath: path,
+            deniedModules: getRouteModuleKeys(path),
+          }}
+        />
+      );
     }
 
     return (
-      <Navigate
-        to={redirectTo}
-        replace
-        state={{
-          accessDenied: true,
-          deniedPath: path,
-          deniedModules: getRouteModuleKeys(path),
-        }}
-      />
+      <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 24, color: "#0f2746" }}>
+        <div style={{ maxWidth: 520, padding: 24, borderRadius: 18, background: "#ffffff", border: "1px solid #cbd5e1", boxShadow: "0 18px 48px rgba(15, 23, 42, 0.12)" }}>
+          <h2 style={{ margin: "0 0 8px", fontSize: 22 }}>Access denied</h2>
+          <p style={{ margin: 0, color: "#64748b" }}>
+            Your account does not have permission to access this module. Please contact the system administrator.
+          </p>
+        </div>
+      </div>
     );
   }
 

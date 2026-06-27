@@ -2,9 +2,6 @@ import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 
 import { installDisplayCopyStandardizer } from "../../utils/displayCopy";
-import "../../styles/report-builder-scope-fix.css";
-import "../../styles/hardware-detail-drawer-fix.css";
-import "../../styles/ema-layout.css";
 import { Sidebar } from "./Sidebar";
 import { TopNavbar } from "./TopNavbar";
 import { AppFooter } from "./AppFooter";

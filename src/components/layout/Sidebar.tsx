@@ -95,16 +95,42 @@ function mergeAccessUser(contextUser: unknown): AccessUser | null {
     return storedUser;
   }
 
+  const nextUser = contextUser as AccessUser;
+
+  const allowedModules =
+    Array.isArray(nextUser.allowedModules) && nextUser.allowedModules.length
+      ? nextUser.allowedModules
+      : storedUser?.allowedModules || [];
+
+  const allowedRoutes =
+    Array.isArray(nextUser.allowedRoutes) && nextUser.allowedRoutes.length
+      ? nextUser.allowedRoutes
+      : storedUser?.allowedRoutes || [];
+
+  const moduleAccess =
+    nextUser.moduleAccess && Object.keys(nextUser.moduleAccess).length
+      ? nextUser.moduleAccess
+      : storedUser?.moduleAccess || {};
+
+  const permissions =
+    nextUser.permissions && Object.keys(nextUser.permissions).length
+      ? nextUser.permissions
+      : storedUser?.permissions || {};
+
   return {
     ...(storedUser || {}),
-    ...(contextUser as AccessUser),
-    roles: (contextUser as AccessUser).roles || storedUser?.roles,
-    role: (contextUser as AccessUser).role || storedUser?.role,
-    roleName: (contextUser as AccessUser).roleName || storedUser?.roleName,
-    allowedModules: (contextUser as AccessUser).allowedModules || storedUser?.allowedModules,
-    allowedRoutes: (contextUser as AccessUser).allowedRoutes || storedUser?.allowedRoutes,
-    moduleAccess: (contextUser as AccessUser).moduleAccess || storedUser?.moduleAccess,
-    permissions: (contextUser as AccessUser).permissions || storedUser?.permissions,
+    ...nextUser,
+    roles: nextUser.roles || storedUser?.roles,
+    role: nextUser.role || storedUser?.role,
+    roleName: nextUser.roleName || storedUser?.roleName,
+    allowedModules,
+    allowedRoutes,
+    moduleAccess,
+    permissions,
+    hasModuleAccessConfig:
+      nextUser.hasModuleAccessConfig ??
+      storedUser?.hasModuleAccessConfig ??
+      Boolean(allowedModules.length || allowedRoutes.length || Object.keys(moduleAccess).length),
   };
 }
 
