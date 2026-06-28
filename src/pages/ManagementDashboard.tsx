@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import * as Icons from "lucide-react";
 
 import managementDashboardService from "../services/managementDashboardService";
+import { useTheme } from "../context/ThemeContext";
 
 type IconComponent = React.ComponentType<{
   size?: number | string;
@@ -3518,6 +3519,2213 @@ body.md-dashboard-page-active .content-area {
   .md-exposure-insight-strip { grid-template-columns: 1fr; }
 }
 
+
+/* =========================================================
+   Executive Governance Hub revamp
+   Dark/light mode is driven by TopNavbar ThemeContext and the root
+   md-theme-dark/md-theme-light classes on this page.
+========================================================= */
+html.md-dashboard-page-active.md-dashboard-theme-dark,
+body.md-dashboard-page-active.md-dashboard-theme-dark,
+body.md-dashboard-page-active.md-dashboard-theme-dark #root,
+html.md-dashboard-page-active.md-management-dashboard-dark,
+body.md-dashboard-page-active.md-management-dashboard-dark,
+body.md-dashboard-page-active.md-management-dashboard-dark #root {
+  background: #050b18 !important;
+}
+body.md-dashboard-page-active.md-dashboard-theme-dark .ema-main,
+body.md-dashboard-page-active.md-dashboard-theme-dark .ema-content,
+body.md-dashboard-page-active.md-dashboard-theme-dark .ema-content-area,
+body.md-dashboard-page-active.md-dashboard-theme-dark .app-main,
+body.md-dashboard-page-active.md-dashboard-theme-dark .app-content,
+body.md-dashboard-page-active.md-dashboard-theme-dark .layout-main,
+body.md-dashboard-page-active.md-dashboard-theme-dark .layout-content,
+body.md-dashboard-page-active.md-dashboard-theme-dark main,
+body.md-dashboard-page-active.md-dashboard-theme-dark .content,
+body.md-dashboard-page-active.md-dashboard-theme-dark .content-area,
+body.md-dashboard-page-active.md-management-dashboard-dark .ema-main,
+body.md-dashboard-page-active.md-management-dashboard-dark .ema-content,
+body.md-dashboard-page-active.md-management-dashboard-dark .ema-content-area,
+body.md-dashboard-page-active.md-management-dashboard-dark .app-main,
+body.md-dashboard-page-active.md-management-dashboard-dark .app-content,
+body.md-dashboard-page-active.md-management-dashboard-dark .layout-main,
+body.md-dashboard-page-active.md-management-dashboard-dark .layout-content,
+body.md-dashboard-page-active.md-management-dashboard-dark main,
+body.md-dashboard-page-active.md-management-dashboard-dark .content,
+body.md-dashboard-page-active.md-management-dashboard-dark .content-area {
+  background: #050b18 !important;
+}
+body.md-dashboard-page-active.md-dashboard-theme-light,
+body.md-dashboard-page-active.md-dashboard-theme-light #root,
+body.md-dashboard-page-active.md-management-dashboard-light,
+body.md-dashboard-page-active.md-management-dashboard-light #root {
+  background: #f4f7fb !important;
+}
+
+.management-center-page {
+  --gov-page: #f4f7fb;
+  --gov-canvas: rgba(255, 255, 255, 0.72);
+  --gov-panel: rgba(255, 255, 255, 0.92);
+  --gov-panel-2: rgba(248, 251, 255, 0.92);
+  --gov-border: rgba(203, 213, 225, 0.78);
+  --gov-border-strong: rgba(148, 163, 184, 0.36);
+  --gov-text: #0f172a;
+  --gov-muted: #64748b;
+  --gov-soft: #8aa0ba;
+  --gov-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+  --gov-shadow-strong: 0 26px 70px rgba(15, 23, 42, 0.12);
+  --gov-blue: #2563eb;
+  --gov-purple: #7c3aed;
+  --gov-cyan: #06b6d4;
+  --gov-green: #10b981;
+  --gov-orange: #f97316;
+  --gov-red: #f43f5e;
+  --gov-amber: #f59e0b;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(37, 99, 235, 0.12), transparent 28rem),
+    radial-gradient(circle at 96% 18%, rgba(124, 58, 237, 0.12), transparent 26rem),
+    linear-gradient(180deg, #f8fbff 0%, var(--gov-page) 100%) !important;
+}
+.management-center-page.md-theme-dark {
+  --gov-page: #050b18;
+  --gov-canvas: rgba(5, 11, 24, 0.86);
+  --gov-panel: rgba(12, 23, 43, 0.84);
+  --gov-panel-2: rgba(15, 29, 54, 0.78);
+  --gov-border: rgba(120, 145, 190, 0.24);
+  --gov-border-strong: rgba(147, 197, 253, 0.24);
+  --gov-text: #f8fafc;
+  --gov-muted: #9fb2cc;
+  --gov-soft: #7390b7;
+  --gov-shadow: 0 22px 62px rgba(0, 0, 0, 0.32);
+  --gov-shadow-strong: 0 34px 90px rgba(0, 0, 0, 0.44);
+  background:
+    radial-gradient(circle at 18% -10%, rgba(37, 99, 235, 0.20), transparent 30rem),
+    radial-gradient(circle at 86% 12%, rgba(124, 58, 237, 0.20), transparent 28rem),
+    radial-gradient(circle at 100% 88%, rgba(6, 182, 212, 0.10), transparent 32rem),
+    linear-gradient(180deg, #050b18 0%, #071225 46%, #061120 100%) !important;
+  color: var(--gov-text) !important;
+}
+.management-center-page.md-theme-light {
+  color: var(--gov-text) !important;
+}
+.management-center-page.md-theme-dark::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.75) !important; }
+.management-center-page.md-theme-dark::-webkit-scrollbar-thumb { background: rgba(96, 165, 250, 0.46) !important; border-color: rgba(15, 23, 42, 0.7) !important; }
+
+.management-center-page.md-theme-dark .management-module-root,
+.management-center-page.md-theme-light .management-module-root {
+  background: transparent !important;
+}
+.management-center-page.md-theme-dark .management-module-root::before,
+.management-center-page.md-theme-light .management-module-root::before {
+  display: none !important;
+}
+
+.md-gov-shell {
+  min-height: calc(100dvh - 104px);
+  display: grid !important;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 18px !important;
+  align-items: stretch;
+  padding: 0 !important;
+}
+.md-gov-canvas {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+.md-gov-rail {
+  position: sticky;
+  top: 0;
+  height: calc(100dvh - 104px);
+  min-height: 720px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 10px;
+  border: 1px solid var(--gov-border);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(239,246,255,0.74));
+  box-shadow: var(--gov-shadow);
+}
+.md-theme-dark .md-gov-rail {
+  background: linear-gradient(180deg, rgba(11, 24, 46, 0.92), rgba(8, 18, 34, 0.86));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), var(--gov-shadow);
+}
+.md-gov-rail-logo {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #7c3aed, #2563eb 54%, #06b6d4);
+  box-shadow: 0 18px 34px rgba(37, 99, 235, 0.28);
+}
+.md-gov-rail nav {
+  width: 100%;
+  display: grid;
+  gap: 10px;
+}
+.md-gov-rail button {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  color: var(--gov-muted);
+  background: transparent;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+.md-gov-rail button span { display: none; }
+.md-gov-rail button:hover {
+  transform: translateY(-1px);
+  color: var(--gov-text);
+  border-color: var(--gov-border);
+  background: rgba(96, 165, 250, 0.10);
+}
+.md-gov-rail button.is-active {
+  color: #ffffff;
+  border-color: rgba(96,165,250,.36);
+  background: linear-gradient(135deg, #613df3, #2563eb);
+  box-shadow: 0 15px 32px rgba(37, 99, 235, 0.30);
+}
+.md-gov-rail-bottom { margin-top: auto; }
+
+.md-gov-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 8px 4px 2px;
+}
+.md-gov-toolbar h1 {
+  margin: 0;
+  color: var(--gov-text);
+  font-family: var(--md-display-font) !important;
+  font-size: clamp(25px, 2.15vw, 38px);
+  line-height: 1;
+  font-weight: 940;
+  letter-spacing: -0.065em;
+}
+.md-gov-toolbar p {
+  margin: 6px 0 0;
+  color: var(--gov-muted);
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 680;
+}
+.md-gov-toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.md-gov-toolbar-actions > button,
+.md-gov-icon-btn,
+.md-gov-panel-head > button,
+.md-gov-lens-panel .md-gov-panel-head > button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--gov-border);
+  border-radius: 14px;
+  color: var(--gov-text);
+  background: var(--gov-panel);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+  padding: 0 13px;
+  font-size: 11px;
+  font-weight: 850;
+}
+.md-theme-dark .md-gov-toolbar-actions > button,
+.md-theme-dark .md-gov-panel-head > button,
+.md-theme-dark .md-gov-lens-panel .md-gov-panel-head > button {
+  background: rgba(12, 23, 43, 0.80);
+  box-shadow: none;
+}
+.md-gov-toolbar-actions button span:first-child {
+  color: var(--gov-soft);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.md-gov-icon-btn {
+  width: 42px;
+  justify-content: center;
+  padding: 0 !important;
+}
+.md-gov-updated {
+  color: var(--gov-muted);
+  font-size: 10px;
+  line-height: 1.18;
+  font-weight: 760;
+  text-align: right;
+}
+.md-gov-updated strong {
+  color: var(--gov-text);
+  font-size: 11px;
+}
+
+.md-gov-hero {
+  position: relative;
+  min-height: 174px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(180px, .34fr) minmax(280px, .46fr);
+  gap: 18px;
+  align-items: center;
+  padding: 24px 26px;
+  border: 1px solid rgba(124, 58, 237, 0.34);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 10% 4%, rgba(37, 99, 235, 0.34), transparent 30rem),
+    radial-gradient(circle at 86% 0%, rgba(124, 58, 237, 0.38), transparent 28rem),
+    linear-gradient(135deg, #0f2e6f 0%, #172554 48%, #3b1c77 100%);
+  box-shadow: var(--gov-shadow-strong);
+  color: #ffffff;
+}
+.md-theme-light .md-gov-hero {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(37, 99, 235, 0.16), transparent 26rem),
+    radial-gradient(circle at 88% 0%, rgba(124, 58, 237, 0.16), transparent 24rem),
+    linear-gradient(135deg, #ffffff 0%, #eef4ff 50%, #f4edff 100%);
+  color: #0f172a;
+  border-color: rgba(147, 197, 253, 0.72);
+}
+.md-gov-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -12% -48% 30%;
+  height: 150px;
+  opacity: .38;
+  background: repeating-linear-gradient(0deg, transparent 0 12px, rgba(96,165,250,.32) 13px, transparent 16px);
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+.md-gov-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  color: var(--gov-soft);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.md-gov-hero .md-gov-eyebrow { color: rgba(219,234,254,.82); }
+.md-theme-light .md-gov-hero .md-gov-eyebrow { color: #47668f; }
+.md-gov-hero h2 {
+  max-width: 760px;
+  margin: 10px 0 0;
+  color: inherit;
+  font-family: var(--md-display-font) !important;
+  font-size: clamp(22px, 2vw, 34px);
+  line-height: 1.12;
+  font-weight: 880;
+  letter-spacing: -0.055em;
+  text-wrap: balance;
+}
+.md-gov-hero p {
+  max-width: 800px;
+  margin: 12px 0 0;
+  color: rgba(226, 232, 240, 0.88);
+  font-size: 13px;
+  line-height: 1.55;
+  font-weight: 650;
+}
+.md-theme-light .md-gov-hero p { color: #526984; }
+.md-gov-signal-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+.md-gov-signal-row span {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 10px;
+  color: rgba(239, 246, 255, 0.92);
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255,255,255,.18);
+  font-size: 10px;
+  font-weight: 850;
+}
+.md-theme-light .md-gov-signal-row span {
+  color: #1f3b64;
+  background: rgba(255,255,255,.72);
+  border-color: rgba(191,219,254,.88);
+}
+.md-gov-orb {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  justify-self: center;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+.md-gov-orb::before,
+.md-gov-orb::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(96,165,250,.30), transparent 62%);
+  filter: blur(2px);
+  inset: 18px;
+}
+.md-gov-orb::after {
+  inset: 48px 18px 18px;
+  border: 1px solid rgba(96,165,250,.34);
+  background: transparent;
+  transform: rotateX(64deg);
+}
+.md-gov-orb svg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+.md-gov-ring-track,
+.md-gov-ring-health,
+.md-gov-ring-risk {
+  fill: none;
+  stroke-linecap: round;
+}
+.md-gov-ring-track { stroke: rgba(148, 163, 184, 0.24); stroke-width: 13; }
+.md-gov-ring-health { stroke: url(#mdGovHealth); stroke-width: 13; filter: drop-shadow(0 0 14px rgba(96,165,250,.46)); }
+.md-gov-ring-risk { stroke: url(#mdGovRisk); stroke-width: 9; opacity: .82; filter: drop-shadow(0 0 12px rgba(244,63,94,.34)); }
+.md-gov-orb > span {
+  position: relative;
+  z-index: 2;
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  border-radius: 28px;
+  background: linear-gradient(135deg, rgba(96,165,250,.92), rgba(124,58,237,.96));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 22px 40px rgba(30,64,175,.34);
+}
+.md-gov-orb > span .md-icon { width: 34px; height: 34px; }
+.md-gov-priorities {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 10px;
+  padding-left: 20px;
+  border-left: 1px solid rgba(255,255,255,.18);
+}
+.md-theme-light .md-gov-priorities { border-left-color: rgba(59,130,246,.18); }
+.md-gov-priorities > span,
+.md-gov-priorities h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  margin: 0;
+}
+.md-gov-priorities button {
+  min-height: 26px;
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  border: 0;
+  padding: 0;
+  color: rgba(239,246,255,.88);
+  background: transparent;
+  text-align: left;
+  font-size: 11.5px;
+  line-height: 1.35;
+  font-weight: 680;
+}
+.md-theme-light .md-gov-priorities button { color: #405879; }
+.md-gov-priorities button i {
+  width: 8px;
+  height: 8px;
+  margin-top: .42em;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f43f5e, #f59e0b);
+  box-shadow: 0 0 0 4px rgba(244,63,94,.12);
+}
+
+.md-gov-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.md-gov-kpi {
+  --kpi-a: #2563eb;
+  --kpi-b: #1d4ed8;
+  position: relative;
+  min-width: 0;
+  min-height: 104px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--kpi-a) 28%, var(--gov-border));
+  border-radius: 20px;
+  padding: 15px 16px;
+  color: var(--gov-text);
+  background:
+    radial-gradient(circle at 94% 14%, color-mix(in srgb, var(--kpi-a) 28%, transparent), transparent 9rem),
+    linear-gradient(135deg, color-mix(in srgb, var(--kpi-a) 14%, var(--gov-panel)), var(--gov-panel));
+  box-shadow: var(--gov-shadow);
+  text-align: left;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+.md-gov-kpi:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--kpi-a) 48%, var(--gov-border));
+  box-shadow: var(--gov-shadow-strong);
+}
+.md-gov-kpi.kpi-financial { --kpi-a: #2563eb; --kpi-b:#06b6d4; }
+.md-gov-kpi.kpi-risk { --kpi-a: #f43f5e; --kpi-b:#fb923c; }
+.md-gov-kpi.kpi-compliance { --kpi-a: #10b981; --kpi-b:#22c55e; }
+.md-gov-kpi.kpi-board { --kpi-a: #f97316; --kpi-b:#f59e0b; }
+.md-gov-kpi.kpi-health { --kpi-a: #7c3aed; --kpi-b:#2563eb; }
+.md-gov-kpi.kpi-savings { --kpi-a: #06b6d4; --kpi-b:#0f766e; }
+.md-gov-kpi-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--kpi-a), var(--kpi-b));
+  box-shadow: 0 14px 24px color-mix(in srgb, var(--kpi-a) 26%, transparent);
+}
+.md-gov-kpi-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.md-gov-kpi-copy em {
+  color: var(--gov-muted);
+  font-size: 10px;
+  line-height: 1.05;
+  font-style: normal;
+  font-weight: 880;
+  letter-spacing: .02em;
+}
+.md-gov-kpi-copy strong {
+  color: var(--gov-text);
+  font-family: var(--md-display-font) !important;
+  font-size: clamp(21px, 1.55vw, 29px);
+  line-height: .98;
+  font-weight: 940;
+  letter-spacing: -.058em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.md-gov-kpi-copy strong small { color: var(--gov-muted); font-size: 12px; letter-spacing: -.02em; }
+.md-gov-kpi-copy span:last-child {
+  color: var(--gov-muted);
+  font-size: 10px;
+  line-height: 1.25;
+  font-weight: 680;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.md-gov-kpi-spark {
+  position: absolute;
+  right: 15px;
+  bottom: 14px;
+  width: 48px;
+  height: 20px;
+  opacity: .86;
+  background: linear-gradient(135deg, transparent 38%, var(--kpi-a) 39% 44%, transparent 45% 55%, var(--kpi-b) 56% 61%, transparent 62%);
+  border-bottom: 2px solid color-mix(in srgb, var(--kpi-a) 52%, transparent);
+  border-radius: 0 0 999px 999px;
+}
+
+.md-gov-main-grid,
+.md-gov-work-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.42fr) minmax(380px, .58fr);
+  gap: 14px;
+  align-items: stretch;
+}
+.md-gov-work-grid { grid-template-columns: minmax(0, 1.24fr) minmax(360px, .76fr); }
+.md-gov-panel,
+.md-gov-lens-panel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--gov-border);
+  border-radius: 22px;
+  background: var(--gov-panel);
+  box-shadow: var(--gov-shadow);
+  backdrop-filter: blur(18px);
+}
+.md-theme-dark .md-gov-panel,
+.md-theme-dark .md-gov-lens-panel {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04), var(--gov-shadow);
+}
+.md-gov-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 17px 18px 14px;
+}
+.md-gov-panel-head h2 {
+  margin: 4px 0 0;
+  color: var(--gov-text);
+  font-family: var(--md-display-font) !important;
+  font-size: clamp(16px, 1.1vw, 21px);
+  line-height: 1.12;
+  font-weight: 900;
+  letter-spacing: -.045em;
+}
+.md-gov-panel-head p {
+  margin: 5px 0 0;
+  color: var(--gov-muted);
+  font-size: 11px;
+  line-height: 1.38;
+  font-weight: 670;
+}
+.md-gov-panel-head > button {
+  min-width: max-content;
+  color: #dbeafe;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  border-color: transparent;
+  box-shadow: 0 12px 28px rgba(37,99,235,.18);
+}
+.md-theme-light .md-gov-panel-head > button {
+  color: #ffffff;
+}
+.md-gov-chart-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, .72fr);
+  gap: 16px;
+  padding: 0 18px 16px;
+}
+.md-gov-bar-chart,
+.md-gov-compliance-chart {
+  min-width: 0;
+  border: 1px solid var(--gov-border);
+  border-radius: 18px;
+  background: var(--gov-panel-2);
+  padding: 14px;
+}
+.md-gov-chart-value,
+.md-gov-compliance-chart > span {
+  display: grid;
+  gap: 4px;
+  color: var(--gov-muted);
+  font-size: 11px;
+  font-weight: 760;
+}
+.md-gov-chart-value strong,
+.md-gov-compliance-chart > strong {
+  color: var(--gov-text);
+  font-family: var(--md-display-font) !important;
+  font-size: 25px;
+  line-height: 1;
+  font-weight: 930;
+  letter-spacing: -.055em;
+}
+.md-gov-bars {
+  height: 180px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(38px, 1fr));
+  align-items: end;
+  gap: 14px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--gov-border);
+}
+.md-gov-bars > p {
+  grid-column: 1 / -1;
+  align-self: center;
+  color: var(--gov-muted);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 760;
+}
+.md-gov-bars button {
+  position: relative;
+  min-width: 0;
+  height: 100%;
+  display: grid;
+  align-items: end;
+  justify-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--gov-muted);
+  padding: 0;
+}
+.md-gov-bars button i {
+  width: 22px;
+  height: var(--h, 8%);
+  min-height: 12px;
+  border-radius: 999px 999px 6px 6px;
+  background: linear-gradient(180deg, #8b5cf6, #0ea5e9 58%, #2563eb);
+  box-shadow: 0 12px 24px rgba(37,99,235,.20);
+  transition: height 180ms ease, transform 180ms ease, filter 180ms ease;
+}
+.md-gov-bars button:hover i,
+.md-gov-bars button.is-active i {
+  transform: translateY(-3px);
+  filter: brightness(1.15);
+}
+.md-gov-bars button span {
+  font-size: 10px;
+  font-weight: 760;
+}
+.md-gov-bars button em {
+  position: absolute;
+  top: 4px;
+  display: none;
+  min-width: 58px;
+  border-radius: 999px;
+  padding: 4px 7px;
+  color: #ffffff;
+  background: #2563eb;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 880;
+  box-shadow: 0 12px 22px rgba(37,99,235,.25);
+}
+.md-gov-bars button:hover em,
+.md-gov-bars button.is-active em { display: inline-flex; justify-content: center; }
+.md-gov-compliance-chart svg {
+  width: 100%;
+  height: 160px;
+  display: block;
+  margin-top: 2px;
+  overflow: visible;
+}
+.md-gov-compliance-chart line { stroke: var(--gov-border); stroke-width: 1.2; stroke-dasharray: 4 6; }
+.md-gov-compliance-chart polyline {
+  fill: none;
+  stroke: #22d3ee;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 8px 12px rgba(34,211,238,.25));
+}
+.md-gov-compliance-chart circle { fill: #22d3ee; stroke: var(--gov-panel); stroke-width: 4; }
+.md-gov-compliance-chart text { fill: #dbeafe; font-size: 11px; font-weight: 900; }
+.md-theme-light .md-gov-compliance-chart text { fill: #2563eb; }
+.md-gov-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+.md-gov-insight-grid button {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  min-height: 92px;
+  border: 1px solid var(--gov-border);
+  border-radius: 16px;
+  padding: 12px;
+  background: var(--gov-panel-2);
+  text-align: left;
+}
+.md-gov-insight-grid span {
+  color: var(--gov-muted);
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.md-gov-insight-grid strong {
+  color: var(--gov-text);
+  font-family: var(--md-display-font) !important;
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 930;
+  letter-spacing: -.055em;
+}
+.md-gov-insight-grid small {
+  color: var(--gov-muted);
+  font-size: 10px;
+  line-height: 1.3;
+  font-weight: 650;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.md-gov-domain-layout {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  padding: 0 18px 18px;
+}
+.md-gov-donut {
+  width: 218px;
+  height: 218px;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  border-radius: 999px;
+  background: conic-gradient(var(--donut));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 0 22px 46px rgba(15,23,42,.16);
+}
+.md-gov-donut span {
+  width: 112px;
+  height: 112px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  border-radius: 999px;
+  background: var(--gov-panel);
+  box-shadow: 0 0 0 10px color-mix(in srgb, var(--gov-panel) 68%, transparent), inset 0 0 0 1px var(--gov-border);
+  text-align: center;
+}
+.md-gov-donut strong {
+  color: var(--gov-text);
+  font-family: var(--md-display-font) !important;
+  font-size: 19px;
+  line-height: 1;
+  font-weight: 930;
+  letter-spacing: -.055em;
+}
+.md-gov-donut small {
+  color: var(--gov-muted);
+  font-size: 9.5px;
+  font-weight: 760;
+}
+.md-gov-domain-list {
+  display: grid;
+  gap: 10px;
+}
+.md-gov-domain-list button {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) minmax(74px, auto);
+  gap: 11px;
+  align-items: center;
+  border: 1px solid var(--gov-border);
+  border-radius: 14px;
+  background: var(--gov-panel-2);
+  padding: 10px 11px;
+  text-align: left;
+  color: var(--gov-text);
+}
+.md-gov-domain-list button.is-muted,
+.md-gov-domain-list button:disabled { opacity: .55; cursor: not-allowed; }
+.md-gov-domain-list button > i {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--dot, #2563eb);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dot, #2563eb) 18%, transparent);
+}
+.md-gov-domain-list strong,
+.md-gov-domain-list em {
+  color: var(--gov-text);
+  font-size: 12px;
+  font-weight: 880;
+  font-style: normal;
+}
+.md-gov-domain-list small {
+  display: block;
+  margin-top: 3px;
+  color: var(--gov-muted);
+  font-size: 9.5px;
+  line-height: 1.24;
+  font-weight: 660;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.md-gov-domain-list u {
+  grid-column: 1 / -1;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148,163,184,.20);
+  text-decoration: none;
+}
+.md-gov-domain-list u b { display: block; height: 100%; border-radius: inherit; }
+
+.md-gov-table-wrap {
+  padding: 0 18px 18px;
+  overflow-x: auto;
+}
+.md-gov-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+.md-gov-table th {
+  color: var(--gov-soft);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-weight: 900;
+  text-align: left;
+  padding: 10px 10px;
+  border-bottom: 1px solid var(--gov-border);
+}
+.md-gov-table td {
+  color: var(--gov-text);
+  font-size: 11.2px;
+  line-height: 1.36;
+  font-weight: 700;
+  padding: 12px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--gov-border) 72%, transparent);
+  cursor: pointer;
+}
+.md-gov-table tbody tr:hover td { background: rgba(59, 130, 246, .08); }
+.md-gov-table .md-priority,
+.md-gov-table .md-status-pill {
+  min-height: 24px !important;
+  padding: 0 9px !important;
+  border-radius: 999px !important;
+  font-size: 9.8px !important;
+  box-shadow: none !important;
+}
+.md-gov-table .md-status-pill {
+  color: #fbbf24 !important;
+  background: rgba(245, 158, 11, 0.14) !important;
+  border: 1px solid rgba(245,158,11,.22) !important;
+}
+.md-theme-light .md-gov-table .md-status-pill {
+  color: #92400e !important;
+  background: #fffbeb !important;
+}
+
+.md-gov-spotlight-list {
+  display: grid;
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+.md-gov-spotlight-list button {
+  --spot: #2563eb;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid var(--gov-border);
+  border-radius: 16px;
+  padding: 11px 12px;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--spot) 18%, transparent), transparent 9rem),
+    var(--gov-panel-2);
+  color: var(--gov-text);
+  text-align: left;
+}
+.md-gov-spotlight-list button.tone-red { --spot:#f43f5e; }
+.md-gov-spotlight-list button.tone-orange { --spot:#fb923c; }
+.md-gov-spotlight-list button.tone-amber { --spot:#f59e0b; }
+.md-gov-spotlight-list button.tone-green { --spot:#10b981; }
+.md-gov-spotlight-list button.tone-purple { --spot:#8b5cf6; }
+.md-gov-spotlight-list button > span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  border-radius: 15px;
+  background: linear-gradient(135deg, var(--spot), color-mix(in srgb, var(--spot) 70%, #111827));
+}
+.md-gov-spotlight-list strong {
+  min-width: 0;
+  display: block;
+  color: var(--gov-text);
+  font-size: 12px;
+  line-height: 1.22;
+  font-weight: 850;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.md-gov-spotlight-list small {
+  display: block;
+  margin-top: 4px;
+  color: var(--gov-muted);
+  font-size: 10px;
+  line-height: 1.24;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.md-gov-spotlight-list em {
+  min-width: 58px;
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--gov-text);
+  background: color-mix(in srgb, var(--spot) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--spot) 28%, transparent);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 880;
+}
+
+.md-gov-lens-panel {
+  padding: 0 0 18px;
+}
+.md-gov-lens-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  padding: 0 18px;
+}
+.md-gov-lens-grid button {
+  --lens: #7c3aed;
+  position: relative;
+  min-width: 0;
+  min-height: 136px;
+  overflow: hidden;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  border: 1px solid color-mix(in srgb, var(--lens) 32%, var(--gov-border));
+  border-radius: 20px;
+  padding: 16px;
+  background:
+    radial-gradient(circle at 100% 12%, color-mix(in srgb, var(--lens) 24%, transparent), transparent 10rem),
+    linear-gradient(135deg, color-mix(in srgb, var(--lens) 16%, var(--gov-panel)), var(--gov-panel));
+  color: var(--gov-text);
+  text-align: left;
+}
+.md-gov-lens-grid button.tone-purple { --lens:#7c3aed; }
+.md-gov-lens-grid button.tone-blue { --lens:#2563eb; }
+.md-gov-lens-grid button.tone-green { --lens:#10b981; }
+.md-gov-lens-grid button.tone-orange { --lens:#f97316; }
+.md-gov-lens-grid button.tone-cyan { --lens:#06b6d4; }
+.md-gov-lens-grid button.tone-red { --lens:#f43f5e; }
+.md-gov-lens-grid button > span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  border-radius: 15px;
+  background: linear-gradient(135deg, var(--lens), color-mix(in srgb, var(--lens) 72%, #111827));
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--lens) 24%, transparent);
+}
+.md-gov-lens-grid em {
+  color: var(--gov-muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 820;
+}
+.md-gov-lens-grid strong {
+  color: var(--gov-text);
+  font-family: var(--md-display-font) !important;
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 930;
+  letter-spacing: -.058em;
+}
+.md-gov-lens-grid strong small { color: var(--gov-muted); font-size: 12px; margin-left: 2px; }
+.md-gov-lens-grid i {
+  color: var(--gov-muted);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 670;
+}
+.md-gov-lens-grid button::after {
+  content: "";
+  position: absolute;
+  right: 16px;
+  bottom: 18px;
+  width: 82px;
+  height: 24px;
+  border-bottom: 2px solid color-mix(in srgb, var(--lens) 56%, transparent);
+  border-radius: 0 0 999px 999px;
+  opacity: .78;
+}
+
+.md-theme-light .md-gov-panel,
+.md-theme-light .md-gov-lens-panel,
+.md-theme-light .md-gov-kpi,
+.md-theme-light .md-gov-bar-chart,
+.md-theme-light .md-gov-compliance-chart,
+.md-theme-light .md-gov-insight-grid button,
+.md-theme-light .md-gov-domain-list button,
+.md-theme-light .md-gov-spotlight-list button,
+.md-theme-light .md-gov-lens-grid button {
+  backdrop-filter: blur(10px);
+}
+
+@media (max-width: 1380px) {
+  .md-gov-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .md-gov-hero { grid-template-columns: minmax(0, 1fr) minmax(280px, .48fr); }
+  .md-gov-orb { display: none; }
+  .md-gov-main-grid,
+  .md-gov-work-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 1120px) {
+  .md-gov-shell { grid-template-columns: 1fr; }
+  .md-gov-rail { position: relative; top: auto; height: auto; min-height: 0; flex-direction: row; justify-content: space-between; padding: 10px; }
+  .md-gov-rail nav { display: flex; gap: 8px; overflow-x: auto; }
+  .md-gov-rail-bottom { margin-top: 0; }
+  .md-gov-chart-split,
+  .md-gov-domain-layout { grid-template-columns: 1fr; }
+  .md-gov-donut { width: 190px; height: 190px; }
+}
+@media (max-width: 760px) {
+  .md-gov-toolbar { flex-direction: column; }
+  .md-gov-toolbar-actions { justify-content: flex-start; }
+  .md-gov-hero { grid-template-columns: 1fr; padding: 20px; }
+  .md-gov-priorities { padding-left: 0; border-left: 0; border-top: 1px solid rgba(148,163,184,.22); padding-top: 14px; }
+  .md-gov-kpi-grid,
+  .md-gov-insight-grid,
+  .md-gov-lens-grid { grid-template-columns: 1fr; }
+  .md-gov-panel-head { flex-direction: column; }
+  .md-gov-bars { gap: 8px; }
+  .md-gov-table { min-width: 680px; }
+}
+
+/* =========================================================
+   Executive Governance Hub final layout
+   Matches the selected concept and stays synced with TopNavbar ThemeContext.
+========================================================= */
+.management-center-page.md-theme-light {
+  --gov-page: #f6f9ff;
+  --gov-panel: rgba(255, 255, 255, .92);
+  --gov-panel-strong: #ffffff;
+  --gov-panel-muted: rgba(248, 251, 255, .92);
+  --gov-border: rgba(203, 213, 225, .78);
+  --gov-border-strong: rgba(191, 219, 254, .92);
+  --gov-text: #0f172a;
+  --gov-muted: #64748b;
+  --gov-soft: #91a2bb;
+  --gov-shadow: 0 18px 42px rgba(15, 23, 42, .075);
+  --gov-shadow-soft: 0 10px 24px rgba(15, 23, 42, .055);
+  --gov-hero: radial-gradient(circle at 12% 12%, rgba(37, 99, 235, .15), transparent 24rem), radial-gradient(circle at 80% 0%, rgba(124, 58, 237, .13), transparent 21rem), linear-gradient(135deg, #ffffff 0%, #eef6ff 55%, #f5f3ff 100%);
+  --gov-hero-text: #10233f;
+  --gov-hero-muted: #52677f;
+  --gov-rail: linear-gradient(180deg, #ffffff, #f4f8ff);
+  --gov-chart-grid: rgba(148, 163, 184, .25);
+}
+.management-center-page.md-theme-dark {
+  --gov-page: #050b18;
+  --gov-panel: rgba(12, 24, 46, .82);
+  --gov-panel-strong: rgba(14, 27, 51, .96);
+  --gov-panel-muted: rgba(20, 35, 61, .74);
+  --gov-border: rgba(148, 163, 184, .18);
+  --gov-border-strong: rgba(129, 140, 248, .28);
+  --gov-text: #f8fafc;
+  --gov-muted: #9fb0c8;
+  --gov-soft: #70839f;
+  --gov-shadow: 0 22px 52px rgba(0, 0, 0, .36);
+  --gov-shadow-soft: 0 14px 32px rgba(0, 0, 0, .28);
+  --gov-hero: radial-gradient(circle at 15% 14%, rgba(37, 99, 235, .42), transparent 24rem), radial-gradient(circle at 95% 8%, rgba(124, 58, 237, .38), transparent 22rem), linear-gradient(135deg, #0b1c3d 0%, #101b38 54%, #26145f 100%);
+  --gov-hero-text: #ffffff;
+  --gov-hero-muted: rgba(226, 232, 240, .86);
+  --gov-rail: linear-gradient(180deg, rgba(13, 25, 48, .94), rgba(8, 16, 31, .96));
+  --gov-chart-grid: rgba(148, 163, 184, .16);
+}
+
+.md-gov-shell {
+  min-width: 0;
+  display: grid !important;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 16px !important;
+  align-items: start;
+  padding: 0 !important;
+}
+.md-gov-canvas {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+}
+.md-gov-rail {
+  position: sticky;
+  top: 12px;
+  min-height: calc(100dvh - 106px);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 14px;
+  padding: 12px 10px;
+  border: 1px solid var(--gov-border);
+  border-radius: 26px;
+  background: var(--gov-rail);
+  box-shadow: var(--gov-shadow-soft);
+}
+.md-gov-rail-logo,
+.md-gov-rail-bottom,
+.md-gov-rail nav button {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  color: var(--gov-muted);
+  background: transparent;
+}
+.md-gov-rail-logo {
+  color: #ffffff;
+  background: radial-gradient(circle at 35% 20%, rgba(255,255,255,.28), transparent 45%), linear-gradient(135deg, #4f46e5, #7c3aed);
+  box-shadow: 0 16px 26px rgba(79, 70, 229, .26);
+}
+.md-gov-rail nav {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+.md-gov-rail nav button,
+.md-gov-rail-bottom {
+  position: relative;
+  transition: transform 160ms ease, background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+.md-gov-rail nav button:hover,
+.md-gov-rail nav button.is-active,
+.md-gov-rail-bottom:hover {
+  transform: translateY(-1px);
+  color: #ffffff;
+  border-color: rgba(96, 165, 250, .30);
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  box-shadow: 0 14px 26px rgba(37, 99, 235, .22);
+}
+.md-gov-rail nav button span {
+  position: absolute;
+  left: 58px;
+  top: 50%;
+  z-index: 5;
+  transform: translateY(-50%) translateX(-4px);
+  pointer-events: none;
+  opacity: 0;
+  white-space: nowrap;
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: #ffffff;
+  background: rgba(15, 23, 42, .92);
+  font-size: 10.5px;
+  font-weight: 850;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+.md-gov-rail nav button:hover span {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.md-gov-toolbar {
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+.md-gov-toolbar h1 {
+  margin: 0;
+  color: var(--gov-text);
+  font-family: var(--md-display-font) !important;
+  font-size: clamp(25px, 2.35vw, 40px);
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -.068em;
+}
+.md-gov-toolbar p {
+  margin: 6px 0 0;
+  color: var(--gov-muted);
+  font-size: 13px;
+  line-height: 1.42;
+  font-weight: 700;
+}
+.md-gov-toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.md-gov-toolbar-actions button,
+.md-gov-updated {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--gov-border);
+  border-radius: 14px;
+  padding: 0 12px;
+  color: var(--gov-text);
+  background: var(--gov-panel);
+  box-shadow: var(--gov-shadow-soft);
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.md-gov-toolbar-actions button span,
+.md-gov-updated {
+  color: var(--gov-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+.md-gov-updated {
+  display: block;
+  padding-top: 7px;
+  padding-bottom: 7px;
+  min-width: 92px;
+  text-align: left;
+}
+.md-gov-updated strong { color: var(--gov-text); font-size: 11px; }
+.md-gov-icon-btn { width: 42px !important; padding: 0 !important; justify-content: center; }
+
+.md-gov-hero {
+  position: relative;
+  min-width: 0;
+  min-height: 154px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 230px minmax(260px, .42fr);
+  gap: 18px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--gov-border-strong);
+  border-radius: 28px;
+  padding: 22px 24px;
+  background: var(--gov-hero);
+  box-shadow: var(--gov-shadow);
+}
+.md-gov-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .32;
+  background-image: radial-gradient(circle at 70% 40%, rgba(255,255,255,.18) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(90deg, transparent, black 30%, transparent 95%);
+}
+.md-gov-hero-copy,
+.md-gov-priorities,
+.md-gov-orb { position: relative; z-index: 1; }
+.md-gov-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #93c5fd;
+  font-size: 10.5px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: .105em;
+  text-transform: uppercase;
+}
+.management-center-page.md-theme-light .md-gov-eyebrow { color: #4f46e5; }
+.md-gov-hero h2 {
+  max-width: 780px;
+  margin: 9px 0 0;
+  color: var(--gov-hero-text);
+  font-family: var(--md-display-font) !important;
+  font-size: clamp(22px, 2.1vw, 34px);
+  line-height: 1.08;
+  font-weight: 940;
+  letter-spacing: -.064em;
+  text-wrap: balance;
+}
+.md-gov-hero p {
+  max-width: 820px;
+  margin: 9px 0 0;
+  color: var(--gov-hero-muted);
+  font-size: 13px;
+  line-height: 1.52;
+  font-weight: 700;
+}
+.md-gov-signal-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 13px;
+}
+.md-gov-signal-row span {
+  min-height: 27px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 999px;
+  padding: 0 11px;
+  color: var(--gov-hero-muted);
+  background: rgba(255,255,255,.12);
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 850;
+}
+.management-center-page.md-theme-light .md-gov-signal-row span {
+  color: #334155;
+  background: rgba(255,255,255,.76);
+  border-color: rgba(203, 213, 225, .72);
+}
+.md-gov-orb {
+  width: 210px;
+  height: 142px;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+}
+.md-gov-orb svg {
+  position: absolute;
+  width: 164px;
+  height: 164px;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+.md-gov-ring-track,
+.md-gov-ring-health,
+.md-gov-ring-risk {
+  fill: none;
+  stroke-linecap: round;
+}
+.md-gov-ring-track { stroke: rgba(148, 163, 184, .18); stroke-width: 16; }
+.md-gov-ring-health { stroke: url(#mdGovHealth); stroke-width: 16; filter: drop-shadow(0 0 16px rgba(96, 165, 250, .32)); }
+.md-gov-ring-risk { stroke: url(#mdGovRisk); stroke-width: 10; opacity: .92; }
+.md-gov-orb > span {
+  width: 86px;
+  height: 86px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 28px;
+  color: #ffffff;
+  background: radial-gradient(circle at 34% 20%, rgba(255,255,255,.30), transparent 45%), linear-gradient(135deg, rgba(96,165,250,.92), rgba(124,58,237,.82));
+  box-shadow: 0 0 0 15px rgba(59, 130, 246, .10), 0 24px 40px rgba(0, 0, 0, .28);
+}
+.md-gov-orb .md-icon { width: 38px; height: 38px; }
+.md-gov-priorities {
+  display: grid;
+  gap: 10px;
+  align-content: center;
+  border-left: 1px solid rgba(255,255,255,.16);
+  padding-left: 20px;
+}
+.management-center-page.md-theme-light .md-gov-priorities { border-left-color: rgba(148,163,184,.22); }
+.md-gov-priorities > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gov-hero-text);
+  font-size: 13px;
+  font-weight: 900;
+}
+.md-gov-priorities button {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  border: 0;
+  padding: 0;
+  color: var(--gov-hero-muted);
+  background: transparent;
+  text-align: left;
+  font-size: 11.5px;
+  line-height: 1.35;
+  font-weight: 730;
+}
+.md-gov-priorities button i {
+  width: 7px;
+  height: 7px;
+  margin-top: .35em;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f43f5e, #fb923c);
+  box-shadow: 0 0 0 4px rgba(244,63,94,.12);
+}
+.md-gov-priorities button:nth-child(3) i { background: linear-gradient(135deg, #f59e0b, #facc15); box-shadow: 0 0 0 4px rgba(245,158,11,.12); }
+.md-gov-priorities button:nth-child(4) i { background: linear-gradient(135deg, #2563eb, #06b6d4); box-shadow: 0 0 0 4px rgba(37,99,235,.12); }
+
+.md-gov-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.md-gov-kpi {
+  --tone-a: #2563eb;
+  --tone-b: #06b6d4;
+  position: relative;
+  min-width: 0;
+  min-height: 88px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 45px minmax(0, 1fr) 52px;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--tone-a) 28%, var(--gov-border));
+  border-radius: 20px;
+  padding: 13px;
+  background: radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--tone-a) 26%, transparent), transparent 9rem), var(--gov-panel);
+  box-shadow: var(--gov-shadow-soft);
+  color: var(--gov-text);
+  text-align: left;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+.md-gov-kpi:hover { transform: translateY(-2px); box-shadow: var(--gov-shadow); }
+.md-gov-kpi.tone-blue, .md-gov-kpi.kpi-financial { --tone-a: #2563eb; --tone-b: #06b6d4; }
+.md-gov-kpi.tone-cyan { --tone-a: #06b6d4; --tone-b: #22d3ee; }
+.md-gov-kpi.tone-red, .md-gov-kpi.kpi-risk, .md-gov-kpi.kpi-health { --tone-a: #f43f5e; --tone-b: #fb923c; }
+.md-gov-kpi.tone-green, .md-gov-kpi.kpi-compliance { --tone-a: #10b981; --tone-b: #22c55e; }
+.md-gov-kpi.tone-orange, .md-gov-kpi.kpi-savings { --tone-a: #f59e0b; --tone-b: #fb923c; }
+.md-gov-kpi.tone-purple, .md-gov-kpi.kpi-board { --tone-a: #7c3aed; --tone-b: #6366f1; }
+.md-gov-kpi-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--tone-a), var(--tone-b));
+  box-shadow: 0 14px 24px color-mix(in srgb, var(--tone-a) 22%, transparent);
+}
+.md-gov-kpi-copy { min-width: 0; display: grid; gap: 4px; }
+.md-gov-kpi-copy em {
+  color: var(--gov-muted);
+  font-size: 10px;
+  line-height: 1;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: .02em;
+}
+.md-gov-kpi-copy strong {
+  color: var(--gov-text);
+  font-family: var(--md-display-font) !important;
+  font-size: 22px;
+  line-height: .98;
+  font-weight: 940;
+  letter-spacing: -.055em;
+  white-space: nowrap;
+}
+.md-gov-kpi-copy strong small { font-size: 12px; letter-spacing: -.02em; }
+.md-gov-kpi-copy > span {
+  color: var(--gov-muted);
+  font-size: 9.8px;
+  line-height: 1.25;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.md-gov-kpi-spark {
+  justify-self: end;
+  width: 48px;
+  height: 22px;
+  opacity: .78;
+  border-radius: 0 0 16px 16px;
+  border-bottom: 2px solid var(--tone-b);
+  border-right: 2px solid transparent;
+  transform: skewX(-18deg) rotate(-8deg);
+}
+
+.md-gov-main-grid,
+.md-gov-work-grid {
+  display: grid;
+  gap: 14px;
+  align-items: stretch;
+}
+.md-gov-main-grid { grid-template-columns: minmax(0, 1.32fr) minmax(380px, .68fr); }
+.md-gov-work-grid { grid-template-columns: minmax(0, 1.25fr) minmax(360px, .75fr); }
+.md-gov-panel,
+.md-gov-lens-panel {
+  min-width: 0;
+  border: 1px solid var(--gov-border);
+  border-radius: 24px;
+  background: var(--gov-panel);
+  box-shadow: var(--gov-shadow-soft);
+  backdrop-filter: blur(14px);
+}
+.md-gov-panel { padding: 16px; }
+.md-gov-lens-panel { padding: 16px; }
+.md-gov-panel-head {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 13px;
+}
+.md-gov-panel-head h2 {
+  margin: 5px 0 0;
+  color: var(--gov-text);
+  font-family: var(--md-display-font) !important;
+  font-size: 18px;
+  line-height: 1.08;
+  font-weight: 940;
+  letter-spacing: -.045em;
+}
+.md-gov-panel-head p {
+  margin: 4px 0 0;
+  color: var(--gov-muted);
+  font-size: 11.2px;
+  line-height: 1.38;
+  font-weight: 670;
+}
+.md-gov-panel-head button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--gov-border);
+  border-radius: 12px;
+  padding: 0 11px;
+  color: var(--gov-text);
+  background: var(--gov-panel-muted);
+  font-size: 10.5px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.md-gov-chart-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(270px, .52fr);
+  gap: 16px;
+  align-items: stretch;
+}
+.md-gov-bar-chart,
+.md-gov-compliance-chart {
+  min-width: 0;
+  border: 1px solid var(--gov-border);
+  border-radius: 20px;
+  background: var(--gov-panel-muted);
+  padding: 14px;
+}
+.md-gov-chart-value { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.md-gov-chart-value strong,
+.md-gov-compliance-chart strong {
+  color: var(--gov-text);
+  font-family: var(--md-display-font) !important;
+  font-size: 23px;
+  line-height: 1;
+  font-weight: 940;
+  letter-spacing: -.055em;
+}
+.md-gov-chart-value span,
+.md-gov-compliance-chart > span {
+  color: var(--gov-muted);
+  font-size: 10px;
+  font-weight: 850;
+}
+.md-gov-bars {
+  height: 210px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 4px 0;
+  border-top: 1px dashed var(--gov-chart-grid);
+  background-image: linear-gradient(var(--gov-chart-grid) 1px, transparent 1px);
+  background-size: 100% 42px;
+}
+.md-gov-bars p {
+  width: 100%;
+  align-self: center;
+  color: var(--gov-muted);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+.md-gov-bars button {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  display: grid;
+  align-items: end;
+  justify-items: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.md-gov-bars button i {
+  width: min(34px, 70%);
+  height: var(--h, 8%);
+  border-radius: 12px 12px 5px 5px;
+  background: linear-gradient(180deg, #8b5cf6, #2563eb 52%, #06b6d4);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, .20);
+  transition: height 180ms ease, transform 160ms ease;
+}
+.md-gov-bars button:hover i,
+.md-gov-bars button.is-active i { transform: translateY(-4px); box-shadow: 0 16px 26px rgba(37, 99, 235, .26); }
+.md-gov-bars button span {
+  margin-top: 8px;
+  color: var(--gov-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+.md-gov-bars button em {
+  position: absolute;
+  top: 0;
+  opacity: 0;
+  transform: translateY(4px);
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: #ffffff;
+  background: rgba(15, 23, 42, .92);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+.md-gov-bars button:hover em,
+.md-gov-bars button.is-active em { opacity: 1; transform: translateY(0); }
+.md-gov-compliance-chart {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+.md-gov-compliance-chart svg { width: 100%; height: 170px; overflow: visible; }
+.md-gov-compliance-chart line { stroke: var(--gov-chart-grid); stroke-width: 1; }
+.md-gov-compliance-chart polyline { fill: none; stroke: #38bdf8; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 8px 12px rgba(56, 189, 248, .18)); }
+.md-gov-compliance-chart circle { fill: #38bdf8; stroke: var(--gov-panel-strong); stroke-width: 3; }
+.md-gov-compliance-chart text { fill: var(--gov-text); font-size: 12px; font-weight: 900; }
+.md-gov-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.md-gov-insight-grid button {
+  min-width: 0;
+  min-height: 75px;
+  display: grid;
+  align-content: space-between;
+  gap: 5px;
+  border: 1px solid var(--gov-border);
+  border-radius: 16px;
+  padding: 11px;
+  background: var(--gov-panel-muted);
+  text-align: left;
+}
+.md-gov-insight-grid span,
+.md-gov-insight-grid small { color: var(--gov-muted); font-size: 9.7px; line-height: 1.25; font-weight: 760; }
+.md-gov-insight-grid strong { color: var(--gov-text); font-size: 18px; font-family: var(--md-display-font) !important; line-height: 1; font-weight: 930; letter-spacing: -.05em; }
+
+.md-gov-domain-layout {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+.md-gov-donut {
+  width: 204px;
+  height: 204px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: conic-gradient(var(--donut));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 20px 38px rgba(0,0,0,.18);
+}
+.md-gov-donut span {
+  width: 104px;
+  height: 104px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border-radius: 999px;
+  background: var(--gov-panel-strong);
+  text-align: center;
+  box-shadow: inset 0 0 0 1px var(--gov-border);
+}
+.md-gov-donut strong { color: var(--gov-text); font-family: var(--md-display-font) !important; font-size: 20px; line-height: 1; font-weight: 940; letter-spacing: -.055em; }
+.md-gov-donut small { display: block; margin-top: 5px; color: var(--gov-muted); font-size: 9px; font-weight: 850; }
+.md-gov-domain-list { display: grid; gap: 9px; }
+.md-gov-domain-list button {
+  min-width: 0;
+  min-height: 54px;
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--gov-border);
+  border-radius: 15px;
+  padding: 10px;
+  background: var(--gov-panel-muted);
+  text-align: left;
+}
+.md-gov-domain-list button.is-muted { opacity: .56; cursor: not-allowed; }
+.md-gov-domain-list i {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--dot, #2563eb);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dot, #2563eb) 16%, transparent);
+}
+.md-gov-domain-list strong,
+.md-gov-domain-list em {
+  color: var(--gov-text);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+}
+.md-gov-domain-list small { display: block; margin-top: 3px; color: var(--gov-muted); font-size: 9.8px; line-height: 1.25; font-weight: 680; }
+.md-gov-domain-list u {
+  grid-column: 2 / -1;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gov-muted) 18%, transparent);
+  text-decoration: none;
+}
+.md-gov-domain-list u b { display: block; height: 100%; border-radius: inherit; }
+
+.md-gov-table-wrap { width: 100%; overflow-x: auto; }
+.md-gov-table { width: 100%; border-collapse: collapse; min-width: 700px; }
+.md-gov-table th,
+.md-gov-table td {
+  border-bottom: 1px solid var(--gov-border);
+  padding: 12px 10px;
+  text-align: left;
+}
+.md-gov-table th {
+  color: var(--gov-muted);
+  font-size: 9.8px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+.md-gov-table td {
+  color: var(--gov-text);
+  font-size: 11.2px;
+  line-height: 1.38;
+  font-weight: 720;
+}
+.md-gov-table tbody tr { cursor: pointer; transition: background 140ms ease; }
+.md-gov-table tbody tr:hover { background: color-mix(in srgb, #2563eb 8%, transparent); }
+.md-gov-spotlight-list { display: grid; gap: 9px; }
+.md-gov-spotlight-list button {
+  --tone-a: #2563eb;
+  --tone-b: #06b6d4;
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--tone-a) 18%, var(--gov-border));
+  border-radius: 16px;
+  padding: 10px;
+  background: radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--tone-a) 14%, transparent), transparent 8rem), var(--gov-panel-muted);
+  text-align: left;
+}
+.md-gov-spotlight-list button.tone-red { --tone-a: #f43f5e; --tone-b: #fb923c; }
+.md-gov-spotlight-list button.tone-orange { --tone-a: #f59e0b; --tone-b: #fb923c; }
+.md-gov-spotlight-list button.tone-purple { --tone-a: #7c3aed; --tone-b: #6366f1; }
+.md-gov-spotlight-list button.tone-green { --tone-a: #10b981; --tone-b: #22c55e; }
+.md-gov-spotlight-list button > span {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--tone-a), var(--tone-b));
+}
+.md-gov-spotlight-list strong { min-width: 0; color: var(--gov-text); font-size: 11.5px; line-height: 1.22; font-weight: 850; }
+.md-gov-spotlight-list small { display: block; margin-top: 3px; color: var(--gov-muted); font-size: 9.8px; line-height: 1.28; font-weight: 660; }
+.md-gov-spotlight-list em {
+  justify-self: end;
+  border-radius: 999px;
+  padding: 6px 9px;
+  color: var(--gov-text);
+  background: color-mix(in srgb, var(--tone-a) 14%, var(--gov-panel-strong));
+  font-size: 11px;
+  line-height: 1;
+  font-style: normal;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.md-gov-lens-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.md-gov-lens-grid button {
+  --tone-a: #7c3aed;
+  --tone-b: #6366f1;
+  min-height: 122px;
+  display: grid;
+  align-content: space-between;
+  gap: 7px;
+  border: 1px solid color-mix(in srgb, var(--tone-a) 24%, var(--gov-border));
+  border-radius: 20px;
+  padding: 14px;
+  background: radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--tone-a) 18%, transparent), transparent 9rem), var(--gov-panel-muted);
+  text-align: left;
+}
+.md-gov-lens-grid button.tone-blue { --tone-a: #2563eb; --tone-b: #06b6d4; }
+.md-gov-lens-grid button.tone-green { --tone-a: #10b981; --tone-b: #22c55e; }
+.md-gov-lens-grid button.tone-orange { --tone-a: #f59e0b; --tone-b: #fb923c; }
+.md-gov-lens-grid button.tone-purple { --tone-a: #7c3aed; --tone-b: #6366f1; }
+.md-gov-lens-grid button > span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--tone-a), var(--tone-b));
+}
+.md-gov-lens-grid em {
+  color: var(--gov-muted);
+  font-size: 10px;
+  line-height: 1;
+  font-style: normal;
+  font-weight: 900;
+}
+.md-gov-lens-grid strong {
+  color: var(--gov-text);
+  font-family: var(--md-display-font) !important;
+  font-size: 25px;
+  line-height: 1;
+  font-weight: 940;
+  letter-spacing: -.055em;
+}
+.md-gov-lens-grid strong small { margin-left: 2px; font-size: 13px; letter-spacing: -.02em; }
+.md-gov-lens-grid i { color: var(--gov-muted); font-size: 10px; line-height: 1.28; font-style: normal; font-weight: 670; }
+
+.management-center-page.md-theme-light .md-gov-panel,
+.management-center-page.md-theme-light .md-gov-lens-panel,
+.management-center-page.md-theme-light .md-gov-toolbar-actions button,
+.management-center-page.md-theme-light .md-gov-updated {
+  background: rgba(255,255,255,.88);
+}
+.management-center-page.md-theme-dark .md-gov-panel,
+.management-center-page.md-theme-dark .md-gov-lens-panel,
+.management-center-page.md-theme-dark .md-gov-toolbar-actions button,
+.management-center-page.md-theme-dark .md-gov-updated {
+  background: rgba(12, 24, 46, .72);
+}
+.management-center-page.md-theme-light .md-gov-kpi {
+  background: radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--tone-a) 16%, transparent), transparent 9rem), linear-gradient(135deg, #ffffff, color-mix(in srgb, var(--tone-a) 6%, #f8fbff));
+}
+.management-center-page.md-theme-dark .md-gov-kpi,
+.management-center-page.md-theme-dark .md-gov-panel,
+.management-center-page.md-theme-dark .md-gov-lens-panel {
+  box-shadow: 0 18px 42px rgba(0, 0, 0, .26), inset 0 1px 0 rgba(255,255,255,.045);
+}
+
+@media (max-width: 1320px) {
+  .md-gov-hero { grid-template-columns: minmax(0, 1fr) minmax(260px, .44fr); }
+  .md-gov-orb { display: none; }
+  .md-gov-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .md-gov-main-grid,
+  .md-gov-work-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 980px) {
+  .md-gov-shell { grid-template-columns: 1fr; }
+  .md-gov-rail { position: static; min-height: 0; grid-template-columns: auto 1fr auto; grid-template-rows: 1fr; align-items: center; }
+  .md-gov-rail nav { grid-auto-flow: column; overflow-x: auto; }
+  .md-gov-toolbar { flex-direction: column; }
+  .md-gov-toolbar-actions { justify-content: flex-start; }
+  .md-gov-hero { grid-template-columns: 1fr; }
+  .md-gov-priorities { border-left: 0; border-top: 1px solid var(--gov-border); padding-left: 0; padding-top: 14px; }
+  .md-gov-chart-split,
+  .md-gov-domain-layout { grid-template-columns: 1fr; }
+  .md-gov-donut { justify-self: center; }
+  .md-gov-lens-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 680px) {
+  .md-gov-kpi-grid,
+  .md-gov-insight-grid,
+  .md-gov-lens-grid { grid-template-columns: 1fr; }
+  .md-gov-toolbar-actions button:first-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .md-gov-hero { padding: 18px; border-radius: 22px; }
+  .md-gov-panel,
+  .md-gov-lens-panel { border-radius: 20px; padding: 14px; }
+  .md-gov-rail { display: none; }
+}
+
+
+
+/* =========================================================
+   Compact management dashboard override
+   - Removes the extra internal left rail because the app already has sidebar navigation.
+   - Reduces oversized hero, KPI, chart and card spacing for normal management view.
+========================================================= */
+.management-center-page {
+  padding: 10px 12px 14px !important;
+}
+.md-gov-shell {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 10px !important;
+  min-height: auto !important;
+}
+.md-gov-rail {
+  display: none !important;
+}
+.md-gov-canvas {
+  gap: 10px !important;
+}
+.md-gov-toolbar {
+  align-items: center !important;
+  gap: 10px !important;
+}
+.md-gov-toolbar h1 {
+  font-size: clamp(21px, 1.65vw, 28px) !important;
+  letter-spacing: -0.055em !important;
+}
+.md-gov-toolbar p {
+  margin-top: 3px !important;
+  font-size: 11.5px !important;
+}
+.md-gov-toolbar-actions button,
+.md-gov-updated {
+  min-height: 34px !important;
+  border-radius: 12px !important;
+  padding: 0 10px !important;
+  font-size: 10.5px !important;
+}
+.md-gov-icon-btn {
+  width: 34px !important;
+  min-width: 34px !important;
+}
+.md-gov-hero {
+  min-height: 122px !important;
+  grid-template-columns: minmax(0, 1fr) 132px minmax(260px, .46fr) !important;
+  gap: 14px !important;
+  padding: 16px 18px !important;
+  border-radius: 22px !important;
+}
+.md-gov-eyebrow {
+  font-size: 9.4px !important;
+}
+.md-gov-hero h2 {
+  margin-top: 6px !important;
+  font-size: clamp(20px, 1.45vw, 25px) !important;
+  line-height: 1.09 !important;
+}
+.md-gov-hero p {
+  margin-top: 7px !important;
+  font-size: 11.4px !important;
+  line-height: 1.42 !important;
+}
+.md-gov-signal-row {
+  margin-top: 8px !important;
+  gap: 6px !important;
+}
+.md-gov-signal-row span {
+  min-height: 22px !important;
+  padding: 0 8px !important;
+  font-size: 9.3px !important;
+}
+.md-gov-orb {
+  width: 130px !important;
+  height: 96px !important;
+}
+.md-gov-orb svg {
+  width: 118px !important;
+  height: 118px !important;
+}
+.md-gov-orb > span {
+  width: 58px !important;
+  height: 58px !important;
+  border-radius: 20px !important;
+}
+.md-gov-orb .md-icon {
+  width: 26px !important;
+  height: 26px !important;
+}
+.md-gov-priorities {
+  gap: 7px !important;
+  padding-left: 14px !important;
+}
+.md-gov-priorities > span {
+  font-size: 12px !important;
+}
+.md-gov-priorities button {
+  min-height: 20px !important;
+  font-size: 10.2px !important;
+  line-height: 1.28 !important;
+}
+.md-gov-kpi-grid {
+  gap: 9px !important;
+}
+.md-gov-kpi {
+  min-height: 70px !important;
+  grid-template-columns: 34px minmax(0, 1fr) 36px !important;
+  gap: 8px !important;
+  padding: 10px !important;
+  border-radius: 16px !important;
+}
+.md-gov-kpi-icon {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 12px !important;
+}
+.md-gov-kpi-icon .md-icon,
+.md-gov-kpi-icon svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+.md-gov-kpi-copy em {
+  font-size: 9.2px !important;
+}
+.md-gov-kpi-copy strong {
+  font-size: 18px !important;
+}
+.md-gov-kpi-copy > span {
+  font-size: 8.9px !important;
+}
+.md-gov-kpi-spark {
+  width: 34px !important;
+  height: 16px !important;
+  right: 10px !important;
+  bottom: 10px !important;
+}
+.md-gov-main-grid,
+.md-gov-work-grid {
+  gap: 10px !important;
+}
+.md-gov-main-grid {
+  grid-template-columns: minmax(0, 1.38fr) minmax(330px, .62fr) !important;
+}
+.md-gov-work-grid {
+  grid-template-columns: minmax(0, 1.28fr) minmax(330px, .72fr) !important;
+}
+.md-gov-panel,
+.md-gov-lens-panel {
+  border-radius: 18px !important;
+  padding: 12px !important;
+}
+.md-gov-panel-head {
+  margin-bottom: 9px !important;
+}
+.md-gov-panel-head h2 {
+  font-size: 15.5px !important;
+}
+.md-gov-panel-head p {
+  font-size: 10px !important;
+}
+.md-gov-panel-head button {
+  min-height: 30px !important;
+  font-size: 9.5px !important;
+}
+.md-gov-chart-split {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, .45fr) !important;
+  gap: 10px !important;
+}
+.md-gov-bar-chart,
+.md-gov-compliance-chart {
+  padding: 10px !important;
+  border-radius: 14px !important;
+}
+.md-gov-chart-value strong,
+.md-gov-compliance-chart strong {
+  font-size: 20px !important;
+}
+.md-gov-bars {
+  height: 154px !important;
+  background-size: 100% 32px !important;
+}
+.md-gov-bars button i {
+  width: min(26px, 68%) !important;
+}
+.md-gov-compliance-chart svg {
+  height: 130px !important;
+}
+.md-gov-insight-grid {
+  gap: 8px !important;
+  margin-top: 9px !important;
+}
+.md-gov-insight-grid button {
+  min-height: 60px !important;
+  padding: 9px !important;
+  border-radius: 13px !important;
+}
+.md-gov-insight-grid strong {
+  font-size: 16px !important;
+}
+.md-gov-domain-layout {
+  grid-template-columns: 164px minmax(0, 1fr) !important;
+  gap: 12px !important;
+}
+.md-gov-donut {
+  width: 158px !important;
+  height: 158px !important;
+}
+.md-gov-donut span {
+  width: 82px !important;
+  height: 82px !important;
+}
+.md-gov-donut strong {
+  font-size: 16px !important;
+}
+.md-gov-domain-list {
+  gap: 7px !important;
+}
+.md-gov-domain-list button {
+  min-height: 46px !important;
+  padding: 8px !important;
+  border-radius: 12px !important;
+}
+.md-gov-domain-list strong,
+.md-gov-domain-list em {
+  font-size: 10.8px !important;
+}
+.md-gov-domain-list small {
+  font-size: 8.8px !important;
+}
+.md-gov-spotlight-list {
+  gap: 7px !important;
+}
+.md-gov-spotlight-list button {
+  min-height: 52px !important;
+  grid-template-columns: 32px minmax(0, 1fr) auto !important;
+  padding: 8px !important;
+  border-radius: 13px !important;
+}
+.md-gov-spotlight-list button > span {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 11px !important;
+}
+.md-gov-spotlight-list strong {
+  font-size: 10.5px !important;
+}
+.md-gov-spotlight-list small {
+  font-size: 9px !important;
+}
+.md-gov-table th,
+.md-gov-table td {
+  padding: 9px 8px !important;
+}
+.md-gov-table td {
+  font-size: 10.4px !important;
+}
+.md-gov-lens-grid {
+  gap: 9px !important;
+}
+.md-gov-lens-grid button {
+  min-height: 92px !important;
+  padding: 11px !important;
+  border-radius: 15px !important;
+}
+.md-gov-lens-grid button > span {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 12px !important;
+}
+.md-gov-lens-grid strong {
+  font-size: 20px !important;
+}
+@media (max-width: 1320px) {
+  .md-gov-main-grid,
+  .md-gov-work-grid { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 980px) {
+  .md-gov-rail { display: none !important; }
+  .md-gov-hero { grid-template-columns: 1fr !important; }
+  .md-gov-orb { display: none !important; }
+}
 `;
 
 function Icon({ name, className = "" }: { name: keyof typeof IconSet; className?: string }) {
@@ -4146,6 +6354,7 @@ function buildChartRows(dashboard: DashboardData): TrendPoint[] {
 }
 
 export default function ManagementDashboard() {
+  const { isDark } = useTheme();
   const [dashboard, setDashboard] = useState<DashboardData>(EMPTY_DASHBOARD);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -4206,16 +6415,45 @@ export default function ManagementDashboard() {
   useEffect(() => { loadDashboard(); }, []);
 
   useEffect(() => {
-    document.documentElement.classList.add("md-dashboard-page-active");
-    document.body.classList.add("md-dashboard-page-active");
-    document.documentElement.classList.remove("md-management-dashboard-active");
-    document.body.classList.remove("md-management-dashboard-active");
+    const html = document.documentElement;
+    const body = document.body;
+
+    html.classList.add("md-dashboard-page-active");
+    body.classList.add("md-dashboard-page-active");
+    html.classList.remove("md-management-dashboard-active");
+    body.classList.remove("md-management-dashboard-active");
 
     return () => {
-      document.documentElement.classList.remove("md-dashboard-page-active");
-      document.body.classList.remove("md-dashboard-page-active");
+      html.classList.remove(
+        "md-dashboard-page-active",
+        "md-dashboard-theme-dark",
+        "md-dashboard-theme-light",
+        "md-management-dashboard-dark",
+        "md-management-dashboard-light",
+      );
+      body.classList.remove(
+        "md-dashboard-page-active",
+        "md-dashboard-theme-dark",
+        "md-dashboard-theme-light",
+        "md-management-dashboard-dark",
+        "md-management-dashboard-light",
+      );
     };
   }, []);
+
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+
+    html.classList.toggle("md-dashboard-theme-dark", isDark);
+    body.classList.toggle("md-dashboard-theme-dark", isDark);
+    html.classList.toggle("md-dashboard-theme-light", !isDark);
+    body.classList.toggle("md-dashboard-theme-light", !isDark);
+    html.classList.toggle("md-management-dashboard-dark", isDark);
+    body.classList.toggle("md-management-dashboard-dark", isDark);
+    html.classList.toggle("md-management-dashboard-light", !isDark);
+    body.classList.toggle("md-management-dashboard-light", !isDark);
+  }, [isDark]);
 
   useEffect(() => {
     const root = document.querySelector(".management-center-page") as HTMLElement | null;
@@ -4535,286 +6773,323 @@ export default function ManagementDashboard() {
       },
     ];
 
+    const generatedAtDate = dashboard.generatedAt ? new Date(dashboard.generatedAt) : null;
+    const updatedAtText = generatedAtDate && !Number.isNaN(generatedAtDate.getTime())
+      ? generatedAtDate.toLocaleString("en-MY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+      : "Live";
+    const domainColors = ["#7c3aed", "#f43f5e", "#0ea5e9", "#f59e0b", "#10b981", "#64748b"];
+    const domainTotal = domainMatrix.reduce((sum, domain) => sum + Number(domain.value || 0), 0);
+    const domainMax = Math.max(1, ...domainMatrix.map((domain) => Number(domain.value || 0)));
+    let domainCursor = 0;
+    const domainSegments = domainMatrix.map((domain, index) => {
+      const rawValue = Number(domain.value || 0);
+      const percent = domainTotal > 0 ? (rawValue / domainTotal) * 100 : 0;
+      const start = domainCursor;
+      domainCursor += percent;
+      return {
+        ...domain,
+        rawValue,
+        percent,
+        start,
+        end: domainCursor,
+        color: domainColors[index % domainColors.length],
+      };
+    });
+    const domainGradient = domainTotal > 0
+      ? domainSegments.map((segment) => `${segment.color} ${segment.start}% ${segment.end}%`).join(", ")
+      : "rgba(100,116,139,.55) 0% 100%";
+    const heroPriorities = [
+      ...(executiveStory.actionItems || []),
+      `Address ${countText(riskSignalsValue)} risk signals requiring management attention`,
+      `Validate ${countText(boardItemsValue)} pending management decision(s)`,
+      "Close critical evidence gaps before the next review",
+    ].filter(Boolean).slice(0, 3);
+    const spotlightRows = (signals.length ? signals.slice(0, 4).map((signal, index) => ({
+      title: signal.title,
+      detail: signal.subtitle || "Evidence signal requiring review",
+      value: signal.value || `${index + 1}`,
+      tone: normalizeTone(signal.tone),
+      icon: normalizeIcon(signal.icon),
+      area: signal.area || "risk",
+      key: signal.key || "",
+    })) : [
+      {
+        title: `${countText(riskSignalsValue)} risk signals require management attention`,
+        detail: "Across hardware, software, network and geolocation evidence",
+        value: countText(riskSignalsValue),
+        tone: "red" as Tone,
+        icon: "risk" as keyof typeof IconSet,
+        area: "risk",
+        key: "",
+      },
+      {
+        title: "Validate stale / inactive telemetry records",
+        detail: "Visibility gaps impacting management confidence",
+        value: actions[1]?.impact || "Review",
+        tone: "orange" as Tone,
+        icon: "activity" as keyof typeof IconSet,
+        area: "actions",
+        key: actions[1]?.key || "",
+      },
+      {
+        title: "Policy adherence",
+        detail: `${policyLabel} in effect for this dashboard`,
+        value: percentText(pricingCoverageValue),
+        tone: "green" as Tone,
+        icon: "audit" as keyof typeof IconSet,
+        area: "compliance",
+        key: "",
+      },
+      {
+        title: "Management decisions awaiting closure",
+        detail: "Approval and ownership are the current bottleneck",
+        value: countText(boardItemsValue),
+        tone: "purple" as Tone,
+        icon: "list" as keyof typeof IconSet,
+        area: "actions",
+        key: "",
+      },
+    ]);
+
     return (
-      <section className="md-dashboard-view" aria-label="Management dashboard overview">
-        <section className={`md-story-banner md-story-${normalizeStoryTone(executiveStory.tone)}`} aria-label="Executive AI storytelling">
-          <div className="md-story-main">
-            <span className="md-story-icon"><Icon name="sparkles" /></span>
+      <section className="md-dashboard-view md-gov-shell" aria-label="Executive governance dashboard overview">
+        <div className="md-gov-canvas">
+          <header className="md-gov-toolbar">
             <div>
-              <span className="md-story-status">{storyLoading ? "Generating story" : executiveStory.status || "Executive narrative"}</span>
-              <h2>{executiveStory.headline || "Executive management summary is being prepared."}</h2>
-              <p>{executiveStory.narrative || executiveStory.summary || "Management insights use only live endpoint lifecycle, risk, pricing, compliance and service evidence."}</p>
-              <div className="md-story-signals">
+              <h1>Executive Governance Hub</h1>
+              <p>Real-time oversight of exposure, risk, compliance and decisions</p>
+            </div>
+            <div className="md-gov-toolbar-actions">
+              <button type="button" title="Active management policy"><span>Policy</span>{policyLabel} · {policyScope}</button>
+              <button type="button" title="Dashboard period"><Icon name="calendar" /> Jun 2025</button>
+              <span className="md-gov-updated">Last updated<br /><strong>{updatedAtText}</strong></span>
+              <button type="button" className="md-gov-icon-btn" onClick={refreshDashboard} aria-label="Refresh dashboard"><Icon name="refresh" /></button>
+            </div>
+          </header>
+
+          <section className={`md-gov-hero md-story-${normalizeStoryTone(executiveStory.tone)}`} aria-label="Executive summary">
+            <div className="md-gov-hero-copy">
+              <span className="md-gov-eyebrow">Executive Summary</span>
+              <h2>{executiveStory.headline || "Governance posture requires focused management action."}</h2>
+              <p>{executiveStory.narrative || executiveStory.summary || "Evidence is complete. Management should focus on ownership, approvals and closing high-risk endpoint groups."}</p>
+              <div className="md-gov-signal-row">
                 {(executiveStory.keySignals || []).slice(0, 4).map((signal, index) => <span key={`${signal}-${index}`}>{signal}</span>)}
               </div>
             </div>
-          </div>
-          <aside className="md-story-recommendation">
-            <span>Recommended action</span>
-            <strong>{executiveStory.boardRecommendation || "Review open risks, financial exposure and ownership before the next management cycle."}</strong>
-            <ul className="md-story-actions">
-              {(executiveStory.actionItems || []).slice(0, 3).map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}
-            </ul>
-            <small className="md-story-source">{executiveStory.source === "gemini" ? "Gemini AI generated" : "Local executive rule"}</small>
-          </aside>
-        </section>
-
-        <section className="md-kpi-grid md-exec-kpi-grid" aria-label="Executive KPI cards">
-          {frontKpis.map((kpi, index) => (
-            <button type="button" className={`md-card md-kpi-card tone-${normalizeTone(kpi.tone)} ${getKpiSemanticClass(kpi, index)}`} key={`${kpi.title}-${index}`} onClick={() => openLevel2(kpi.area, kpi.title, kpi.key)}>
-              <span>
-                <h3>{kpi.title}</h3>
-                <span className="md-kpi-value"><strong>{kpi.value}</strong>{kpi.subValue && <span>{kpi.subValue}</span>}</span>
-                <p>{kpi.note}</p>
-              </span>
-              <span className="md-kpi-icon"><Icon name={normalizeIcon(kpi.icon)} /></span>
-            </button>
-          ))}
-        </section>
-
-        <section className="md-top-row md-overview-grid">
-          <article className="md-card md-chart-card">
-            <div className="md-card-head">
-              <div>
-                <span className="md-eyebrow">Management Analytics</span>
-                <h2>Monthly Exposure Movement</h2>
-                <p>{dashboard.analysis?.headline || "Trend appears only when live exposure, risk or signal records exist."}</p>
-              </div>
-              <div className="md-actions">
-                <span className="md-action-btn md-policy-badge" title="Management Dashboard calculations use this active policy">Policy: {policyLabel} · {policyScope}</span>
-                <button type="button" className="md-action-btn" onClick={refreshDashboard}><Icon name="refresh" /> Refresh</button>
-                <button type="button" className="md-action-btn primary" onClick={printDashboard}><Icon name="download" /> Report</button>
-              </div>
+            <div className="md-gov-orb" aria-hidden="true">
+              <svg viewBox="0 0 180 180">
+                <defs>
+                  <linearGradient id="mdGovHealth" x1="0" x2="1" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#60a5fa" />
+                    <stop offset="100%" stopColor="#8b5cf6" />
+                  </linearGradient>
+                  <linearGradient id="mdGovRisk" x1="0" x2="1" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#f43f5e" />
+                    <stop offset="100%" stopColor="#fb923c" />
+                  </linearGradient>
+                </defs>
+                <circle className="md-gov-ring-track" cx="90" cy="90" r="78" />
+                <circle className="md-gov-ring-health" cx="90" cy="90" r="78" strokeDasharray={`${ringControlDash} ${ringCircumference}`} />
+                <circle className="md-gov-ring-risk" cx="90" cy="90" r="60" strokeDasharray={`${ringRiskDash} ${ringCircumference}`} />
+              </svg>
+              <span><Icon name="health" /></span>
             </div>
+            <aside className="md-gov-priorities">
+              <span><Icon name="target" /> Key Priorities</span>
+              {heroPriorities.map((item, index) => (
+                <button type="button" key={`${item}-${index}`} onClick={() => openLevel2(index === 1 ? "actions" : "risk", "Key Priority") }>
+                  <i />{item}
+                </button>
+              ))}
+            </aside>
+          </section>
 
-            <div className="md-chart-layout">
-              <div className="md-chart-summary">
+          <section className="md-gov-kpi-grid" aria-label="Executive KPI cards">
+            {frontKpis.map((kpi, index) => (
+              <button type="button" className={`md-gov-kpi tone-${normalizeTone(kpi.tone)} ${getKpiSemanticClass(kpi, index)}`} key={`${kpi.title}-${index}`} onClick={() => openLevel2(kpi.area, kpi.title, kpi.key)}>
+                <span className="md-gov-kpi-icon"><Icon name={normalizeIcon(kpi.icon)} /></span>
+                <span className="md-gov-kpi-copy">
+                  <em>{kpi.title}</em>
+                  <strong>{kpi.value}{kpi.subValue && <small> {kpi.subValue}</small>}</strong>
+                  <span>{kpi.note}</span>
+                </span>
+                <span className="md-gov-kpi-spark" aria-hidden="true" />
+              </button>
+            ))}
+          </section>
+
+          <section className="md-gov-main-grid" aria-label="Exposure and risk analysis">
+            <article className="md-gov-panel md-gov-exposure-panel">
+              <div className="md-gov-panel-head">
                 <div>
-                  <p className="md-chart-number">{chartRows.length ? chartRows.length.toLocaleString() : "Not recorded"}</p>
-                  <span>Live trend period(s)</span>
+                  <span className="md-gov-eyebrow">Exposure & Compliance Overview</span>
+                  <h2>Exposure Trend</h2>
+                  <p>{dashboard.analysis?.headline || "Monthly movement translated into exposure, evidence and action context."}</p>
                 </div>
-                <span className="md-chart-context">Movement view only. The cards below explain peak exposure, current month impact and evidence coverage.</span>
-                <button type="button" className="md-summary-btn" onClick={() => openLevel2("capex", "Costed Exposure")}>Open exposure evidence</button>
+                <button type="button" onClick={() => openLevel2("capex", "Exposure Trend")}>Open evidence <Icon name="next" /></button>
               </div>
-              <div className="md-chart-panel" onMouseLeave={() => setChartHover(null)}>
-                <div className="md-chart-legend">
-                  {chartMode === "money" ? (
-                    <>
-                      <span><i className="md-dot orange" /> Financial</span>
-                      <span><i className="md-dot red" /> Risk</span>
-                    </>
-                  ) : chartMode === "signals" ? (
-                    <span><i className="md-dot red" /> Evidence signals</span>
-                  ) : (
-                    <span>No recorded trend</span>
-                  )}
+              <div className="md-gov-chart-split">
+                <div className="md-gov-bar-chart" onMouseLeave={() => setChartHover(null)}>
+                  <div className="md-gov-chart-value"><strong>{peakExposureValue > 0 ? formatMoney(peakExposureValue) : "Not recorded"}</strong><span>Peak exposure</span></div>
+                  <div className="md-gov-bars">
+                    {chartRows.length === 0 ? <p>No live monthly exposure trend is recorded yet.</p> : chartRows.map((row, index) => {
+                      const rawValue = chartMode === "signals"
+                        ? Number(row.signals || row.serviceRisk || 0)
+                        : moneyValue(row.financialExposure) + moneyValue(row.riskExposure) + moneyValue(row.capex) + moneyValue(row.opex);
+                      const height = Math.max(8, Math.min(100, (rawValue / chartMax) * 100));
+                      return (
+                        <button
+                          type="button"
+                          key={`${row.month}-${index}`}
+                          className={chartHover === index ? "is-active" : ""}
+                          style={{ "--h": `${height}%` } as React.CSSProperties}
+                          onMouseEnter={() => setChartHover(index)}
+                        >
+                          <i />
+                          <span>{row.label || row.month}</span>
+                          <em>{chartMode === "signals" ? rawValue.toLocaleString() : formatMoney(rawValue)}</em>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <svg className="md-chart-svg" viewBox="0 0 640 230" role="img" aria-label="Monthly exposure trend">
-                  <defs>
-                    <linearGradient id="mdAreaGradient" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#fee2e2" stopOpacity="0.72" />
-                      <stop offset="100%" stopColor="#fff7ed" stopOpacity="0.08" />
-                    </linearGradient>
-                    <linearGradient id="mdFinanceBarGradient" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#f59e0b" stopOpacity="1" />
-                      <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.82" />
-                    </linearGradient>
-                    <linearGradient id="mdRiskBarGradient" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#ef4444" stopOpacity="1" />
-                      <stop offset="100%" stopColor="#fb7185" stopOpacity="0.86" />
-                    </linearGradient>
-                  </defs>
-                  {[0, 1, 2, 3].map((i) => {
-                    const y = 24 + i * 44;
-                    return (
-                      <g key={`grid-${i}`}>
-                        <line className="md-chart-grid" x1="54" x2="602" y1={y} y2={y} />
-                        <text className="md-chart-label" x="10" y={y + 4}>{chartMode === "money" ? formatMoney((chartMax * (4 - i)) / 4) : Math.round((chartMax * (4 - i)) / 4).toLocaleString()}</text>
-                      </g>
-                    );
-                  })}
-                  <line className="md-chart-axis" x1="54" x2="602" y1="190" y2="190" />
-                  {chartRows.map((row, index) => {
-                    const x = chartRows.length <= 1 ? 328 : 54 + (index / Math.max(1, chartRows.length - 1)) * 548;
-                    const financeRaw = moneyValue(row.financialExposure);
-                    const riskRaw = moneyValue(row.riskExposure);
-                    const signalRaw = Number(row.signals || row.serviceRisk || 0);
-                    const financeHeight = chartMode === "money" && financeRaw > 0 ? Math.max(9, (financeRaw / chartMax) * 172) : 0;
-                    const riskHeight = chartMode === "money" && riskRaw > 0 ? Math.max(9, (riskRaw / chartMax) * 172) : 0;
-                    const signalHeight = chartMode === "signals" && signalRaw > 0 ? Math.max(9, (signalRaw / chartMax) * 172) : 0;
-                    return (
-                      <g key={`bar-${index}`} onMouseEnter={() => setChartHover(index)}>
-                        <rect className="md-chart-hover-band" x={x - 34} y="12" width="68" height="194" rx="12" />
-                        {chartMode === "money" ? (
-                          <>
-                            <rect className="md-chart-bar-finance" x={x - 14} y={190 - financeHeight} width="12" height={financeHeight} rx="6" />
-                            <rect className="md-chart-bar-risk" x={x + 4} y={190 - riskHeight} width="12" height={riskHeight} rx="6" />
-                          </>
-                        ) : chartMode === "signals" ? (
-                          <rect className="md-chart-bar-risk" x={x - 8} y={190 - signalHeight} width="16" height={signalHeight} rx="8" />
-                        ) : null}
-                        <text className="md-chart-label" x={x - 12} y="218">{row.label || row.month}</text>
-                      </g>
-                    );
-                  })}
-                  {chartHover !== null && chartRows[chartHover] && (() => {
-                    const row = chartRows[chartHover];
-                    const x = chartRows.length <= 1 ? 328 : 54 + (chartHover / Math.max(1, chartRows.length - 1)) * 548;
-                    const boxX = x > 440 ? x - 202 : x + 20;
-                    const boxY = 24;
-                    return (
-                      <g pointerEvents="none">
-                        <line className="md-chart-active-line" x1={x} x2={x} y1="18" y2="190" />
-                        <rect className="md-chart-tooltip-box" x={boxX} y={boxY} width="182" height="82" rx="14" />
-                        <text className="md-chart-tooltip-title" x={boxX + 14} y={boxY + 22}>{row.label || row.month}</text>
-                        {chartMode === "money" ? (
-                          <>
-                            <text className="md-chart-tooltip-text" x={boxX + 14} y={boxY + 42}>Financial: {formatMoney(row.financialExposure || 0)}</text>
-                            <text className="md-chart-tooltip-text" x={boxX + 14} y={boxY + 59}>Risk: {formatMoney(row.riskExposure || 0)}</text>
-                            <text className="md-chart-tooltip-text" x={boxX + 14} y={boxY + 76}>Signals: {Number(row.signals || 0).toLocaleString()}</text>
-                          </>
-                        ) : (
-                          <>
-                            <text className="md-chart-tooltip-text" x={boxX + 14} y={boxY + 42}>Evidence signals: {Number(row.signals || row.serviceRisk || 0).toLocaleString()}</text>
-                            <text className="md-chart-tooltip-text" x={boxX + 14} y={boxY + 59}>Cost source: Not recorded</text>
-                          </>
-                        )}
-                      </g>
-                    );
-                  })()}
-                  {chartRows.length === 0 && (
-                    <text className="md-chart-empty-note" x="190" y="104">No live monthly exposure trend is recorded yet.</text>
-                  )}
-                </svg>
+                <div className="md-gov-compliance-chart">
+                  <span>Compliance Coverage Over Time (%)</span>
+                  <strong>{percentText(pricingCoverageValue)}</strong>
+                  <svg viewBox="0 0 320 140" role="img" aria-label="Compliance trend">
+                    <line x1="20" x2="300" y1="116" y2="116" />
+                    <line x1="20" x2="20" y1="22" y2="116" />
+                    <polyline points="25,100 78,58 132,42 186,42 240,42 295,42" />
+                    <circle cx="295" cy="42" r="5" />
+                    <text x="250" y="33">{percentText(pricingCoverageValue)}</text>
+                  </svg>
+                </div>
               </div>
-            </div>
+              <div className="md-gov-insight-grid" title={evidenceCoverageText}>
+                {chartInsightCards.map((card) => (
+                  <button type="button" key={card.label} className={`tone-${normalizeTone(card.tone)}`} onClick={() => openLevel2(card.area, card.title)}>
+                    <span>{card.label}</span>
+                    <strong>{card.value}</strong>
+                    <small>{card.note}</small>
+                  </button>
+                ))}
+              </div>
+            </article>
 
-            <div className="md-exposure-insight-strip" aria-label="Monthly exposure intelligence">
-              {chartInsightCards.map((card) => (
-                <button type="button" key={card.label} className={`md-exposure-insight tone-${normalizeTone(card.tone)}`} onClick={() => openLevel2(card.area, card.title)}>
-                  <span>{card.label}</span>
-                  <strong>{card.value}</strong>
-                  <small>{card.note}</small>
+            <article className="md-gov-panel md-gov-domain-panel">
+              <div className="md-gov-panel-head">
+                <div>
+                  <span className="md-gov-eyebrow">Risk by Evidence Domain</span>
+                  <h2>Risk Composition</h2>
+                  <p>Domain ranking shows where management action will have the strongest impact.</p>
+                </div>
+              </div>
+              <div className="md-gov-domain-layout">
+                <div className="md-gov-donut" style={{ "--donut": domainGradient } as React.CSSProperties}>
+                  <span><strong>{exposureValue === null ? countText(domainTotal) : formatMoney(exposureValue)}</strong><small>{exposureValue === null ? "Total signals" : "Total exposure"}</small></span>
+                </div>
+                <div className="md-gov-domain-list">
+                  {domainSegments.map((domain) => {
+                    const domainHasData = domain.value !== null && Number(domain.value) > 0;
+                    return (
+                      <button type="button" key={domain.title} disabled={!domainHasData} className={domainHasData ? "" : "is-muted"} onClick={() => domainHasData && openLevel2(domain.area, domain.title, domain.key)}>
+                        <i style={{ "--dot": domain.color } as React.CSSProperties} />
+                        <span><strong>{domain.title}</strong><small>{domain.meta}</small></span>
+                        <em>{domain.value === null ? "-" : domain.value.toLocaleString()}</em>
+                        <u><b style={{ width: `${Math.max(4, (Number(domain.value || 0) / domainMax) * 100)}%`, background: domain.color }} /></u>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section className="md-gov-work-grid" aria-label="Decision queue and management actions">
+            <article className="md-gov-panel md-gov-decision-panel">
+              <div className="md-gov-panel-head">
+                <div>
+                  <span className="md-gov-eyebrow">Approvals & Decision Queue</span>
+                  <h2>{countText(boardItemsValue)} open management decision(s)</h2>
+                  <p>Translate risk signals into approvals, ownership and closure actions.</p>
+                </div>
+                <button type="button" onClick={() => openLevel2("actions", "Management Decision Queue")}>View all decisions <Icon name="next" /></button>
+              </div>
+              <div className="md-gov-table-wrap">
+                <table className="md-gov-table">
+                  <thead>
+                    <tr>
+                      <th>Priority</th>
+                      <th>Request</th>
+                      <th>Impact</th>
+                      <th>Requested by</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {actions.length === 0 ? (
+                      <tr><td colSpan={5}>No executive action is required for this view.</td></tr>
+                    ) : actions.slice(0, 4).map((action, index) => {
+                      const target = parseActionTarget(action);
+                      const priority = String(action.priority || "Low").toLowerCase();
+                      return (
+                        <tr key={`${action.area}-${action.key}-${index}`} onClick={() => openLevel2(target.area, action.issue, target.key)}>
+                          <td><span className={`md-priority ${priority}`}>{action.priority}</span></td>
+                          <td>{action.issue}</td>
+                          <td>{action.impact}</td>
+                          <td>{action.area}</td>
+                          <td><span className="md-status-pill">Pending</span></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+
+            <aside className="md-gov-panel md-gov-spotlight-panel">
+              <div className="md-gov-panel-head">
+                <div>
+                  <span className="md-gov-eyebrow">Management Actions Spotlight</span>
+                  <h2>What requires attention</h2>
+                </div>
+              </div>
+              <div className="md-gov-spotlight-list">
+                {spotlightRows.map((item, index) => (
+                  <button type="button" key={`${item.title}-${index}`} className={`tone-${normalizeTone(item.tone)}`} onClick={() => openLevel2(item.area, item.title, item.key)}>
+                    <span><Icon name={normalizeIcon(item.icon)} /></span>
+                    <strong>{item.title}<small>{item.detail}</small></strong>
+                    <em>{item.value}</em>
+                  </button>
+                ))}
+              </div>
+            </aside>
+          </section>
+
+          <section className="md-gov-lens-panel" aria-label="Management lenses">
+            <div className="md-gov-panel-head">
+              <div>
+                <span className="md-gov-eyebrow">Management Lenses</span>
+                <h2>Performance lenses for faster review</h2>
+              </div>
+              <button type="button" onClick={() => openLevel2("actions", "Management Decision Queue")}>Expand all <Icon name="next" /></button>
+            </div>
+            <div className="md-gov-lens-grid">
+              {pillars.map((pillar, index) => (
+                <button type="button" key={pillar.id || `${pillar.title}-${index}`} className={`tone-${normalizeTone(pillar.tone || ["purple", "blue", "green", "orange"][index % 4])}`} onClick={() => openLevel2(pillar.area, pillar.title)}>
+                  <span><Icon name={normalizeIcon(pillar.icon)} /></span>
+                  <em>{pillar.title}</em>
+                  <strong>{pillar.scoreValue || pillar.secondValue || "-"}{pillar.scoreUnit && <small>{pillar.scoreUnit}</small>}</strong>
+                  <i>{[pillar.scoreTitle, pillar.scoreStatus || pillar.secondNote].filter(Boolean).join(" • ") || "Open management lens"}</i>
                 </button>
               ))}
             </div>
-          </article>
-
-          <article className="md-card md-domain-card">
-            <div className="md-card-head">
-              <div>
-                <span className="md-eyebrow">Domain Risk Matrix</span>
-                <h2>Risk by Evidence Domain</h2>
-                <p>Hardware, software, network, geolocation and service desk are separated to avoid hardware-only analysis.</p>
-              </div>
-              <Icon name="target" />
-            </div>
-            <div className="md-domain-list">
-              {domainMatrix.map((domain) => {
-                const domainHasData = domain.value !== null && Number(domain.value) > 0;
-                return (
-                <button type="button" key={domain.title} className={`md-domain-row ${domainHasData ? "" : "is-muted"}`} disabled={!domainHasData} onClick={() => domainHasData && openLevel2(domain.area, domain.title, domain.key)}>
-                  <span className={`md-domain-icon bg-${domain.tone}`}><Icon name={normalizeIcon(domain.icon)} /></span>
-                  <span className="md-domain-copy">
-                    <strong>{domain.title}</strong>
-                    <span>{domain.caption}</span>
-                    <span>{domain.meta}</span>
-                  </span>
-                  <span className="md-domain-score">
-                    <strong>{domain.value === null ? "Not recorded" : domain.value.toLocaleString()}</strong>
-                    <span>{domain.valueLabel}</span>
-                    {domain.score !== null && <span>{percentText(domain.score)} {domain.scoreLabel}</span>}
-                  </span>
-                </button>
-                );
-              })}
-            </div>
-          </article>
-        </section>
-
-        <section className="md-management-action-grid" aria-label="Decision table and core management modules">
-          <aside className="md-card md-core-module-panel" aria-label="Core management modules">
-            <div className="md-card-head">
-              <div>
-                <span className="md-eyebrow">Core Modules</span>
-                <h2>Main Management Lens</h2>
-                <p>Risk, resource, audit and saving lenses are stacked beside the decision queue for faster management review.</p>
-              </div>
-            </div>
-            <div className="md-pillar-grid md-pillar-stack">
-              {pillars.map((pillar, index) => {
-                const tileClass = ["tile-purple", "tile-blue", "tile-teal", "tile-orange"][index % 4];
-                return (
-                  <button
-                    type="button"
-                    className={`md-pillar-tile ${tileClass}`}
-                    key={pillar.id || `${pillar.title}-${index}`}
-                    onClick={() => openLevel2(pillar.area, pillar.title)}
-                  >
-                    <span className="md-tile-icon"><Icon name={normalizeIcon(pillar.icon)} /></span>
-                    <span>
-                      <h3>{pillar.title}</h3>
-                      <span className="md-tile-value">
-                        <strong>{pillar.scoreValue || pillar.secondValue || "-"}</strong>
-                        {pillar.scoreUnit && <span>{pillar.scoreUnit}</span>}
-                      </span>
-                      <small>{[pillar.scoreTitle, pillar.scoreStatus || pillar.secondNote].filter(Boolean).join(" • ") || "Open management lens"}</small>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </aside>
-
-          <article className="md-card md-action-card md-decision-table-card">
-            <div className="md-action-header">
-              <div>
-                <span className="md-eyebrow">Decision Table</span>
-                <h2 className="md-section-title">Board Action Queue</h2>
-                <p className="md-section-subtitle">Single actionable table for management decisions. Click a row to open the related evidence.</p>
-              </div>
-              <div className="md-actions">
-                <button type="button" className="md-action-btn primary" onClick={() => openLevel2("actions", "Board Action Queue")}><Icon name="list" /> View All</button>
-                <button type="button" className="md-action-btn md-action-icon" onClick={refreshDashboard} aria-label="Refresh"><Icon name="refresh" /></button>
-              </div>
-            </div>
-            <div className="md-table-wrap">
-              <table className="md-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: "90px" }}>Priority</th>
-                    <th style={{ width: "112px" }}>Area</th>
-                    <th>Signal</th>
-                    <th style={{ width: "132px" }}>Impact</th>
-                    <th>Decision</th>
-                    <th style={{ width: "86px" }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {actions.length === 0 ? (
-                    <tr><td colSpan={6}>No executive action is required for this view.</td></tr>
-                  ) : actions.map((action, index) => {
-                    const target = parseActionTarget(action);
-                    const priority = String(action.priority || "Low").toLowerCase();
-                    return (
-                      <tr key={`${action.area}-${action.key}-${index}`} onClick={() => openLevel2(target.area, action.issue, target.key)}>
-                        <td><span className={`md-priority ${priority}`}>{action.priority}</span></td>
-                        <td>{action.area}</td>
-                        <td>{action.issue}</td>
-                        <td>{action.impact}</td>
-                        <td>{action.decision}</td>
-                        <td><span className="md-status-pill">Open</span></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </article>
-        </section>
+          </section>
+        </div>
       </section>
     );
   }
+
 
   function renderBreakdownView() {
     const rows = (drill.rows || []) as DrillRow[];
@@ -5144,7 +7419,7 @@ export default function ManagementDashboard() {
   const shouldRenderDashboard = !error && (hasData || loading);
 
   return (
-    <div className="management-center-page">
+    <div className={`management-center-page ${isDark ? "md-theme-dark" : "md-theme-light"}`} data-theme={isDark ? "dark" : "light"}>
       <style>{MANAGEMENT_DASHBOARD_INLINE_CSS}</style>
       <main className="management-module-root">
         <div className="md-content">

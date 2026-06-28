@@ -210,7 +210,7 @@
 }
 
 .login-card-header::before {
-  content: "EMA System";
+  /* content: "EMA System"; */
   display: block;
   margin-bottom: 108px;
   color: #111111;
