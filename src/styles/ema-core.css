@@ -1,0 +1,31 @@
+
+
+/* RESPONSIVE */
+@media (max-width: 1100px) {
+  .ema-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ema-menu,
+  .ema-layout > .ema-panel:first-child,
+  .ema-layout > aside:first-child,
+  .ema-layout > nav:first-child {
+    height: auto;
+    max-height: 260px;
+  }
+
+  .ema-hero,
+  .ema-page-header,
+  .ema-content > .ema-card:first-child,
+  .ema-content > section:first-child {
+    grid-template-columns: 1fr;
+  }
+
+  .ema-kpi-grid,
+  .ema-hero > div:last-child,
+  .ema-page-header > div:last-child {
+    grid-template-columns: repeat(2, minmax(138px, 1fr));
+  }
+}
+
+/* END EMA GENERIC DATA GRID */
