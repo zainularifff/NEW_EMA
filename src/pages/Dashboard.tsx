@@ -2264,236 +2264,309 @@ export default function ITOperationsDashboard() {
     </div>
   );
 
-  const renderCommandMode = () => (
-    <>
-      <section className="itops-pro-kpi-grid itops-main-kpi-grid">
-        {focusCards.map((card) => <KpiCard key={card.id} card={card} onOpen={openLevel2} />)}
-      </section>
+  const renderCommandMode = () => {
+    const totalDevices = Math.max(0, numberOrFallback(hardware.totalDevices));
+    const onlineDevices = Math.max(0, numberOrFallback(hardware.onlineDevices));
+    const offlineDevices = Math.max(0, numberOrFallback(hardware.offlineDevices) || Math.max(0, totalDevices - onlineDevices));
+    const runningJobs = Math.max(0, numberOrFallback(tasks.runningTasks));
+    const staleDevices = Math.max(0, numberOrFallback(hardware.staleSync));
+    const warningDevices = Math.min(staleDevices, Math.max(0, totalDevices - onlineDevices - offlineDevices));
+    const maintenanceDevices = Math.min(runningJobs, Math.max(0, totalDevices - onlineDevices - offlineDevices - warningDevices));
+    const unknownDevices = Math.max(0, totalDevices - onlineDevices - offlineDevices - warningDevices - maintenanceDevices);
+    const totalAlertCount = Math.max(activeAlerts.length, attentionQueue.length, numberOrFallback(risk.totalCritical) + numberOrFallback(risk.totalHigh));
+    const patchPercent = hasSecurityUpdateScore ? clampPercent(securityUpdateScore) : 0;
+    const licenseUsed = Math.max(0, numberOrFallback(software.devicesWithSoftware || hardware.mdmDevices || hardware.totalDevices));
+    const licenseTotal = Math.max(licenseUsed, Math.ceil((licenseUsed || 1) / 100) * 100);
+    const licenseAvailable = Math.max(0, licenseTotal - licenseUsed);
+    const licensePercent = licenseTotal > 0 ? (licenseUsed / licenseTotal) * 100 : 0;
+    const platformDashboardItems = (hardware.platformBreakdown.length
+      ? hardware.platformBreakdown
+      : buildEndpointBreakdown(hardware.endpointRows, (row) => row.osName || row.platform, 'Unknown', 5)
+    ).slice(0, 5);
+    const platformTotal = Math.max(1, platformDashboardItems.reduce((sum, item) => sum + numberOrFallback(item.value), 0));
+    const recentDeviceRows = hardware.endpointRows.slice(0, 5);
+    const recentAlertRows = activeAlerts.length
+      ? activeAlerts.slice(0, 4).map((row, index) => ({
+          id: `${row.alert}-${row.system}-${index}`,
+          title: row.alert || 'Alert',
+          subtitle: row.system || row.owner || row.status || '-',
+          severity: row.severity,
+          time: row.status || 'Open',
+          view: 'alerts',
+          item: row.alert || row.system || row.severity,
+        }))
+      : attentionQueue.slice(0, 4).map((row) => ({
+          id: row.id,
+          title: row.title,
+          subtitle: `${row.module} • ${row.subtitle}`,
+          severity: row.severity,
+          time: 'Action',
+          view: row.id === 'software-unclassified' ? 'software' : row.id === 'network-unregistered' ? 'network' : row.id === 'geo-stale' ? 'geolocation' : 'attention',
+          item: row.title,
+        }));
 
-      <section className="itops-main-overview-grid">
-        <Panel title="Operational Trends" subtitle="Analytics style view for devices, tickets and execution." icon={Gauge} className="span-2 main-today-panel main-analytics-panel">
-          <div className="itops-analytics-dashboard">
-            <button type="button" className="itops-analytics-chart-card device" onClick={() => openLevel2('hardware')}>
-              <div className="itops-analytics-card-head">
-                <div>
-                  <span>Device Availability</span>
-                  <strong>{formatNumber(hardware.totalDevices)} devices</strong>
-                  <small>{endpointTrendUsesHistory ? 'Last seen trend' : 'Current snapshot'}</small>
+    const dashboardStatusItems = [
+      { label: 'Online', value: onlineDevices, percent: totalDevices ? (onlineDevices / totalDevices) * 100 : 0, color: '#22c55e', tone: 'online', target: 'Online Devices' },
+      { label: 'In Maintenance', value: maintenanceDevices, percent: totalDevices ? (maintenanceDevices / totalDevices) * 100 : 0, color: '#2563eb', tone: 'maintenance', target: 'Running' },
+      { label: 'Warning', value: warningDevices, percent: totalDevices ? (warningDevices / totalDevices) * 100 : 0, color: '#f59e0b', tone: 'warning', target: 'Stale Sync' },
+      { label: 'Offline', value: offlineDevices, percent: totalDevices ? (offlineDevices / totalDevices) * 100 : 0, color: '#ef4444', tone: 'offline', target: 'Offline Devices' },
+      { label: 'Unknown', value: unknownDevices, percent: totalDevices ? (unknownDevices / totalDevices) * 100 : 0, color: '#94a3b8', tone: 'unknown', target: 'Total Devices' },
+    ];
+
+    const buildDonutBackground = (items: { value: number; color: string }[]) => {
+      const total = items.reduce((sum, item) => sum + Math.max(0, numberOrFallback(item.value)), 0);
+      if (!total) return 'conic-gradient(#e5e7eb 0 100%)';
+      let cursor = 0;
+      const segments = items.map((item) => {
+        const value = Math.max(0, numberOrFallback(item.value));
+        const start = cursor;
+        const end = cursor + (value / total) * 100;
+        cursor = end;
+        return `${item.color} ${start}% ${end}%`;
+      });
+      return `conic-gradient(${segments.join(', ')})`;
+    };
+
+    const kpiCards = [
+      {
+        id: 'total-devices',
+        title: 'Total Devices',
+        value: formatNumber(totalDevices),
+        caption: `${formatPercent(endpointOnlinePercent, 1)} online readiness`,
+        note: 'Across endpoint inventory',
+        icon: Laptop,
+        tone: 'blue',
+        onClick: () => openLevel2('hardware'),
+      },
+      {
+        id: 'online-devices',
+        title: 'Online Devices',
+        value: formatNumber(onlineDevices),
+        caption: `${formatPercent(endpointOnlinePercent, 1)} of total`,
+        note: 'Currently reachable',
+        icon: Activity,
+        tone: 'green',
+        onClick: () => openLevel2('hardware'),
+      },
+      {
+        id: 'offline-devices',
+        title: 'Offline Devices',
+        value: formatNumber(offlineDevices),
+        caption: `${formatPercent(totalDevices ? (offlineDevices / totalDevices) * 100 : 0, 1)} of total`,
+        note: 'Need validation',
+        icon: AlertTriangle,
+        tone: 'red',
+        onClick: () => openLevel2('hardware'),
+      },
+      {
+        id: 'alerts',
+        title: 'Alerts',
+        value: formatNumber(totalAlertCount),
+        caption: totalAlertCount > 0 ? 'Requires attention' : 'No active alert',
+        note: 'Ticket and risk signals',
+        icon: ShieldAlert,
+        tone: 'amber',
+        onClick: () => openLevel2('alerts'),
+      },
+    ];
+
+    return (
+      <>
+        <section className="itops-snapshot-kpi-grid" aria-label="Dashboard KPI cards">
+          {kpiCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <button type="button" key={card.id} className={`itops-snapshot-kpi ${card.tone}`} onClick={card.onClick}>
+                <div className="itops-snapshot-kpi-top">
+                  <span className="itops-snapshot-kpi-icon"><Icon size={24} /></span>
+                  <ChevronRight size={15} />
                 </div>
-                <b>{formatPercent(endpointOnlinePercent, 0)} online</b>
-              </div>
-              <div className="itops-analytics-stat-row">
-                <span className="online">{formatNumber(hardware.onlineDevices)} online</span>
-                <span className="offline">{formatNumber(hardware.offlineDevices)} offline</span>
-                <span className="stale">{formatNumber(hardware.staleSync)} old data</span>
-              </div>
-              <div className="itops-availability-donut-layout">
-                {(() => {
-                  const totalDevices = Math.max(0, numberOrFallback(hardware.totalDevices) || numberOrFallback(hardware.onlineDevices) + numberOrFallback(hardware.offlineDevices));
-                  const onlineDevices = Math.max(0, numberOrFallback(hardware.onlineDevices));
-                  const offlineDevices = Math.max(0, numberOrFallback(hardware.offlineDevices));
-                  const safeTotal = Math.max(1, totalDevices || onlineDevices + offlineDevices);
-                  const onlinePercentValue = (onlineDevices / safeTotal) * 100;
-                  const offlinePercentValue = (offlineDevices / safeTotal) * 100;
-                  const donutCircumference = 339.292;
-                  const onlineDash = (clampPercent(onlinePercentValue) / 100) * donutCircumference;
-                  const offlineDash = (clampPercent(offlinePercentValue) / 100) * donutCircumference;
-
-                  return (
-                    <div className="itops-availability-donut-card" title={`${formatNumber(onlineDevices)} online • ${formatNumber(offlineDevices)} offline • ${formatNumber(hardware.staleSync)} old data`}>
-                      <svg viewBox="0 0 160 160" role="img" aria-label="Online and offline devices donut chart">
-                        <circle className="base" cx="80" cy="80" r="54" />
-                        <circle
-                          className="online"
-                          cx="80"
-                          cy="80"
-                          r="54"
-                          strokeDasharray={`${onlineDash} ${donutCircumference}`}
-                          strokeDashoffset="0"
-                        >
-                          <title>{`${formatNumber(onlineDevices)} online device(s) • ${formatPercent(onlinePercentValue, 0)}`}</title>
-                        </circle>
-                        <circle
-                          className="offline"
-                          cx="80"
-                          cy="80"
-                          r="54"
-                          strokeDasharray={`${offlineDash} ${donutCircumference}`}
-                          strokeDashoffset={`-${onlineDash}`}
-                        >
-                          <title>{`${formatNumber(offlineDevices)} offline device(s) • ${formatPercent(offlinePercentValue, 0)}`}</title>
-                        </circle>
-                      </svg>
-                      <div className="itops-availability-donut-center">
-                        <strong>{formatPercent(onlinePercentValue, 0)}</strong>
-                        <span>online</span>
-                      </div>
-                      <div className="itops-availability-donut-hover">
-                        <b>Current device status</b>
-                        <span>{formatNumber(onlineDevices)} online</span>
-                        <span>{formatNumber(offlineDevices)} offline</span>
-                        <span>{formatNumber(hardware.staleSync)} old data</span>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                <div className="itops-availability-donut-side">
-                  <div className="itops-availability-donut-legend">
-                    <span className="online"><i /> Online</span>
-                    <span className="offline"><i /> Offline</span>
-                    <span className="stale"><i /> Old data</span>
-                  </div>
-
-                  <div className="itops-availability-trend-list">
-                    {endpointTrendRows.map((row) => {
-                      const safeRowTotal = Math.max(1, row.total);
-                      const onlineWidth = (row.online / safeRowTotal) * 100;
-                      const offlineWidth = (row.offline / safeRowTotal) * 100;
-                      const staleWidth = (row.stale / safeRowTotal) * 100;
-
-                      return (
-                        <div key={`device-donut-trend-${row.label}`} className="itops-availability-trend-row">
-                          <div>
-                            <strong>{row.label}</strong>
-                            <span>{formatNumber(row.total)} device{row.total === 1 ? '' : 's'}</span>
-                          </div>
-                          <em>
-                            <i className="online" style={{ width: `${clampPercent(onlineWidth)}%` }} />
-                            <i className="offline" style={{ width: `${clampPercent(offlineWidth)}%` }} />
-                            <i className="stale" style={{ width: `${clampPercent(staleWidth)}%` }} />
-                          </em>
-                          <b>{formatNumber(row.online)}/{formatNumber(row.total)}</b>
-                          <span className="itops-availability-row-hover">
-                            {row.label}: {formatNumber(row.online)} online, {formatNumber(row.offline)} offline, {formatNumber(row.stale)} old data
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                <div className="itops-snapshot-kpi-body">
+                  <span>{card.title}</span>
+                  <strong>{card.value}</strong>
+                  <small>{card.caption}</small>
                 </div>
-              </div>
-            </button>
-
-            <button type="button" className="itops-analytics-chart-card ticket" onClick={() => openLevel2('serviceDesk')}>
-              <div className="itops-analytics-card-head">
-                <div>
-                  <span>Ticket Movement</span>
-                  <strong>{formatNumber(trendSummary.openBacklog)} open backlog</strong>
-                  <small>{ticketTrendRows.length ? `${ticketTrendRows.length} day trend` : 'No history yet'}</small>
+                <div className="itops-snapshot-sparkline" aria-hidden="true">
+                  <i /><i /><i /><i /><i /><i /><i /><i />
                 </div>
-                <b>{formatNumber(trendSummary.newIncidents)} new</b>
-              </div>
-              <div className="itops-analytics-stat-row">
-                <span className="new">{formatNumber(trendSummary.newIncidents)} new</span>
-                <span className="resolved">{formatNumber(trendSummary.resolved)} closed</span>
-                <span className="open">{formatNumber(trendSummary.openBacklog)} open</span>
-              </div>
-              <div className="itops-modern-column-chart ticket" aria-label="Ticket movement chart">
-                {ticketTrendRows.length ? ticketTrendRows.map((row) => {
-                  const newCount = numberOrFallback(row.newIncidents);
-                  const resolvedCount = numberOrFallback(row.resolved);
-                  const openCount = numberOrFallback(row.open);
-                  const total = newCount + resolvedCount + openCount;
-                  const newHeight = ticketTrendMaxTotal > 0 ? (newCount / ticketTrendMaxTotal) * 100 : 0;
-                  const resolvedHeight = ticketTrendMaxTotal > 0 ? (resolvedCount / ticketTrendMaxTotal) * 100 : 0;
-                  const openHeight = ticketTrendMaxTotal > 0 ? (openCount / ticketTrendMaxTotal) * 100 : 0;
-                  return (
-                    <div key={`ticket-chart-${row.day}`} className="itops-modern-column">
-                      <div className="itops-modern-column-stack">
-                        {newCount > 0 && <i className="new" style={{ height: `${Math.max(8, clampPercent(newHeight))}%` }} />}
-                        {resolvedCount > 0 && <i className="resolved" style={{ height: `${Math.max(8, clampPercent(resolvedHeight))}%` }} />}
-                        {openCount > 0 && <i className="open" style={{ height: `${Math.max(8, clampPercent(openHeight))}%` }} />}
-                        {total <= 0 && <i className="empty" style={{ height: '8%' }} />}
-                      </div>
-                      <span>{row.day}</span>
-                      <strong>{formatNumber(total)}</strong>
-                    </div>
-                  );
-                }) : <div className="itops-analytics-empty-chart"><Database size={18} /><span>No ticket movement found yet.</span></div>}
-              </div>
-            </button>
+                <em>{card.note}</em>
+              </button>
+            );
+          })}
+        </section>
 
-            <div className="itops-analytics-mini-grid">
-              <button type="button" className="itops-analytics-mini blue" onClick={() => openLevel2('patch')}>
-                <span>Updates Done</span><strong>{formatPercent(hasSecurityUpdateScore ? securityUpdateScore : 0, 0)}</strong><small>{formatNumber(securityUpdatedDevices)} device(s) updated</small>
-              </button>
-              <button type="button" className="itops-analytics-mini amber" onClick={() => openLevel2('serviceDesk')}>
-                <span>Tickets On Track</span><strong>{formatPercent(onTrackTicketPercent, 0)}</strong><small>{formatNumber(onTrackTicketCount)} currently on SLA</small>
-              </button>
-              <button type="button" className="itops-analytics-mini green" onClick={() => openLevel2('tasks')}>
-                <span>Jobs Completed</span><strong>{formatPercent(taskCompletionPercent, 0)}</strong><small>{formatNumber(tasks.completedTasks)} completed jobs</small>
-              </button>
-              <button type="button" className="itops-analytics-mini orange" onClick={() => openLevel2('geolocation')}>
-                <span>Location Ready</span><strong>{formatPercent(locationFreshPercent, 0)}</strong><small>{formatNumber(geolocation.trackedDevices)} tracked devices</small>
-              </button>
+        <section className="itops-snapshot-grid primary">
+          <article className="itops-snapshot-panel status-card">
+            <div className="itops-snapshot-panel-head">
+              <div>
+                <h2>Device Status Overview</h2>
+                <p>Current endpoint status from inventory and device signals.</p>
+              </div>
+              <button type="button" onClick={() => openLevel2('hardware')}>View all</button>
             </div>
-          </div>
-        </Panel>
 
-        <Panel title="Need Action" subtitle="Main items to check first." icon={AlertTriangle} className="main-action-panel">
-          <div className="itops-main-action-list">
-            {overviewActionItems.map((action) => {
-              const Icon = action.icon;
-              return (
-                <button type="button" key={action.id} className={`itops-main-action-row ${action.tone}`} onClick={() => openLevel3(action.view, action.item)}>
-                  <span><Icon size={17} /></span>
+            <div className="itops-snapshot-donut-layout">
+              <button
+                type="button"
+                className="itops-snapshot-donut status"
+                style={{ '--donut': buildDonutBackground(dashboardStatusItems) } as CSSProperties & Record<string, string>}
+                onClick={() => openLevel2('hardware')}
+                aria-label="Open device status breakdown"
+              >
+                <span>
+                  <strong>{formatNumber(totalDevices)}</strong>
+                  <small>Total</small>
+                </span>
+              </button>
+
+              <div className="itops-snapshot-legend-list">
+                {dashboardStatusItems.map((item) => (
+                  <button type="button" key={item.label} className={`itops-snapshot-legend-row ${item.tone}`} onClick={() => openLevel3('hardware', item.target)}>
+                    <span><i />{item.label}</span>
+                    <strong>{formatNumber(item.value)} <em>({formatPercent(item.percent, 1)})</em></strong>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="itops-snapshot-panel-foot">
+              <span>Last updated: {formatDateLabel(generatedAt)}</span>
+              <button type="button" onClick={() => void loadDashboard(true)}><RefreshCw size={13} /> Refresh</button>
+            </div>
+          </article>
+
+          <article className="itops-snapshot-panel platform-card">
+            <div className="itops-snapshot-panel-head">
+              <div>
+                <h2>Platform Distribution</h2>
+                <p>Operating system split by discovered endpoint records.</p>
+              </div>
+              <button type="button" onClick={() => openLevel3('hardware', 'Total Devices')}>View platforms</button>
+            </div>
+
+            <div className="itops-snapshot-donut-layout platform">
+              <button
+                type="button"
+                className="itops-snapshot-donut platform"
+                style={{ '--donut': buildDonutBackground(platformDashboardItems.map((item, index) => ({ value: numberOrFallback(item.value), color: ['#2563eb', '#0ea5e9', '#14b8a6', '#94a3b8', '#cbd5e1'][index] || '#e2e8f0' }))) } as CSSProperties & Record<string, string>}
+                onClick={() => openLevel3('hardware', 'Total Devices')}
+                aria-label="Open platform distribution details"
+              >
+                <span>
+                  <strong>{formatNumber(platformTotal)}</strong>
+                  <small>Devices</small>
+                </span>
+              </button>
+
+              <div className="itops-snapshot-legend-list platform">
+                {platformDashboardItems.length ? platformDashboardItems.map((item, index) => {
+                  const percent = item.percent === undefined ? (numberOrFallback(item.value) / platformTotal) * 100 : item.percent;
+                  return (
+                    <button type="button" key={item.name} className={`itops-snapshot-legend-row platform-${index + 1}`} onClick={() => openLevel3('hardware', item.name)}>
+                      <span><i />{item.name}</span>
+                      <strong>{formatNumber(item.value)} <em>({formatPercent(percent, 1)})</em></strong>
+                    </button>
+                  );
+                }) : <EmptyState label="No platform records yet." />}
+              </div>
+            </div>
+          </article>
+
+          <article className="itops-snapshot-panel alerts-card">
+            <div className="itops-snapshot-panel-head compact">
+              <div>
+                <h2>Recent Alerts</h2>
+                <p>Latest items that need follow-up.</p>
+              </div>
+              <button type="button" onClick={() => openLevel2('alerts')}>View all</button>
+            </div>
+            <div className="itops-snapshot-alert-list">
+              {recentAlertRows.length ? recentAlertRows.map((alert) => (
+                <button type="button" key={alert.id} className={`itops-snapshot-alert-row ${String(alert.severity || 'Medium').toLowerCase()}`} onClick={() => openLevel3(alert.view, alert.item)}>
+                  <span className="itops-snapshot-alert-icon"><AlertTriangle size={14} /></span>
                   <div>
-                    <strong>{action.label}</strong>
-                    <small>{action.note}</small>
+                    <strong>{alert.severity} - {alert.title}</strong>
+                    <small>{alert.subtitle}</small>
                   </div>
-                  <b>{formatNumber(action.value)}</b>
+                  <em>{alert.time}</em>
                 </button>
-              );
-            })}
-          </div>
-        </Panel>
-      </section>
+              )) : <EmptyState label="No active alerts at the moment." />}
+            </div>
+            <button type="button" className="itops-snapshot-link-row" onClick={() => openLevel2('alerts')}>Go to Alerts <ChevronRight size={14} /></button>
+          </article>
+        </section>
 
-      <section className="itops-pro-command-grid itops-main-command-grid itops-main-filled-grid">
-        <Panel title="Branch Check" subtitle="Compact branch score view." icon={Users} className="main-branch-filled-panel">
-          <div className="itops-main-branch-list">
-            {overviewBranchRows.map((row) => {
-              const percent = clampPercent(row.percent ?? row.value);
-              return (
-                <button type="button" key={`main-branch-${row.name}`} className={`itops-main-branch-row ${healthStatus(percent).toLowerCase()}`} onClick={() => openLevel3('departments', row.name)}>
-                  <div>
-                    <strong>{row.name}</strong>
-                    <span>{row.value > 0 ? `${formatNumber(row.value)} open ticket(s)` : 'Branch score'}</span>
-                  </div>
-                  <em>{formatPercent(percent, 0)}</em>
+        <section className="itops-snapshot-grid secondary">
+          <article className="itops-snapshot-panel patch-card">
+            <div className="itops-snapshot-panel-head compact">
+              <div>
+                <h2>Patch Compliance</h2>
+                <p>Security update status.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="itops-snapshot-patch-main"
+              style={{ '--progress': `${patchPercent}%` } as CSSProperties & Record<string, string>}
+              onClick={() => openLevel2('patch')}
+            >
+              <span className="itops-snapshot-ring"><strong>{hasSecurityUpdateScore ? formatPercent(patchPercent, 0) : 'N/A'}</strong><small>Compliant</small></span>
+              <div>
+                <strong>{formatNumber(securityUpdatedDevices)}</strong><small>Compliant devices</small>
+                <strong>{formatNumber(securityNeedUpdateDevices)}</strong><small>Missing patches</small>
+                <strong>{formatNumber(criticalUpdateIssueCount)}</strong><small>Critical issues</small>
+              </div>
+            </button>
+            <button type="button" className="itops-snapshot-link-row" onClick={() => openLevel2('patch')}>Go to Patch Management <ChevronRight size={14} /></button>
+          </article>
+
+          <article className="itops-snapshot-panel devices-card">
+            <div className="itops-snapshot-panel-head compact">
+              <div>
+                <h2>Recent Devices</h2>
+                <p>Latest endpoint inventory rows.</p>
+              </div>
+              <button type="button" onClick={() => openLevel3('hardware', 'Total Devices')}>View all</button>
+            </div>
+            <div className="itops-snapshot-device-table" role="table" aria-label="Recent devices">
+              <div className="itops-snapshot-device-head" role="row">
+                <span>Device Name</span><span>User / Branch</span><span>Status</span><span>Last Seen</span>
+              </div>
+              {recentDeviceRows.length ? recentDeviceRows.map((device, index) => (
+                <button type="button" className="itops-snapshot-device-row" key={`${device.deviceId || device.deviceName}-${index}`} onClick={() => openLevel3('hardware', device.deviceName || device.deviceId || 'Total Devices')}>
+                  <span><i>{String(device.osName || device.platform || 'PC').slice(0, 1).toUpperCase()}</i><strong>{device.deviceName || '-'}</strong></span>
+                  <span>{device.department || device.deviceId || '-'}</span>
+                  <span><ToneBadge tone={device.isStale ? 'warning' : device.isOnline ? 'success' : 'danger'}>{device.status || (device.isOnline ? 'Online' : 'Offline')}</ToneBadge></span>
+                  <span>{device.lastSeen || '-'}</span>
                 </button>
-              );
-            })}
-            {!overviewBranchRows.length && <EmptyState label="No branch score yet." />}
-          </div>
-        </Panel>
+              )) : <EmptyState label="No recent device rows returned." />}
+            </div>
+            <button type="button" className="itops-snapshot-link-row" onClick={() => openLevel2('hardware')}>Go to Devices <ChevronRight size={14} /></button>
+          </article>
 
-        <Panel title="Decision Signals" subtitle="One-row health signals without repeating big panels." icon={Gauge} className="span-2 main-decision-panel">
-          <div className="itops-main-decision-grid">
-            <button type="button" className="itops-main-decision-card blue" onClick={() => openLevel2('overview')}>
-              <span>Overall Health</span><strong>{formatPercent(overallHealth, 0)}</strong><small>{healthStatus(overallHealth)}</small>
-            </button>
-            <button type="button" className="itops-main-decision-card cyan" onClick={() => openLevel2('dataConfidence')}>
-              <span>Data Confidence</span><strong>{formatPercent(dataConfidenceScore, 0)}</strong><small>Decision readiness</small>
-            </button>
-            <button type="button" className="itops-main-decision-card purple" onClick={() => openLevel2('network')}>
-              <span>Network Mapped</span><strong>{formatPercent(networkRegistrationPercent, 0)}</strong><small>{formatNumber(network.registeredDevices)} registered IP(s)</small>
-            </button>
-            <button type="button" className="itops-main-decision-card red" onClick={() => openLevel2('risk')}>
-              <span>Device Risk</span><strong>{formatNumber(deviceRiskCount)}</strong><small>{formatNumber(deviceRiskCriticalCount)} critical</small>
-            </button>
-            <button type="button" className="itops-main-decision-card amber" onClick={() => openLevel2('serviceDesk')}>
-              <span>Open Tickets</span><strong>{formatNumber(openTicketCount)}</strong><small>{formatNumber(overdueTicketCount)} overdue</small>
-            </button>
-            <button type="button" className="itops-main-decision-card green" onClick={() => openLevel2('software')}>
-              <span>Software Mapped</span><strong>{formatPercent(softwareMappingPercent, 0)}</strong><small>{formatNumber(software.uniqueSoftware)} software • {formatNumber(software.unclassifiedSoftware)} unclassified</small>
-            </button>
-          </div>
-        </Panel>
-      </section>
-    </>
-  );
+          <article className="itops-snapshot-panel license-card">
+            <div className="itops-snapshot-panel-head compact">
+              <div>
+                <h2>License Usage</h2>
+                <p>Endpoint capacity based on current device usage.</p>
+              </div>
+              <button type="button" onClick={() => openLevel2('software')}>View details</button>
+            </div>
+            <div className="itops-snapshot-license-metrics">
+              <div><strong>{formatNumber(licenseUsed)} / {formatNumber(licenseTotal)}</strong><span>Used Licenses</span></div>
+              <div><strong>{formatNumber(licenseAvailable)}</strong><span>Available</span></div>
+            </div>
+            <div className="itops-snapshot-license-bar"><i style={{ width: `${clampPercent(licensePercent)}%` }} /></div>
+            <div className="itops-snapshot-license-meta">
+              <span>{formatPercent(licensePercent, 1)} Used</span>
+              <span>Software titles: {formatNumber(software.uniqueSoftware)}</span>
+            </div>
+            <button type="button" className="itops-snapshot-link-row" onClick={() => openLevel2('software')}>Go to Software Details <ChevronRight size={14} /></button>
+          </article>
+        </section>
+      </>
+    );
+  };
   const renderBreakdownDrillCards = (items: BreakdownItem[], view: string, emptyLabel = 'No breakdown data yet.') => {
     if (!items.length) return <EmptyState label={emptyLabel} />;
 
@@ -10989,6 +11062,447 @@ body.itops-dashboard-page-active .router-content {
 .itops-analytics-stat-row .stale {
   color: #475569 !important;
   background: #f1f5f9 !important;
+}
+
+
+/* Snapshot dashboard layout inspired by endpoint management overview mockup */
+.itops-pro-page {
+  background: #f6f8fb !important;
+  padding: 16px !important;
+}
+
+.itops-pro-bg-grid { display: none !important; }
+
+.itops-pro-hero {
+  min-height: auto !important;
+  padding: 16px 18px !important;
+  margin-bottom: 12px !important;
+  border-radius: 16px !important;
+  border: 1px solid #e5eaf2 !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05) !important;
+}
+
+.itops-pro-hero:before,
+.itops-pro-hero:after { display: none !important; }
+.itops-pro-hero h1 { margin: 4px 0 2px !important; color: #0f172a !important; font-size: 22px !important; letter-spacing: -0.04em !important; }
+.itops-pro-hero p { max-width: none !important; margin: 0 !important; color: #64748b !important; font-size: 12px !important; }
+.itops-pro-hero .itops-pro-overline { color: #2563eb !important; }
+.itops-pro-hero-meta { margin-top: 10px !important; }
+.itops-pro-hero-meta span {
+  border-color: #e2e8f0 !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+}
+.itops-pro-hero-actions { align-self: center !important; }
+
+.itops-snapshot-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.itops-snapshot-kpi {
+  position: relative;
+  min-height: 132px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px 16px 12px;
+  border: 1px solid #e5eaf2;
+  border-radius: 11px;
+  background: #ffffff;
+  color: #0f172a;
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.itops-snapshot-kpi:hover {
+  transform: translateY(-2px);
+  border-color: #bfdbfe;
+  box-shadow: 0 16px 34px rgba(37, 99, 235, 0.10);
+}
+
+.itops-snapshot-kpi-top,
+.itops-snapshot-panel-head,
+.itops-snapshot-panel-foot,
+.itops-snapshot-license-metrics,
+.itops-snapshot-license-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.itops-snapshot-kpi-icon {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.itops-snapshot-kpi.green .itops-snapshot-kpi-icon { background: #ecfdf5; color: #16a34a; }
+.itops-snapshot-kpi.red .itops-snapshot-kpi-icon { background: #fef2f2; color: #ef4444; }
+.itops-snapshot-kpi.amber .itops-snapshot-kpi-icon { background: #fff7ed; color: #f97316; }
+
+.itops-snapshot-kpi-body span,
+.itops-snapshot-panel h2,
+.itops-snapshot-license-metrics strong {
+  color: #0f172a;
+}
+
+.itops-snapshot-kpi-body span {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.itops-snapshot-kpi-body strong {
+  display: block;
+  margin-top: 2px;
+  color: #0f172a;
+  font-size: 26px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+}
+
+.itops-snapshot-kpi-body small,
+.itops-snapshot-kpi em,
+.itops-snapshot-panel p,
+.itops-snapshot-panel-foot span,
+.itops-snapshot-device-head,
+.itops-snapshot-device-row span,
+.itops-snapshot-license-meta,
+.itops-snapshot-license-metrics span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.itops-snapshot-kpi em { font-style: normal; }
+
+.itops-snapshot-sparkline {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 28px;
+  height: 22px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  opacity: 0.78;
+}
+
+.itops-snapshot-sparkline i {
+  flex: 1;
+  min-width: 0;
+  border-radius: 999px 999px 0 0;
+  background: #2563eb;
+}
+.itops-snapshot-sparkline i:nth-child(1) { height: 18%; opacity: .25; }
+.itops-snapshot-sparkline i:nth-child(2) { height: 32%; opacity: .4; }
+.itops-snapshot-sparkline i:nth-child(3) { height: 24%; opacity: .35; }
+.itops-snapshot-sparkline i:nth-child(4) { height: 48%; opacity: .48; }
+.itops-snapshot-sparkline i:nth-child(5) { height: 30%; opacity: .42; }
+.itops-snapshot-sparkline i:nth-child(6) { height: 64%; opacity: .62; }
+.itops-snapshot-sparkline i:nth-child(7) { height: 42%; opacity: .52; }
+.itops-snapshot-sparkline i:nth-child(8) { height: 76%; opacity: .84; }
+.itops-snapshot-kpi.green .itops-snapshot-sparkline i { background: #22c55e; }
+.itops-snapshot-kpi.red .itops-snapshot-sparkline i { background: #ef4444; }
+.itops-snapshot-kpi.amber .itops-snapshot-sparkline i { background: #f59e0b; }
+
+.itops-snapshot-grid {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.itops-snapshot-grid.primary { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.02fr) minmax(270px, 0.86fr); }
+.itops-snapshot-grid.secondary { grid-template-columns: minmax(260px, 0.78fr) minmax(0, 1.24fr) minmax(280px, 1fr); }
+
+.itops-snapshot-panel {
+  min-width: 0;
+  min-height: 0;
+  padding: 16px;
+  border: 1px solid #e5eaf2;
+  border-radius: 11px;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+}
+
+.itops-snapshot-panel-head { margin-bottom: 14px; align-items: flex-start; }
+.itops-snapshot-panel-head.compact { margin-bottom: 10px; }
+.itops-snapshot-panel h2 { margin: 0; font-size: 14px; font-weight: 900; letter-spacing: -0.02em; }
+.itops-snapshot-panel p { margin: 3px 0 0; line-height: 1.35; }
+.itops-snapshot-panel button { font-family: inherit; }
+
+.itops-snapshot-panel-head > button,
+.itops-snapshot-panel-foot button,
+.itops-snapshot-link-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.itops-snapshot-panel-head > button:hover,
+.itops-snapshot-panel-foot button:hover,
+.itops-snapshot-link-row:hover { background: #eff6ff; }
+
+.itops-snapshot-donut-layout {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.9fr) minmax(0, 1.1fr);
+  gap: 18px;
+  align-items: center;
+}
+
+.itops-snapshot-donut-layout.platform { grid-template-columns: minmax(150px, 0.86fr) minmax(0, 1.14fr); }
+
+.itops-snapshot-donut {
+  position: relative;
+  width: min(192px, 100%);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--donut, conic-gradient(#e5e7eb 0 100%));
+  cursor: pointer;
+}
+
+.itops-snapshot-donut:after {
+  content: "";
+  position: absolute;
+  inset: 33px;
+  border-radius: inherit;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #eef2f7;
+}
+
+.itops-snapshot-donut span {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.itops-snapshot-donut strong {
+  color: #0f172a;
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.itops-snapshot-donut small { color: #64748b; font-size: 11px; font-weight: 800; }
+
+.itops-snapshot-legend-list { display: grid; gap: 8px; }
+
+.itops-snapshot-legend-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.itops-snapshot-legend-row:hover span { color: #2563eb; }
+.itops-snapshot-legend-row span,
+.itops-snapshot-legend-row strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+.itops-snapshot-legend-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.itops-snapshot-legend-row strong { flex: 0 0 auto; justify-content: flex-end; }
+.itops-snapshot-legend-row em { color: #64748b; font-style: normal; font-size: 11px; font-weight: 700; }
+.itops-snapshot-legend-row i { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 999px; background: #94a3b8; }
+.itops-snapshot-legend-row.online i { background: #22c55e; }
+.itops-snapshot-legend-row.maintenance i { background: #2563eb; }
+.itops-snapshot-legend-row.warning i { background: #f59e0b; }
+.itops-snapshot-legend-row.offline i { background: #ef4444; }
+.itops-snapshot-legend-row.unknown i { background: #94a3b8; }
+.itops-snapshot-legend-row.platform-1 i { background: #2563eb; }
+.itops-snapshot-legend-row.platform-2 i { background: #0ea5e9; }
+.itops-snapshot-legend-row.platform-3 i { background: #14b8a6; }
+.itops-snapshot-legend-row.platform-4 i { background: #94a3b8; }
+.itops-snapshot-legend-row.platform-5 i { background: #cbd5e1; }
+
+.itops-snapshot-panel-foot {
+  align-items: center;
+  margin-top: 16px;
+}
+
+.itops-snapshot-alert-list { display: grid; gap: 0; border-top: 1px solid #eef2f7; }
+.itops-snapshot-alert-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid #eef2f7;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+.itops-snapshot-alert-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #ffffff;
+  background: #2563eb;
+}
+.itops-snapshot-alert-row.critical .itops-snapshot-alert-icon { background: #ef4444; }
+.itops-snapshot-alert-row.high .itops-snapshot-alert-icon { background: #f97316; }
+.itops-snapshot-alert-row.medium .itops-snapshot-alert-icon { background: #2563eb; }
+.itops-snapshot-alert-row.low .itops-snapshot-alert-icon { background: #22c55e; }
+.itops-snapshot-alert-row strong { display: block; color: #0f172a; font-size: 12px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.itops-snapshot-alert-row small { display: block; margin-top: 2px; color: #64748b; font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.itops-snapshot-alert-row em { color: #64748b; font-size: 10px; font-style: normal; font-weight: 800; }
+.itops-snapshot-alert-row:hover strong { color: #2563eb; }
+
+.itops-snapshot-link-row {
+  width: 100%;
+  justify-content: space-between;
+  margin-top: 11px;
+  padding: 0;
+  background: transparent;
+}
+
+.itops-snapshot-patch-main {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  min-height: 156px;
+  padding: 4px 0;
+  border: 0;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.itops-snapshot-ring {
+  width: 112px;
+  height: 112px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: conic-gradient(#22c55e var(--progress, 0%), #f59e0b var(--progress, 0%) calc(var(--progress, 0%) + 11%), #ef4444 calc(var(--progress, 0%) + 11%) 100%);
+  position: relative;
+}
+.itops-snapshot-ring:after { content: ""; position: absolute; inset: 20px; border-radius: inherit; background: #ffffff; }
+.itops-snapshot-ring strong,
+.itops-snapshot-ring small { position: relative; z-index: 1; display: block; text-align: center; }
+.itops-snapshot-ring strong { color: #0f172a; font-size: 20px; font-weight: 900; line-height: 1; }
+.itops-snapshot-ring small { margin-top: 3px; color: #64748b; font-size: 10px; font-weight: 800; }
+.itops-snapshot-patch-main > div { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: baseline; }
+.itops-snapshot-patch-main > div strong { color: #0f172a; font-size: 13px; font-weight: 900; text-align: right; }
+.itops-snapshot-patch-main > div small { color: #64748b; font-size: 11px; font-weight: 800; }
+
+.itops-snapshot-device-table { display: grid; gap: 0; border: 1px solid #eef2f7; border-radius: 10px; overflow: hidden; }
+.itops-snapshot-device-head,
+.itops-snapshot-device-row {
+  display: grid;
+  grid-template-columns: minmax(170px, 1.2fr) minmax(120px, 0.9fr) minmax(96px, 0.65fr) minmax(120px, 0.8fr);
+  align-items: center;
+  gap: 10px;
+}
+.itops-snapshot-device-head { min-height: 34px; padding: 0 12px; background: #f8fafc; text-transform: uppercase; letter-spacing: 0.06em; }
+.itops-snapshot-device-row {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-top: 1px solid #eef2f7;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+.itops-snapshot-device-row:hover { background: #f8fbff; }
+.itops-snapshot-device-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.itops-snapshot-device-row span:first-child { display: flex; align-items: center; gap: 9px; color: #0f172a; }
+.itops-snapshot-device-row i {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+}
+.itops-snapshot-device-row strong { color: #0f172a; font-size: 12px; font-weight: 900; overflow: hidden; text-overflow: ellipsis; }
+
+.itops-snapshot-license-metrics { align-items: center; margin: 22px 0 14px; }
+.itops-snapshot-license-metrics div { min-width: 0; }
+.itops-snapshot-license-metrics strong { display: block; font-size: 26px; line-height: 1; font-weight: 900; letter-spacing: -0.05em; }
+.itops-snapshot-license-metrics div:first-child strong { color: #1d4ed8; }
+.itops-snapshot-license-bar { height: 9px; overflow: hidden; border-radius: 999px; background: #e5eaf2; }
+.itops-snapshot-license-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2563eb, #0ea5e9); }
+.itops-snapshot-license-meta { align-items: center; margin-top: 10px; }
+
+@media (max-width: 1280px) {
+  .itops-snapshot-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .itops-snapshot-grid.primary,
+  .itops-snapshot-grid.secondary { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .itops-pro-page { padding: 10px !important; }
+  .itops-pro-hero { flex-direction: column !important; }
+  .itops-snapshot-kpi-grid { grid-template-columns: 1fr; }
+  .itops-snapshot-donut-layout,
+  .itops-snapshot-donut-layout.platform,
+  .itops-snapshot-patch-main { grid-template-columns: 1fr; }
+  .itops-snapshot-device-table { overflow-x: auto; }
+  .itops-snapshot-device-head,
+  .itops-snapshot-device-row { min-width: 660px; }
 }
 
 `;

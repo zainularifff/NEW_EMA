@@ -1,0 +1,80 @@
+﻿/* EMA PAGINATION */
+
+.ema-pagination {
+  min-height: 52px;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ema-pagination-info {
+  color: #64748b;
+  font-size: 10.5px;
+  line-height: 14px;
+  font-weight: 700;
+}
+
+.ema-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ema-page-btn {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: 9px;
+  background: #fff;
+  color: #334155;
+  display: grid;
+  place-items: center;
+  font-size: 10.5px;
+  line-height: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.ema-page-btn:hover {
+  background: #f8fafc;
+}
+
+.ema-page-btn.is-active,
+.ema-page-btn.active {
+  border-color: transparent;
+  background: linear-gradient(135deg, #4f46e5, #2563eb);
+  color: #fff;
+}
+
+.ema-page-btn:disabled,
+.ema-page-btn.is-disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.ema-page-size {
+  height: 30px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: 9px;
+  background: #fff;
+  color: #0f172a;
+  padding: 0 10px;
+  font-size: 10.5px;
+  line-height: 14px;
+  font-weight: 750;
+}
+
+@media (max-width: 640px) {
+  .ema-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .ema-pagination-controls {
+    flex-wrap: wrap;
+  }
+}

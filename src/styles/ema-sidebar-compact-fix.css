@@ -1,0 +1,252 @@
+﻿/* EMA SIDEBAR COMPACT FIX */
+
+/* lock sidebar width supaya bottom card tak membesar */
+body:not(:has(.login-page)) :where(
+  .ema-sidebar,
+  .app-sidebar,
+  .main-sidebar,
+  .layout-sidebar,
+  .dashboard-sidebar,
+  .module-sidebar,
+  .sidebar,
+  aside[class*="sidebar"],
+  nav[class*="sidebar"]
+) {
+  width: 224px !important;
+  min-width: 224px !important;
+  max-width: 224px !important;
+  flex: 0 0 224px !important;
+  overflow-x: hidden !important;
+}
+
+/* footer bottom sidebar compact */
+body:not(:has(.login-page)) :where(
+  .ema-sidebar,
+  .app-sidebar,
+  .main-sidebar,
+  .layout-sidebar,
+  .dashboard-sidebar,
+  .module-sidebar,
+  .sidebar,
+  aside[class*="sidebar"],
+  nav[class*="sidebar"]
+) :where(
+  .sidebar-footer,
+  .sidebar-bottom,
+  .sidebar-user-area,
+  .sidebar-profile-area,
+  .user-footer,
+  .profile-footer,
+  [class*="sidebar-footer"],
+  [class*="sidebarBottom"],
+  [class*="user-area"],
+  [class*="profile-area"]
+) {
+  padding: 8px 14px 10px !important;
+  gap: 8px !important;
+  margin: 0 !important;
+}
+
+/* user profile card bawah */
+body:not(:has(.login-page)) :where(
+  .ema-sidebar,
+  .app-sidebar,
+  .main-sidebar,
+  .layout-sidebar,
+  .dashboard-sidebar,
+  .module-sidebar,
+  .sidebar,
+  aside[class*="sidebar"],
+  nav[class*="sidebar"]
+) :where(
+  .user-card,
+  .profile-card,
+  .sidebar-user-card,
+  .sidebar-profile-card,
+  [class*="user-card"],
+  [class*="profile-card"]
+) {
+  width: 100% !important;
+  min-height: 54px !important;
+  max-height: 58px !important;
+  padding: 8px 10px !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  overflow: hidden !important;
+}
+
+/* avatar bawah */
+body:not(:has(.login-page)) :where(
+  .ema-sidebar,
+  .app-sidebar,
+  .main-sidebar,
+  .layout-sidebar,
+  .dashboard-sidebar,
+  .module-sidebar,
+  .sidebar,
+  aside[class*="sidebar"],
+  nav[class*="sidebar"]
+) :where(
+  .user-avatar,
+  .profile-avatar,
+  .sidebar-avatar,
+  [class*="avatar"]
+) {
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  max-width: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+}
+
+/* nama user + role jangan overflow */
+body:not(:has(.login-page)) :where(
+  .ema-sidebar,
+  .app-sidebar,
+  .main-sidebar,
+  .layout-sidebar,
+  .dashboard-sidebar,
+  .module-sidebar,
+  .sidebar,
+  aside[class*="sidebar"],
+  nav[class*="sidebar"]
+) :where(
+  .user-info,
+  .profile-info,
+  .sidebar-user-info,
+  [class*="user-info"],
+  [class*="profile-info"]
+) {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+body:not(:has(.login-page)) :where(
+  .ema-sidebar,
+  .app-sidebar,
+  .main-sidebar,
+  .layout-sidebar,
+  .dashboard-sidebar,
+  .module-sidebar,
+  .sidebar,
+  aside[class*="sidebar"],
+  nav[class*="sidebar"]
+) :where(
+  .user-name,
+  .profile-name,
+  [class*="user-name"],
+  [class*="profile-name"]
+) {
+  font-size: 11px !important;
+  line-height: 13px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body:not(:has(.login-page)) :where(
+  .ema-sidebar,
+  .app-sidebar,
+  .main-sidebar,
+  .layout-sidebar,
+  .dashboard-sidebar,
+  .module-sidebar,
+  .sidebar,
+  aside[class*="sidebar"],
+  nav[class*="sidebar"]
+) :where(
+  .user-role,
+  .profile-role,
+  [class*="user-role"],
+  [class*="profile-role"]
+) {
+  font-size: 10px !important;
+  line-height: 12px !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* logout button bawah */
+body:not(:has(.login-page)) :where(
+  .ema-sidebar,
+  .app-sidebar,
+  .main-sidebar,
+  .layout-sidebar,
+  .dashboard-sidebar,
+  .module-sidebar,
+  .sidebar,
+  aside[class*="sidebar"],
+  nav[class*="sidebar"]
+) :where(
+  .logout-button,
+  .sidebar-logout,
+  [class*="logout"]
+) {
+  width: 100% !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  max-height: 42px !important;
+  padding: 0 12px !important;
+  border-radius: 10px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+/* kalau sidebar pakai button biasa dalam footer */
+body:not(:has(.login-page)) :where(
+  .sidebar-footer,
+  .sidebar-bottom,
+  [class*="sidebar-footer"],
+  [class*="sidebarBottom"]
+) button {
+  height: 42px !important;
+  min-height: 42px !important;
+  padding: 0 12px !important;
+  border-radius: 10px !important;
+  font-size: 12px !important;
+}
+
+/* nav item kecil sikit */
+body:not(:has(.login-page)) :where(
+  .ema-sidebar,
+  .app-sidebar,
+  .main-sidebar,
+  .layout-sidebar,
+  .dashboard-sidebar,
+  .module-sidebar,
+  .sidebar,
+  aside[class*="sidebar"],
+  nav[class*="sidebar"]
+) :where(
+  a,
+  button
+) {
+  font-size: 12px;
+}
+
+body:not(:has(.login-page)) :where(
+  .ema-sidebar,
+  .app-sidebar,
+  .main-sidebar,
+  .layout-sidebar,
+  .dashboard-sidebar,
+  .module-sidebar,
+  .sidebar,
+  aside[class*="sidebar"],
+  nav[class*="sidebar"]
+) svg {
+  flex-shrink: 0 !important;
+}

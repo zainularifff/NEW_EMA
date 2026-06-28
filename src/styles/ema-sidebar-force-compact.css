@@ -1,0 +1,115 @@
+﻿/* FORCE SIDEBAR FOOTER COMPACT */
+
+/* target actual app sidebar even if class name bukan sidebar */
+body:not(:has(.login-page)) #root aside {
+  width: 224px !important;
+  min-width: 224px !important;
+  max-width: 224px !important;
+  flex: 0 0 224px !important;
+  overflow-x: hidden !important;
+}
+
+/* compact bottom/footer area */
+body:not(:has(.login-page)) #root aside [class~="mt-auto"],
+body:not(:has(.login-page)) #root aside [class*="mt-auto"],
+body:not(:has(.login-page)) #root aside [class*="bottom-"],
+body:not(:has(.login-page)) #root aside > div:last-child {
+  padding: 8px 14px 10px !important;
+  gap: 8px !important;
+  margin: 0 !important;
+}
+
+/* profile card bawah */
+body:not(:has(.login-page)) #root aside [class~="mt-auto"] > div,
+body:not(:has(.login-page)) #root aside [class*="mt-auto"] > div,
+body:not(:has(.login-page)) #root aside [class*="bottom-"] > div,
+body:not(:has(.login-page)) #root aside > div:last-child > div {
+  min-height: 52px !important;
+  max-height: 56px !important;
+  padding: 8px 10px !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  overflow: hidden !important;
+}
+
+/* avatar bawah */
+body:not(:has(.login-page)) #root aside [class~="mt-auto"] [class*="rounded"],
+body:not(:has(.login-page)) #root aside [class*="mt-auto"] [class*="rounded"],
+body:not(:has(.login-page)) #root aside [class*="bottom-"] [class*="rounded"] {
+  max-width: 38px !important;
+  max-height: 38px !important;
+}
+
+/* exact avatar sizes, especially Tailwind w-12 h-12 */
+body:not(:has(.login-page)) #root aside [class~="mt-auto"] [class~="w-12"],
+body:not(:has(.login-page)) #root aside [class~="mt-auto"] [class~="h-12"],
+body:not(:has(.login-page)) #root aside [class*="mt-auto"] [class~="w-12"],
+body:not(:has(.login-page)) #root aside [class*="mt-auto"] [class~="h-12"],
+body:not(:has(.login-page)) #root aside [class*="bottom-"] [class~="w-12"],
+body:not(:has(.login-page)) #root aside [class*="bottom-"] [class~="h-12"] {
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  min-height: 38px !important;
+}
+
+/* name/role compact and ellipsis */
+body:not(:has(.login-page)) #root aside [class~="mt-auto"] p,
+body:not(:has(.login-page)) #root aside [class~="mt-auto"] span,
+body:not(:has(.login-page)) #root aside [class*="mt-auto"] p,
+body:not(:has(.login-page)) #root aside [class*="mt-auto"] span,
+body:not(:has(.login-page)) #root aside [class*="bottom-"] p,
+body:not(:has(.login-page)) #root aside [class*="bottom-"] span {
+  max-width: 128px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body:not(:has(.login-page)) #root aside [class~="mt-auto"] p:first-child,
+body:not(:has(.login-page)) #root aside [class*="mt-auto"] p:first-child,
+body:not(:has(.login-page)) #root aside [class*="bottom-"] p:first-child {
+  font-size: 11px !important;
+  line-height: 13px !important;
+  font-weight: 800 !important;
+}
+
+body:not(:has(.login-page)) #root aside [class~="mt-auto"] p:last-child,
+body:not(:has(.login-page)) #root aside [class*="mt-auto"] p:last-child,
+body:not(:has(.login-page)) #root aside [class*="bottom-"] p:last-child {
+  font-size: 10px !important;
+  line-height: 12px !important;
+  font-weight: 700 !important;
+}
+
+/* logout button compact */
+body:not(:has(.login-page)) #root aside [class~="mt-auto"] button,
+body:not(:has(.login-page)) #root aside [class*="mt-auto"] button,
+body:not(:has(.login-page)) #root aside [class*="bottom-"] button,
+body:not(:has(.login-page)) #root aside > div:last-child button {
+  width: 100% !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  padding: 0 12px !important;
+  border-radius: 10px !important;
+  font-size: 12px !important;
+  line-height: 14px !important;
+  font-weight: 800 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+/* sidebar nav font jangan besar */
+body:not(:has(.login-page)) #root aside a,
+body:not(:has(.login-page)) #root aside button {
+  font-size: 12px !important;
+}
+
+body:not(:has(.login-page)) #root aside svg {
+  flex-shrink: 0 !important;
+}

@@ -1,0 +1,87 @@
+﻿/* EMA ICONS / AVATAR */
+
+.ema-icon-box {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+}
+
+.ema-icon-box svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ema-icon-box-success {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.ema-icon-box-danger {
+  background: rgba(244, 63, 94, 0.1);
+  color: #e11d48;
+}
+
+.ema-icon-box-warning {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.ema-icon-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: 11px;
+  background: #fff;
+  color: #334155;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.ema-icon-btn:hover {
+  background: #f8fafc;
+}
+
+.ema-icon-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.ema-avatar {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #4f46e5, #2563eb);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.ema-dot {
+  width: 7px;
+  height: 7px;
+  min-width: 7px;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.ema-dot-success {
+  background: #10b981;
+}
+
+.ema-dot-danger {
+  background: #f43f5e;
+}
+
+.ema-dot-warning {
+  background: #f59e0b;
+}

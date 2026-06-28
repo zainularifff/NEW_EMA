@@ -29,6 +29,23 @@ createRoot(document.getElementById("root")!).render(
 import { installEmaTablePaginationFinal } from "./utils/emaTablePaginationFinal";
 
 import { EmaToastProvider } from "./components/common/EmaToastProvider";
-
+
+import "./styles/ema-sidebar-compact-fix.css";
+import "./styles/ema-sidebar-force-compact.css";
+import "./styles/ema-global-compact-fonts.css";
+import "./styles/ema-page-layout.css";
+import "./styles/ema-side-tree.css";
+import "./styles/ema-panel.css";
+import "./styles/ema-table.css";
+import "./styles/ema-modal.css";
+import "./styles/ema-confirm.css";
+import "./styles/ema-toast.css";
+import "./styles/ema-pagination.css";
+import "./styles/ema-icon.css";
 installEmaTablePaginationFinal();
+
+
+
+
+
 

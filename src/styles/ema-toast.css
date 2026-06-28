@@ -1,0 +1,95 @@
+﻿/* EMA TOAST */
+
+.ema-toast-viewport {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1300;
+  width: min(360px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  pointer-events: none;
+}
+
+.ema-toast {
+  pointer-events: auto;
+  min-height: 58px;
+  padding: 11px 12px;
+  border: 1px solid rgba(203, 213, 225, 0.88);
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ema-toast-icon {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+}
+
+.ema-toast-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.ema-toast-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.ema-toast-title {
+  margin: 0;
+  color: #07143f;
+  font-size: 12px;
+  line-height: 15px;
+  font-weight: 900;
+}
+
+.ema-toast-message {
+  margin: 3px 0 0;
+  color: #64748b;
+  font-size: 10.5px;
+  line-height: 15px;
+  font-weight: 650;
+}
+
+.ema-toast-close {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.ema-toast-success .ema-toast-icon {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.ema-toast-error .ema-toast-icon {
+  background: rgba(244, 63, 94, 0.1);
+  color: #e11d48;
+}
+
+.ema-toast-warning .ema-toast-icon {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.ema-toast-info .ema-toast-icon {
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+}

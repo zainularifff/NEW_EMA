@@ -1,0 +1,149 @@
+﻿/* EMA GLOBAL MODAL */
+
+.ema-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.ema-modal {
+  width: min(620px, 100%);
+  max-height: min(760px, calc(100vh - 44px));
+  border-radius: 16px;
+  border: 1px solid rgba(203, 213, 225, 0.86);
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ema-modal-sm {
+  width: min(420px, 100%);
+}
+
+.ema-modal-lg {
+  width: min(860px, 100%);
+}
+
+.ema-modal-xl {
+  width: min(1040px, 100%);
+}
+
+.ema-modal-header {
+  flex: 0 0 auto;
+  min-height: 54px;
+  padding: 13px 16px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ema-modal-title {
+  margin: 0;
+  color: #07143f;
+  font-size: 15px;
+  line-height: 19px;
+  font-weight: 900;
+}
+
+.ema-modal-subtitle {
+  margin: 3px 0 0;
+  color: #64748b;
+  font-size: 10.5px;
+  line-height: 14px;
+  font-weight: 650;
+}
+
+.ema-modal-close {
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: 10px;
+  background: #fff;
+  color: #334155;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.ema-modal-body {
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.ema-modal-footer {
+  flex: 0 0 auto;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.ema-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ema-form-full {
+  grid-column: 1 / -1;
+}
+
+.ema-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ema-field label {
+  color: #0f172a;
+  font-size: 10.5px;
+  line-height: 13px;
+  font-weight: 850;
+}
+
+.ema-field input,
+.ema-field select,
+.ema-field textarea {
+  min-height: 34px;
+  border: 1px solid rgba(203, 213, 225, 0.92);
+  border-radius: 10px;
+  background: #fff;
+  color: #0f172a;
+  padding: 0 11px;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 650;
+  outline: 0;
+}
+
+.ema-field textarea {
+  min-height: 86px;
+  padding-top: 9px;
+  resize: vertical;
+}
+
+@media (max-width: 640px) {
+  .ema-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ema-modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .ema-modal-footer .ema-btn {
+    width: 100%;
+  }
+}

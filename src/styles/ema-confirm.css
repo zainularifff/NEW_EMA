@@ -1,0 +1,76 @@
+﻿/* EMA CONFIRMATION MODAL */
+
+.ema-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.ema-confirm {
+  width: min(390px, 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(203, 213, 225, 0.86);
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.26);
+  padding: 18px;
+  text-align: center;
+}
+
+.ema-confirm-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+}
+
+.ema-confirm-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.ema-confirm-danger .ema-confirm-icon {
+  background: rgba(244, 63, 94, 0.1);
+  color: #e11d48;
+}
+
+.ema-confirm-warning .ema-confirm-icon {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.ema-confirm-success .ema-confirm-icon {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.ema-confirm-title {
+  margin: 0;
+  color: #07143f;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 900;
+}
+
+.ema-confirm-message {
+  margin: 7px 0 0;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 650;
+}
+
+.ema-confirm-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
