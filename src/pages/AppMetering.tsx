@@ -857,11 +857,10 @@ function AppMeteringTree({
     };
 
     return (
-      <div key={node.id} className="ema-sidebar-tree-branch">
-        <div className={cx("ema-sidebar-tree-node", `depth-${Math.min(depth, 8)}`, isSelected && "is-selected is-active", hasChildren && "is-expandable", isRoot && "is-appmetering-root", isDevice && "is-appmetering-device", isPackage && "is-appmetering-package")}>
+      <div key={node.id}>
+        <div>
           <button
             type="button"
-            className="ema-sidebar-tree-toggle"
             aria-label={hasChildren ? (isOpen ? `Collapse ${node.label}` : `Expand ${node.label}`) : node.label}
             onClick={(event) => {
               event.stopPropagation();
@@ -873,18 +872,17 @@ function AppMeteringTree({
 
           <button
             type="button"
-            className="ema-sidebar-tree-main"
             title={node.subLabel ? `${node.label} · ${node.subLabel}` : node.label}
             onClick={handleSelect}
           >
-            <span className="ema-sidebar-tree-icon"><Icon size={15} /></span>
-            <span className="ema-sidebar-tree-label">{node.label}</span>
-            {!isRoot && getAppMeteringTreeCount(node) > 0 && <span className="ema-sidebar-tree-count">{getAppMeteringTreeCount(node).toLocaleString()}</span>}
+            <span><Icon size={15} /></span>
+            <span>{node.label}</span>
+            {!isRoot && getAppMeteringTreeCount(node) > 0 && <span>{getAppMeteringTreeCount(node).toLocaleString()}</span>}
           </button>
         </div>
 
         {hasChildren && isOpen ? (
-          <div className="ema-sidebar-tree-children is-nested">
+          <div>
             {node.children?.map((child) => renderNode(child, depth + 1))}
           </div>
         ) : null}
@@ -892,7 +890,7 @@ function AppMeteringTree({
     );
   };
 
-  return <div className="ema-sidebar-tree-level">{nodes.map((node) => renderNode(node))}</div>;
+  return <div>{nodes.map((node) => renderNode(node))}</div>;
 }
 
 
@@ -1355,7 +1353,7 @@ export default function AppMetering() {
   }, []);
 
   return (
-    <main className="settings-module-root appmetering-module-root ema-settings-pro container-fluid p-3 p-xl-4" data-section="application-metering">
+    <main data-section="application-metering">
       <style>{`
         /* App Metering sidebar: mirrors Hardware sidebar panel structure without overriding the global app sidebar. */
         .appmetering-module-root .settings-layout.appmetering-settings-layout {
@@ -1601,78 +1599,76 @@ export default function AppMetering() {
         <span id="themeLabel">Dark Mode</span>
       </button>
 
-      <div className="settings-layout appmetering-settings-layout d-grid gap-3">
-        <aside className="settings-menu appmetering-left-panel ema-panel-surface">
-          <div className="panel-head">
+      <div>
+        <aside>
+          <div>
             <span>APP METERING</span>
             <strong>Application Metering</strong>
             <small>Manage metering branches and package records.</small>
           </div>
 
-          <nav className="settings-menu-list ema-module-sidebar-nav ema-module-sidebar-switcher" id="appmeteringMenu" role="tablist" aria-label="Application metering navigation">
+          <nav id="appmeteringMenu" role="tablist" aria-label="Application metering navigation">
             <button
               type="button"
-              className={cx("setting-btn", viewMode === "device" && "active")}
               onClick={() => setViewMode("device")}
             >
-              <span className="setting-icon"><FolderOpen size={16} /></span>
+              <span><FolderOpen size={16} /></span>
               <span><strong>Branch</strong><small>Branch endpoint scope</small></span>
             </button>
             <button
               type="button"
-              className={cx("setting-btn", viewMode === "package" && "active")}
               onClick={() => setViewMode("package")}
             >
-              <span className="setting-icon"><Database size={16} /></span>
+              <span><Database size={16} /></span>
               <span><strong>Packages</strong><small>Application package views</small></span>
             </button>
           </nav>
 
-          <div className="ema-sidebar-content">
-            <div className="ema-sidebar-subpanel">
-              <label className="section-search ema-sidebar-field" htmlFor="appmSidebarSearch">
+          <div>
+            <div>
+              <label htmlFor="appmSidebarSearch">
                 <Search size={15} />
                 <input id="appmSidebarSearch" value={treeSearch} onChange={(event) => handleTreeSearch(event.target.value)} placeholder={viewMode === "device" ? "Search branches..." : "Search packages..."} />
               </label>
 
-              <div className="ema-sidebar-tree" role="tree" aria-label="Application metering target tree">
+              <div role="tree" aria-label="Application metering target tree">
                 {loading.hierarchy || loading.packages ? (
-                  <div className="ema-sidebar-empty">{viewMode === "device" ? "Preparing branch view..." : "Preparing package list..."}</div>
+                  <div>{viewMode === "device" ? "Preparing branch view..." : "Preparing package list..."}</div>
                 ) : activeTree.length > 0 ? (
                   <AppMeteringTree nodes={activeTree} selectedId={selectedNode.id} onSelect={handleNodeSelect} search={treeSearch} />
                 ) : (
-                  <div className="ema-sidebar-empty">{viewMode === "device" ? "No branch entries found." : "No packages found."}</div>
+                  <div>{viewMode === "device" ? "No branch entries found." : "No packages found."}</div>
                 )}
               </div>
             </div>
           </div>
         </aside>
 
-        <section className="settings-content appmetering-settings-content d-grid gap-3">
-          <div className="settings-hero ema-hero-kpi-right ema-panel-surface">
+        <section>
+          <div>
             <div>
-              <span className="eyebrow">APPLICATION COMMAND CENTER</span>
+              <span>APPLICATION COMMAND CENTER</span>
               <h2>Application Metering</h2>
               {/* <p>{kpiScopeType}: {kpiScopeLabel} · {kpiPeriodLabel} · {kpiFilterLabel}</p>
               {selectedScopeMetering ? <p>Active metering started {formatMeteringStartedAt(selectedScopeMetering.startedAt)} · {selectedScopeMetering.scopeLabel}</p> : null} */}
             </div>
-            <div className="settings-score ema-kpi-right-pair">
-              <button className="score-box text-start" type="button" onClick={loadUsage}>
+            <div>
+              <button type="button" onClick={loadUsage}>
                 <span>Apps in Scope</span>
                 <strong>{summary.uniqueApplications}</strong>
                 <small>Unique metered apps</small>
               </button>
-              <button className="score-box text-start" type="button" onClick={loadUsage}>
+              <button type="button" onClick={loadUsage}>
                 <span>Usage Hours</span>
                 <strong>{formatUsageDuration(summary.totalSeconds)}</strong>
                 <small>Selected date range</small>
               </button>
-              <button className="score-box text-start" type="button" onClick={loadUsage}>
+              <button type="button" onClick={loadUsage}>
                 <span>Launch Events</span>
                 <strong>{summary.launchCount.toLocaleString()}</strong>
                 <small>Total CCount from API</small>
               </button>
-              <button className="score-box text-start" type="button" onClick={loadUsage}>
+              <button type="button" onClick={loadUsage}>
                 <span>Records</span>
                 <strong>{summary.recordCount.toLocaleString()}</strong>
                 <small>Rows returned by API</small>
@@ -1680,37 +1676,36 @@ export default function AppMetering() {
             </div>
           </div>
 
-          <div className="content-shell ema-panel-surface">
-            <div className="content-head">
+          <div>
+            <div>
               <div>
-                <span className="section-tag">{showDeviceRegistry ? "TARGET REGISTRY" : "USAGE REGISTRY"}</span>
+                <span>{showDeviceRegistry ? "TARGET REGISTRY" : "USAGE REGISTRY"}</span>
                 <h3>{showDeviceRegistry ? "Target Device Registry" : "Application Usage Registry"}</h3>
                 <p>{showDeviceRegistry ? `${selectedNode.label} scope · ${filteredDeviceRows.length} device${filteredDeviceRows.length === 1 ? "" : "s"}` : `${selectedNode.label} · ${startDate} to ${endDate}`}</p>
               </div>
-              <div className="content-actions">
-                <button className="soft-btn" type="button" onClick={loadUsage} title="Refresh usage">
+              <div>
+                <button type="button" onClick={loadUsage} title="Refresh usage">
                   <RefreshCw size={14} /> Refresh
                 </button>
-                <button className="soft-btn" type="button" onClick={() => showDeviceRegistry ? showToast("info", "Device list", "Device registry uses the same /api/assets/:relationID data as Hardware Inventory.") : exportCsv(filteredRows)} title={showDeviceRegistry ? "Device source info" : "Export CSV"}>
+                <button type="button" onClick={() => showDeviceRegistry ? showToast("info", "Device list", "Device registry uses the same /api/assets/:relationID data as Hardware Inventory.") : exportCsv(filteredRows)} title={showDeviceRegistry ? "Device source info" : "Export CSV"}>
                   <Download size={14} /> {showDeviceRegistry ? "Source" : "Export"}
                 </button>
               </div>
             </div>
 
-            <div className="content-body">
-              <div className="user-action-bar advanced clean mb-3">
-                <label className="section-search" htmlFor="appmRegistrySearch">
+            <div>
+              <div>
+                <label htmlFor="appmRegistrySearch">
                   <Search size={15} />
                   <input id="appmRegistrySearch" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder={showDeviceRegistry ? "Search devices, IPs, users..." : "Search application, device or user..."} />
-                  {searchTerm ? <button className="mini-btn icon-only" type="button" onClick={() => setSearchTerm("")}><X size={14} /></button> : null}
+                  {searchTerm ? <button type="button" onClick={() => setSearchTerm("")}><X size={14} /></button> : null}
                 </label>
 
-                <div className="content-actions">
-                  <button className="soft-btn" type="button" onClick={() => { setSelectedPackageId(0); setSearchTerm(""); setOneYearMode(false); setNextPageMode(false); }}>
+                <div>
+                  <button type="button" onClick={() => { setSelectedPackageId(0); setSearchTerm(""); setOneYearMode(false); setNextPageMode(false); }}>
                     <Filter size={14} /> Clear
                   </button>
                   <button
-                    className={isCurrentMeteringScopeActive ? "danger-btn" : "primary-btn"}
                     type="button"
                     onClick={() => handleScopeMeteringToggle(currentMeteringScopeNode)}
                     disabled={loading.action}
@@ -1719,49 +1714,49 @@ export default function AppMetering() {
                     {isCurrentMeteringScopeActive ? <StopCircle size={14} /> : <Play size={14} />}
                     <span>{currentMeteringButtonLabel}</span>
                   </button>
-                  <button className="soft-btn" type="button" onClick={() => runMeteringAction("collect", activePackageId, selectedNode)} disabled={loading.action}>
+                  <button type="button" onClick={() => runMeteringAction("collect", activePackageId, selectedNode)} disabled={loading.action}>
                     <RefreshCw size={14} /> Collect
                   </button>
                 </div>
               </div>
 
-              <div className="row g-2 mb-3" aria-label="Application metering filters">
-                <label className="form-field col-12 col-md-6 col-xl">
+              <div aria-label="Application metering filters">
+                <label>
                   <span>Start Date</span>
-                  <input className="setting-input" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+                  <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
                 </label>
-                <label className="form-field col-12 col-md-6 col-xl">
+                <label>
                   <span>End Date</span>
-                  <input className="setting-input" type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+                  <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
                 </label>
-                <label className="form-field col-12 col-xl-3">
+                <label>
                   <span>Package</span>
-                  <select className="setting-select" value={selectedPackageId} onChange={(event) => setSelectedPackageId(Number(event.target.value))}>
+                  <select value={selectedPackageId} onChange={(event) => setSelectedPackageId(Number(event.target.value))}>
                     <option value={0}>All packages</option>
                     {packages.map((pkg) => <option key={pkg.SW_Pkg_Idn} value={pkg.SW_Pkg_Idn}>{pkg.name}</option>)}
                   </select>
                 </label>
-                <label className="form-field col-12 col-md-6 col-xl">
+                <label>
                   <span>SP Mode</span>
-                  <select className="setting-select" value={oneYearMode ? "oneYear" : "normal"} onChange={(event) => setOneYearMode(event.target.value === "oneYear")}>
+                  <select value={oneYearMode ? "oneYear" : "normal"} onChange={(event) => setOneYearMode(event.target.value === "oneYear")}>
                     <option value="normal">Normal</option>
                     <option value="oneYear">One Year</option>
                   </select>
                 </label>
-                {/* <label className="form-field col-12 col-md-6 col-xl">
+                {/* <label>
                   <span>Page Mode</span>
-                  <select className="setting-select" value={nextPageMode ? "nextpage" : "first"} onChange={(event) => setNextPageMode(event.target.value === "nextpage")} disabled={!oneYearMode}>
+                  <select value={nextPageMode ? "nextpage" : "first"} onChange={(event) => setNextPageMode(event.target.value === "nextpage")} disabled={!oneYearMode}>
                     <option value="first">First Page</option>
                     <option value="nextpage">Next Page</option>
                   </select>
                 </label> */}
               </div>
 
-              {error ? <div className="settings-inline-alert mb-3"><AlertCircle size={15} /> {error}</div> : null}
+              {error ? <div><AlertCircle size={15} /> {error}</div> : null}
 
-              <div className="table-responsive pricing-table-card appmetering-table-card">
+              <div>
                 {showDeviceRegistry ? (
-                  <table className="table table-hover align-middle mb-0">
+                  <table>
                     <thead>
                       <tr>
                         <th>No</th>
@@ -1776,21 +1771,21 @@ export default function AppMetering() {
                     </thead>
                     <tbody>
                       {loading.assets ? (
-                        <tr><td colSpan={8}><div className="settings-helper-card"><strong>Loading devices</strong><span>Loading devices from {selectedNode.relationID}...</span></div></td></tr>
+                        <tr><td colSpan={8}><div><strong>Loading devices</strong><span>Loading devices from {selectedNode.relationID}...</span></div></td></tr>
                       ) : pagedDeviceRows.length === 0 ? (
-                        <tr><td colSpan={8}><div className="settings-helper-card"><strong>No devices found</strong><span>{selectedNode.id === "organization" ? "Company scope selected. Choose a department to browse devices, or run Metering Company directly." : "No devices found in this folder scope."}</span></div></td></tr>
+                        <tr><td colSpan={8}><div><strong>No devices found</strong><span>{selectedNode.id === "organization" ? "Company scope selected. Choose a department to browse devices, or run Metering Company directly." : "No devices found in this folder scope."}</span></div></td></tr>
                       ) : pagedDeviceRows.map((device, index) => {
                         const raw = device.raw || {};
                         const isSelected = selectedNode.id === device.id;
                         return (
-                          <tr key={device.id} className={cx(isSelected && "table-active")} onClick={() => handleNodeSelect(device)}>
-                            <td><span className="row-index-pill">{String((safePage - 1) * PAGE_SIZE + index + 1).padStart(2, "0")}</span></td>
-                            <td><div className="user-name"><span className="user-mini-avatar"><UserRound size={14} /></span><span><strong>{device.label}</strong><small>{device.subLabel || getTreeNodeValue(device, ["Object_Full_Name"], "-")}</small></span></div></td>
-                            <td><strong>{getTreeNodeValue(device, ["PlatformType"], "-")}</strong><small className="d-block text-muted">{getTreeNodeValue(device, ["Model"], "-")}</small></td>
-                            <td><span className={getTreeStatusPillClass(device.status)}>{device.status || "-"}</span></td>
+                          <tr key={device.id} onClick={() => handleNodeSelect(device)}>
+                            <td><span>{String((safePage - 1) * PAGE_SIZE + index + 1).padStart(2, "0")}</span></td>
+                            <td><div><span><UserRound size={14} /></span><span><strong>{device.label}</strong><small>{device.subLabel || getTreeNodeValue(device, ["Object_Full_Name"], "-")}</small></span></div></td>
+                            <td><strong>{getTreeNodeValue(device, ["PlatformType"], "-")}</strong><small>{getTreeNodeValue(device, ["Model"], "-")}</small></td>
+                            <td><span>{device.status || "-"}</span></td>
                             <td>{formatApiDate(String(raw.ConnectionTime || ""))}</td>
-                            <td className="text-truncate">{getTreeNodeValue(device, ["Object_Full_Name", "Department", "Site", "GroupName"], "-")}</td>
-                            <td><span className="font-monospace">{getTreeNodeValue(device, ["Object_DeviceID", "DeviceID", "MDM_DeviceID"], "-")}</span></td>
+                            <td>{getTreeNodeValue(device, ["Object_Full_Name", "Department", "Site", "GroupName"], "-")}</td>
+                            <td><span>{getTreeNodeValue(device, ["Object_DeviceID", "DeviceID", "MDM_DeviceID"], "-")}</span></td>
                             <td>{getTreeNodeValue(device, ["IP", "IPAddress", "DeviceIPAddress", "DeviceLocalIPAddress"], "-")}</td>
                           </tr>
                         );
@@ -1798,7 +1793,7 @@ export default function AppMetering() {
                     </tbody>
                   </table>
                 ) : (
-                  <table className="table table-hover align-middle mb-0">
+                  <table>
                     <thead>
                       <tr>
                         <th>Application</th>
@@ -1812,18 +1807,18 @@ export default function AppMetering() {
                     </thead>
                     <tbody>
                       {loading.usage ? (
-                        <tr><td colSpan={7}><div className="settings-helper-card"><strong>Loading usage records</strong><span>Please wait while the application metering registry is refreshed.</span></div></td></tr>
+                        <tr><td colSpan={7}><div><strong>Loading usage records</strong><span>Please wait while the application metering registry is refreshed.</span></div></td></tr>
                       ) : pagedRows.length === 0 ? (
-                        <tr><td colSpan={7}><div className="settings-helper-card"><strong>No records found</strong><span>No application metering records found for current filter.</span></div></td></tr>
+                        <tr><td colSpan={7}><div><strong>No records found</strong><span>No application metering records found for current filter.</span></div></td></tr>
                       ) : pagedRows.map((row) => (
-                        <tr key={`${row.id}-${row.application}-${row.device}`} className={cx(row.id === selectedRow.id && "table-active")} onClick={() => setSelectedRowId(row.id)}>
-                          <td><button type="button" className="btn btn-link p-0 text-decoration-none fw-bold" onClick={(event) => { event.stopPropagation(); setDrawerRow(row); }}>{row.application}</button><small className="d-block text-muted">{row.version !== "-" ? `Version ${row.version}` : row.originalFileName}</small></td>
-                          <td><span className="font-monospace">{row.originalFileName || row.fileName}</span><small className="d-block text-muted text-truncate" title={row.filePath}>{row.filePath !== "-" ? row.filePath : row.fileName}</small></td>
-                          <td><strong>{row.device}</strong><small className="d-block text-muted">{row.user !== "-" ? row.user : row.site}{row.ip !== "-" ? ` · ${row.ip}` : ""}</small></td>
+                        <tr key={`${row.id}-${row.application}-${row.device}`} onClick={() => setSelectedRowId(row.id)}>
+                          <td><button type="button" onClick={(event) => { event.stopPropagation(); setDrawerRow(row); }}>{row.application}</button><small>{row.version !== "-" ? `Version ${row.version}` : row.originalFileName}</small></td>
+                          <td><span>{row.originalFileName || row.fileName}</span><small title={row.filePath}>{row.filePath !== "-" ? row.filePath : row.fileName}</small></td>
+                          <td><strong>{row.device}</strong><small>{row.user !== "-" ? row.user : row.site}{row.ip !== "-" ? ` · ${row.ip}` : ""}</small></td>
                           <td><strong>{formatUsageDuration(row.usedTimeSeconds)}</strong></td>
                           <td>{row.launchCount}</td>
                           <td>{row.lastUsed}</td>
-                          <td><button type="button" className="soft-btn" onClick={(event) => { event.stopPropagation(); setDrawerRow(row); }}>Details</button></td>
+                          <td><button type="button" onClick={(event) => { event.stopPropagation(); setDrawerRow(row); }}>Details</button></td>
                         </tr>
                       ))}
                     </tbody>
@@ -1831,19 +1826,19 @@ export default function AppMetering() {
                 )}
               </div>
 
-              <div className="uam-pagination global-style appmetering-pagination" aria-label="Application metering pagination">
-                <div className="uam-page-summary">
+              <div aria-label="Application metering pagination">
+                <div>
                   <strong>Page {safePage} of {pageCount}</strong>
                 </div>
-                <div className="uam-page-status">
+                <div>
                   Showing {showDeviceRegistry ? filteredDeviceRows.length : filteredRows.length} record{(showDeviceRegistry ? filteredDeviceRows.length : filteredRows.length) === 1 ? "" : "s"}
                 </div>
-                <div className="uam-pagination-controls global-style" aria-label="Pagination controls">
-                  <button className="uam-page-icon" type="button" aria-label="First page" title="First page" disabled={safePage <= 1} onClick={() => setPage(1)}><ChevronsLeft size={14} /></button>
-                  <button className="uam-page-icon" type="button" aria-label="Previous page" title="Previous page" disabled={safePage <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}><ChevronLeft size={14} /></button>
-                  <b className="uam-page-current" aria-current="page">{safePage}</b>
-                  <button className="uam-page-icon" type="button" aria-label="Next page" title="Next page" disabled={safePage >= pageCount} onClick={() => setPage((prev) => Math.min(pageCount, prev + 1))}><ChevronRight size={14} /></button>
-                  <button className="uam-page-icon" type="button" aria-label="Last page" title="Last page" disabled={safePage >= pageCount} onClick={() => setPage(pageCount)}><ChevronsRight size={14} /></button>
+                <div aria-label="Pagination controls">
+                  <button type="button" aria-label="First page" title="First page" disabled={safePage <= 1} onClick={() => setPage(1)}><ChevronsLeft size={14} /></button>
+                  <button type="button" aria-label="Previous page" title="Previous page" disabled={safePage <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}><ChevronLeft size={14} /></button>
+                  <b aria-current="page">{safePage}</b>
+                  <button type="button" aria-label="Next page" title="Next page" disabled={safePage >= pageCount} onClick={() => setPage((prev) => Math.min(pageCount, prev + 1))}><ChevronRight size={14} /></button>
+                  <button type="button" aria-label="Last page" title="Last page" disabled={safePage >= pageCount} onClick={() => setPage(pageCount)}><ChevronsRight size={14} /></button>
                 </div>
               </div>
             </div>
@@ -1852,47 +1847,47 @@ export default function AppMetering() {
       </div>
 
       {drawerRow ? (
-        <div className="user-modal-backdrop open" onClick={() => setDrawerRow(null)}>
-          <section className="user-modal advanced" onClick={(event) => event.stopPropagation()}>
-            <div className="user-modal-head">
+        <div onClick={() => setDrawerRow(null)}>
+          <section onClick={(event) => event.stopPropagation()}>
+            <div>
               <div>
-                <span className="section-tag">APPLICATION USAGE DETAIL</span>
+                <span>APPLICATION USAGE DETAIL</span>
                 <h3>{drawerRow.application}</h3>
                 <p>{drawerRow.fileName} · {drawerRow.device}</p>
               </div>
-              <button type="button" className="modal-close" onClick={() => setDrawerRow(null)}><X size={16} /></button>
+              <button type="button" onClick={() => setDrawerRow(null)}><X size={16} /></button>
             </div>
 
-            <div className="user-modal-body">
-              <div className="score-box"><span>Usage Time</span><strong>{formatUsageDuration(drawerRow.usedTimeSeconds)}</strong><small>{drawerRow.usedTimeSeconds.toLocaleString()} seconds</small></div>
-              <div className="score-box"><span>Launch Count</span><strong>{drawerRow.launchCount}</strong><small>Execution events</small></div>
+            <div>
+              <div><span>Usage Time</span><strong>{formatUsageDuration(drawerRow.usedTimeSeconds)}</strong><small>{drawerRow.usedTimeSeconds.toLocaleString()} seconds</small></div>
+              <div><span>Launch Count</span><strong>{drawerRow.launchCount}</strong><small>Execution events</small></div>
 
-              <div className="modal-section-title">Application Information</div>
-              <label className="form-field"><span>Application</span><input className="setting-input" value={drawerRow.application} readOnly /></label>
-              <label className="form-field"><span>Publisher</span><input className="setting-input" value={drawerRow.publisher} readOnly /></label>
-              <label className="form-field"><span>Version</span><input className="setting-input" value={drawerRow.version} readOnly /></label>
-              <label className="form-field"><span>Executable</span><input className="setting-input font-monospace" value={drawerRow.fileName} readOnly /></label>
-              <label className="form-field wide"><span>Original File</span><input className="setting-input font-monospace" value={drawerRow.originalFileName} readOnly /></label>
-              <label className="form-field wide"><span>File Path</span><input className="setting-input font-monospace" value={drawerRow.filePath} readOnly /></label>
+              <div>Application Information</div>
+              <label><span>Application</span><input value={drawerRow.application} readOnly /></label>
+              <label><span>Publisher</span><input value={drawerRow.publisher} readOnly /></label>
+              <label><span>Version</span><input value={drawerRow.version} readOnly /></label>
+              <label><span>Executable</span><input value={drawerRow.fileName} readOnly /></label>
+              <label><span>Original File</span><input value={drawerRow.originalFileName} readOnly /></label>
+              <label><span>File Path</span><input value={drawerRow.filePath} readOnly /></label>
 
-              <div className="modal-section-title">Endpoint Context</div>
-              <label className="form-field"><span>Device</span><input className="setting-input" value={drawerRow.device} readOnly /></label>
-              <label className="form-field"><span>User</span><input className="setting-input" value={drawerRow.user} readOnly /></label>
-              <label className="form-field"><span>Site</span><input className="setting-input" value={drawerRow.site} readOnly /></label>
-              <label className="form-field"><span>IP Address</span><input className="setting-input" value={drawerRow.ip} readOnly /></label>
-              <label className="form-field"><span>Start Time</span><input className="setting-input" value={drawerRow.appStartTime} readOnly /></label>
-              <label className="form-field"><span>End Time / Last Used</span><input className="setting-input" value={drawerRow.appEndTime !== "-" ? drawerRow.appEndTime : drawerRow.lastUsed} readOnly /></label>
+              <div>Endpoint Context</div>
+              <label><span>Device</span><input value={drawerRow.device} readOnly /></label>
+              <label><span>User</span><input value={drawerRow.user} readOnly /></label>
+              <label><span>Site</span><input value={drawerRow.site} readOnly /></label>
+              <label><span>IP Address</span><input value={drawerRow.ip} readOnly /></label>
+              <label><span>Start Time</span><input value={drawerRow.appStartTime} readOnly /></label>
+              <label><span>End Time / Last Used</span><input value={drawerRow.appEndTime !== "-" ? drawerRow.appEndTime : drawerRow.lastUsed} readOnly /></label>
 
-              <div className="modal-section-title">Package File Group</div>
-              <div className="settings-helper-card wide">
+              <div>Package File Group</div>
+              <div>
                 {packageFiles.length === 0 ? (
                   <><strong>No package file group loaded</strong><span>Choose a package filter to call for a package file group.</span></>
                 ) : (
-                  <div className="row g-2">
+                  <div>
                     {packageFiles.slice(0, 8).map((file) => (
-                      <div className="col-12 col-md-6" key={`${file.id}-${file.fileName}`}>
-                        <span className="user-pill info">{file.version || "Version"}</span>
-                        <strong className="d-block font-monospace mt-1">{file.fileName}</strong>
+                      <div key={`${file.id}-${file.fileName}`}>
+                        <span>{file.version || "Version"}</span>
+                        <strong>{file.fileName}</strong>
                       </div>
                     ))}
                   </div>
@@ -1900,40 +1895,40 @@ export default function AppMetering() {
               </div>
             </div>
 
-            <div className="user-modal-foot">
-              <button type="button" className="soft-btn" onClick={loadUsage}><RefreshCw size={14} /> Refresh Meter</button>
-              <button type="button" className="soft-btn" onClick={() => exportCsv([drawerRow])}><Download size={14} /> Export Detail</button>
-              <button type="button" className={isSelectedScopeMeteringActive ? "danger-btn" : "primary-btn"} onClick={() => handleScopeMeteringToggle()} disabled={loading.action}>{isSelectedScopeMeteringActive ? <StopCircle size={14} /> : <Play size={14} />} {isSelectedScopeMeteringActive ? "Stop Metering" : "Start Metering"}</button>
+            <div>
+              <button type="button" onClick={loadUsage}><RefreshCw size={14} /> Refresh Meter</button>
+              <button type="button" onClick={() => exportCsv([drawerRow])}><Download size={14} /> Export Detail</button>
+              <button type="button" onClick={() => handleScopeMeteringToggle()} disabled={loading.action}>{isSelectedScopeMeteringActive ? <StopCircle size={14} /> : <Play size={14} />} {isSelectedScopeMeteringActive ? "Stop Metering" : "Start Metering"}</button>
             </div>
           </section>
         </div>
       ) : null}
 
       {showMeteringModal ? (
-        <div className="user-modal-backdrop open" onClick={() => setShowMeteringModal(false)}>
-          <section className="user-modal advanced" onClick={(event) => event.stopPropagation()}>
-            <div className="user-modal-head">
+        <div onClick={() => setShowMeteringModal(false)}>
+          <section onClick={(event) => event.stopPropagation()}>
+            <div>
               <div>
-                <span className="section-tag">START APPLICATION METERING</span>
+                <span>START APPLICATION METERING</span>
                 <h3>Create Metering Job</h3>
                 <p>Create a metering job for the selected folder, device or package scope.</p>
               </div>
-              <button type="button" className="modal-close" onClick={() => setShowMeteringModal(false)}><X size={16} /></button>
+              <button type="button" onClick={() => setShowMeteringModal(false)}><X size={16} /></button>
             </div>
 
-            <div className="user-modal-body">
-              <label className="form-field"><span>Target Scope</span><input className="setting-input" value={selectedNode.label} readOnly /></label>
-              <label className="form-field"><span>Metering Type</span><select className="setting-select" value={meteringType} onChange={(event) => setMeteringType(event.target.value as "all" | "selected")}><option value="all">All applications</option><option value="selected">Selected package</option></select></label>
-              <label className="form-field"><span>Package</span><select className="setting-select" value={modalPackageId || selectedPackageId} onChange={(event) => { setModalPackageId(Number(event.target.value)); setMeteringType(Number(event.target.value) > 0 ? "selected" : "all"); }}><option value={0}>All packages</option>{packages.map((pkg) => <option key={pkg.SW_Pkg_Idn} value={pkg.SW_Pkg_Idn}>{pkg.name}</option>)}</select></label>
-              <label className="form-field"><span>Reporting Window</span><input className="setting-input" value={`${startDate} → ${endDate}`} readOnly /></label>
+            <div>
+              <label><span>Target Scope</span><input value={selectedNode.label} readOnly /></label>
+              <label><span>Metering Type</span><select value={meteringType} onChange={(event) => setMeteringType(event.target.value as "all" | "selected")}><option value="all">All applications</option><option value="selected">Selected package</option></select></label>
+              <label><span>Package</span><select value={modalPackageId || selectedPackageId} onChange={(event) => { setModalPackageId(Number(event.target.value)); setMeteringType(Number(event.target.value) > 0 ? "selected" : "all"); }}><option value={0}>All packages</option>{packages.map((pkg) => <option key={pkg.SW_Pkg_Idn} value={pkg.SW_Pkg_Idn}>{pkg.name}</option>)}</select></label>
+              <label><span>Reporting Window</span><input value={`${startDate} → ${endDate}`} readOnly /></label>
 
-              <label className="inline-check wide"><input type="checkbox" checked readOnly /><span>Include launch count and active duration</span></label>
-              <label className="inline-check wide"><input type="checkbox" checked readOnly /><span>Create job destination automatically by Object_Rel_Idn, Object_Root_Idn or Object_DeviceID.</span></label>
+              <label><input type="checkbox" checked readOnly /><span>Include launch count and active duration</span></label>
+              <label><input type="checkbox" checked readOnly /><span>Create job destination automatically by Object_Rel_Idn, Object_Root_Idn or Object_DeviceID.</span></label>
             </div>
 
-            <div className="user-modal-foot">
-              <button type="button" className="soft-btn" onClick={() => setShowMeteringModal(false)}>Cancel</button>
-              <button type="button" className="primary-btn" disabled={loading.action} onClick={() => submitScopeMetering(selectedNode)}>
+            <div>
+              <button type="button" onClick={() => setShowMeteringModal(false)}>Cancel</button>
+              <button type="button" disabled={loading.action} onClick={() => submitScopeMetering(selectedNode)}>
                 {loading.action ? "Submitting..." : "Start Metering"}
               </button>
             </div>
@@ -1942,11 +1937,11 @@ export default function AppMetering() {
       ) : null}
 
       {toast ? (
-        <div className="settings-toast-layer">
-          <div className={cx("settings-toast", `settings-toast-${toast.type}`)}>
-            <div className="settings-toast-icon">{toast.type === "success" ? <CheckCircle size={20} /> : toast.type === "error" ? <AlertCircle size={20} /> : <Gauge size={20} />}</div>
+        <div>
+          <div>
+            <div>{toast.type === "success" ? <CheckCircle size={20} /> : toast.type === "error" ? <AlertCircle size={20} /> : <Gauge size={20} />}</div>
             <div><strong>{toast.title}</strong><span>{toast.message}</span></div>
-            <button className="settings-toast-close" type="button" onClick={() => setToast(null)}><X size={14} /></button>
+            <button type="button" onClick={() => setToast(null)}><X size={14} /></button>
           </div>
         </div>
       ) : null}

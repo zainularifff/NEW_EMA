@@ -6,17 +6,12 @@ import {
   DollarSign,
   FileText,
   Grid3X3,
-  
-  LockKeyhole,ShieldCheck,
+  ShieldCheck,
   SlidersHorizontal,
   TicketCheck,
   UserCog,
   UsersRound} from "lucide-react";
 import NotificationChannelsSettings from "../components/settings/NotificationChannelsSettings";
-import SoftwarePolicySettings from "../components/settings/SoftwarePolicySettings";
-import EmaModal from "../components/common/EmaModal";
-import EmaConfirmModal from "../components/common/EmaConfirmModal";
-import { useEmaToast } from "../components/common/EmaToastProvider";
 import {
   accessControls as settingsAccessControls,
   auditLogs as settingsAuditLogs,
@@ -28,7 +23,7 @@ import {
   settingsRoles,
   settingsUsers} from "../services/settingsService";
 
-type SectionKey = "roles" | "users" | "modules" | "access" | "incident" | "audit" | "pricing" | "aging" | "policy" | "risk" | "resources" | "notifications" | "softwarePolicy";
+type SectionKey = "roles" | "users" | "modules" | "access" | "incident" | "audit" | "pricing" | "aging" | "policy" | "risk" | "resources" | "notifications";
 type RoleStatus = "Active" | "Review" | "Locked" | "Inactive";
 type ModalMode = "add" | "edit" | "delete";
 type ToastTone = "success" | "info" | "warning" | "error";
@@ -202,6 +197,7 @@ function isResourceSupportEngineer(row: ResourceEngineer) {
 }
 
 
+
 type SectionItem = {
   key: SectionKey;
   title: string;
@@ -214,7 +210,7 @@ type SectionItem = {
   subtitle: string;
 };
 
-type IconName = "role" | "user" | "matrix" | "shield" | "ticket" | "audit" | "price" | "aging" | "sliders" | "risk" | "calendar" | "lock" | "guard";
+type IconName = "role" | "user" | "matrix" | "shield" | "ticket" | "audit" | "price" | "aging" | "sliders" | "risk" | "calendar";
 
 type UserAccess = {
   id?: number | string;
@@ -759,17 +755,6 @@ const sections: Record<SectionKey, SectionItem> = {
     scoreOne: "5",
     scoreTwo: "7",
     subtitle: "Years threshold"},
-  softwarePolicy: {
-    key: "softwarePolicy",
-    title: "Software Policy",
-    desc: "Register software classification, license count, expiry period and usage policy rules.",
-    tag: "SOFTWARE GOVERNANCE",
-    icon: "sliders",
-    count: 0,
-    scoreOne: "Legal",
-    scoreTwo: "Expiry",
-    subtitle: "Policy Rules"
-  },
   policy: {
     key: "policy",
     title: "Management Policy",
@@ -809,16 +794,7 @@ const sections: Record<SectionKey, SectionItem> = {
     scoreTwo: "0",
     subtitle: "Leave schedules"}};
 
-const sectionOrder: SectionKey[] = ["roles", "users", "modules", "access", "incident", "audit", "pricing", "aging", "policy", "softwarePolicy", "notifications", "resources"];
-
-const emaMenuGroups: Array<{ label: string; keys: SectionKey[] }> = [
-  { label: "Access & Roles", keys: ["roles", "users", "modules", "access"] },
-  { label: "System Configuration", keys: ["incident", "audit", "pricing", "aging"] },
-  { label: "Policy & Audit", keys: ["policy", "softwarePolicy", "notifications", "resources"] }
-].map((group) => ({
-  ...group,
-  keys: group.keys.filter((key) => sectionOrder.includes(key))
-}));
+const sectionOrder: SectionKey[] = ["roles", "users", "modules", "access", "incident", "audit", "pricing", "aging", "policy", "notifications", "resources"];
 // const sectionOrder: SectionKey[] = ["roles", "users", "modules", "access", "incident", "audit", "pricing", "aging", "policy", "risk", "resources"];
 
 const defaultAccessRoles: AccessRole[] = [
@@ -1148,6 +1124,7 @@ const policies = [
   ["Approval for Critical Action", "Require reason and approval for lock, wipe, unlock and risk override.", "Enabled", "policy-on"],
   ["Password Rotation", "Force periodic password change or SSO policy alignment.", "Disabled", "policy-off"],
   ["Role Change Approval", "Role updates require approval and audit comment.", "Enabled", "policy-on"]] as const;
+
 
 
 const risks = [
@@ -1637,9 +1614,7 @@ function SettingsMenuIcon({ name }: { name: IconName }) {
   if (name === "role") return <UsersRound size={size} strokeWidth={2.35} />;
   if (name === "user") return <UserCog size={size} strokeWidth={2.35} />;
   if (name === "matrix") return <Grid3X3 size={size} strokeWidth={2.35} />;
-  if (name === "lock") return <LockKeyhole size={size} strokeWidth={2.35} />;
   if (name === "shield") return <ShieldCheck size={size} strokeWidth={2.35} />;
-  if (name === "guard") return <ShieldCheck size={size} strokeWidth={2.35} />;
   if (name === "ticket") return <TicketCheck size={size} strokeWidth={2.35} />;
   if (name === "audit") return <FileText size={size} strokeWidth={2.35} />;
   if (name === "price") return <DollarSign size={size} strokeWidth={2.35} />;
@@ -1648,241 +1623,6 @@ function SettingsMenuIcon({ name }: { name: IconName }) {
   if (name === "calendar") return <CalendarDays size={size} strokeWidth={2.35} />;
 
   return <ShieldCheck size={size} strokeWidth={2.35} />;
-}
-
-function FilterDropdown({ label, value, options, open, onToggle, onSelect, onClose }: { label: string; value: string; options: string[]; open: boolean; onToggle: () => void; onSelect: (value: string) => void; onClose: () => void }) {
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
-
-  const updateMenuPosition = () => {
-    const trigger = triggerRef.current;
-    if (!trigger) return;
-
-    const rect = trigger.getBoundingClientRect();
-    const menuWidth = Math.max(rect.width, 220);
-    const safeGap = 12;
-    const viewportPadding = 16;
-    const optionHeight = 44;
-    const estimatedMenuHeight = Math.min(360, Math.max(56, options.length * optionHeight + 12));
-    const availableBelow = window.innerHeight - rect.bottom - viewportPadding;
-    const availableAbove = rect.top - viewportPadding;
-    const shouldOpenAbove = availableBelow < estimatedMenuHeight && availableAbove > availableBelow;
-    const availableSpace = shouldOpenAbove ? availableAbove : availableBelow;
-    const finalMenuHeight = Math.max(120, Math.min(estimatedMenuHeight, availableSpace));
-    const left = Math.min(rect.left, window.innerWidth - menuWidth - viewportPadding);
-    const top = shouldOpenAbove
-      ? Math.max(viewportPadding, rect.top - finalMenuHeight - safeGap)
-      : Math.min(rect.bottom + safeGap, window.innerHeight - finalMenuHeight - viewportPadding);
-
-    setMenuStyle({
-      position: "fixed",
-      left: Math.max(viewportPadding, left),
-      top,
-      width: menuWidth,
-      maxHeight: finalMenuHeight,
-      zIndex: 2147483600
-    });
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    updateMenuPosition();
-
-    const handleReposition = () => updateMenuPosition();
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
-      onClose();
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-
-    window.addEventListener("resize", handleReposition);
-    window.addEventListener("scroll", handleReposition, true);
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("resize", handleReposition);
-      window.removeEventListener("scroll", handleReposition, true);
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open, value, options.length]);
-
-  const menuNode = open && typeof document !== "undefined" ? createPortal(
-    <div ref={menuRef}   role="listbox" aria-label={`${label} filter`}>
-      {options.map((option) => (
-        <button
-          key={option} 
-          type="button"
-          onClick={() => onSelect(option)}
-        >
-          <span>{option}</span>
-          {option === value && <span >✓</span>}
-        </button>
-      ))}
-    </div>,
-    document.body
-  ) : null;
-
-  return (
-    <div >
-      <button ref={triggerRef}  type="button" onClick={onToggle} aria-expanded={open}>
-        <span>{value}</span>
-        <ChevronDownSvg />
-      </button>
-      {menuNode}
-    </div>
-  );
-}
-
-function SettingSelect({
-  value,
-  options,
-  onChange,
-  disabled = false,
-  placeholder = "Select option",
-  ariaLabel}: {
-  value: string;
-  options: DropdownOption[];
-  onChange: (value: string) => void;
-  disabled?: boolean;
-  placeholder?: string;
-  className?: string;
-  ariaLabel?: string;
-}) {
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const [open, setOpen] = useState(false);
-  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
-
-  const selected = options.find((option) => dropdownOptionValue(option) === value);
-  const selectedLabel = selected ? dropdownOptionLabel(selected) : placeholder;
-
-  const updateMenuPosition = () => {
-    const trigger = triggerRef.current;
-    if (!trigger) return;
-
-    const rect = trigger.getBoundingClientRect();
-    const viewportPadding = 16;
-    const gap = 8;
-    const menuWidth = Math.max(rect.width, 210);
-    const optionHeight = 36;
-    const estimatedHeight = Math.min(288, Math.max(44, options.length * optionHeight + 10));
-    const availableBelow = window.innerHeight - rect.bottom - viewportPadding;
-    const availableAbove = rect.top - viewportPadding;
-    const openAbove = availableBelow < estimatedHeight && availableAbove > availableBelow;
-    const maxHeight = Math.max(96, Math.min(estimatedHeight, openAbove ? availableAbove : availableBelow));
-    const left = Math.min(Math.max(viewportPadding, rect.left), window.innerWidth - menuWidth - viewportPadding);
-    const top = openAbove
-      ? Math.max(viewportPadding, rect.top - maxHeight - gap)
-      : Math.min(rect.bottom + gap, window.innerHeight - maxHeight - viewportPadding);
-
-    setMenuStyle({
-      position: "fixed",
-      left,
-      top,
-      width: menuWidth,
-      maxHeight,
-      zIndex: 2147483600});
-  };
-
-  useEffect(() => {
-    if (!open) return;
-
-    updateMenuPosition();
-
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
-      setOpen(false);
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-
-    const handleResize = () => updateMenuPosition();
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("scroll", handleResize, true);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("scroll", handleResize, true);
-    };
-  }, [open, value, options.length]);
-
-  const menuNode = open && typeof document !== "undefined" ? createPortal(
-    <div ref={menuRef}   role="listbox" aria-label={ariaLabel || placeholder}>
-      {options.map((option) => {
-        const optionValue = dropdownOptionValue(option);
-        const optionLabel = dropdownOptionLabel(option);
-        const selectedOption = optionValue === value;
-
-        return (
-          <button
-            key={`${optionValue}-${optionLabel}`} 
-            type="button"
-            role="option"
-            aria-selected={selectedOption}
-            onClick={() => {
-              onChange(optionValue);
-              setOpen(false);
-            }}
-          >
-            <span>{optionLabel}</span>
-            {selectedOption && <span >✓</span>}
-          </button>
-        );
-      })}
-    </div>,
-    document.body
-  ) : null;
-
-  return (
-    <div >
-      <button
-        ref={triggerRef} 
-        type="button"
-        onClick={() => {
-          if (!disabled) setOpen((current) => !current);
-        }}
-        disabled={disabled}
-        aria-expanded={open}
-        aria-label={ariaLabel || placeholder}
-      >
-        <span>{selectedLabel}</span>
-        <ChevronDownSvg />
-      </button>
-      {menuNode}
-    </div>
-  );
-}
-
-function SettingsMoreSvg() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="5" r="1.8" fill="currentColor" />
-      <circle cx="12" cy="12" r="1.8" fill="currentColor" />
-      <circle cx="12" cy="19" r="1.8" fill="currentColor" />
-    </svg>
-  );
-}
-
-function dropdownOptionLabel(option: DropdownOption) {
-  return typeof option === "string" ? option : option.label;
-}
-
-function dropdownOptionValue(option: DropdownOption) {
-  return typeof option === "string" ? option : option.value;
 }
 
 export default function Settings() {
@@ -1991,124 +1731,7 @@ export default function Settings() {
   const usersActiveCount = users.filter((user) => user.status === "Active" && user.isActive !== false).length;
   const usersLockedCount = users.filter((user) => user.accountLocked || user.status === "Locked").length;
   const usersMfaCount = users.filter((user) => user.requireMFA || user.mfa).length;
-  
-  const emaToast = useEmaToast();
-
-  const [emaRoleModalOpen, setEmaRoleModalOpen] = useState(false);
-  const [emaRoleEditingIndex, setEmaRoleEditingIndex] = useState<number | null>(null);
-  const [emaRoleDeleteTarget, setEmaRoleDeleteTarget] = useState<{ index: number; name: string } | null>(null);
-  const [emaRoleForm, setEmaRoleForm] = useState<{
-    name: string;
-    description: string;
-    status: "Active" | "Inactive";
-    approvalRequired: boolean;
-  }>({
-    name: "",
-    description: "",
-    status: "Active",
-    approvalRequired: false,
-  });
-
-  const emaOpenRoleModal = (index: number | null) => {
-    const role = index === null ? null : accessRoles[index];
-
-    if (role && isProtectedSuperAdminRole(role)) {
-      emaToast.warning("Protected role", "Super Admin role cannot be edited.");
-      return;
-    }
-
-    setEmaRoleEditingIndex(index);
-    setEmaRoleForm({
-      name: role?.name || "",
-      description: role?.description || "",
-      status: role?.status === "Inactive" ? "Inactive" : "Active",
-      approvalRequired: Boolean(role?.approvalRequired),
-    });
-    setEmaRoleModalOpen(true);
-  };
-
-  const emaCloseRoleModal = () => {
-    setEmaRoleModalOpen(false);
-    setEmaRoleEditingIndex(null);
-  };
-
-  const emaSaveRole = () => {
-    const name = emaRoleForm.name.trim();
-    const description = emaRoleForm.description.trim();
-
-    if (!name) {
-      emaToast.error("Role name required", "Please enter a role name before saving.");
-      return;
-    }
-
-    setAccessRoles((current) => {
-      if (emaRoleEditingIndex !== null) {
-        return current.map((role, index) => {
-          if (index !== emaRoleEditingIndex) return role;
-
-          return {
-            ...role,
-            name,
-            description,
-            status: emaRoleForm.status,
-            approvalRequired: emaRoleForm.approvalRequired,
-          } as AccessRole;
-        });
-      }
-
-      const roleKey = name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "_")
-        .replace(/^_+|_+$/g, "");
-
-      const newRole = {
-        id: "role-" + Date.now(),
-        roleKey: roleKey || "custom_role_" + Date.now(),
-        name,
-        description,
-        status: emaRoleForm.status,
-        approvalRequired: emaRoleForm.approvalRequired,
-      } as AccessRole;
-
-      return [...current, newRole];
-    });
-
-    emaToast.success(
-      emaRoleEditingIndex === null ? "Role added" : "Role updated",
-      emaRoleEditingIndex === null ? "New role has been added successfully." : "Role details have been updated successfully."
-    );
-
-    emaCloseRoleModal();
-  };
-
-  const emaRequestDeleteRole = (index: number) => {
-    const role = accessRoles[index];
-
-    if (!role) {
-      emaToast.error("Role not found", "The selected role could not be found.");
-      return;
-    }
-
-    if (isProtectedSuperAdminRole(role)) {
-      emaToast.warning("Protected role", "Super Admin role cannot be edited or deleted.");
-      return;
-    }
-
-    setEmaRoleDeleteTarget({
-      index,
-      name: role.name || "this role",
-    });
-  };
-
-  const emaConfirmDeleteRole = () => {
-    if (!emaRoleDeleteTarget) return;
-
-    setAccessRoles((current) => current.filter((_, index) => index !== emaRoleDeleteTarget.index));
-    emaToast.success("Role deleted", emaRoleDeleteTarget.name + " has been removed.");
-    setEmaRoleDeleteTarget(null);
-  };
-
-const rolesTotalCount = accessRoles.length;
+  const rolesTotalCount = accessRoles.length;
   const rolesActiveCount = accessRoles.filter((role) => role.status === "Active").length;
   const moduleTotalCount = moduleCatalog.length;
   const moduleActiveRoleCount = accessRoles.filter((role) => role.status === "Active").length;
@@ -2140,50 +1763,6 @@ const rolesTotalCount = accessRoles.length;
   const filteredAuditLogs = auditLogs;
   const heroScoreOne = activeSection === "users" ? String(usersTotalCount) : activeSection === "roles" ? String(rolesTotalCount) : activeSection === "modules" ? String(moduleTotalCount) : activeSection === "access" ? String(accessPolicyTotalCount) : activeSection === "audit" ? String(auditTotalCount) : activeSection === "incident" ? incidentConfigMeta.scoreOne : activeSection === "aging" ? String(pcAgingRule.monitorMaxYears) : activeSection === "policy" ? String(MANAGEMENT_POLICY_FIELDS.length) : activeSection === "resources" ? String(resourceSchedules.length) : active.scoreOne;
   const heroScoreTwo = activeSection === "users" ? String(usersLockedCount) : activeSection === "roles" ? String(rolesActiveCount) : activeSection === "modules" ? String(moduleActiveRoleCount) : activeSection === "access" ? String(accessPolicyActiveCount) : activeSection === "audit" ? String(auditTodayCount) : activeSection === "incident" ? incidentConfigMeta.scoreTwo : activeSection === "aging" ? String(pcAgingRule.agingMinYears) : activeSection === "policy" ? (managementPolicyProfile?.profileName || "Global") : activeSection === "resources" ? String(resourceEngineers.length) : active.scoreTwo;
-
-  /* EMA HERO KPI DATA START */
-  const emaHeroCards: Array<{
-    label: string;
-    value: string | number;
-    helper: string;
-    icon: IconName;
-    tone: "blue" | "green" | "red" | "purple";
-  }> =
-    activeSection === "users"
-      ? [
-          { label: "Total Users", value: usersTotalCount, helper: "Users records", icon: "user", tone: "blue" },
-          { label: "Active Users", value: usersActiveCount, helper: "Can access system", icon: "role", tone: "green" },
-          { label: "Locked Users", value: usersLockedCount, helper: "Blocked accounts", icon: "lock", tone: "red" },
-          { label: "MFA Enabled", value: usersMfaCount, helper: "Second Factor Required", icon: "guard", tone: "purple" }
-        ]
-      : activeSection === "roles"
-      ? [
-          { label: "Total Roles", value: rolesTotalCount, helper: "Roles records", icon: "role", tone: "blue" },
-          { label: "Active Roles", value: rolesActiveCount, helper: "Assigned to users", icon: "user", tone: "green" },
-          { label: "Locked Roles", value: heroScoreTwo, helper: "Blocked access", icon: "lock", tone: "red" },
-          { label: "Approval Flow", value: "On", helper: "Protected actions", icon: "guard", tone: "purple" }
-        ]
-      : activeSection === "modules"
-      ? [
-          { label: "Total Modules", value: moduleTotalCount, helper: "Module records", icon: "matrix", tone: "blue" },
-          { label: "Active Roles", value: moduleActiveRoleCount, helper: "Controlled by RBAC", icon: "role", tone: "green" },
-          { label: "Hidden Modules", value: heroScoreTwo, helper: "Disabled modules", icon: "shield", tone: "red" },
-          { label: "RBAC Enabled", value: "On", helper: "Role based access", icon: "shield", tone: "purple" }
-        ]
-      : activeSection === "access"
-      ? [
-          { label: "Total Controls", value: accessPolicyTotalCount, helper: "Access controls records", icon: "shield", tone: "blue" },
-          { label: "Active Controls", value: accessPolicyActiveCount, helper: "Security rules enabled", icon: "shield", tone: "green" },
-          { label: "Review Items", value: heroScoreTwo, helper: "Need attention", icon: "audit", tone: "red" },
-          { label: "Policy Ready", value: "On", helper: "Control active", icon: "shield", tone: "purple" }
-        ]
-      : [
-          { label: activeSection === "incident" ? incidentConfigMeta.scoreOneLabel : "Total Items", value: heroScoreOne, helper: activeSection === "incident" ? incidentConfigMeta.scoreOneCaption : "Records", icon: active.icon, tone: "blue" },
-          { label: activeSection === "incident" ? incidentConfigMeta.scoreTwoLabel : "Active Items", value: heroScoreTwo, helper: activeSection === "incident" ? incidentConfigMeta.scoreTwoCaption : "Available", icon: active.icon, tone: "green" },
-          { label: "Review Items", value: activeSection === "audit" ? auditTodayCount : "0", helper: "Need attention", icon: "audit", tone: "red" },
-          { label: "Control", value: "On", helper: "System ready", icon: "shield", tone: "purple" }
-        ];
-  /* EMA HERO KPI DATA END */
 
   const showToast = (tone: ToastTone, title: string, message: string) => {
     const toastId = Date.now();
@@ -3254,10 +2833,6 @@ setModuleLoaded(true);
     }
   };
 
-
-
-
-
   useEffect(() => {
     // Load user and role records immediately when Settings opens so sidebar badges and
     // KPI values do not show stale/static config numbers.
@@ -3321,10 +2896,6 @@ setModuleLoaded(true);
     // Right-side audit snapshot panel was removed from the Settings screen.
     // Keep this no-op so existing save/user/role handlers remain stable.
   };
-
-
-
-
 
   useEffect(() => {
     if (activeSection !== "incident") return;
@@ -3572,23 +3143,17 @@ setModuleLoaded(true);
     }
   };
 
-
-
-
-
-
-
   // Module Control by Role uses EMA_Roles from Role Based Control.
   // Roles are created in Role Based Control, then access is toggled here per module.
 
 
   useEffect(() => {
-    document.documentElement.classList.add("ema-ui-page-active");
-    document.body.classList.add("ema-ui-page-active");
+    document.documentElement.classList.add("ema-ema-page-active");
+    document.body.classList.add("ema-ema-page-active");
 
     return () => {
-      document.documentElement.classList.remove("ema-ui-page-active");
-      document.body.classList.remove("ema-ui-page-active");
+      document.documentElement.classList.remove("ema-ema-page-active");
+      document.body.classList.remove("ema-ema-page-active");
     };
   }, []);
 
@@ -3600,75 +3165,148 @@ setModuleLoaded(true);
   const visibleUsers = users.filter((user) => !filteredContentTerm || `${user.name} ${user.username || ""} ${user.email} ${user.role} ${user.status}`.toLowerCase().includes(filteredContentTerm));
 
   return (
-    <main className="ema-inner ema-screen" data-section={activeSection}>
+    <main data-section={activeSection}>
       <input aria-hidden="true" id="globalSearch" type="hidden" />
       <button hidden id="themeBtn" type="button">
         <span id="themeLabel">Dark Mode</span>
       </button>
 
-      <div className="ema-layout">
-        <aside className="ema-side-panel">
-          <div className="ema-side-head">
+      <div>
+        <aside>
+          <div>
             <span>SETTINGS CENTER</span>
+            <strong>Configuration Area</strong>
+            <small>Select system setup domain</small>
           </div>
 
-          <div className="ema-menu" id="settingsMenu" role="tablist" aria-label="Settings navigation">
-            {emaMenuGroups.map((group) => (
-              <div className="ema-menu-group" key={group.label}>
-                <div className="ema-menu-group-title">{group.label}</div>
-
-                <div className="ema-menu-group-list">
-                  {group.keys.map((key) => {
-                    const item = sections[key];
-
-                    return (
-                      <button
-                        key={key}
-                        className={`ema-menu-item ${activeSection === key ? "active" : ""}`}
-                        type="button"
-                        data-section={key}
-                        onClick={() => {
-                          setActiveSection(key);
-                          setSectionSearch("");
-                        }}
-                      >
-                        <span className="ema-menu-icon">
-                          <SettingsMenuIcon name={item.icon} />
-                        </span>
-                        <span className="ema-menu-text">
-                          <strong>{item.title}</strong>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+          <div id="settingsMenu" role="tablist" aria-label="Settings navigation">
+            {sectionOrder.map((key) => {
+              const item = sections[key];
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  data-section={key}
+                  onClick={() => {
+                    setActiveSection(key);
+                    setSectionSearch("");
+                  }}
+                >
+                  <span><SettingsMenuIcon name={item.icon} /></span>
+                  <span><strong>{item.title}</strong><small>{item.desc}</small></span>
+                </button>
+              );
+            })}
           </div>
         </aside>
 
-        <section className="ema-main-panel">
-          <div className="ema-hero-shell">
-            <div className="ema-hero-info">
-              <span className="ema-eyebrow">ADMINISTRATION CONTROL</span>
+        <section>
+          <div>
+            <div>
+              <span>ADMINISTRATION CONTROL</span>
               <h2 id="heroTitle">{activeHeroTitle}</h2>
               <p id="heroDesc">{activeHeroDesc}</p>
             </div>
-            <div className="ema-score-grid">
-              {emaHeroCards.map((card) => (
-                <div className="ema-kpi-card" data-tone={card.tone} key={card.label}>
-                  <span className={"ema-kpi-icon " + card.tone}>
-                    <SettingsMenuIcon name={card.icon} />
-                  </span>
-                  <span className="ema-kpi-label">{card.label}</span>
-                  <strong className="ema-kpi-value">{card.value}</strong>
-                  <small className="ema-kpi-helper">{card.helper}</small>
-                </div>
-              ))}
+            <div>
+              {active.key === "users" ? (
+                <>
+                  <div >
+                    <span>Total Users</span>
+                    <strong>{usersTotalCount}</strong>
+                    <small>Users records</small>
+                  </div>
+                  <div >
+                    <span>Active Users</span>
+                    <strong>{usersActiveCount}</strong>
+                    <small>Can access system</small>
+                  </div>
+                  <div >
+                    <span>Locked Users</span>
+                    <strong>{usersLockedCount}</strong>
+                    <small>Blocked accounts</small>
+                  </div>
+                  <div >
+                    <span>MFA Enabled</span>
+                    <strong>{usersMfaCount}</strong>
+                    <small>Second Factor Required</small>
+                  </div>
+                </>
+              ) : active.key === "roles" ? (
+                <>
+                  <div>
+                    <div>
+                      <UsersRound />
+                    </div>
+                    <span>Total Roles</span>
+                    <strong>{rolesTotalCount}</strong>
+                    <small>Roles Records</small>
+                  </div>
+                  <div>
+                    <div>
+                      <UserCog />
+                    </div>
+                    <span>Active Roles</span>
+                    <strong>{rolesActiveCount}</strong>
+                    <small>Assigned To Users</small>
+                  </div>
+                </>
+              ) : active.key === "modules" ? (
+                <>
+                  <div >
+                    <span>Total Modules</span>
+                    <strong>{moduleTotalCount}</strong>
+                    <small>Modules Records</small>
+                  </div>
+                  <div >
+                    <span>Active Roles</span>
+                    <strong>{moduleActiveRoleCount}</strong>
+                    <small>Controlled by RBAC</small>
+                  </div>
+                </>
+              ) : active.key === "access" ? (
+                <>
+                  <div >
+                    <span>Total Controls</span>
+                    <strong>{accessPolicyTotalCount}</strong>
+                    <small>Access Controls Records</small>
+                  </div>
+                  <div >
+                    <span>Active Controls</span>
+                    <strong>{accessPolicyActiveCount}</strong>
+                    <small>Security Rules Enabled</small>
+                  </div>
+                </>
+              ) : active.key === "incident" ? (
+                <>
+                  <div >
+                    <span>{incidentConfigMeta.scoreOneLabel}</span>
+                    <strong id="scoreOne">{heroScoreOne}</strong>
+                    <small>{incidentConfigMeta.scoreOneCaption}</small>
+                  </div>
+                  <div >
+                    <span>{incidentConfigMeta.scoreTwoLabel}</span>
+                    <strong id="scoreTwo">{heroScoreTwo}</strong>
+                    <small>{incidentConfigMeta.scoreTwoCaption}</small>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div >
+                    <span>{active.subtitle}</span>
+                    <strong id="scoreOne">{heroScoreOne}</strong>
+                    <small>{active.subtitle}</small>
+                  </div>
+                  <div >
+                    <span>Reference</span>
+                    <strong id="scoreTwo">{heroScoreTwo}</strong>
+                    <small>Control Value</small>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
-          <div className="ema-settings-content-card">
+          <div>
             {false && (
               <div >
                 {activeSection !== "audit" && (
@@ -3701,9 +3339,9 @@ setModuleLoaded(true);
               </div>
             )}
 
-            {activeSection !== "roles" && activeSection !== "users" && activeSection !== "access" && activeSection !== "audit" && activeSection !== "incident" && activeSection !== "aging" && activeSection !== "policy" && activeSection !== "resources" && activeSection !== "softwarePolicy" && activeSection !== "notifications" && (
-              <div className="ema-settings-toolbar">
-                <label className="ema-settings-search">
+            {activeSection !== "users" && activeSection !== "access" && activeSection !== "audit" && activeSection !== "incident" && activeSection !== "aging" && activeSection !== "policy" && activeSection !== "resources" && activeSection !== "notifications" && (
+              <div>
+                <label>
                   <SearchSvg />
                   <input
                     id="sectionSearch"
@@ -3713,17 +3351,17 @@ setModuleLoaded(true);
                   />
                 </label>
                 {activeSection === "roles" && (
-                  <div className="ema-settings-actions">
+                  <div>
                     <button type="button" onClick={loadAccessRoles} disabled={rolesLoading}>{rolesLoading ? "Loading..." : "Refresh"}</button>
                     <button  type="button" onClick={() => openAccessRoleModal(null)}>Add Role</button>
                   </div>
                 )}
                 {activeSection === "modules" && (
-                  <div className="ema-settings-actions">
+                  <div >
                     <button  type="button" onClick={loadModuleAccess} disabled={moduleLoading}>{moduleLoading ? "Loading..." : "Refresh"}</button>
                   </div>
                 )}
-                {activeSection !== "users" && activeSection !== "roles" && activeSection !== "modules" && activeSection !== "audit" && activeSection !== "incident" && activeSection !== "softwarePolicy" && activeSection !== "resources" && (
+                {activeSection !== "users" && activeSection !== "roles" && activeSection !== "modules" && activeSection !== "audit" && activeSection !== "incident" && activeSection !== "resources" && (
                   <div >
                     <SettingSelect 
                       value="all"
@@ -3752,8 +3390,8 @@ setModuleLoaded(true);
               </div>
             )}
 
-            <div className="ema-settings-content-body" id="contentBody">
-              {activeSection === "roles" && <RoleContent roles={accessRoles} loading={rolesLoading} error={rolesError} search={sectionSearch} onSearchChange={setSectionSearch} onReload={loadAccessRoles} onAdd={() => openAccessRoleModal(null)} onEdit={openAccessRoleModal} onDelete={requestDeleteAccessRole} />}
+            <div id="contentBody">
+              {activeSection === "roles" && <RoleContent roles={accessRoles} loading={rolesLoading} error={rolesError} search={filteredContentTerm} onEdit={openAccessRoleModal} onDelete={requestDeleteAccessRole} />}
               {activeSection === "users" && <UserAccessContent users={visibleUsers} sourceUsers={users} loading={usersLoading} error={usersError} search={sectionSearch} onSearchChange={setSectionSearch} onReload={loadUsers} onAdd={() => openUserModal(null)} onEdit={openUserModal} onDelete={requestDeleteUser} />}
               {activeSection === "modules" && <ModuleMatrixContent roles={accessRoles.filter((role) => role.status === "Active")} modules={moduleCatalog} permissions={modulePermissions} loading={moduleLoading} error={moduleError} search={filteredContentTerm} savingKey={moduleSavingKey} onReload={loadModuleAccess} onToggle={toggleRoleModuleAccess} />}
               {activeSection === "access" && <AccessControlContent policies={accessPolicies} loading={accessPoliciesLoading} error={accessPoliciesError} onReload={loadAccessPolicies} onAdd={() => openAccessPolicyModal(null)} onEdit={openAccessPolicyModal} />}
@@ -3829,7 +3467,7 @@ setModuleLoaded(true);
                   onSave={saveIncidentConfig}
                 />
               )}
-              {activeSection === "pricing" && <PricingContent search={filteredContentTerm} rows={pricingRows} categoryOptions={categoryOptions} brandOptionsByCategory={brandOptionsByCategory} modelOptionsByKey={modelOptionsByKey} loading={pricingLoading} saving={pricingSaving} savingRowId={pricingRowSavingId} error={pricingError} onAdd={() => openUserModal(null)} onChange={updatePricingRow} onSaveRow={savePricingRow} onRequestDelete={requestDeletePricingRow} />}
+              {activeSection === "pricing" && <PricingContent search={filteredContentTerm} rows={pricingRows} categoryOptions={categoryOptions} brandOptionsByCategory={brandOptionsByCategory} modelOptionsByKey={modelOptionsByKey} loading={pricingLoading} saving={pricingSaving} savingRowId={pricingRowSavingId} error={pricingError} onAdd={addPricingRow} onChange={updatePricingRow} onSaveRow={savePricingRow} onRequestDelete={requestDeletePricingRow} />}
               {activeSection === "aging" && (
                 <AgingContent
                   rule={pcAgingRule}
@@ -3855,7 +3493,6 @@ setModuleLoaded(true);
                   onSave={saveManagementPolicy}
                 />
               )}
-              {activeSection === "softwarePolicy" && <SoftwarePolicySettings />}
               {activeSection === "risk" && <RiskContent search={filteredContentTerm} />}
               {activeSection === "notifications" && <NotificationChannelsSettings />}
               {activeSection === "resources" && (
@@ -3870,8 +3507,8 @@ setModuleLoaded(true);
                   error={resourceError}
                   onFormChange={(patch) => setResourceForm((current) => ({ ...current, ...patch }))}
                   onSave={saveResourceSchedule}
-                  onEdit={openUserModal}
-                  onDelete={requestDeleteUser}
+                  onEdit={editResourceSchedule}
+                  onDelete={requestDeleteResourceSchedule}
                   onReset={resetResourcePlanningForm}
                   onReload={loadResourcePlanning}
                 />
@@ -3954,7 +3591,7 @@ setModuleLoaded(true);
       />
 
       <SettingsToast toast={settingsToast} onClose={() => setSettingsToast(null)} />
-</main>
+    </main>
   );
 }
 
@@ -4104,7 +3741,6 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
                   <div><span>{row.day}</span></div>
                   <div>
                     <select
-                     
                       value={row.enabled ? "enabled" : "rest"}
                       onChange={(event) => onWorkingHourChange(row.id, { enabled: event.target.value === "enabled" })}
                       aria-label={`${row.day} working status`}
@@ -4152,7 +3788,6 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
                     <div>No category yet. Add the first incident category.</div>
                   ) : categories.map((category) => (
                     <button
-                     
                       key={String(category.id)}
                       type="button"
                       onClick={() => onSelectCategory(String(category.id))}
@@ -4253,6 +3888,9 @@ function IncidentConfigContent(props: IncidentConfigContentProps) {
     </div>
   );
 }
+
+
+
 
 
 function ResourcePlanningContent(props: any) {
@@ -4707,529 +4345,601 @@ function EmaPageLastIcon() {
   );
 }
 
+function SettingsRoleIcon({ role }: { role: AccessRole }) {
+  const name = String(role.name || "").toLowerCase();
 
-function SettingsRoleIcon() {
-  return <UsersRound size={14} strokeWidth={2.35} />;
+  if (name.includes("super")) return <ShieldCheck />;
+  if (name.includes("client")) return <UserCog />;
+  if (name.includes("dashboard")) return <Grid3X3 />;
+  if (name.includes("operation") || name.includes("support")) return <TicketCheck />;
+  return <UsersRound />;
 }
 
+function SettingsMoreSvg() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="5" r="1.8" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+      <circle cx="12" cy="19" r="1.8" fill="currentColor" />
+    </svg>
+  );
+}
+/* SETTINGS_V2_ROLE_HELPERS_END */
 
-function RoleContent({
-  roles,
-  loading,
-  error,
-  search,
-  onSearchChange,
-  onReload,
-  onAdd,
-  onEdit,
-  onDelete,
-}: {
-  roles: AccessRole[];
-  loading: boolean;
-  error: string;
-  search: string;
-  onSearchChange: (value: string) => void;
-  onReload: () => void;
-  onAdd: () => void;
-  onEdit: (index: number) => void;
-  onDelete: (index: number) => void;
-}) {
-  const pageSize = 10;
-  const roleGrid = "64px minmax(360px, 1fr) 140px 110px";
+function RoleContent({ roles, loading, error, search, onEdit, onDelete }: { roles: AccessRole[]; loading: boolean; error: string; search: string; onEdit: (index: number) => void; onDelete: (index: number) => void }) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() => getSettingsRolePageSize());
 
-  const filteredRows = roles.filter((role) => {
-    const term = search.trim().toLowerCase();
-    const haystack = [role.name, role.description, role.status, role.type, role.defaultAccess].join(" ").toLowerCase();
-    return !term || haystack.includes(term);
+  useEffect(() => {
+    const syncPageSize = () => setPageSize(getSettingsRolePageSize());
+    syncPageSize();
+    window.addEventListener("resize", syncPageSize);
+    return () => window.removeEventListener("resize", syncPageSize);
+  }, []);
+
+  const filterTerm = String(search || "").toLowerCase();
+  const filteredRoles = roles.filter((role) => {
+    const haystack = `${role.name} ${role.description} ${role.status} ${role.approvalRequired ? "approval required" : "standard"}`.toLowerCase();
+    return !filterTerm || haystack.includes(filterTerm);
   });
 
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
-  const safePage = Math.min(currentPage, totalPages);
-  const start = (safePage - 1) * pageSize;
-  const rows = filteredRows.slice(start, start + pageSize);
+  const totalPages = Math.max(1, Math.ceil(filteredRoles.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safeCurrentPage - 1) * pageSize;
+  const paginatedRoles = filteredRoles.slice(pageStartIndex, pageStartIndex + pageSize);
+  const showingFrom = filteredRoles.length ? pageStartIndex + 1 : 0;
+  const showingTo = Math.min(pageStartIndex + paginatedRoles.length, filteredRoles.length);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [search, roles.length]);
 
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
   const getActualIndex = (role: AccessRole) => {
     const roleId = role.id || role.roleID;
-
     if (roleId !== undefined && roleId !== null) {
-      const found = roles.findIndex((item) => String(item.id || item.roleID) === String(roleId));
-      if (found >= 0) return found;
+      const byId = roles.findIndex((item) => String(item.id || item.roleID) === String(roleId));
+      if (byId >= 0) return byId;
     }
-
-    const byKey = roles.findIndex((item) => String(item.roleKey || item.name) === String(role.roleKey || role.name));
-    return byKey >= 0 ? byKey : roles.indexOf(role);
+    return roles.indexOf(role);
   };
 
   return (
-    <section className="ema-settings-table">
-
-          <style>{`
-            .ema-settings-table {
-              width: 100% !important;
-              height: auto !important;
-              min-height: 0 !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              display: block !important;
-              position: relative !important;
-              border: 1px solid #d9e5f5 !important;
-              border-radius: 16px !important;
-              background: #fff !important;
-              overflow: hidden !important;
-            }
-            .ema-settings-table .ema-data-toolbar {
-              width: 100% !important;
-              min-height: 66px !important;
-              height: 66px !important;
-              margin: 0 !important;
-              padding: 0 16px !important;
-              display: flex !important;
-              align-items: center !important;
-              justify-content: space-between !important;
-              gap: 12px !important;
-              border: 0 !important;
-              border-bottom: 1px solid #d9e5f5 !important;
-              border-radius: 0 !important;
-              background: #fff !important;
-              position: relative !important;
-              top: auto !important;
-              bottom: auto !important;
-              transform: none !important;
-              z-index: 2 !important;
-            }
-            .ema-settings-table .ema-data-search {
-              width: min(420px, 42vw) !important;
-              height: 42px !important;
-              margin: 0 !important;
-            }
-            .ema-settings-table .ema-data-actions {
-              margin-left: auto !important;
-              display: flex !important;
-              align-items: center !important;
-              justify-content: flex-end !important;
-              gap: 10px !important;
-            }
-            .ema-settings-table .ema-data-actions select,
-            .ema-settings-table .ema-data-actions button {
-              height: 38px !important;
-            }
-            .ema-settings-table .ema-data-card {
-              width: 100% !important;
-              height: auto !important;
-              min-height: 0 !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              display: grid !important;
-              grid-template-rows: 48px minmax(0, auto) 64px !important;
-              align-content: start !important;
-              border: 0 !important;
-              border-radius: 0 !important;
-              background: #fff !important;
-              overflow: hidden !important;
-              position: relative !important;
-              top: auto !important;
-              bottom: auto !important;
-              transform: none !important;
-              z-index: 1 !important;
-            }
-            .ema-settings-table .ema-data-head {
-              height: 48px !important;
-              min-height: 48px !important;
-              display: grid !important;
-              align-items: center !important;
-              border-bottom: 1px solid #d9e5f5 !important;
-              background: #fbfdff !important;
-            }
-            .ema-settings-table .ema-data-body {
-              min-height: 0 !important;
-              height: auto !important;
-              max-height: calc(100vh - 430px) !important;
-              display: block !important;
-              overflow-y: auto !important;
-              overflow-x: hidden !important;
-              background: #fff !important;
-              position: relative !important;
-              top: auto !important;
-              bottom: auto !important;
-              transform: none !important;
-            }
-            .ema-settings-table .ema-data-row {
-              height: 58px !important;
-              min-height: 58px !important;
-              display: grid !important;
-              align-items: center !important;
-              border-bottom: 1px solid #d9e5f5 !important;
-              background: #fff !important;
-            }
-            .ema-settings-table .ema-data-footer {
-              height: 64px !important;
-              min-height: 64px !important;
-              padding: 0 16px !important;
-              display: grid !important;
-              grid-template-columns: minmax(0, 1fr) auto auto !important;
-              align-items: center !important;
-              gap: 14px !important;
-              border-top: 1px solid #d9e5f5 !important;
-              background: #fff !important;
-            }
-            .ema-settings-table .ema-pagination-controls,
-            .ema-settings-table .ema-row-actions {
-              display: flex !important;
-              align-items: center !important;
-              gap: 8px !important;
-            }
-            .ema-settings-table .ema-row-actions { justify-content: flex-end !important; }
-            .ema-settings-table .ema-page-btn,
-            .ema-settings-table .ema-page-current,
-            .ema-settings-table .ema-action-btn {
-              width: 34px !important;
-              height: 34px !important;
-              border-radius: 10px !important;
-            }
-          `}</style>
-      <div className="ema-data-toolbar">
-        <label className="ema-data-search">
-          <SearchSvg />
-          <input
-            value={search}
-            onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search roles by name or description..."
-          />
-        </label>
-
-        <div className="ema-data-actions">
-          <button type="button" onClick={onReload} disabled={loading}>{loading ? "Loading..." : "Refresh"}</button>
-          <button type="button" onClick={onAdd}>Add Role</button>
-        </div>
-      </div>
-
+    <div>
       {error && (
-        <div className="ema-settings-alert">
+        <div>
           <strong>Role load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="ema-data-card">
-        <div className="ema-data-head" style={{ gridTemplateColumns: roleGrid }}>
-          <div>No.</div>
+      <div>
+        <div>
+          <div>No</div>
           <div>Role</div>
+          <div>Approval</div>
           <div>Status</div>
           <div>Action</div>
         </div>
 
-        <div className="ema-data-body">
-          {loading && <div className="ema-data-empty">Loading role records...</div>}
-          {!loading && filteredRows.length === 0 && <div className="ema-data-empty">No role record found.</div>}
+        {loading && <div>Loading role records from EMA_Roles...</div>}
+        {!loading && filteredRoles.length === 0 && <div>No role records found.</div>}
 
-          {!loading && rows.map((role, index) => {
-            const actualIndex = getActualIndex(role);
-            const protectedRole = isProtectedSuperAdminRole(role);
-            const tone = role.status === "Inactive" || role.status === "Locked" ? "inactive" : role.status === "Review" ? "required" : "active";
+        {!loading && paginatedRoles.map((role, index) => {
+          const actualIndex = getActualIndex(role);
+          const isInactive = role.status === "Inactive";
+          const approvalClass = role.approvalRequired ? "required" : "standard";
+          const tone = getSettingsRoleTone(role, pageStartIndex + index);
 
-            return (
-              <div className="ema-data-row" style={{ gridTemplateColumns: roleGrid }} key={String(role.id || role.roleID || role.roleKey || role.name) + "-" + actualIndex}>
-                <div><span className="ema-data-no">{String(start + index + 1).padStart(2, "0")}</span></div>
+          return (
+            <div key={`${role.id || role.roleKey}-${actualIndex}`}>
+              <div>
+                <span>{String(pageStartIndex + index + 1).padStart(2, "0")}</span>
+              </div>
+
+              <div>
                 <div>
-                  <div className="ema-data-profile">
-                    <i>{initials(role.name || "R")}</i>
-                    <div>
-                      <strong>{role.name || "Unnamed Role"}</strong>
-                      <small>{role.description || "No description set"}</small>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <span className={"ema-data-pill " + tone}>
-                    <span className="ema-data-pill-dot" />
-                    {role.status || "Active"}
+                  <span>
+                    <SettingsRoleIcon role={role} />
                   </span>
-                </div>
-                <div>
-                  <div className="ema-row-actions">
-                    <button className="ema-action-btn ema-action-btn-edit" type="button" onClick={() => onEdit(actualIndex)} disabled={protectedRole} title={protectedRole ? "Super Admin role is protected" : "Edit"}><PencilSvg /></button>
-                    <button className="ema-action-btn ema-action-btn-delete" type="button" onClick={() => onDelete(actualIndex)} disabled={protectedRole} title={protectedRole ? "Super Admin role is protected" : "Delete"}><TrashSvg /></button>
+                  <div>
+                    <strong>{role.name}</strong>
+                    <small>{role.description || "No description set"}</small>
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
 
-        {!loading && filteredRows.length > 0 && (
-          <footer className="ema-data-footer">
-            <div className="ema-pagination-summary">Showing {filteredRows.length ? start + 1 : 0} to {Math.min(start + rows.length, filteredRows.length)} of {filteredRows.length} roles</div>
-            <div className="ema-pagination-controls">
-              <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safePage === 1}><EmaPageFirstIcon /></button>
-              <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safePage === 1}><EmaPagePrevIcon /></button>
-              <span className="ema-page-current">{safePage}</span>
-              <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safePage === totalPages}><EmaPageNextIcon /></button>
-              <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safePage === totalPages}><EmaPageLastIcon /></button>
+              <div>
+                <span>
+                  {role.approvalRequired ? "Required" : "Standard"}
+                </span>
+              </div>
+
+              <div>
+                <span>
+                  <span />
+                  {isInactive ? "Inactive" : "Active"}
+                </span>
+              </div>
+
+              <div>
+                <div>
+                  <button type="button" title="Edit role" aria-label="Edit role" onClick={() => onEdit(actualIndex)}>
+                    <PencilSvg />
+                  </button>
+                  <button
+                    type="button"
+                    title={isProtectedSuperAdminRole(role) ? "Super Admin is protected and cannot be deleted" : "Delete role"}
+                    aria-label={isProtectedSuperAdminRole(role) ? "Protected role" : "Delete role"}
+                    disabled={isProtectedSuperAdminRole(role)}
+                    onClick={() => onDelete(actualIndex)}
+                  >
+                    <TrashSvg />
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="ema-page-size">{pageSize} / page</div>
-          </footer>
-        )}
+          );
+        })}
       </div>
-    </section>
+
+      {!loading && filteredRoles.length > 0 && (
+        <div>
+          <div>
+            Showing {showingFrom} to {showingTo} of {filteredRoles.length} roles
+          </div>
+
+          <div aria-label="Role based control pagination">
+            <button type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span>{safeCurrentPage}</span>
+            <button type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+          </div>
+
+          <div>{pageSize} / page</div>
+        </div>
+      )}
+    </div>
   );
 }
 
-function UserAccessContent({
-  users,
-  sourceUsers,
-  loading,
-  error,
-  search,
-  onSearchChange,
-  onReload,
-  onAdd,
-  onEdit,
-  onDelete,
-}: {
-  users: UserAccess[];
-  sourceUsers: UserAccess[];
-  loading: boolean;
-  error: string;
-  search: string;
-  onSearchChange: (value: string) => void;
-  onReload: () => void;
-  onAdd: () => void;
-  onEdit: (index: number) => void;
-  onDelete: (index: number) => void;
+function FilterDropdown({ label, value, options, open, onToggle, onSelect, onClose }: { label: string; value: string; options: string[]; open: boolean; onToggle: () => void; onSelect: (value: string) => void; onClose: () => void }) {
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
+
+  const updateMenuPosition = () => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const menuWidth = Math.max(rect.width, 220);
+    const safeGap = 12;
+    const viewportPadding = 16;
+    const optionHeight = 44;
+    const estimatedMenuHeight = Math.min(360, Math.max(56, options.length * optionHeight + 12));
+    const availableBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const availableAbove = rect.top - viewportPadding;
+    const shouldOpenAbove = availableBelow < estimatedMenuHeight && availableAbove > availableBelow;
+    const availableSpace = shouldOpenAbove ? availableAbove : availableBelow;
+    const finalMenuHeight = Math.max(120, Math.min(estimatedMenuHeight, availableSpace));
+    const left = Math.min(rect.left, window.innerWidth - menuWidth - viewportPadding);
+    const top = shouldOpenAbove
+      ? Math.max(viewportPadding, rect.top - finalMenuHeight - safeGap)
+      : Math.min(rect.bottom + safeGap, window.innerHeight - finalMenuHeight - viewportPadding);
+
+    setMenuStyle({
+      position: "fixed",
+      left: Math.max(viewportPadding, left),
+      top,
+      width: menuWidth,
+      maxHeight: finalMenuHeight,
+      zIndex: 2147483600
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    updateMenuPosition();
+
+    const handleReposition = () => updateMenuPosition();
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      onClose();
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    window.addEventListener("resize", handleReposition);
+    window.addEventListener("scroll", handleReposition, true);
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("resize", handleReposition);
+      window.removeEventListener("scroll", handleReposition, true);
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, value, options.length]);
+
+  const menuNode = open && typeof document !== "undefined" ? createPortal(
+    <div ref={menuRef}   role="listbox" aria-label={`${label} filter`}>
+      {options.map((option) => (
+        <button
+          key={option} 
+          type="button"
+          onClick={() => onSelect(option)}
+        >
+          <span>{option}</span>
+          {option === value && <span >✓</span>}
+        </button>
+      ))}
+    </div>,
+    document.body
+  ) : null;
+
+  return (
+    <div >
+      <button ref={triggerRef}  type="button" onClick={onToggle} aria-expanded={open}>
+        <span>{value}</span>
+        <ChevronDownSvg />
+      </button>
+      {menuNode}
+    </div>
+  );
+}
+
+
+type DropdownOption = string | { value: string; label: string };
+
+function dropdownOptionValue(option: DropdownOption) {
+  return typeof option === "string" ? option : option.value;
+}
+
+function dropdownOptionLabel(option: DropdownOption) {
+  return typeof option === "string" ? option : option.label;
+}
+
+function SettingSelect({
+  value,
+  options,
+  onChange,
+  disabled = false,
+  placeholder = "Select option",
+  ariaLabel}: {
+  value: string;
+  options: DropdownOption[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+  className?: string;
+  ariaLabel?: string;
 }) {
-  const pageSize = 10;
-  const userGrid = "64px minmax(260px, 1.2fr) minmax(220px, 1fr) 92px 120px 170px 110px";
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
+
+  const selected = options.find((option) => dropdownOptionValue(option) === value);
+  const selectedLabel = selected ? dropdownOptionLabel(selected) : placeholder;
+
+  const updateMenuPosition = () => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const viewportPadding = 16;
+    const gap = 8;
+    const menuWidth = Math.max(rect.width, 210);
+    const optionHeight = 36;
+    const estimatedHeight = Math.min(288, Math.max(44, options.length * optionHeight + 10));
+    const availableBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const availableAbove = rect.top - viewportPadding;
+    const openAbove = availableBelow < estimatedHeight && availableAbove > availableBelow;
+    const maxHeight = Math.max(96, Math.min(estimatedHeight, openAbove ? availableAbove : availableBelow));
+    const left = Math.min(Math.max(viewportPadding, rect.left), window.innerWidth - menuWidth - viewportPadding);
+    const top = openAbove
+      ? Math.max(viewportPadding, rect.top - maxHeight - gap)
+      : Math.min(rect.bottom + gap, window.innerHeight - maxHeight - viewportPadding);
+
+    setMenuStyle({
+      position: "fixed",
+      left,
+      top,
+      width: menuWidth,
+      maxHeight,
+      zIndex: 2147483600});
+  };
+
+  useEffect(() => {
+    if (!open) return;
+
+    updateMenuPosition();
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    const handleResize = () => updateMenuPosition();
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleResize, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleResize, true);
+    };
+  }, [open, value, options.length]);
+
+  const menuNode = open && typeof document !== "undefined" ? createPortal(
+    <div ref={menuRef}   role="listbox" aria-label={ariaLabel || placeholder}>
+      {options.map((option) => {
+        const optionValue = dropdownOptionValue(option);
+        const optionLabel = dropdownOptionLabel(option);
+        const selectedOption = optionValue === value;
+
+        return (
+          <button
+            key={`${optionValue}-${optionLabel}`} 
+            type="button"
+            role="option"
+            aria-selected={selectedOption}
+            onClick={() => {
+              onChange(optionValue);
+              setOpen(false);
+            }}
+          >
+            <span>{optionLabel}</span>
+            {selectedOption && <span >✓</span>}
+          </button>
+        );
+      })}
+    </div>,
+    document.body
+  ) : null;
+
+  return (
+    <div >
+      <button
+        ref={triggerRef} 
+        type="button"
+        onClick={() => {
+          if (!disabled) setOpen((current) => !current);
+        }}
+        disabled={disabled}
+        aria-expanded={open}
+        aria-label={ariaLabel || placeholder}
+      >
+        <span>{selectedLabel}</span>
+        <ChevronDownSvg />
+      </button>
+      {menuNode}
+    </div>
+  );
+}
+
+
+function UserAccessContent({ users, sourceUsers, loading, error, search, onSearchChange, onReload, onAdd, onEdit, onDelete }: { users: UserAccess[]; sourceUsers: UserAccess[]; loading: boolean; error: string; search: string; onSearchChange: (value: string) => void; onReload: () => void; onAdd: () => void; onEdit: (index: number) => void; onDelete: (index: number) => void }) {
+  const getPageSize = () => {
+    if (typeof window === "undefined") return 8;
+    const height = window.innerHeight || 900;
+    if (height < 760) return 6;
+    if (height < 900) return 8;
+    if (height < 1080) return 10;
+    return 12;
+  };
+
   const [statusFilter, setStatusFilter] = useState("All Status");
   const [roleFilter, setRoleFilter] = useState("All Roles");
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(getPageSize);
 
-  const roleOptions = Array.from(new Set(sourceUsers.flatMap((user) => normalizeUserRoles(user.roles || user.role || user.roleName)))).filter(Boolean).sort();
+  useEffect(() => {
+    const syncPageSize = () => setPageSize(getPageSize());
+    syncPageSize();
+    window.addEventListener("resize", syncPageSize);
+    return () => window.removeEventListener("resize", syncPageSize);
+  }, []);
 
-  const getDisplayStatus = (user: UserAccess) => {
-    if (user.accountLocked || user.status === "Locked") return "Locked";
-    return user.status || (user.isActive === false ? "Inactive" : "Active");
-  };
+  const roleOptions = Array.from(new Set(sourceUsers.flatMap((user) => normalizeUserRoles(user.roles || user.role || user.roleName)))).sort();
 
-  const filteredRows = users.filter((user) => {
+  const filteredUsers = users.filter((user) => {
     const roles = normalizeUserRoles(user.roles || user.role || user.roleName);
-    const status = getDisplayStatus(user);
-    const term = search.trim().toLowerCase();
-    const haystack = [user.name, user.username, user.email, roles.join(" "), status].join(" ").toLowerCase();
-    return (!term || haystack.includes(term)) && (statusFilter === "All Status" || status === statusFilter) && (roleFilter === "All Roles" || hasUserRole(user, roleFilter));
+    const haystack = `${user.name} ${user.username} ${user.email} ${user.department} ${user.position} ${roles.join(" ")} ${user.status}`.toLowerCase();
+
+    const matchesSearch = !search.trim() || haystack.includes(search.trim().toLowerCase());
+    const matchesStatus = statusFilter === "All Status" || user.status === statusFilter;
+    const matchesRole = roleFilter === "All Roles" || hasUserRole(user, roleFilter);
+
+    return matchesSearch && matchesStatus && matchesRole;
   });
 
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
-  const safePage = Math.min(currentPage, totalPages);
-  const start = (safePage - 1) * pageSize;
-  const rows = filteredRows.slice(start, start + pageSize);
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safeCurrentPage - 1) * pageSize;
+  const paginatedUsers = filteredUsers.slice(pageStartIndex, pageStartIndex + pageSize);
+  const showingFrom = filteredUsers.length ? pageStartIndex + 1 : 0;
+  const showingTo = Math.min(pageStartIndex + paginatedUsers.length, filteredUsers.length);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [statusFilter, roleFilter, search, users.length]);
 
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
   const getActualIndex = (user: UserAccess) => {
     const userId = user.id || user.userID;
     if (userId !== undefined && userId !== null) {
-      const found = sourceUsers.findIndex((item) => String(item.id || item.userID) === String(userId));
-      if (found >= 0) return found;
+      const byId = sourceUsers.findIndex((item) => String(item.id || item.userID) === String(userId));
+      if (byId >= 0) return byId;
     }
-    const byEmail = sourceUsers.findIndex((item) => String(item.email || "").toLowerCase() === String(user.email || "").toLowerCase());
-    return byEmail >= 0 ? byEmail : sourceUsers.indexOf(user);
+    return sourceUsers.indexOf(user);
+  };
+
+  const getStatusTone = (status: string) => {
+    const value = String(status || "").toLowerCase();
+    if (value.includes("inactive")) return "inactive";
+    if (value.includes("locked")) return "locked";
+    if (value.includes("review")) return "review";
+    return "active";
   };
 
   return (
-    <section className="ema-settings-table">
-
-          <style>{`
-            .ema-settings-table {
-              width: 100% !important;
-              height: auto !important;
-              min-height: 0 !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              display: block !important;
-              position: relative !important;
-              border: 1px solid #d9e5f5 !important;
-              border-radius: 16px !important;
-              background: #fff !important;
-              overflow: hidden !important;
-            }
-            .ema-settings-table .ema-data-toolbar {
-              width: 100% !important;
-              min-height: 66px !important;
-              height: 66px !important;
-              margin: 0 !important;
-              padding: 0 16px !important;
-              display: flex !important;
-              align-items: center !important;
-              justify-content: space-between !important;
-              gap: 12px !important;
-              border: 0 !important;
-              border-bottom: 1px solid #d9e5f5 !important;
-              border-radius: 0 !important;
-              background: #fff !important;
-              position: relative !important;
-              top: auto !important;
-              bottom: auto !important;
-              transform: none !important;
-              z-index: 2 !important;
-            }
-            .ema-settings-table .ema-data-search {
-              width: min(420px, 42vw) !important;
-              height: 42px !important;
-              margin: 0 !important;
-            }
-            .ema-settings-table .ema-data-actions {
-              margin-left: auto !important;
-              display: flex !important;
-              align-items: center !important;
-              justify-content: flex-end !important;
-              gap: 10px !important;
-            }
-            .ema-settings-table .ema-data-actions select,
-            .ema-settings-table .ema-data-actions button {
-              height: 38px !important;
-            }
-            .ema-settings-table .ema-data-card {
-              width: 100% !important;
-              height: auto !important;
-              min-height: 0 !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              display: grid !important;
-              grid-template-rows: 48px minmax(0, auto) 64px !important;
-              align-content: start !important;
-              border: 0 !important;
-              border-radius: 0 !important;
-              background: #fff !important;
-              overflow: hidden !important;
-              position: relative !important;
-              top: auto !important;
-              bottom: auto !important;
-              transform: none !important;
-              z-index: 1 !important;
-            }
-            .ema-settings-table .ema-data-head {
-              height: 48px !important;
-              min-height: 48px !important;
-              display: grid !important;
-              align-items: center !important;
-              border-bottom: 1px solid #d9e5f5 !important;
-              background: #fbfdff !important;
-            }
-            .ema-settings-table .ema-data-body {
-              min-height: 0 !important;
-              height: auto !important;
-              max-height: calc(100vh - 430px) !important;
-              display: block !important;
-              overflow-y: auto !important;
-              overflow-x: hidden !important;
-              background: #fff !important;
-              position: relative !important;
-              top: auto !important;
-              bottom: auto !important;
-              transform: none !important;
-            }
-            .ema-settings-table .ema-data-row {
-              height: 58px !important;
-              min-height: 58px !important;
-              display: grid !important;
-              align-items: center !important;
-              border-bottom: 1px solid #d9e5f5 !important;
-              background: #fff !important;
-            }
-            .ema-settings-table .ema-data-footer {
-              height: 64px !important;
-              min-height: 64px !important;
-              padding: 0 16px !important;
-              display: grid !important;
-              grid-template-columns: minmax(0, 1fr) auto auto !important;
-              align-items: center !important;
-              gap: 14px !important;
-              border-top: 1px solid #d9e5f5 !important;
-              background: #fff !important;
-            }
-            .ema-settings-table .ema-pagination-controls,
-            .ema-settings-table .ema-row-actions {
-              display: flex !important;
-              align-items: center !important;
-              gap: 8px !important;
-            }
-            .ema-settings-table .ema-row-actions { justify-content: flex-end !important; }
-            .ema-settings-table .ema-page-btn,
-            .ema-settings-table .ema-page-current,
-            .ema-settings-table .ema-action-btn {
-              width: 34px !important;
-              height: 34px !important;
-              border-radius: 10px !important;
-            }
-          `}</style>
-      <div className="ema-data-toolbar">
-        <label className="ema-data-search">
+    <div>
+      <div>
+        <label>
           <SearchSvg />
-          <input value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Search users by username, email or role..." />
+          <input
+            placeholder="Search users by name, email, username or role..."
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+          />
         </label>
-        <div className="ema-data-actions">
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+
+        <div>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="User status filter">
             <option>All Status</option>
             <option>Active</option>
             <option>Review</option>
             <option>Locked</option>
             <option>Inactive</option>
           </select>
-          <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
+
+          <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} aria-label="User role filter">
             <option>All Roles</option>
             {roleOptions.map((role) => <option key={role}>{role}</option>)}
           </select>
+        </div>
+
+        <div>
           <button type="button" onClick={onReload} disabled={loading}>{loading ? "Loading..." : "Refresh"}</button>
           <button type="button" onClick={onAdd}>Add New User</button>
         </div>
       </div>
 
-      {error && (<div className="ema-settings-alert"><strong>User access load error</strong><span>{error}</span></div>)}
+      {error && (
+        <div>
+          <strong>User access load error</strong>
+          <span>{error}</span>
+        </div>
+      )}
 
-      <div className="ema-data-card">
-        <div className="ema-data-head" style={{ gridTemplateColumns: userGrid }}>
-          <div>No.</div><div>User</div><div>Roles</div><div>MFA</div><div>Status</div><div>Last Login</div><div>Action</div>
+      <div>
+        <div>
+          <div>No</div>
+          <div>User</div>
+          <div>Roles</div>
+          <div>MFA</div>
+          <div>Status</div>
+          <div>Last Login</div>
+          <div>Action</div>
         </div>
-        <div className="ema-data-body">
-          {loading && <div className="ema-data-empty">Loading user access records...</div>}
-          {!loading && filteredRows.length === 0 && <div className="ema-data-empty">No user access record found.</div>}
-          {!loading && rows.map((user, index) => {
-            const actualIndex = getActualIndex(user);
-            const roles = normalizeUserRoles(user.roles || user.role || user.roleName);
-            const visibleRoles = roles.slice(0, 2);
-            const hiddenRoleCount = Math.max(roles.length - visibleRoles.length, 0);
-            const status = getDisplayStatus(user);
-            const tone = String(status).toLowerCase().includes("inactive") || String(status).toLowerCase().includes("locked") ? "inactive" : String(status).toLowerCase().includes("review") ? "required" : "active";
-            const isMfa = Boolean(user.requireMFA || user.mfa);
-            return (
-              <div className="ema-data-row" style={{ gridTemplateColumns: userGrid }} key={String(user.id || user.userID || user.email) + "-" + actualIndex}>
-                <div><span className="ema-data-no">{String(start + index + 1).padStart(2, "0")}</span></div>
-                <div><div className="ema-data-profile"><i>{initials(user.name || user.username || user.email || "U")}</i><div><strong>{user.name || user.username || "Unnamed User"}</strong><small>{user.email || user.username || "No email set"}</small></div></div></div>
-                <div><div className="ema-data-chip-list">{visibleRoles.length === 0 && <span className="ema-data-pill standard">No Role</span>}{visibleRoles.map((role) => <span className="ema-data-pill" key={role}>{role}</span>)}{hiddenRoleCount > 0 && <span className="ema-data-pill standard">+{hiddenRoleCount}</span>}</div></div>
-                <div><span className={"ema-data-pill " + (isMfa ? "active" : "standard")}>{isMfa ? "On" : "Off"}</span></div>
-                <div><span className={"ema-data-pill " + tone}><span className="ema-data-pill-dot" />{status}</span></div>
-                <div><span className="ema-data-date">{formatUserDate(user.lastLoginAt)}</span></div>
-                <div><div className="ema-row-actions"><button className="ema-action-btn ema-action-btn-edit" type="button" onClick={() => onEdit(actualIndex)} title="Edit"><PencilSvg /></button><button className="ema-action-btn ema-action-btn-delete" type="button" onClick={() => onDelete(actualIndex)} title="Delete"><TrashSvg /></button></div></div>
-              </div>
-            );
-          })}
-        </div>
-        {!loading && filteredRows.length > 0 && (
-          <footer className="ema-data-footer">
-            <div className="ema-pagination-summary">Showing {filteredRows.length ? start + 1 : 0} to {Math.min(start + rows.length, filteredRows.length)} of {filteredRows.length} users</div>
-            <div className="ema-pagination-controls"><button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safePage === 1}><EmaPageFirstIcon /></button><button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safePage === 1}><EmaPagePrevIcon /></button><span className="ema-page-current">{safePage}</span><button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safePage === totalPages}><EmaPageNextIcon /></button><button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safePage === totalPages}><EmaPageLastIcon /></button></div>
-            <div className="ema-page-size">{pageSize} / page</div>
-          </footer>
+
+        {loading && (
+          <div>Loading user access records from EMA_Users...</div>
         )}
+
+        {!loading && filteredUsers.length === 0 && (
+          <div>No user access record found.</div>
+        )}
+
+        {!loading && paginatedUsers.map((user, index) => {
+          const actualIndex = getActualIndex(user);
+          const isMfa = Boolean(user.requireMFA || user.mfa);
+          const roles = normalizeUserRoles(user.roles || user.role || user.roleName);
+          const visibleRoles = roles.slice(0, 2);
+          const hiddenRoleCount = Math.max(roles.length - visibleRoles.length, 0);
+          const statusTone = getStatusTone(user.status);
+
+          return (
+            <div data-user-index={actualIndex} key={`${user.id || user.email}-${actualIndex}`}>
+              <div><span>{String(pageStartIndex + index + 1).padStart(2, "0")}</span></div>
+
+              <div>
+                <div>
+                  <i>{initials(user.name || user.username || user.email || "U")}</i>
+                  <div>
+                    <strong>{user.name || user.username || "Unnamed User"}</strong>
+                    <small>{user.email || user.username || "No email set"}</small>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div>
+                  {visibleRoles.length === 0 && <span>No Role</span>}
+                  {visibleRoles.map((role) => <span key={role}>{role}</span>)}
+                  {hiddenRoleCount > 0 && <span>+{hiddenRoleCount}</span>}
+                </div>
+              </div>
+
+              <div>
+                <span>{isMfa ? "On" : "Off"}</span>
+              </div>
+
+              <div>
+                <span>
+                  <span />
+                  {user.status || "Active"}
+                </span>
+              </div>
+
+              <div>
+                <span>{formatUserDate(user.lastLoginAt)}</span>
+              </div>
+
+              <div>
+                <div>
+                  <button type="button" onClick={() => onEdit(actualIndex)} aria-label="Edit user access" title="Edit">
+                    <PencilSvg />
+                  </button>
+                  <button type="button" onClick={() => onDelete(actualIndex)} aria-label="Delete user access" title="Delete">
+                    <TrashSvg />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
-    </section>
+
+      {!loading && filteredUsers.length > 0 && (
+        <div>
+          <div>
+            Showing {showingFrom} to {showingTo} of {filteredUsers.length} users
+          </div>
+
+          <div aria-label="User access pagination">
+            <button type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span>{safeCurrentPage}</span>
+            <button type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+          </div>
+
+          <div>{pageSize} / page</div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -5364,14 +5074,14 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
   const coverage = totalPossible ? Math.round((enabledCount / totalPossible) * 100) : 0;
 
   return (
-    <div className="settings-v2-module-content">
-      <div className="settings-v2-module-toolbar">
-        <div className="settings-v2-module-info">
+    <div>
+      <div>
+        <div>
           <strong>Module Permission Matrix</strong>
           <span>Turn module and submodule access on or off for each active role.</span>
         </div>
 
-        <div className="settings-v2-module-stats">
+        <div>
           <div><span>Modules</span><strong>{modules.length}</strong></div>
           <div><span>Roles</span><strong>{roles.length}</strong></div>
           <div><span>Coverage</span><strong>{coverage}%</strong></div>
@@ -5381,31 +5091,31 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
       </div>
 
       {error && (
-        <div className="settings-v2-alert">
+        <div>
           <strong>Module access load error</strong>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="settings-v2-module-matrix" style={matrixStyle}>
-        <div className="settings-v2-module-head">
+      <div style={matrixStyle}>
+        <div>
           <div>No</div>
           <div>Module</div>
           {roles.length > 0 ? roles.map((role) => (
-            <div className="settings-v2-module-role-head" key={String(getAccessRoleId(role))}>
+            <div key={String(getAccessRoleId(role))}>
               <span>{role.name}</span>
             </div>
-          )) : <div className="settings-v2-module-role-head"><span>Roles</span></div>}
+          )) : <div><span>Roles</span></div>}
         </div>
 
-        {loading && <div className="settings-v2-loading">Loading module access from EMA_Modules...</div>}
-        {!loading && moduleRows.length === 0 && <div className="settings-v2-empty">No module records found.</div>}
-        {!loading && roles.length === 0 && moduleRows.length > 0 && <div className="settings-v2-empty">No active roles found. Create active roles in Role Based Control first.</div>}
+        {loading && <div>Loading module access from EMA_Modules...</div>}
+        {!loading && moduleRows.length === 0 && <div>No module records found.</div>}
+        {!loading && roles.length === 0 && moduleRows.length > 0 && <div>No active roles found. Create active roles in Role Based Control first.</div>}
 
         {!loading && roles.length > 0 && pageRows.map((row) => {
           if (row.type === "group") {
             return (
-              <div className="settings-v2-module-group" key={`group-${row.groupName}`}>
+              <div key={`group-${row.groupName}`}>
                 <span>{row.groupName}</span>
               </div>
             );
@@ -5416,11 +5126,11 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
           const rowNumber = pageStartModuleIndex + displayCounter;
 
           return (
-            <div className={`settings-v2-module-row ${row.isSubmodule ? "submodule" : ""}`} key={String(getModuleId(module))}>
-              <div><span className="settings-v2-row-no">{String(rowNumber).padStart(2, "0")}</span></div>
+            <div key={String(getModuleId(module))}>
+              <div><span>{String(rowNumber).padStart(2, "0")}</span></div>
 
               <div>
-                <div className="settings-v2-module-name">
+                <div>
                   <i>{row.isSubmodule ? "S" : "M"}</i>
                   <div>
                     <strong>{module.moduleName}</strong>
@@ -5436,9 +5146,8 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
                 const enabled = hasModulePermission(permissions, module, role);
 
                 return (
-                  <div className="settings-v2-module-toggle-cell" key={key}>
+                  <div key={key}>
                     <button
-                      className={`settings-v2-module-toggle ${enabled ? "enabled" : "disabled"}`}
                       type="button"
                       disabled={savingKey === key}
                       title={`${enabled ? "Disable" : "Enable"} ${module.moduleName} for ${role.name}`}
@@ -5457,25 +5166,23 @@ function ModuleMatrixContent({ roles, modules, permissions, loading, error, sear
       </div>
 
       {!loading && moduleRows.length > 0 && (
-        <div className="ema-pagination">
-          <div className="ema-pagination-summary">Showing {showingFrom} to {showingTo} of {moduleRows.length} modules</div>
+        <div>
+          <div>Showing {showingFrom} to {showingTo} of {moduleRows.length} modules</div>
 
-          <div className="ema-pagination-controls" aria-label="Module control pagination">
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
-            <span className="ema-page-current">{safeCurrentPage}</span>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
-            <button className="ema-page-btn" type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+          <div aria-label="Module control pagination">
+            <button type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span>{safeCurrentPage}</span>
+            <button type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
           </div>
 
-          <div className="ema-page-size">{pageSize} / page</div>
+          <div>{pageSize} / page</div>
         </div>
       )}
     </div>
   );
 }
-
-
 
 function AccessControlContent({ policies, loading, error, onReload, onAdd, onEdit }: { policies: AccessPolicy[]; loading: boolean; error: string; onReload: () => void; onAdd: () => void; onEdit: (index: number) => void }) {
   const [currentPage, setCurrentPage] = useState(1);
@@ -5618,7 +5325,6 @@ function AccessControlContent({ policies, loading, error, onReload, onAdd, onEdi
     </div>
   );
 }
-
 
 function AuditContent(props: any) {
   const {
@@ -5795,6 +5501,7 @@ function AuditContent(props: any) {
 }
 
 
+
 function PricingContent(props: PricingContentProps) {
   const {
     search,
@@ -5963,7 +5670,6 @@ function PricingContent(props: PricingContentProps) {
 
               <div>
                 <button
-                 
                   type="button"
                   aria-label="Toggle exclude from CAPEX"
                   onClick={() => onChange(row.id, { IsExcluded: !row.IsExcluded })}
@@ -5976,7 +5682,6 @@ function PricingContent(props: PricingContentProps) {
               <div>
                 <div>
                   <button
-                   
                     type="button"
                     onClick={() => onSaveRow(row.id)}
                     disabled={rowSaving}
@@ -5987,7 +5692,6 @@ function PricingContent(props: PricingContentProps) {
                   </button>
 
                   <button
-                   
                     type="button"
                     title="Delete pricing row"
                     onClick={() => onRequestDelete(row)}
@@ -6021,6 +5725,7 @@ function PricingContent(props: PricingContentProps) {
     </div>
   );
 }
+
 
 
 function ManagementPolicyContent({ values, profile, loading, saving, error, onChange, onReload, onReset, onSave }: ManagementPolicyContentProps) {
@@ -6153,6 +5858,7 @@ function ManagementPolicyContent({ values, profile, loading, saving, error, onCh
 }
 
 
+
 function AgingContent({
   rule,
   loading,
@@ -6209,7 +5915,6 @@ function AgingContent({
               </div>
 
               <button
-               
                 aria-label="Toggle PC aging rule"
                 type="button"
                 onClick={() => onChange({ enabled: !rule.enabled })}
@@ -6357,6 +6062,7 @@ function AgingContent({
     </div>
   );
 }
+
 
 
 function AgingThresholdLine({ label, help, value, display, tone, onChange }: { label: string; help: string; value: number; display: string; tone?: "blue" | "amber" | "red"; onChange: (value: number) => void }) {
@@ -7001,6 +6707,7 @@ function AccessPolicyModal(props: any) {
 
   return typeof document !== "undefined" ? createPortal(modalNode, document.body) : modalNode;
 }
+
 
 
 function AccessPolicyDeleteConfirmModal({ target, onCancel, onConfirm }: { target: { policy: AccessPolicy; index: number } | null; onCancel: () => void; onConfirm: () => void }) {

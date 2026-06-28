@@ -48,7 +48,6 @@ import restrictionService, {
   WhitelistSoftware,
 } from '../services/restrictionService';
 
-
 type SubTab = 'status' | 'settings' | 'policyStatus';
 type NoticeTone = 'success' | 'warning' | 'error' | 'info';
 type NoticeState = { id: number; text: string; tone: NoticeTone } | null;
@@ -190,25 +189,25 @@ function CompactPagination({
   });
 
   return (
-    <div className="">
-      <span className="">{start}-{end} of {totalCount}</span>
-      <div className="" aria-label="Pagination controls">
-        <button type="button" className="" disabled={safePage === 1} onClick={() => onPageChange(safePage - 1)}>
+    <div>
+      <span>{start}-{end} of {totalCount}</span>
+      <div aria-label="Pagination controls">
+        <button type="button" disabled={safePage === 1} onClick={() => onPageChange(safePage - 1)}>
           Prev
         </button>
         {pages.map((item, index) => {
           const previous = pages[index - 1];
           const needsGap = previous && item - previous > 1;
           return (
-            <span key={item} className="">
-              {needsGap && <span className="">...</span>}
-              <button type="button" className="" onClick={() => onPageChange(item)}>
+            <span key={item}>
+              {needsGap && <span>...</span>}
+              <button type="button" onClick={() => onPageChange(item)}>
                 {item}
               </button>
             </span>
           );
         })}
-        <button type="button" className="" disabled={safePage === totalPages} onClick={() => onPageChange(safePage + 1)}>
+        <button type="button" disabled={safePage === totalPages} onClick={() => onPageChange(safePage + 1)}>
           Next
         </button>
       </div>
@@ -252,11 +251,10 @@ function AppButton({
   return (
     <button
       type="button"
-      className=""
       disabled={disabled || loading}
       {...props}
     >
-      {loading ? <Loader2 size={13} className="" /> : leftIcon}
+      {loading ? <Loader2 size={13} /> : leftIcon}
       {children}
     </button>
   );
@@ -296,17 +294,16 @@ function AppTable<RowType extends { [key: string]: any }>({
   const pageEnd = Math.min(rows.length, startIndex + APPWEB_TABLE_PAGE_SIZE);
 
   return (
-    <div className="">
-      {summary && <div className="">{summary}</div>}
-      <div className="">
-        <table className="">
+    <div>
+      {summary && <div>{summary}</div>}
+      <div>
+        <table>
           <thead>
             <tr>
               {columns.map((column) => (
                 <th
                   key={String(column.key)}
-                  style={{}}
-                  className=""
+                  style={{ width: column.width }}
                 >
                   {column.header}
                 </th>
@@ -316,17 +313,17 @@ function AppTable<RowType extends { [key: string]: any }>({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={columns.length} className="">
-                  <span className="">
-                    <Loader2 size={16} className="" /> Loading records...
+                <td colSpan={columns.length}>
+                  <span>
+                    <Loader2 size={16} /> Loading records...
                   </span>
                 </td>
               </tr>
             ) : pagedRows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="">
-                  <div className="">{emptyTitle}</div>
-                  <div className="">{emptyDescription}</div>
+                <td colSpan={columns.length}>
+                  <div>{emptyTitle}</div>
+                  <div>{emptyDescription}</div>
                 </td>
               </tr>
             ) : (
@@ -337,7 +334,6 @@ function AppTable<RowType extends { [key: string]: any }>({
                     return (
                       <td
                         key={String(column.key)}
-                        className=""
                       >
                         {value as ReactNode}
                       </td>
@@ -351,25 +347,25 @@ function AppTable<RowType extends { [key: string]: any }>({
       </div>
 
       {rows.length > APPWEB_TABLE_PAGE_SIZE && (
-        <div className="">
-          <span className="">{pageStart}-{pageEnd} of {rows.length}</span>
-          <div className="" aria-label="Table pagination controls">
-            <button type="button" className="" disabled={safePage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
+        <div>
+          <span>{pageStart}-{pageEnd} of {rows.length}</span>
+          <div aria-label="Table pagination controls">
+            <button type="button" disabled={safePage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
               Prev
             </button>
             {pages.map((item, index) => {
               const previous = pages[index - 1];
               const needsGap = previous && item - previous > 1;
               return (
-                <span key={item} className="">
-                  {needsGap && <span className="">...</span>}
-                  <button type="button" className="" onClick={() => setPage(item)}>
+                <span key={item}>
+                  {needsGap && <span>...</span>}
+                  <button type="button" onClick={() => setPage(item)}>
                     {item}
                   </button>
                 </span>
               );
             })}
-            <button type="button" className="" disabled={safePage === totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>
+            <button type="button" disabled={safePage === totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>
               Next
             </button>
           </div>
@@ -1808,7 +1804,7 @@ export default function AppRestriction() {
   };
 
   const renderTree = (nodes: RestrictionTreeNode[], depth = 0) => (
-    <div className="">
+    <div>
       {nodes.map((node) => {
         const hasChildren = Boolean(node.children?.length);
         const isOpen = expandedGroups.has(node.id);
@@ -1826,11 +1822,10 @@ export default function AppRestriction() {
         };
 
         return (
-          <div key={node.id} className="">
-            <div className="">
+          <div key={node.id}>
+            <div>
               <button
                 type="button"
-                className=""
                 aria-label={hasChildren ? (isOpen ? `Collapse ${displayLabel}` : `Expand ${displayLabel}`) : displayLabel}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -1842,13 +1837,12 @@ export default function AppRestriction() {
 
               <button
                 type="button"
-                className=""
                 title={node.Object_Full_Name || displayLabel}
                 onClick={handleNodeAction}
               >
-                <span className=""><Icon size={15} /></span>
-                <span className="">{displayLabel}</span>
-                {!isRootNode && countLabel ? <span className="">{countLabel}</span> : null}
+                <span><Icon size={15} /></span>
+                <span>{displayLabel}</span>
+                {!isRootNode && countLabel ? <span>{countLabel}</span> : null}
               </button>
 
               <span />
@@ -1863,11 +1857,317 @@ export default function AppRestriction() {
 
 
   return (
-    <main className="" data-section="appwebrestriction">
-{notice && (
-        <div className="">
-          <div className="">
-            <span className=""><Info size={17} /></span>
+    <main data-section="appwebrestriction">
+      <style>{`
+
+
+        /* Hardware sidebar fix: wider panel + keep Branch/Statistics switcher compact. */
+        .hardware-module-root .settings-layout.hardware-settings-layout {
+          grid-template-columns: minmax(300px, 322px) minmax(0, 1fr) !important;
+        }
+
+        .hardware-module-root .settings-menu.hardware-left-panel {
+          min-width: 300px !important;
+        }
+
+        .hardware-module-root .settings-menu > .ema-module-sidebar-switcher {
+          flex: 0 0 auto !important;
+          margin: 0 !important;
+        }
+
+        .hardware-module-root .settings-menu > .ema-sidebar-content {
+          flex: 1 1 auto !important;
+          padding-top: 0.65rem !important;
+        }
+
+        .hardware-module-root .ema-sidebar-subpanel {
+          justify-content: flex-start !important;
+        }
+
+        .hardware-module-root .ema-sidebar-tree {
+          min-height: 0 !important;
+        }
+
+
+        /* Sidebar search fix: keep only one visible search container. */
+        .hardware-module-root .settings-menu.hardware-left-panel .ema-sidebar-field.section-search {
+          width: 100% !important;
+          display: flex !important;
+          align-items: center !important;
+          gap: 0.5rem !important;
+          min-height: 42px !important;
+          padding: 0.55rem 0.65rem !important;
+          border: 1px solid rgba(148, 163, 184, 0.32) !important;
+          border-radius: 14px !important;
+          background: rgba(248, 250, 252, 0.92) !important;
+          box-shadow: none !important;
+        }
+
+        .hardware-module-root .settings-menu.hardware-left-panel .ema-sidebar-field.section-search svg {
+          flex: 0 0 auto !important;
+          color: #64748b !important;
+        }
+
+        .hardware-module-root .settings-menu.hardware-left-panel .ema-sidebar-field.section-search input {
+          flex: 1 1 auto !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          height: auto !important;
+          min-height: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+          outline: none !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          color: #0f172a !important;
+        }
+
+        .hardware-module-root .settings-menu.hardware-left-panel .ema-sidebar-field.section-search input:focus,
+        .hardware-module-root .settings-menu.hardware-left-panel .ema-sidebar-field.section-search input:focus-visible {
+          border: 0 !important;
+          outline: none !important;
+          background: transparent !important;
+          box-shadow: none !important;
+        }
+
+        .hardware-module-root .settings-menu.hardware-left-panel .ema-sidebar-search-clear {
+          flex: 0 0 auto !important;
+          width: 24px !important;
+          height: 24px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 0 !important;
+          border: 0 !important;
+          border-radius: 999px !important;
+          background: transparent !important;
+          color: #64748b !important;
+          box-shadow: none !important;
+        }
+
+        .hardware-module-root .settings-menu.hardware-left-panel .ema-sidebar-search-clear:hover {
+          background: rgba(148, 163, 184, 0.16) !important;
+          color: #0f172a !important;
+        }
+
+
+
+        /* App Restriction hero KPI fix: keep header KPI cards above the main card after save/toast messages. */
+        .appwebrestriction-module .settings-hero.ema-hero-kpi-right {
+          position: relative !important;
+          z-index: 5 !important;
+          display: grid !important;
+          grid-template-columns: minmax(260px, 1fr) minmax(560px, 58%) !important;
+          align-items: center !important;
+          gap: 1rem !important;
+          min-height: 124px !important;
+          overflow: hidden !important;
+          isolation: isolate !important;
+        }
+
+        .appwebrestriction-module .settings-hero.ema-hero-kpi-right > div:first-child {
+          min-width: 0 !important;
+          position: relative !important;
+          z-index: 2 !important;
+        }
+
+        .appwebrestriction-module .settings-hero.ema-hero-kpi-right h2,
+        .appwebrestriction-module .settings-hero.ema-hero-kpi-right p {
+          max-width: 100% !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+        }
+
+        .appwebrestriction-module .settings-hero.ema-hero-kpi-right .settings-inline-alert {
+          display: none !important;
+        }
+
+        .appwebrestriction-module .settings-score.ema-kpi-right-pair {
+          position: relative !important;
+          z-index: 6 !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          display: grid !important;
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          gap: 0.75rem !important;
+          align-items: stretch !important;
+          justify-content: stretch !important;
+        }
+
+        .appwebrestriction-module .settings-score.ema-kpi-right-pair .score-box {
+          width: 100% !important;
+          min-width: 0 !important;
+          min-height: 76px !important;
+          height: 76px !important;
+          margin: 0 !important;
+          overflow: hidden !important;
+        }
+
+        .appwebrestriction-module .settings-score.ema-kpi-right-pair .score-box span,
+        .appwebrestriction-module .settings-score.ema-kpi-right-pair .score-box strong,
+        .appwebrestriction-module .settings-score.ema-kpi-right-pair .score-box small {
+          max-width: 100% !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+        }
+
+        .appwebrestriction-module .appweb-main-card {
+          position: relative !important;
+          z-index: 1 !important;
+        }
+
+        @media (max-width: 1280px) {
+          .appwebrestriction-module .settings-hero.ema-hero-kpi-right {
+            grid-template-columns: 1fr !important;
+            min-height: auto !important;
+            overflow: visible !important;
+          }
+
+          .appwebrestriction-module .settings-score.ema-kpi-right-pair {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          }
+        }
+
+
+
+        /* App Restriction pagination fix: keep every pagination control in one clean row. */
+        .appwebrestriction-module .appweb-compact-pagination {
+          width: 100% !important;
+          min-width: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 0.75rem !important;
+          flex-wrap: nowrap !important;
+          margin: 0 !important;
+          padding: 0.72rem 0.95rem !important;
+          border-top: 1px solid rgba(226, 232, 240, 0.95) !important;
+          background: rgba(248, 250, 252, 0.92) !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          scrollbar-width: thin !important;
+        }
+
+        .appwebrestriction-module .appweb-compact-pagination .appweb-page-range {
+          flex: 0 0 auto !important;
+          min-width: max-content !important;
+          margin: 0 !important;
+          white-space: nowrap !important;
+          font-size: 0.72rem !important;
+          font-weight: 800 !important;
+          color: #64748b !important;
+        }
+
+        .appwebrestriction-module .appweb-page-controls {
+          flex: 0 0 auto !important;
+          min-width: max-content !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: flex-end !important;
+          gap: 0.45rem !important;
+          white-space: nowrap !important;
+        }
+
+        .appwebrestriction-module .appweb-page-item {
+          flex: 0 0 auto !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 0.35rem !important;
+          margin: 0 !important;
+          white-space: nowrap !important;
+        }
+
+        .appwebrestriction-module .appweb-page-gap {
+          flex: 0 0 auto !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          min-width: 22px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          color: #64748b !important;
+        }
+
+        .appwebrestriction-module .appweb-compact-pagination .uam-page-icon {
+          flex: 0 0 auto !important;
+          width: auto !important;
+          min-width: 34px !important;
+          height: 34px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          margin: 0 !important;
+          padding: 0 0.7rem !important;
+          border-radius: 999px !important;
+          white-space: nowrap !important;
+          line-height: 1 !important;
+        }
+
+        .appwebrestriction-module .appweb-compact-pagination .uam-page-current {
+          min-width: 34px !important;
+          width: 34px !important;
+          padding: 0 !important;
+        }
+
+        .appwebrestriction-module .pricing-table-card .appweb-table-pagination {
+          border-top: 1px solid rgba(226, 232, 240, 0.95) !important;
+          border-radius: 0 0 16px 16px !important;
+        }
+
+        .appwebrestriction-module .pricing-table-card .appweb-table-pagination .appweb-page-controls {
+          gap: 0.5rem !important;
+        }
+
+        .appwebrestriction-module .appweb-list-panel .appweb-compact-pagination {
+          border-top: 1px solid rgba(226, 232, 240, 0.95) !important;
+          border-radius: 0 0 16px 16px !important;
+        }
+
+        .appwebrestriction-module .appweb-list-panel .appweb-list-scroll {
+          min-height: 0 !important;
+          max-height: 432px !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+        }
+
+        .appwebrestriction-module .appweb-list-panel .user-row {
+          min-width: 0 !important;
+        }
+
+        @media (max-width: 900px) {
+          .appwebrestriction-module .appweb-compact-pagination {
+            align-items: flex-start !important;
+            flex-direction: column !important;
+            gap: 0.55rem !important;
+          }
+
+          .appwebrestriction-module .appweb-page-controls {
+            width: 100% !important;
+            justify-content: flex-start !important;
+            overflow-x: auto !important;
+            padding-bottom: 0.1rem !important;
+          }
+        }
+
+        @media (max-width: 1100px) {
+          .hardware-module-root .settings-layout.hardware-settings-layout {
+            grid-template-columns: 1fr !important;
+          }
+
+          .hardware-module-root .settings-menu.hardware-left-panel {
+            min-width: 0 !important;
+          }
+        }
+
+      `}</style>
+      {notice && (
+        <div>
+          <div>
+            <span><Info size={17} /></span>
             <div>
               <strong>
                 {notice.tone === 'error' ? 'Action failed' : notice.tone === 'warning' ? 'Action needed' : notice.tone === 'info' ? 'Status update' : 'Action completed'}
@@ -1880,16 +2180,15 @@ export default function AppRestriction() {
           </div>
         </div>
       )}
-      <div className="">
-        <aside className="">
-          <div className="">
+      <div>
+        <aside>
+          <div>
             <span>APP RESTRICTION</span>
             <strong>Restriction Control</strong>
             <small>Device scope and application policies.</small>
           </div>
 
           <nav
-            className=""
             role="tablist"
             aria-label="Restriction module navigation"
           >
@@ -1900,7 +2199,6 @@ export default function AppRestriction() {
                 <button
                   key={item.id}
                   type="button"
-                  className=""
                   title={`${item.label} - ${item.helper}`}
                   onClick={() => {
                     setActiveModule(item.id);
@@ -1909,16 +2207,16 @@ export default function AppRestriction() {
                     setMessage(null);
                   }}
                 >
-                  <span className=""><Icon size={16} /></span>
+                  <span><Icon size={16} /></span>
                   <span><strong>{item.label}</strong><small>{item.helper}</small></span>
                 </button>
               );
             })}
           </nav>
 
-          <div className="">
-            <div className="">
-              <div className="">
+          <div>
+            <div>
+              <div>
                 <Search size={15} />
                 <input
                   id="restrictionSidebarSearch"
@@ -1926,26 +2224,26 @@ export default function AppRestriction() {
                   onChange={(event) => setTargetTreeSearch(event.target.value)}
                   placeholder="Search branch / device..."
                 />
-                {targetTreeSearch && <button type="button" className="" onClick={() => setTargetTreeSearch('')}><X size={14} /></button>}
+                {targetTreeSearch && <button type="button" onClick={() => setTargetTreeSearch('')}><X size={14} /></button>}
               </div>
 
-              <div className="" role="tree" aria-label="App restriction branch tree">
+              <div role="tree" aria-label="App restriction branch tree">
                 {loading && treeNodes.length === 0 ? (
-                  <div className=""><Loader2 className="" size={14} /> Loading branch scope...</div>
+                  <div><Loader2 size={14} /> Loading branch scope...</div>
                 ) : filteredTreeNodes.length > 0 ? (
                   renderTree(filteredTreeNodes)
                 ) : (
-                  <div className="">No branch or device found.</div>
+                  <div>No branch or device found.</div>
                 )}
               </div>
             </div>
           </div>
         </aside>
 
-        <section className="">
-          <div className="">
+        <section>
+          <div>
             <div>
-              <div className="">
+              <div>
                 <span>Policy Management</span>
                 <ChevronRight size={12} />
                 <span>{moduleConfig.label}</span>
@@ -1957,9 +2255,9 @@ export default function AppRestriction() {
               </p>
             </div>
 
-            <div className="">
+            <div>
               {summaryCards.map((card) => (
-                <button key={card.label} className="" type="button">
+                <button key={card.label} type="button">
                   <span>{card.label}</span>
                   <strong>{card.value}</strong>
                   <small>{card.helper}</small>
@@ -1970,15 +2268,15 @@ export default function AppRestriction() {
 
 
 
-          <div className="">
-            <div className="">
-              <div className="">
+          <div>
+            <div>
+              <div>
                 {moduleConfig.tabs.map((tab) => (
                   <button
                     key={tab}
                     type="button"
                     onClick={() => setActiveTab(tab)}
-                    className=""
+                    className={clsx('soft-btn', activeTab === tab && 'is-active')}
                   >
                     {tabLabels[tab]}
                   </button>
@@ -1986,11 +2284,10 @@ export default function AppRestriction() {
               </div>
 
               {(activeModule === 'appBlacklist' || activeModule === 'appWhitelist') && (
-                <div className="">
+                <div>
                   <button
                     type="button"
                     onClick={openPackageManager}
-                    className=""
                   >
                     <Package size={13} /> Package Manager
                   </button>
@@ -1998,7 +2295,7 @@ export default function AppRestriction() {
               )}
             </div>
 
-            <div className="">
+            <div>
               {activeTab === 'status' && activeModule !== 'webRestriction' && renderRestrictionStatus()}
               {activeTab === 'settings' && renderPolicySettings()}
               {activeTab === 'policyStatus' && renderPolicyStatus()}
@@ -2074,24 +2371,24 @@ export default function AppRestriction() {
     ];
 
     return (
-      <div className="">
-        <div className="">
-          <div className="">
-            <div className="">
-              <label className="">Start Date</label>
-              <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="" />
+      <div>
+        <div>
+          <div>
+            <div>
+              <label>Start Date</label>
+              <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="setting-input" />
             </div>
-            <div className="">
-              <label className="">End Date</label>
-              <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="" />
+            <div>
+              <label>End Date</label>
+              <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="setting-input" />
             </div>
-            <div className="">
-              <label className="">
-                <input className="" type="checkbox" checked={includeSub} onChange={(event) => setIncludeSub(event.target.checked)} />
-                <span className="">Include Sub-Dept</span>
+            <div>
+              <label>
+                <input type="checkbox" checked={includeSub} onChange={(event) => setIncludeSub(event.target.checked)} />
+                <span>Include Sub-Dept</span>
               </label>
             </div>
-            <div className="">
+            <div>
               <AppButton size="sm" variant="primary" onClick={loadPolicyData} loading={loading} leftIcon={<RefreshCw size={13} />}>
                 Refresh
               </AppButton>
@@ -2110,10 +2407,10 @@ export default function AppRestriction() {
           summary={(
             <>
               <div>
-                <strong className="">{statusTitle}</strong>
+                <strong>{statusTitle}</strong>
                 <span>{selectedTarget?.label || 'All Branches'} · {startDate} until {endDate}</span>
               </div>
-              <span className="">
+              <span>
                 {loading ? 'Loading...' : `${rows.length} record${rows.length === 1 ? '' : 's'}`}
               </span>
             </>
@@ -2125,7 +2422,7 @@ export default function AppRestriction() {
 
   function renderPolicyActionButtons() {
     return (
-      <div className="">
+      <div>
         <AppButton
           size="sm"
           variant="secondary"
@@ -2150,42 +2447,42 @@ export default function AppRestriction() {
 
   function renderBasicSettingsSection(layout: 'default' | 'whitelist' = 'default') {
     return (
-      <section className="">
-        <div className="">
+      <section>
+        <div>
           <div>
             <h4>Basic Setting</h4>
             <p>Policy assignment, update interval and inheritance control.</p>
           </div>
-          <span className="">
+          <span>
             {policyDetail?.source || 'none'} policy
           </span>
         </div>
 
-        <div className="">
-          <div className="">
-            <label className="">Policy ID</label>
-            <input value={form.policyId || 'New Policy'} disabled className="" />
+        <div>
+          <div>
+            <label>Policy ID</label>
+            <input value={form.policyId || 'New Policy'} disabled />
           </div>
-          <div className="">
-            <label className="">Result Update Interval (min.)</label>
-            <input value={form.updateInterval} onChange={(event) => updateForm('updateInterval', event.target.value)} disabled={isInherited} className="" />
+          <div>
+            <label>Result Update Interval (min.)</label>
+            <input value={form.updateInterval} onChange={(event) => updateForm('updateInterval', event.target.value)} disabled={isInherited} className={fieldClass} />
           </div>
-          <div className="">
-            <label className="">
-              <input className="" type="checkbox" checked={form.inheritPolicy} disabled={selectedTarget?.type === 'root'} onChange={(event) => updateForm('inheritPolicy', event.target.checked)} />
+          <div>
+            <label>
+              <input type="checkbox" checked={form.inheritPolicy} disabled={selectedTarget?.type === 'root'} onChange={(event) => updateForm('inheritPolicy', event.target.checked)} />
               <span>Inherit Policy</span>
             </label>
           </div>
-          <div className="">
-            <label className="">
-              <input className="" type="checkbox" checked={form.exception} disabled={isInherited} onChange={(event) => updateForm('exception', event.target.checked)} />
+          <div>
+            <label>
+              <input type="checkbox" checked={form.exception} disabled={isInherited} onChange={(event) => updateForm('exception', event.target.checked)} />
               <span>Do not apply restriction / Exception</span>
             </label>
           </div>
         </div>
 
         {isInherited && (
-          <div className="">
+          <div>
             This target is currently using an inherited policy{policyDetail?.sourceLabel ? ` from ${policyDetail.sourceLabel}` : ''}. Uncheck Inherit Policy to create or update a custom policy for the selected target.
           </div>
         )}
@@ -2202,13 +2499,13 @@ export default function AppRestriction() {
 
     if (activeModule === 'appWhitelist') {
       return (
-        <div className="">
-          <div className="">
+        <div>
+          <div>
             <strong>{moduleConfig.label} Policy Settings</strong>
             <span>{settingsIntro}</span>
           </div>
 
-          <div className="">
+          <div>
             {renderBasicSettingsSection('whitelist')}
             {renderWhitelistRestrictionSettings()}
           </div>
@@ -2220,13 +2517,13 @@ export default function AppRestriction() {
     }
 
     return (
-      <div className="">
-        <div className="">
+      <div>
+        <div>
           <strong>{moduleConfig.label} Policy Settings</strong>
           <span>{settingsIntro}</span>
         </div>
 
-        <div className="">
+        <div>
           {renderBasicSettingsSection()}
           {activeModule === 'appBlacklist' && renderAppRestrictionSettings()}
           {activeModule === 'webRestriction' && renderWebRestrictionSettings()}
@@ -2249,36 +2546,36 @@ export default function AppRestriction() {
     ];
 
     return (
-      <section className="">
-        <div className="">
+      <section>
+        <div>
           <div>
             <h4>Restriction Method</h4>
             <p>Choose how the app restriction policy responds when a selected package is detected.</p>
           </div>
-          <span className="">{appRestrictionLabel(form.appRestrictType)}</span>
+          <span>{appRestrictionLabel(form.appRestrictType)}</span>
         </div>
 
-        <div className="">
+        <div>
           {options.map(([value, label, helper]) => (
-            <div key={value} className="">
-              <label className="">
-                <input className="" type="radio" name="appRestrictType" checked={form.appRestrictType === value} disabled={isInherited} onChange={() => updateForm('appRestrictType', value)} />
+            <div key={value}>
+              <label>
+                <input type="radio" name="appRestrictType" checked={form.appRestrictType === value} disabled={isInherited} onChange={() => updateForm('appRestrictType', value)} />
                 <span>
-                  <strong className="">{label}</strong>
-                  <small className="">{helper}</small>
+                  <strong>{label}</strong>
+                  <small>{helper}</small>
                 </span>
               </label>
             </div>
           ))}
         </div>
 
-        <div className="">
-          <label className="">Warning Message</label>
-          <textarea value={form.appNoticeMessage} onChange={(event) => updateForm('appNoticeMessage', event.target.value)} disabled={isInherited} className="" placeholder="Message shown to the user when this policy triggers." />
+        <div>
+          <label>Warning Message</label>
+          <textarea value={form.appNoticeMessage} onChange={(event) => updateForm('appNoticeMessage', event.target.value)} disabled={isInherited} className="setting-textarea" placeholder="Message shown to the user when this policy triggers." />
         </div>
 
-        <label className="">
-          <input className="" type="checkbox" checked={form.versionCompare} disabled={isInherited} onChange={(event) => updateForm('versionCompare', event.target.checked)} />
+        <label>
+          <input type="checkbox" checked={form.versionCompare} disabled={isInherited} onChange={(event) => updateForm('versionCompare', event.target.checked)} />
           <span>Version comparison</span>
         </label>
       </section>
@@ -2302,61 +2599,61 @@ export default function AppRestriction() {
 
     return (
       <>
-        <section className="">
-          <div className="">
+        <section>
+          <div>
             <div>
               <h4>Restriction of Process</h4>
               <p>Control process behaviour for software outside the permitted list.</p>
             </div>
-            <span className="">{whitelistProcessLabel(form.processRestrictType)}</span>
+            <span>{whitelistProcessLabel(form.processRestrictType)}</span>
           </div>
 
-          <div className="">
+          <div>
             {processOptions.map(([value, label]) => (
-              <div key={value} className="">
-                <label className="">
-                  <input className="" type="radio" name="processRestrictType" checked={form.processRestrictType === value} disabled={isInherited} onChange={() => updateForm('processRestrictType', value)} />
+              <div key={value}>
+                <label>
+                  <input type="radio" name="processRestrictType" checked={form.processRestrictType === value} disabled={isInherited} onChange={() => updateForm('processRestrictType', value)} />
                   <span>{label}</span>
                 </label>
               </div>
             ))}
           </div>
 
-          <div className="">
-            <div className="">
-              <label className="">Notice Message (max 249 characters)</label>
-              <span className="">{form.processNoticeMessage.length}/249</span>
+          <div>
+            <div>
+              <label>Notice Message (max 249 characters)</label>
+              <span>{form.processNoticeMessage.length}/249</span>
             </div>
-            <textarea maxLength={249} value={form.processNoticeMessage} onChange={(event) => updateForm('processNoticeMessage', event.target.value)} disabled={isInherited} className="" placeholder="Message shown when the process policy triggers." />
+            <textarea maxLength={249} value={form.processNoticeMessage} onChange={(event) => updateForm('processNoticeMessage', event.target.value)} disabled={isInherited} className="setting-textarea" placeholder="Message shown when the process policy triggers." />
           </div>
         </section>
 
-        <section className="">
-          <div className="">
+        <section>
+          <div>
             <div>
               <h4>Restriction of Font</h4>
               <p>Control font file handling for software outside the permitted list.</p>
             </div>
-            <span className="">{whitelistFontLabel(form.fontRestrictType)}</span>
+            <span>{whitelistFontLabel(form.fontRestrictType)}</span>
           </div>
 
-          <div className="">
+          <div>
             {fontOptions.map(([value, label]) => (
-              <div key={value} className="">
-                <label className="">
-                  <input className="" type="radio" name="fontRestrictType" checked={form.fontRestrictType === value} disabled={isInherited} onChange={() => updateForm('fontRestrictType', value)} />
+              <div key={value}>
+                <label>
+                  <input type="radio" name="fontRestrictType" checked={form.fontRestrictType === value} disabled={isInherited} onChange={() => updateForm('fontRestrictType', value)} />
                   <span>{label}</span>
                 </label>
               </div>
             ))}
           </div>
 
-          <div className="">
-            <div className="">
-              <label className="">Notice Message (max 249 characters)</label>
-              <span className="">{form.fontNoticeMessage.length}/249</span>
+          <div>
+            <div>
+              <label>Notice Message (max 249 characters)</label>
+              <span>{form.fontNoticeMessage.length}/249</span>
             </div>
-            <textarea maxLength={249} value={form.fontNoticeMessage} onChange={(event) => updateForm('fontNoticeMessage', event.target.value)} disabled={isInherited} className="" placeholder="Message shown when the font policy triggers." />
+            <textarea maxLength={249} value={form.fontNoticeMessage} onChange={(event) => updateForm('fontNoticeMessage', event.target.value)} disabled={isInherited} className="setting-textarea" placeholder="Message shown when the font policy triggers." />
           </div>
         </section>
       </>
@@ -2370,32 +2667,32 @@ export default function AppRestriction() {
     ];
 
     return (
-      <section className="">
-        <div className="">
+      <section>
+        <div>
           <div>
             <h4>Restriction Type</h4>
             <p>Choose whether the website list is treated as a block list or an allow list.</p>
           </div>
-          <span className="">{webRestrictionLabel(form.webRestrictType)}</span>
+          <span>{webRestrictionLabel(form.webRestrictType)}</span>
         </div>
 
-        <div className="">
+        <div>
           {options.map(([value, label, helper]) => (
-            <div key={value} className="">
-              <label className="">
-                <input className="" type="radio" name="webRestrictType" checked={form.webRestrictType === value} disabled={isInherited} onChange={() => updateForm('webRestrictType', value)} />
+            <div key={value}>
+              <label>
+                <input type="radio" name="webRestrictType" checked={form.webRestrictType === value} disabled={isInherited} onChange={() => updateForm('webRestrictType', value)} />
                 <span>
-                  <strong className="">{label}</strong>
-                  <small className="">{helper}</small>
+                  <strong>{label}</strong>
+                  <small>{helper}</small>
                 </span>
               </label>
             </div>
           ))}
         </div>
 
-        <div className="">
-          <label className="">Move to default URL</label>
-          <input value={form.defaultUrl} onChange={(event) => updateForm('defaultUrl', event.target.value)} disabled={isInherited} className="" placeholder="127.0.0.1" />
+        <div>
+          <label>Move to default URL</label>
+          <input value={form.defaultUrl} onChange={(event) => updateForm('defaultUrl', event.target.value)} disabled={isInherited} className={fieldClass} placeholder="127.0.0.1" />
         </div>
       </section>
     );
@@ -2403,27 +2700,27 @@ export default function AppRestriction() {
 
   function renderWeeklyAndSchedule() {
     return (
-      <section className="">
-        <div className="">
-          <div className="">
+      <section>
+        <div>
+          <div>
             <div>
               <h4>Weekly Policy</h4>
               <p>Select the days where this policy should be active.</p>
             </div>
-            <label className="">
-              <input className="" type="checkbox" checked={form.weeklyPolicy} disabled={isInherited} onChange={(event) => updateForm('weeklyPolicy', event.target.checked)} />
+            <label>
+              <input type="checkbox" checked={form.weeklyPolicy} disabled={isInherited} onChange={(event) => updateForm('weeklyPolicy', event.target.checked)} />
               <span>Enable</span>
             </label>
           </div>
 
-          <div className="">
+          <div>
             {dayOptions.map((day) => (
-              <div key={day} className="">
+              <div key={day}>
                 <button
                   type="button"
                   disabled={!form.weeklyPolicy || isInherited}
                   onClick={() => toggleDay(day)}
-                  className=""
+                  className={clsx('w-100', selectedDays.includes(day) ? 'primary-btn' : 'soft-btn')}
                 >
                   {day}
                 </button>
@@ -2432,23 +2729,23 @@ export default function AppRestriction() {
           </div>
         </div>
 
-        <div className="">
-          <div className="">
+        <div>
+          <div>
             <div>
               <h4>Restricted Time</h4>
               <p>Run the policy all day or only during selected time ranges.</p>
             </div>
-            <div className="">
-              <button type="button" disabled={isInherited} onClick={() => updateForm('useSchedule', false)} className="">All Day</button>
-              <button type="button" disabled={isInherited} onClick={() => updateForm('useSchedule', true)} className="">Schedule</button>
+            <div>
+              <button type="button" disabled={isInherited} onClick={() => updateForm('useSchedule', false)} className={clsx(!form.useSchedule ? 'primary-btn' : 'soft-btn')}>All Day</button>
+              <button type="button" disabled={isInherited} onClick={() => updateForm('useSchedule', true)} className={clsx(form.useSchedule ? 'primary-btn' : 'soft-btn')}>Schedule</button>
             </div>
           </div>
 
-          <div className="">
+          <div>
             {(['schedule1', 'schedule2', 'schedule3', 'schedule4'] as const).map((key, index) => (
-              <div key={key} className="">
-                <label className="">Schedule {index + 1} (HH:mm-HH:mm)</label>
-                <input value={form[key]} onChange={(event) => updateForm(key, event.target.value)} placeholder="09:00-18:00" disabled={!form.useSchedule || isInherited} className="" />
+              <div key={key}>
+                <label>Schedule {index + 1} (HH:mm-HH:mm)</label>
+                <input value={form[key]} onChange={(event) => updateForm(key, event.target.value)} placeholder="09:00-18:00" disabled={!form.useSchedule || isInherited} className={fieldClass} />
               </div>
             ))}
           </div>
@@ -2496,34 +2793,34 @@ export default function AppRestriction() {
     const groupUrlPagination = getPaginationState<WebGroupUrl>(webGroupUrls, webGroupUrlPage);
 
     return (
-      <section className="">
-        <div className="">
-          <div className="">
+      <section>
+        <div>
+          <div>
             <div>
               <h4>Website List</h4>
               <p>Add website domains for the selected web restriction policy.</p>
             </div>
-            <span className="">{webUrls.length} URL{webUrls.length === 1 ? '' : 's'}</span>
+            <span>{webUrls.length} URL{webUrls.length === 1 ? '' : 's'}</span>
           </div>
 
-          <div className="">
-            <input value={newUrl} onChange={(event) => setNewUrl(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && addPolicyUrl()} placeholder="example.com" disabled={isInherited} className="" />
+          <div>
+            <input value={newUrl} onChange={(event) => setNewUrl(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && addPolicyUrl()} placeholder="example.com" disabled={isInherited} className={fieldClass} />
             <AppButton size="sm" variant="primary" onClick={addPolicyUrl} disabled={isInherited} leftIcon={<Plus size={13} />}>
               Add
             </AppButton>
           </div>
 
-          <div className="">
-            <div className="">
+          <div>
+            <div>
               {webUrls.length === 0 ? (
-                <div className="">No URLs added to this policy.</div>
+                <div>No URLs added to this policy.</div>
               ) : policyUrlPagination.pageItems.map((url) => (
-                <div key={url} className="" style={{}}>
-                  <div className="">
-                    <span className=""><LinkIcon size={13} /></span>
+                <div key={url} style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}>
+                  <div>
+                    <span><LinkIcon size={13} /></span>
                     <strong>{url}</strong>
                   </div>
-                  <div className="">
+                  <div>
                     <button
                       type="button"
                       disabled={isInherited}
@@ -2531,7 +2828,7 @@ export default function AppRestriction() {
                         setWebUrls((previous) => previous.filter((item) => item !== url));
                         setMessage(`${url} removed from website list.`);
                       }}
-                      className=""
+                      className="icon-delete-btn"
                       aria-label={`Remove ${url}`}
                     >
                       <Trash2 size={13} />
@@ -2549,16 +2846,16 @@ export default function AppRestriction() {
           </div>
         </div>
 
-        <div className="">
-          <div className="">
+        <div>
+          <div>
             <div>
               <h4>Website Group</h4>
               <p>Select a saved website group and add its URLs into this policy.</p>
             </div>
-            <span className="">{webGroupUrls.length} URL{webGroupUrls.length === 1 ? '' : 's'}</span>
+            <span>{webGroupUrls.length} URL{webGroupUrls.length === 1 ? '' : 's'}</span>
           </div>
 
-          <div className="">
+          <div>
             <AppButton size="sm" variant="secondary" onClick={openWebGroupManager} leftIcon={<Globe size={13} />}>
               Edit Website Group
             </AppButton>
@@ -2567,9 +2864,9 @@ export default function AppRestriction() {
             </AppButton>
           </div>
 
-          <div className="">
-            <label className="">Website Group</label>
-            <select value={selectedWebsiteGroupId || ''} onChange={(event) => setSelectedWebsiteGroupId(Number(event.target.value) || null)} className="">
+          <div>
+            <label>Website Group</label>
+            <select value={selectedWebsiteGroupId || ''} onChange={(event) => setSelectedWebsiteGroupId(Number(event.target.value) || null)} className={fieldClass}>
               <option value="">Select group</option>
               {webGroups.map((group) => (
                 <option key={group.idx} value={group.idx}>{group.name} ({group.url_count || 0})</option>
@@ -2577,14 +2874,14 @@ export default function AppRestriction() {
             </select>
           </div>
 
-          <div className="">
-            <div className="">
+          <div>
+            <div>
               {webGroupUrls.length === 0 ? (
-                <div className="">No URLs found in selected website group.</div>
+                <div>No URLs found in selected website group.</div>
               ) : groupUrlPagination.pageItems.map((item) => (
-                <div key={`${item.idx}-${item.seq}`} className="" style={{}}>
-                  <div className="">
-                    <span className=""><Globe size={13} /></span>
+                <div key={`${item.idx}-${item.seq}`} style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>
+                  <div>
+                    <span><Globe size={13} /></span>
                     <strong>{item.url}</strong>
                   </div>
                 </div>
@@ -2623,7 +2920,7 @@ export default function AppRestriction() {
         width: 110,
         align: 'center',
         render: (row) => (
-          <span className="">
+          <span>
             {row.use_policy || 'O'}
           </span>
         ),
@@ -2632,13 +2929,13 @@ export default function AppRestriction() {
         key: 'Version',
         header: 'Policy Version',
         width: 170,
-        render: (row) => <code className="">{row.Version || row.version || '-'}</code>,
+        render: (row) => <code>{row.Version || row.version || '-'}</code>,
       },
     ];
 
     return (
-      <div className="">
-        <div className="" role="alert">
+      <div>
+        <div role="alert">
           This policy list shows policy information for clients or departments that do not inherit their parent policies.
         </div>
 
@@ -2653,10 +2950,10 @@ export default function AppRestriction() {
           summary={(
             <>
               <div>
-                <strong className="">Policy Status List</strong>
+                <strong>Policy Status List</strong>
                 <span>{moduleConfig.label} · {selectedTarget?.label || 'All Branches'}</span>
               </div>
-              <span className="">
+              <span>
                 {loading ? 'Loading...' : `${rows.length} record${rows.length === 1 ? '' : 's'}`}
               </span>
             </>
@@ -2671,44 +2968,44 @@ export default function AppRestriction() {
     const canEditUrls = Boolean(activeGroupId);
 
     return (
-      <div className="">
-        <div className="">
-          <div className="">
+      <div>
+        <div>
+          <div>
             <div>
-              <p className="">Website Restriction</p>
-              <h3 className="">Edit Website Group</h3>
-              <p className="">Create a website category, enter domain names without http:// or https://, then add the group URLs into the policy list.</p>
+              <p>Website Restriction</p>
+              <h3>Edit Website Group</h3>
+              <p>Create a website category, enter domain names without http:// or https://, then add the group URLs into the policy list.</p>
             </div>
-            <button type="button" onClick={() => setShowWebGroupManager(false)} className="">
+            <button type="button" onClick={() => setShowWebGroupManager(false)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
               <X size={18} />
             </button>
           </div>
 
-          <div className="">
-            <aside className="">
-              <div className="">
+          <div>
+            <aside>
+              <div>
                 <div>
-                  <h4 className="">Website Group</h4>
-                  <p className="">Reusable URL categories stored in TSWB_URL_GROUP.</p>
+                  <h4>Website Group</h4>
+                  <p>Reusable URL categories stored in TSWB_URL_GROUP.</p>
                 </div>
-                <button type="button" onClick={resetWebGroupEditor} className="">
+                <button type="button" onClick={resetWebGroupEditor}>
                   New
                 </button>
               </div>
 
-              <div className="">
+              <div>
                 {webGroups.length === 0 ? (
-                  <div className="">No website group yet. Click New, enter a group name, then Save Group.</div>
+                  <div>No website group yet. Click New, enter a group name, then Save Group.</div>
                 ) : webGroups.map((group) => {
                   const selected = activeGroupId === group.idx;
                   return (
-                    <button key={group.idx} type="button" onClick={() => selectWebGroupForEditing(group)} className="">
-                      <div className="">
-                        <div className="">
-                          <p className="">{group.name}</p>
-                          <p className="">{group.description || 'Website restriction group'}</p>
+                    <button key={group.idx} type="button" onClick={() => selectWebGroupForEditing(group)} className={clsx('block w-full border-b border-slate-100 px-3 py-3 text-left last:border-b-0 hover:bg-blue-50', selected && 'bg-blue-50')}>
+                      <div>
+                        <div>
+                          <p>{group.name}</p>
+                          <p>{group.description || 'Website restriction group'}</p>
                         </div>
-                        <span className="">{group.url_count || 0} URLs</span>
+                        <span>{group.url_count || 0} URLs</span>
                       </div>
                     </button>
                   );
@@ -2716,69 +3013,69 @@ export default function AppRestriction() {
               </div>
             </aside>
 
-            <main className="">
-              <div className="">
+            <main>
+              <div>
                 <div>
-                  <label className="">Group Name</label>
-                  <input value={webGroupName} onChange={(event) => setWebGroupName(event.target.value)} className="" placeholder="Example: Social Networking" />
+                  <label>Group Name</label>
+                  <input value={webGroupName} onChange={(event) => setWebGroupName(event.target.value)} className={fieldClass} placeholder="Example: Social Networking" />
                 </div>
                 <div>
-                  <label className="">Description</label>
-                  <input value={webGroupDescription} onChange={(event) => setWebGroupDescription(event.target.value)} className="" placeholder="Optional note" />
+                  <label>Description</label>
+                  <input value={webGroupDescription} onChange={(event) => setWebGroupDescription(event.target.value)} className={fieldClass} placeholder="Optional note" />
                 </div>
               </div>
 
-              <div className="">
-                <button type="button" onClick={saveWebGroup} disabled={loading} className="">
-                  {loading ? <Loader2 size={14} className="" /> : <Save size={14} />} {editingWebGroup ? 'Save Group' : 'Create Group'}
+              <div>
+                <button type="button" onClick={saveWebGroup} disabled={loading}>
+                  {loading ? <Loader2 size={14} /> : <Save size={14} />} {editingWebGroup ? 'Save Group' : 'Create Group'}
                 </button>
                 {editingWebGroup && (
-                  <button type="button" onClick={() => deleteWebGroup(editingWebGroup)} disabled={loading} className="">
+                  <button type="button" onClick={() => deleteWebGroup(editingWebGroup)} disabled={loading} className="inline-flex h-9 items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 text-[10px] font-black text-rose-700 disabled:opacity-50">
                     <Trash2 size={14} /> Delete Group
                   </button>
                 )}
               </div>
 
               {!canEditUrls && (
-                <div className="">
+                <div>
                   Create or select a website group first. After that, add domain names into the group.
                 </div>
               )}
 
-              <section className="">
-                <div className="">
+              <section>
+                <div>
                   <div>
-                    <h4 className="">Domain names in this group</h4>
-                    <p className="">Enter domain names only. Do not include http:// or https://.</p>
+                    <h4>Domain names in this group</h4>
+                    <p>Enter domain names only. Do not include http:// or https://.</p>
                   </div>
-                  <span className="">{webGroupUrls.length} URLs</span>
+                  <span>{webGroupUrls.length} URLs</span>
                 </div>
 
-                <div className="">
-                  <input value={webGroupDomainInput} onChange={(event) => setWebGroupDomainInput(event.target.value)} onKeyDown={(event) => canEditUrls && event.key === 'Enter' && addUrlToWebGroup()} disabled={!canEditUrls || loading} placeholder={canEditUrls ? 'example.com' : 'Create or select a group first'} className="" />
-                  <button type="button" onClick={addUrlToWebGroup} disabled={!canEditUrls || loading} className="">
+                <div>
+                  <input value={webGroupDomainInput} onChange={(event) => setWebGroupDomainInput(event.target.value)} onKeyDown={(event) => canEditUrls && event.key === 'Enter' && addUrlToWebGroup()} disabled={!canEditUrls || loading} placeholder={canEditUrls ? 'example.com' : 'Create or select a group first'} className={fieldClass} />
+                  <button type="button" onClick={addUrlToWebGroup} disabled={!canEditUrls || loading}>
                     <Plus size={13} /> Add
                   </button>
                 </div>
 
-                <div className="">
+                <div>
                   {webGroupUrls.length === 0 ? (
-                    <div className="">No domain names in this group.</div>
+                    <div>No domain names in this group.</div>
                   ) : webGroupUrls.map((item) => (
-                    <div key={`${item.idx}-${item.seq}`} className="">
-                      <div className="">
-                        <Globe size={13} className="" />
-                        <span className="">{item.url}</span>
+                    <div key={`${item.idx}-${item.seq}`}>
+                      <div>
+                        <Globe size={13} />
+                        <span>{item.url}</span>
                       </div>
-                      <button type="button" onClick={() => deleteUrlFromWebGroup(item)} disabled={loading} className="">
+                      <button type="button" onClick={() => deleteUrlFromWebGroup(item)} disabled={loading} className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-40">
                         <Trash2 size={13} />
                       </button>
                     </div>
                   ))}
                 </div>
 
-                <div className="">
-                  <button type="button" onClick={() => { addGroupUrlsToPolicy(); setShowWebGroupManager(false); }} disabled={isInherited || webGroupUrls.length === 0} className="">
+                <div>
+                  <button type="button" onClick={() => { addGroupUrlsToPolicy(); setShowWebGroupManager(false); }} disabled={isInherited || webGroupUrls.length === 0} className="inline-flex h-9 items-center gap-2 rounded-xl bg-slate-900 px-4 text-[10px] font-black text-white disabled:bg-slate-300">
                     <ArrowLeft size={14} /> Add this group to policy website list
                   </button>
                 </div>
@@ -3142,22 +3439,31 @@ export default function AppRestriction() {
           key={id || `${getPackageName(item)}-${item.sample_file || ''}`}
           type="button"
           onClick={() => selectManagerPackage(item)}
-          style={{}}
+          style={{
+            display: 'block',
+            width: '100%',
+            border: 'none',
+            borderBottom: '1px solid #eef2f7',
+            background: selected ? '#eff6ff' : '#ffffff',
+            padding: '12px 13px',
+            textAlign: 'left',
+            cursor: 'pointer',
+          }}
         >
-          <div style={{}}>
-            <div style={{}}>
-              <p style={{}}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, lineHeight: '16px', fontWeight: 900, color: '#0f172a' }}>
                 {getPackageName(item) || 'Unnamed Package'}
               </p>
-              <p style={{}}>
+              <p style={{ margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10, lineHeight: '14px', fontWeight: 800, color: '#64748b' }}>
                 {item.SW_Pkg_Company || item.sample_file || '-'}
               </p>
             </div>
-            <div style={{}}>
-              <span style={{}}>
+            <div style={{ display: 'flex', flexShrink: 0, gap: 5, alignItems: 'center' }}>
+              <span style={{ borderRadius: 999, background: '#f1f5f9', color: '#64748b', padding: '3px 8px', fontSize: 9, fontWeight: 900, whiteSpace: 'nowrap' }}>
                 {item.file_count || 0} files
               </span>
-              <span style={{}}>
+              <span style={{ borderRadius: 999, background: policies > 0 ? '#fef3c7' : '#d1fae5', color: policies > 0 ? '#b45309' : '#047857', padding: '3px 8px', fontSize: 9, fontWeight: 900, whiteSpace: 'nowrap' }}>
                 {item.used_policy_count || 0} policies
               </span>
             </div>
@@ -3167,87 +3473,87 @@ export default function AppRestriction() {
     };
 
     return (
-      <div style={{}} onMouseDown={closePackageManager} role="dialog" aria-modal="true" aria-label="Package Manager">
-        <div style={{}} onMouseDown={stopModalClick}>
-          <div style={{}}>
+      <div style={s.overlay} onMouseDown={closePackageManager} role="dialog" aria-modal="true" aria-label="Package Manager">
+        <div style={s.modal} onMouseDown={stopModalClick}>
+          <div style={s.header}>
             <div>
-              <p style={{}}>Application Package Editor</p>
-              <h3 style={{}}>Package Manager</h3>
-              <p style={{}}>Step 1: create or select a package. Step 2: search Software Inventory EXE records and add them into that package.</p>
+              <p style={s.eyebrow}>Application Package Editor</p>
+              <h3 style={s.title}>Package Manager</h3>
+              <p style={s.subtitle}>Step 1: create or select a package. Step 2: search Software Inventory EXE records and add them into that package.</p>
             </div>
-            <button type="button" onClick={closePackageManager} style={{}} aria-label="Close package manager">
+            <button type="button" onClick={closePackageManager} style={s.closeButton} aria-label="Close package manager">
               <X size={18} />
             </button>
           </div>
 
-          <div style={{}}>
-            <aside style={{}}>
-              <div style={{}}>
-                <div style={{}}>
-                  <Search size={14} style={{}} />
+          <div style={s.body}>
+            <aside style={s.left}>
+              <div style={s.searchRow}>
+                <div style={s.searchBoxWrap}>
+                  <Search size={14} style={s.searchIcon} />
                   <input
                     value={packageManagerSearch}
                     onChange={(event) => setPackageManagerSearch(event.target.value)}
                     onKeyDown={(event) => event.key === 'Enter' && loadPackageManager(packageManagerSearch)}
                     placeholder="Search package or file"
-                    style={{}}
+                    style={s.searchInput}
                   />
                 </div>
-                <button type="button" onClick={() => loadPackageManager(packageManagerSearch)} style={{}}>Search</button>
-                <button type="button" onClick={resetPackageForm} style={{}}>New</button>
+                <button type="button" onClick={() => loadPackageManager(packageManagerSearch)} style={s.darkButton}>Search</button>
+                <button type="button" onClick={resetPackageForm} style={s.lightButton}>New</button>
               </div>
 
-              <div style={{}}>
+              <div style={s.packageList}>
                 {packageManagerLoading && packageManagerRows.length === 0 ? (
-                  <div style={{}}>Loading packages...</div>
+                  <div style={s.emptyList}>Loading packages...</div>
                 ) : filteredPackageManagerRows.length === 0 ? (
-                  <div style={{}}>No packages found.</div>
+                  <div style={s.emptyList}>No packages found.</div>
                 ) : filteredPackageManagerRows.map(renderPackageRow)}
               </div>
             </aside>
 
-            <main style={{}}>
-              <div style={{}}>
+            <main style={s.right}>
+              <div style={s.formGrid}>
                 <div>
-                  <label style={{}}>Package Name</label>
-                  <input value={packageForm.SW_Pkg_Name} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Pkg_Name: event.target.value }))} style={{}} placeholder="Example: Google Chrome" />
+                  <label style={s.label}>Package Name</label>
+                  <input value={packageForm.SW_Pkg_Name} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Pkg_Name: event.target.value }))} style={s.input} placeholder="Example: Google Chrome" />
                 </div>
                 <div>
-                  <label style={{}}>Company / Vendor</label>
-                  <input value={packageForm.SW_Pkg_Company || ''} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Pkg_Company: event.target.value }))} style={{}} placeholder="Example: Google LLC" />
+                  <label style={s.label}>Company / Vendor</label>
+                  <input value={packageForm.SW_Pkg_Company || ''} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Pkg_Company: event.target.value }))} style={s.input} placeholder="Example: Google LLC" />
                 </div>
                 <div>
-                  <label style={{}}>Category ID</label>
-                  <input type="number" value={packageForm.SW_Catg || 0} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Catg: Number(event.target.value || 0) }))} style={{}} />
+                  <label style={s.label}>Category ID</label>
+                  <input type="number" value={packageForm.SW_Catg || 0} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Catg: Number(event.target.value || 0) }))} style={s.input} />
                 </div>
                 <div>
-                  <label style={{}}>Active</label>
-                  <select value={String(packageForm.Selected ?? 1)} onChange={(event) => setPackageForm((prev) => ({ ...prev, Selected: Number(event.target.value) }))} style={{}}>
+                  <label style={s.label}>Active</label>
+                  <select value={String(packageForm.Selected ?? 1)} onChange={(event) => setPackageForm((prev) => ({ ...prev, Selected: Number(event.target.value) }))} style={s.input}>
                     <option value="1">Yes</option>
                     <option value="0">No</option>
                   </select>
                 </div>
-                <div style={{}}>
-                  <label style={{}}>Etc Info / Description</label>
-                  <input value={packageForm.SW_Package_EtcInfo || ''} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Package_EtcInfo: event.target.value }))} style={{}} placeholder="Usually first executable name or package note" />
+                <div style={s.fullCol}>
+                  <label style={s.label}>Etc Info / Description</label>
+                  <input value={packageForm.SW_Package_EtcInfo || ''} onChange={(event) => setPackageForm((prev) => ({ ...prev, SW_Package_EtcInfo: event.target.value }))} style={s.input} placeholder="Usually first executable name or package note" />
                 </div>
               </div>
 
-              <div style={{}}>
+              <div style={s.actionRow}>
                 <button
                   type="button"
                   onClick={saveManagerPackage}
                   disabled={packageManagerLoading}
-                  style={{}}
+                  style={{ ...s.primaryButton, ...(packageManagerLoading ? s.disabledButton : {}) }}
                 >
-                  {packageManagerLoading ? <Loader2 size={14} className="" /> : <Save size={14} />} {selectedManagerPackage ? 'Save Package' : 'Create Package'}
+                  {packageManagerLoading ? <Loader2 size={14} /> : <Save size={14} />} {selectedManagerPackage ? 'Save Package' : 'Create Package'}
                 </button>
                 {selectedManagerPackage && (
                   <button
                     type="button"
                     onClick={() => deleteManagerPackage(selectedManagerPackage)}
                     disabled={packageManagerLoading}
-                    style={{}}
+                    style={{ ...s.dangerButton, ...(packageManagerLoading ? s.disabledButton : {}) }}
                   >
                     <Trash2 size={14} /> Delete Package
                   </button>
@@ -3255,34 +3561,34 @@ export default function AppRestriction() {
               </div>
 
               {!isPackageSaved && (
-                <div style={{}}>
+                <div style={s.warning}>
                   Create the package first. After the package is saved and has a Package ID, the Software Inventory EXE search and Add buttons will be enabled.
                 </div>
               )}
 
-              <section style={{}}>
-                <div style={{}}>
+              <section style={s.filesCard}>
+                <div style={s.filesHead}>
                   <div>
-                    <h4 style={{}}>Files inside package</h4>
-                    <p style={{}}>Files are copied from collected Software Inventory EXE data into TSSI_PACKAGE_FILES.</p>
+                    <h4 style={s.sectionTitle}>Files inside package</h4>
+                    <p style={s.smallMuted}>Files are copied from collected Software Inventory EXE data into TSSI_PACKAGE_FILES.</p>
                   </div>
-                  <span style={{}}>{files.length} files</span>
+                  <span style={s.badge}>{files.length} files</span>
                 </div>
 
-                <div style={{}}>
+                <div style={s.fileSearchRow}>
                   <input
                     value={packageFileSearch}
                     onChange={(event) => setPackageFileSearch(event.target.value)}
                     onKeyDown={(event) => isPackageSaved && event.key === 'Enter' && searchInventoryFilesForPackage()}
                     disabled={!isPackageSaved}
                     placeholder={isPackageSaved ? 'Search inventory file name, e.g. chrome' : 'Create the package first before searching EXE files'}
-                    style={{}}
+                    style={{ ...s.input, flex: 1, minWidth: 0, background: isPackageSaved ? '#ffffff' : '#f1f5f9', color: isPackageSaved ? '#334155' : '#94a3b8' }}
                   />
                   <button
                     type="button"
                     onClick={searchInventoryFilesForPackage}
                     disabled={!isPackageSaved || packageManagerLoading}
-                    style={{}}
+                    style={{ ...s.darkButton, height: 34, borderRadius: 10, ...(isPackageSaved && !packageManagerLoading ? {} : s.disabledButton) }}
                   >
                     Search Inventory
                   </button>
@@ -3290,56 +3596,56 @@ export default function AppRestriction() {
                     type="button"
                     onClick={addManualFileToPackage}
                     disabled={!isPackageSaved || packageManagerLoading}
-                    style={{}}
+                    style={{ ...s.lightButton, height: 34, borderRadius: 10, ...(isPackageSaved && !packageManagerLoading ? {} : s.disabledButton) }}
                   >
                     Manual Add
                   </button>
                 </div>
 
                 {isPackageSaved && packageInventoryFiles.length > 0 && (
-                  <div style={{}}>
+                  <div style={s.resultsBox}>
                     {packageInventoryFiles.map((file, index) => (
-                      <div key={`${file.SW_Idn || file.FileName}-${index}`} style={{}}>
-                        <div style={{}}>
-                          <p style={{}}>{file.FileName}</p>
-                          <p style={{}}>Version: {file.FileVersion || '-'} {file.OriginalFileName ? ` / ${file.OriginalFileName}` : ''}</p>
+                      <div key={`${file.SW_Idn || file.FileName}-${index}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderBottom: '1px solid #bfdbfe', padding: '10px 12px' }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, fontWeight: 900, color: '#334155' }}>{file.FileName}</p>
+                          <p style={{ margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10, fontWeight: 800, color: '#64748b' }}>Version: {file.FileVersion || '-'} {file.OriginalFileName ? ` / ${file.OriginalFileName}` : ''}</p>
                         </div>
-                        <button type="button" onClick={() => addInventoryFileToPackage(file)} disabled={!isPackageSaved || packageManagerLoading} style={{}}>Add</button>
+                        <button type="button" onClick={() => addInventoryFileToPackage(file)} disabled={!isPackageSaved || packageManagerLoading} style={{ ...s.primaryButton, height: 30, borderRadius: 10, padding: '0 12px', boxShadow: 'none', ...(packageManagerLoading ? s.disabledButton : {}) }}>Add</button>
                       </div>
                     ))}
                   </div>
                 )}
 
                 {isPackageSaved && packageInventoryFiles.length === 0 && packageFileSearch.trim() && (
-                  <div style={{}}>
+                  <div style={{ marginBottom: 16, borderRadius: 12, border: '1px solid #dbe5f1', background: '#ffffff', padding: '10px 12px', fontSize: 10, fontWeight: 800, color: '#64748b' }}>
                     No search result is shown yet. Click Search Inventory to find collected EXE records from Software Inventory.
                   </div>
                 )}
 
-                <div style={{}}>
-                  <table style={{}}>
+                <div style={s.tableWrap}>
+                  <table style={s.table}>
                     <thead>
                       <tr>
-                        <th style={{}}>File Name</th>
-                        <th style={{}}>Version</th>
-                        <th style={{}}>Size</th>
-                        <th style={{}}>Action</th>
+                        <th style={s.th}>File Name</th>
+                        <th style={s.th}>Version</th>
+                        <th style={s.th}>Size</th>
+                        <th style={{ ...s.th, textAlign: 'right' }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {files.length === 0 ? (
                         <tr>
-                          <td colSpan={4} style={{}}>
+                          <td colSpan={4} style={{ ...s.td, padding: '34px 12px', textAlign: 'center', color: '#94a3b8', fontWeight: 900 }}>
                             No files in this package.
                           </td>
                         </tr>
                       ) : files.map((file) => (
                         <tr key={file.ID || file.FileName}>
-                          <td style={{}}>{file.FileName}</td>
-                          <td style={{}}>{file.FileVersion || '-'}</td>
-                          <td style={{}}>{file.FileSize || 0}</td>
-                          <td style={{}}>
-                            <button type="button" onClick={() => deletePackageFile(file)} style={{}}>
+                          <td style={{ ...s.td, color: '#334155', fontWeight: 900 }}>{file.FileName}</td>
+                          <td style={s.td}>{file.FileVersion || '-'}</td>
+                          <td style={s.td}>{file.FileSize || 0}</td>
+                          <td style={{ ...s.td, textAlign: 'right' }}>
+                            <button type="button" onClick={() => deletePackageFile(file)} style={{ width: 30, height: 30, borderRadius: 10, border: 'none', background: 'transparent', color: '#94a3b8', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                               <Trash2 size={13} />
                             </button>
                           </td>
@@ -3358,21 +3664,21 @@ export default function AppRestriction() {
 
   function renderManageSoftwareModal() {
     return (
-      <div className="">
-        <div className="">
-          <div className="">
+      <div>
+        <div>
+          <div>
             <div>
-              <h3 className="">Manage Software List</h3>
-              <p className="">Default permitted software and registered process/font file rules.</p>
+              <h3>Manage Software List</h3>
+              <p>Default permitted software and registered process/font file rules.</p>
             </div>
-            <button type="button" onClick={() => setShowManageSoftware(false)} className="">
+            <button type="button" onClick={() => setShowManageSoftware(false)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
               <X size={18} />
             </button>
           </div>
 
-          <div className="">
-            <div className="">
-              <Info size={16} className="" />
+          <div>
+            <div>
+              <Info size={16} />
               <span>After changing the Use Restriction, use the information update button to refresh permitted software data before saving the related policy.</span>
             </div>
             <button
@@ -3381,90 +3687,90 @@ export default function AppRestriction() {
                 loadLookups();
                 setMessage('Whitelist restriction information refresh requested.');
               }}
-              className=""
+              className="inline-flex h-9 items-center gap-2 rounded-xl bg-blue-600 px-4 text-[10px] font-black text-white shadow-lg shadow-blue-200 hover:bg-blue-700"
             >
               <RefreshCw size={14} /> Use Restriction Information Update
             </button>
           </div>
 
-          <div className="">
-            <section className="">
-              <div className="">
-                <h4 className="">Software</h4>
-                <div className="">
-                  <button type="button" className="" title="Save">
+          <div>
+            <section>
+              <div>
+                <h4>Software</h4>
+                <div>
+                  <button type="button" title="Save">
                     <Save size={13} />
                   </button>
-                  <button type="button" className="" title="Add">
+                  <button type="button" title="Add">
                     <Plus size={13} />
                   </button>
-                  <button type="button" className="" title="Remove">
+                  <button type="button" title="Remove">
                     <Trash2 size={13} />
                   </button>
                 </div>
               </div>
 
-              <label className="">S/W Name</label>
-              <div className="">
-                <Search size={13} className="" />
+              <label>S/W Name</label>
+              <div>
+                <Search size={13} />
                 <input
                   value={manageSearchText}
                   onChange={(event) => setManageSearchText(event.target.value)}
                   placeholder="Search software name"
-                  className=""
+                  className="h-6 min-w-0 flex-1 bg-transparent text-[11px] font-bold text-slate-700 outline-none placeholder:text-slate-400"
                 />
               </div>
 
-              <div className="">
+              <div>
                 {filteredManageWhitelistSoftware.length === 0 ? (
-                  <div className="">No whitelist software found.</div>
+                  <div>No whitelist software found.</div>
                 ) : filteredManageWhitelistSoftware.map((item, index) => (
-                  <div key={`${getWhitelistId(item)}-${index}`} className="">
-                    <span className="">{index + 1}</span>
-                    <ShieldCheck size={13} className="" />
-                    <div className="">
-                      <p className="">{getWhitelistName(item) || `Software ${getWhitelistId(item)}`}</p>
-                      <p className="">ID: {getWhitelistId(item) || '-'}</p>
+                  <div key={`${getWhitelistId(item)}-${index}`}>
+                    <span>{index + 1}</span>
+                    <ShieldCheck size={13} />
+                    <div>
+                      <p>{getWhitelistName(item) || `Software ${getWhitelistId(item)}`}</p>
+                      <p>ID: {getWhitelistId(item) || '-'}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </section>
 
-            <section className="">
-              <div className="">
-                <div className="">
-                  <h4 className="">Register File <span className="">(Permitted to run or use this registered file)</span></h4>
-                  <div className="">
-                    <button type="button" className="" title="Edit">
+            <section>
+              <div>
+                <div>
+                  <h4>Register File <span>(Permitted to run or use this registered file)</span></h4>
+                  <div>
+                    <button type="button" title="Edit">
                       <ListChecks size={13} />
                     </button>
-                    <button type="button" className="" title="Remove">
+                    <button type="button" title="Remove">
                       <Trash2 size={13} />
                     </button>
                   </div>
                 </div>
-                <div className="">
-                  <table className="">
-                    <thead className="">
+                <div>
+                  <table>
+                    <thead>
                       <tr>
-                        <th className="">Type</th>
-                        <th className="">Process / Font Name</th>
-                        <th className="">File Size (Compare)</th>
-                        <th className="">File Version (Compare)</th>
+                        <th>Type</th>
+                        <th>Process / Font Name</th>
+                        <th>File Size (Compare)</th>
+                        <th>File Version (Compare)</th>
                       </tr>
                     </thead>
-                    <tbody className="">
+                    <tbody>
                       {selectedWhitelist.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="">No registered permitted software selected in current policy.</td>
+                          <td colSpan={4}>No registered permitted software selected in current policy.</td>
                         </tr>
                       ) : selectedWhitelist.map((item) => (
-                        <tr key={`registered-${getWhitelistId(item)}`} className="">
-                          <td className="">{item.Type || 'Process'}</td>
-                          <td className="">{getWhitelistName(item) || '-'}</td>
-                          <td className="">-</td>
-                          <td className="">-</td>
+                        <tr key={`registered-${getWhitelistId(item)}`}>
+                          <td>{item.Type || 'Process'}</td>
+                          <td>{getWhitelistName(item) || '-'}</td>
+                          <td>-</td>
+                          <td>-</td>
                         </tr>
                       ))}
                     </tbody>
@@ -3472,35 +3778,35 @@ export default function AppRestriction() {
                 </div>
               </div>
 
-              <div className="">
-                <div className="">
-                  <h4 className="">Register File <span className="">(Hash rule)</span></h4>
-                  <div className="">
-                    <button type="button" className="" title="Add hash">
+              <div>
+                <div>
+                  <h4>Register File <span>(Hash rule)</span></h4>
+                  <div>
+                    <button type="button" title="Add hash">
                       <Plus size={13} />
                     </button>
-                    <button type="button" className="" title="Remove hash">
+                    <button type="button" title="Remove hash">
                       <Trash2 size={13} />
                     </button>
                   </div>
                 </div>
-                <div className="">
-                  <table className="">
-                    <thead className="">
+                <div>
+                  <table>
+                    <thead>
                       <tr>
-                        <th className="">File Name</th>
-                        <th className="">Hash (MD5)</th>
+                        <th>File Name</th>
+                        <th>Hash (MD5)</th>
                       </tr>
                     </thead>
-                    <tbody className="">
+                    <tbody>
                       {selectedWhitelist.length === 0 ? (
                         <tr>
-                          <td colSpan={2} className="">No hash rules found.</td>
+                          <td colSpan={2}>No hash rules found.</td>
                         </tr>
                       ) : selectedWhitelist.map((item) => (
-                        <tr key={`hash-${getWhitelistId(item)}`} className="">
-                          <td className="">{getWhitelistName(item) || '-'}</td>
-                          <td className="">-</td>
+                        <tr key={`hash-${getWhitelistId(item)}`}>
+                          <td>{getWhitelistName(item) || '-'}</td>
+                          <td>-</td>
                         </tr>
                       ))}
                     </tbody>
@@ -3509,68 +3815,68 @@ export default function AppRestriction() {
               </div>
             </section>
 
-            <section className="">
-              <h4 className="">File information collected <span className="">(List of files registered in collector)</span></h4>
-              <div className="">
-                <label className="">File Name :</label>
-                <div className="">
+            <section>
+              <h4>File information collected <span>(List of files registered in collector)</span></h4>
+              <div>
+                <label>File Name :</label>
+                <div>
                   <input
                     value={manageSearchText}
                     onChange={(event) => setManageSearchText(event.target.value)}
                     placeholder="Find collected file"
-                    className=""
+                    className="h-6 w-full bg-transparent text-[11px] font-bold text-slate-700 outline-none placeholder:text-slate-400"
                   />
                 </div>
-                <button type="button" className="">Find</button>
-                <button type="button" className="">
+                <button type="button">Find</button>
+                <button type="button">
                   <ArrowLeft size={13} /> Add to allowed file list
                 </button>
               </div>
 
-              <div className="">
+              <div>
                 <button
                   type="button"
                   onClick={() => setManageFileTab('process')}
-                  className=""
+                  className={clsx('h-8 rounded-lg px-3 text-[10px] font-black', manageFileTab === 'process' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500')}
                 >
                   Process
                 </button>
                 <button
                   type="button"
                   onClick={() => setManageFileTab('font')}
-                  className=""
+                  className={clsx('h-8 rounded-lg px-3 text-[10px] font-black', manageFileTab === 'font' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500')}
                 >
                   Font
                 </button>
               </div>
 
-              <div className="">
-                <table className="">
-                  <thead className="">
+              <div>
+                <table>
+                  <thead>
                     <tr>
-                      <th className="">{manageFileTab === 'process' ? 'Process Name' : 'Font Name'}</th>
-                      <th className="">Original File Name</th>
-                      <th className="">File Size</th>
-                      <th className="">File Version</th>
-                      <th className="">Company</th>
-                      <th className="">S/W Type</th>
-                      <th className="">Remark</th>
+                      <th>{manageFileTab === 'process' ? 'Process Name' : 'Font Name'}</th>
+                      <th>Original File Name</th>
+                      <th>File Size</th>
+                      <th>File Version</th>
+                      <th>Company</th>
+                      <th>S/W Type</th>
+                      <th>Remark</th>
                     </tr>
                   </thead>
-                  <tbody className="">
+                  <tbody>
                     {filteredManageWhitelistSoftware.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="">No collected file information found.</td>
+                        <td colSpan={7}>No collected file information found.</td>
                       </tr>
                     ) : filteredManageWhitelistSoftware.map((item) => (
-                      <tr key={`collected-${getWhitelistId(item)}`} className="">
-                        <td className="">{getWhitelistName(item) || '-'}</td>
-                        <td className="">{getWhitelistName(item) || '-'}</td>
-                        <td className="">-</td>
-                        <td className="">-</td>
-                        <td className="">{item.Vendor || '-'}</td>
-                        <td className="">{item.Type || '-'}</td>
-                        <td className="">-</td>
+                      <tr key={`collected-${getWhitelistId(item)}`}>
+                        <td>{getWhitelistName(item) || '-'}</td>
+                        <td>{getWhitelistName(item) || '-'}</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>{item.Vendor || '-'}</td>
+                        <td>{item.Type || '-'}</td>
+                        <td>-</td>
                       </tr>
                     ))}
                   </tbody>
@@ -3612,29 +3918,29 @@ function DualListSection({
   onMoveRight,
 }: DualListSectionProps) {
   return (
-    <section className="">
-      <div className="">
+    <section>
+      <div>
         <div>
           <h4>{title}</h4>
           <p>Move items between the available list and the policy selection list.</p>
         </div>
-        <label className="" style={{}}>
+        <label style={{ maxWidth: '22rem' }}>
           <Search size={14} />
           <input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="Search software or package" />
         </label>
       </div>
 
-      <div className="">
-        <div className="">
+      <div>
+        <div>
           <ListPanel title={leftTitle} items={leftItems} emptyText="No selected items." actionIcon={ArrowRight} disabled={disabled} onAction={onMoveRight} />
         </div>
-        <div className="">
-          <div className="">
+        <div>
+          <div>
             <ArrowLeft size={18} />
             <ArrowRight size={18} />
           </div>
         </div>
-        <div className="">
+        <div>
           <ListPanel title={rightTitle} items={rightItems} emptyText="No available items." actionIcon={ArrowLeft} disabled={disabled} onAction={onMoveLeft} />
         </div>
       </div>
@@ -3661,27 +3967,27 @@ function ListPanel({ title, items, emptyText, actionIcon: ActionIcon, disabled, 
   }, [itemSignature, title]);
 
   return (
-    <div className="">
-      <div className="" style={{}}>
-        <div className="">{title}</div>
-        <div className="">
-          <span className="">{items.length}</span>
+    <div>
+      <div style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}>
+        <div>{title}</div>
+        <div>
+          <span>{items.length}</span>
         </div>
       </div>
-      <div className="">
+      <div>
         {items.length === 0 ? (
-          <div className="">{emptyText}</div>
+          <div>{emptyText}</div>
         ) : pagination.pageItems.map((item) => (
-          <div key={item.id} className="" style={{}}>
-            <div className="">
-              <span className=""><Package size={13} /></span>
-              <span className="">
+          <div key={item.id} style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}>
+            <div>
+              <span><Package size={13} /></span>
+              <span>
                 <strong>{item.title}</strong>
                 <small>{item.meta || '-'}</small>
               </span>
             </div>
-            <div className="">
-              <button type="button" disabled={disabled} onClick={() => onAction(item.id)} className="" aria-label={`Move ${item.title}`}>
+            <div>
+              <button type="button" disabled={disabled} onClick={() => onAction(item.id)} className="icon-action-btn edit" aria-label={`Move ${item.title}`}>
                 <ActionIcon size={13} />
               </button>
             </div>

@@ -50,23 +50,23 @@ export default function EmaConfirmModal({
       closeOnOverlay={!loading}
       onClose={loading ? () => undefined : onCancel}
       footer={
-        <div className="ema-modal-actions">
-          <button type="button" className="ema-btn ema-btn-light" onClick={onCancel} disabled={loading}>
+        <div>
+          <button type="button" onClick={onCancel} disabled={loading}>
             {cancelLabel}
           </button>
 
-          <button type="button" className={"ema-btn ema-btn-" + tone} onClick={onConfirm} disabled={loading}>
+          <button type="button" onClick={onConfirm} disabled={loading}>
             {loading ? "Processing..." : confirmLabel}
           </button>
         </div>
       }
     >
-      <div className={"ema-confirm-panel ema-confirm-" + tone}>
-        <div className="ema-confirm-badge">
+      <div>
+        <div>
           <ConfirmIcon tone={tone} />
         </div>
 
-        <div className="ema-confirm-copy">
+        <div>
           <p>{message}</p>
           <small>{helperText || fallbackHelper}</small>
         </div>

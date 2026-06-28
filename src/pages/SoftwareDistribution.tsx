@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import softwareDistributionService from "../services/softwareDistributionService";
 
-
 type PackageStatus = "Ready" | "Draft" | "Deployed" | "Archived";
 type DeliveryMethod = "onprem" | "cloud" | "network";
 type SortKey =
@@ -299,15 +298,14 @@ function CompactPagination({
   }
 
   return (
-    <footer className="">
-      <div className="" aria-live="polite">
+    <footer>
+      <div aria-live="polite">
         <span>Page {safeCurrentPage} of {safeTotalPages}</span>
       </div>
 
-      <nav className="" aria-label={ariaLabel}>
+      <nav aria-label={ariaLabel}>
         <button
           type="button"
-          className=""
           aria-label="First page"
           disabled={safeCurrentPage === 1}
           onClick={() => goToPage(1)}
@@ -316,7 +314,6 @@ function CompactPagination({
         </button>
         <button
           type="button"
-          className=""
           aria-label="Previous page"
           disabled={safeCurrentPage === 1}
           onClick={() => goToPage(safeCurrentPage - 1)}
@@ -324,11 +321,10 @@ function CompactPagination({
           <ChevronLeft size={14} strokeWidth={2.8} />
         </button>
 
-        <b className="" aria-current="page">{safeCurrentPage}</b>
+        <b aria-current="page">{safeCurrentPage}</b>
 
         <button
           type="button"
-          className=""
           aria-label="Next page"
           disabled={safeCurrentPage === safeTotalPages}
           onClick={() => goToPage(safeCurrentPage + 1)}
@@ -337,7 +333,6 @@ function CompactPagination({
         </button>
         <button
           type="button"
-          className=""
           aria-label="Last page"
           disabled={safeCurrentPage === safeTotalPages}
           onClick={() => goToPage(safeTotalPages)}
@@ -427,31 +422,31 @@ function NewPackageModal({
   };
 
   return (
-    <div className="" onMouseDown={onClose}>
-      <div className="" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="">
+    <div onMouseDown={onClose}>
+      <div onMouseDown={(event) => event.stopPropagation()}>
+        <div>
           <div>
             <h3>New Package</h3>
             <p>Create a new software distribution package</p>
           </div>
-          <button type="button" className="" onClick={onClose}>
+          <button type="button" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
 
-        <div className="">
-          <label className="">
+        <div>
+          <label>
             <span>Package Name</span>
-            <input className=""
+            <input
               value={form.name}
               onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
               placeholder="e.g. Google Chrome Enterprise"
             />
           </label>
 
-          <label className="">
+          <label>
             <span>Description</span>
-            <textarea className=""
+            <textarea
               value={form.description}
               onChange={(event) =>
                 setForm((current) => ({ ...current, description: event.target.value }))
@@ -461,9 +456,9 @@ function NewPackageModal({
             />
           </label>
 
-          <label className="">
+          <label>
             <span>Destination Directory</span>
-            <input className=""
+            <input
               value={form.destinationDirectory}
               onChange={(event) =>
                 setForm((current) => ({
@@ -476,9 +471,9 @@ function NewPackageModal({
             <small>Install path on target device, for example C:\ or C:\Program Files\AppName.</small>
           </label>
 
-          <label className="">
+          <label>
             <span>Source Path</span>
-            <input className=""
+            <input
               value={form.sourcePath}
               onChange={(event) =>
                 setForm((current) => ({
@@ -491,10 +486,10 @@ function NewPackageModal({
             <small>This value is repeated for every uploaded file unless file-path mapping is expanded.</small>
           </label>
 
-          <div className="">
-            <label className="">
+          <div>
+            <label>
               <span>Owner Console ID</span>
-              <input className=""
+              <input
                 value={form.owner}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, owner: event.target.value }))
@@ -502,10 +497,9 @@ function NewPackageModal({
               />
             </label>
 
-            <label className="">
+            <label>
               <span>Execution Order</span>
               <select
-                className=""
                 value={form.executionOrder}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, executionOrder: event.target.value }))
@@ -518,10 +512,10 @@ function NewPackageModal({
             </label>
           </div>
 
-          <div className="">
-            <label className="">
+          <div>
+            <label>
               <span>Command Line</span>
-              <input className=""
+              <input
                 value={form.cmdline}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, cmdline: event.target.value }))
@@ -530,9 +524,9 @@ function NewPackageModal({
               />
             </label>
 
-            <label className="">
+            <label>
               <span>File Version</span>
-              <input className=""
+              <input
                 value={form.fileVersion}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, fileVersion: event.target.value }))
@@ -542,10 +536,10 @@ function NewPackageModal({
             </label>
           </div>
 
-          <div className="">
-            <label className="">
+          <div>
+            <label>
               <span>OS Name</span>
-              <input className=""
+              <input
                 value={form.osname}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, osname: event.target.value }))
@@ -554,10 +548,9 @@ function NewPackageModal({
               />
             </label>
 
-            <label className="">
+            <label>
               <span>Exclude</span>
               <select
-                className=""
                 value={form.exclude}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, exclude: Number(event.target.value) }))
@@ -570,7 +563,7 @@ function NewPackageModal({
             </label>
           </div>
 
-          <input className=""
+          <input
             ref={fileInputRef}
             type="file"
             multiple
@@ -580,7 +573,6 @@ function NewPackageModal({
 
           <button
             type="button"
-            className=""
             onClick={() => fileInputRef.current?.click()}
           >
             <UploadCloud size={24} />
@@ -589,11 +581,11 @@ function NewPackageModal({
           </button>
         </div>
 
-        <div className="">
-          <button type="button" className="" onClick={onClose}>
+        <div>
+          <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button type="button" className="" disabled={!canCreate} onClick={create}>
+          <button type="button" disabled={!canCreate} onClick={create}>
             Create Package
           </button>
         </div>
@@ -821,16 +813,21 @@ function DeployPackageModal({
 
   const deployModalNode = (
     <div
-      className=""
-      style={{}}
+      style={{ position: "fixed", inset: 0, zIndex: 2147483647 }}
       onMouseDown={onClose}
     >
       <div
-        className=""
-        style={{}}
+        style={{
+          width: "min(1840px, calc(100vw - 24px))",
+          maxWidth: "calc(100vw - 24px)",
+          height: "calc(100vh - 12px)",
+          maxHeight: "calc(100vh - 12px)",
+          display: "flex",
+          flexDirection: "column",
+        }}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="">
+        <div>
           <div>
             <h3>{packages.length > 1 ? "Deploy Packages" : "Deploy Package"}</h3>
             <p>
@@ -839,17 +836,16 @@ function DeployPackageModal({
                 : `${packages[0]?.name} • ${packages[0]?.version}`}
             </p>
           </div>
-          <button type="button" className="" onClick={onClose}>
+          <button type="button" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
 
         <div
-          className=""
-          style={{}}
+          style={{ flex: "1 1 auto", minHeight: 0, overflowY: "auto" }}
         >
-          <section className="">
-            <div className="">
+          <section>
+            <div>
               <div>
                 <strong>{packages.length > 1 ? "Selected Package Batch" : "Selected Package"}</strong>
                 <p>
@@ -858,83 +854,84 @@ function DeployPackageModal({
                     : "Review the package that will be deployed."}
                 </p>
               </div>
-              <span className="">{packages.length} selected</span>
+              <span>{packages.length} selected</span>
             </div>
 
             {packages.length > 1 && (
-              <div className="">
-                <div className="">
+              <div>
+                <div>
                   <div>
                     <strong>Batch Summary</strong>
                     <span>{packagePreviewText}</span>
                   </div>
-                  <span className="">{packageStatusSummary.total} packages</span>
+                  <span>{packageStatusSummary.total} packages</span>
                 </div>
-                <div className="">
-                  {packageStatusSummary.ready > 0 && <span className="">Ready {packageStatusSummary.ready}</span>}
-                  {packageStatusSummary.deployed > 0 && <span className="">Deployed {packageStatusSummary.deployed}</span>}
-                  {packageStatusSummary.draft > 0 && <span className="">Draft {packageStatusSummary.draft}</span>}
-                  {packageStatusSummary.archived > 0 && <span className="">Archived {packageStatusSummary.archived}</span>}
+                <div>
+                  {packageStatusSummary.ready > 0 && <span>Ready {packageStatusSummary.ready}</span>}
+                  {packageStatusSummary.deployed > 0 && <span>Deployed {packageStatusSummary.deployed}</span>}
+                  {packageStatusSummary.draft > 0 && <span>Draft {packageStatusSummary.draft}</span>}
+                  {packageStatusSummary.archived > 0 && <span>Archived {packageStatusSummary.archived}</span>}
                 </div>
               </div>
             )}
 
             <div
-              className=""
-              style={{}}
+              style={
+                packages.length > 1
+                  ? { maxHeight: "132px", overflowY: "auto", paddingRight: "4px" }
+                  : undefined
+              }
             >
               {packages.map((item) => (
-                <div key={item.id} className="">
+                <div key={item.id}>
                   <Package size={16} />
-                  <div className="">
+                  <div>
                     <strong>{item.name}</strong>
                     <span>
                       {item.version} • {item.status} • {item.sizeAfterCompression} • {item.destinationDirectory}
                     </span>
                   </div>
-                  <em className="">{item.status}</em>
+                  <em>{item.status}</em>
                 </div>
               ))}
             </div>
 
             {hasDeployedPackage && (
-              <div className="">
+              <div>
                 <ShieldCheck size={15} />
                 <span>Some selected packages are already deployed. This action will redeploy them.</span>
               </div>
             )}
           </section>
 
-          <section className="">
-            <div className="">
+          <section>
+            <div>
               <div>
                 <strong>Target User Scope</strong>
                 <p>Select departments, operating systems, or individual endpoint targets.</p>
               </div>
-              <span className="">{finalTargetCount} final target(s)</span>
+              <span>{finalTargetCount} final target(s)</span>
             </div>
 
-            <div className="">
-              <div className="">
-                <section className="">
-                  <div className="">
+            <div>
+              <div>
+                <section>
+                  <div>
                     <div>
                       <h4>Scope Selection</h4>
                       <p>Choose the grouping method and target scope.</p>
                     </div>
                   </div>
 
-                  <div className="">
+                  <div>
                     <button
                       type="button"
-                      className=""
                       onClick={() => switchTargetView("organization")}
                     >
                       Organization
                     </button>
                     <button
                       type="button"
-                      className=""
                       onClick={() => switchTargetView("os")}
                     >
                       Operating System
@@ -942,7 +939,7 @@ function DeployPackageModal({
                   </div>
 
                   {targetView === "organization" && (
-                    <label className="">
+                    <label>
                       <input
                         type="checkbox"
                         checked={includeLowerDepartment}
@@ -955,24 +952,24 @@ function DeployPackageModal({
                     </label>
                   )}
 
-                  <div className="">
+                  <div>
                     {scopeGroups.length > 0 ? (
                       scopeGroups.map((scope) => (
-                        <label key={scope.id} className="">
+                        <label key={scope.id}>
                           <input
                             type="checkbox"
                             checked={selectedScopes.has(scope.id)}
                             onChange={() => toggleScope(scope.id)}
                           />
-                          <div className="">
+                          <div>
                             <strong>{scope.name}</strong>
                             <span>{scope.type}</span>
                           </div>
-                          <em className="">{scope.count}</em>
+                          <em>{scope.count}</em>
                         </label>
                       ))
                     ) : (
-                      <div className="">
+                      <div>
                         <Search size={20} />
                         <strong>No target scope</strong>
                         <span>No devices are available for this scope.</span>
@@ -982,20 +979,20 @@ function DeployPackageModal({
                 </section>
               </div>
 
-              <div className="">
-                <section className="">
-                  <div className="">
+              <div>
+                <section>
+                  <div>
                     <div>
                       <h4>Endpoint Targets</h4>
                       <p>Refine devices before deployment.</p>
                     </div>
-                    <button type="button" className="" onClick={clearTargetSelection}>
+                    <button type="button" onClick={clearTargetSelection}>
                       Clear Selection
                     </button>
                   </div>
 
-                  <div className="">
-                    <label className="">
+                  <div>
+                    <label>
                       <Search size={15} />
                       <input
                         value={targetSearch}
@@ -1006,15 +1003,14 @@ function DeployPackageModal({
                         placeholder="Search user, IP, department"
                       />
                       {targetSearch && (
-                        <button type="button" className="" onClick={() => setTargetSearch("")}>
+                        <button type="button" onClick={() => setTargetSearch("")}>
                           <X size={13} />
                         </button>
                       )}
                     </label>
 
-                    <div className="">
+                    <div>
                       <select
-                        className=""
                         value={targetStatusFilter}
                         onChange={(event) => {
                           setTargetStatusFilter(event.target.value as "All" | "Online" | "Offline");
@@ -1027,7 +1023,6 @@ function DeployPackageModal({
                       </select>
 
                       <select
-                        className=""
                         value={targetOsFilter}
                         onChange={(event) => {
                           setTargetOsFilter(event.target.value);
@@ -1044,8 +1039,8 @@ function DeployPackageModal({
                     </div>
                   </div>
 
-                  <div className="">
-                    <table className="">
+                  <div>
+                    <table>
                       <thead>
                         <tr>
                           <th>
@@ -1066,7 +1061,7 @@ function DeployPackageModal({
 
                       <tbody>
                         {targetPageRows.map((device) => (
-                          <tr key={device.id} className="">
+                          <tr key={device.id}>
                             <td>
                               <input
                                 type="checkbox"
@@ -1082,14 +1077,13 @@ function DeployPackageModal({
                             <td>{device.ip}</td>
                             <td>{device.os}</td>
                             <td>
-                              <span className="">
+                              <span>
                                 {device.status}
                               </span>
                             </td>
                             <td>
                               <button
                                 type="button"
-                                className=""
                                 onClick={() => toggleExcludedUser(device.id)}
                               >
                                 {excludedDevices.has(device.id) ? "Excluded" : "Exclude"}
@@ -1104,47 +1098,46 @@ function DeployPackageModal({
                   <CompactPagination
                     currentPage={targetPage}
                     totalPages={targetTotalPages}
-                    className=""
                     ariaLabel="Target device pagination"
                     onPageChange={setTargetPage}
                   />
                 </section>
               </div>
 
-              <div className="">
-                <section className="">
-                  <div className="">
+              <div>
+                <section>
+                  <div>
                     <div>
                       <strong>Deployment Review</strong>
                       <p>Confirm targets and deployment options.</p>
                     </div>
                   </div>
 
-                  <div className="">
-                    <div className="">
+                  <div>
+                    <div>
                       <span>Final Target</span>
                       <strong>{finalTargetCount}</strong>
                       <small>Ready to receive package</small>
                     </div>
-                    <div className="">
+                    <div>
                       <span>Scopes</span>
                       <strong>{selectedScopeCount}</strong>
                       <small>Selected groups</small>
                     </div>
-                    <div className="">
+                    <div>
                       <span>Manual</span>
                       <strong>{manualUserCount}</strong>
                       <small>Direct devices</small>
                     </div>
-                    <div className="">
+                    <div>
                       <span>Excluded</span>
                       <strong>{excludedUserCount}</strong>
                       <small>Skipped targets</small>
                     </div>
                   </div>
 
-                  <div className="">
-                    <div className="">
+                  <div>
+                    <div>
                       <strong>Included Preview</strong>
                       <span>
                         {includedTargetList.slice(0, 3).map((device) => device.name).join(", ") ||
@@ -1153,7 +1146,7 @@ function DeployPackageModal({
                       </span>
                     </div>
 
-                    <div className="">
+                    <div>
                       <strong>Excluded Preview</strong>
                       <span>
                         {excludedTargetList.slice(0, 3).map((device) => device.name).join(", ") ||
@@ -1163,17 +1156,15 @@ function DeployPackageModal({
                     </div>
                   </div>
 
-                  <div className="">
+                  <div>
                     <button
                       type="button"
-                      className=""
                       onClick={() => setScheduleType("now")}
                     >
                       Send Now
                     </button>
                     <button
                       type="button"
-                      className=""
                       onClick={() => setScheduleType("schedule")}
                     >
                       Schedule
@@ -1181,28 +1172,28 @@ function DeployPackageModal({
                   </div>
 
                   {scheduleType === "schedule" && (
-                    <label className="">
+                    <label>
                       <span>Schedule Time</span>
-                      <input className="" type="datetime-local" />
+                      <input type="datetime-local" />
                     </label>
                   )}
 
-                  <div className="">
-                    <label className="">
+                  <div>
+                    <label>
                       <input type="checkbox" defaultChecked />
                       <span>Force installation</span>
                     </label>
-                    <label className="">
+                    <label>
                       <input type="checkbox" />
                       <span>Reboot after installation</span>
                     </label>
-                    <label className="">
+                    <label>
                       <input type="checkbox" defaultChecked />
                       <span>Notify user</span>
                     </label>
                   </div>
 
-                  <div className="">
+                  <div>
                     <span>Deployment Summary</span>
                     <strong>
                       {packages.length} package(s) • {finalTargetCount} target(s)
@@ -1217,13 +1208,12 @@ function DeployPackageModal({
           </section>
         </div>
 
-        <div className="">
-          <button type="button" className="" onClick={onClose}>
+        <div>
+          <button type="button" onClick={onClose}>
             Cancel
           </button>
           <button
             type="button"
-            className=""
             disabled={finalTargetCount === 0}
             onClick={() => onDeploy(includedTargetList, method, scheduleType)}
           >
@@ -1250,9 +1240,9 @@ function DeletePackageModal({
   const [confirm, setConfirm] = useState("");
 
   return (
-    <div className="" onMouseDown={onClose}>
-      <div className="" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="">
+    <div onMouseDown={onClose}>
+      <div onMouseDown={(event) => event.stopPropagation()}>
+        <div>
           <div>
             <h3>{packages.length > 1 ? "Delete Packages" : "Delete Package"}</h3>
             <p>
@@ -1261,13 +1251,13 @@ function DeletePackageModal({
                 : packages[0]?.name}
             </p>
           </div>
-          <button type="button" className="" onClick={onClose}>
+          <button type="button" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
 
-        <div className="">
-          <div className="">
+        <div>
+          <div>
             <Trash2 size={18} />
             <div>
               <strong>Confirm delete action</strong>
@@ -1275,7 +1265,7 @@ function DeletePackageModal({
             </div>
           </div>
 
-          <div className="">
+          <div>
             {packages.map((item) => (
               <div key={item.id}>
                 <strong>{item.name}</strong>
@@ -1284,19 +1274,18 @@ function DeletePackageModal({
             ))}
           </div>
 
-          <label className="">
+          <label>
             <span>Type delete to confirm</span>
-            <input className="" value={confirm} onChange={(event) => setConfirm(event.target.value)} />
+            <input value={confirm} onChange={(event) => setConfirm(event.target.value)} />
           </label>
         </div>
 
-        <div className="">
-          <button type="button" className="" onClick={onClose}>
+        <div>
+          <button type="button" onClick={onClose}>
             Cancel
           </button>
           <button
             type="button"
-            className=""
             disabled={confirm.toLowerCase() !== "delete"}
             onClick={onDelete}
           >
@@ -1681,39 +1670,38 @@ export default function SoftwareDistribution() {
   };
 
   const SortButton = ({ label, columnKey }: { label: string; columnKey: SortKey }) => (
-    <button type="button" className="" onClick={() => handleSort(columnKey)}>
+    <button type="button" onClick={() => handleSort(columnKey)}>
       <span>{label}</span>
       <i>{sortKey === columnKey ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</i>
     </button>
   );
 
   return (
-    <div className="" data-section="software-distribution">
+    <div data-section="software-distribution">
       {toast && (
-        <div className="">
-          <CheckCircle2 className="" size={18} />
+        <div>
+          <CheckCircle2 size={18} />
           <div>
             <strong>{toast.title}</strong>
             <span>{toast.message}</span>
           </div>
-          <button type="button" className="" onClick={() => setToast(null)}>
+          <button type="button" onClick={() => setToast(null)}>
             <X size={14} />
           </button>
         </div>
       )}
 
-      <div className="">
-        <aside className="">
-          <div className="">
+      <div>
+        <aside>
+          <div>
             <span>EMA / Software Distribution</span>
             <strong>Package Library</strong>
             <small>Browse packages and available versions.</small>
           </div>
 
-          <div className="">
+          <div>
             {/* <button
               type="button"
-              className=""
               onClick={() => {
                 setOpenTreeMenuId(null);
                 setOpenVersionMenuId(null);
@@ -1725,7 +1713,7 @@ export default function SoftwareDistribution() {
               New Package
             </button> */}
 
-            <label className="">
+            <label>
               <Search size={15} />
               <input
                 value={searchTerm}
@@ -1736,7 +1724,7 @@ export default function SoftwareDistribution() {
                 placeholder="Search package"
               />
               {searchTerm && (
-                <button type="button" className="" onClick={() => setSearchTerm("")}>
+                <button type="button" onClick={() => setSearchTerm("")}>
                   <X size={13} />
                 </button>
               )}
@@ -1750,7 +1738,6 @@ export default function SoftwareDistribution() {
                 <div key={item.id}>
                   <button
                     type="button"
-                    className=""
                     title="Click to expand or collapse versions"
                     onClick={() => {
                       setSelectedPackageId(item.id);
@@ -1760,7 +1747,7 @@ export default function SoftwareDistribution() {
                       toggleExpand(item.id);
                     }}
                   >
-                    <span className="">
+                    <span>
                       {isExpanded ? <FolderOpen size={15} /> : <FolderClosed size={15} />}
                     </span>
                     <span>
@@ -1770,11 +1757,10 @@ export default function SoftwareDistribution() {
                   </button>
 
                   {openTreeMenuId === item.id && (
-                    <div className="">
-                      <div className="">
+                    <div>
+                      <div>
                         <button
                           type="button"
-                          className=""
                           onClick={() => {
                             setOpenTreeMenuId(null);
                             setOpenVersionMenuId(null);
@@ -1787,7 +1773,6 @@ export default function SoftwareDistribution() {
                         </button>
                         <button
                           type="button"
-                          className=""
                           onClick={() => {
                             setOpenTreeMenuId(null);
                             setOpenVersionMenuId(null);
@@ -1801,7 +1786,6 @@ export default function SoftwareDistribution() {
                         </button>
                         <button
                           type="button"
-                          className=""
                           onClick={() => {
                             setOpenTreeMenuId(null);
                             setOpenVersionMenuId(null);
@@ -1817,16 +1801,15 @@ export default function SoftwareDistribution() {
                   )}
 
                   {isExpanded && (
-                    <div className="">
+                    <div>
                       {item.versions.map((version) => {
                         const versionMenuId = `${item.id}::${version}`;
 
                         return (
-                          <div className="" key={version}>
-                            <div className="">
+                          <div key={version}>
+                            <div>
                               <button
                                 type="button"
-                                className=""
                                 onClick={() => {
                                   setSelectedPackageId(item.id);
                                   setOpenTreeMenuId(null);
@@ -1839,7 +1822,6 @@ export default function SoftwareDistribution() {
                               </button>
                               <button
                                 type="button"
-                                className=""
                                 title="Version actions"
                                 onClick={(event) => {
                                   event.stopPropagation();
@@ -1855,10 +1837,9 @@ export default function SoftwareDistribution() {
                             </div>
 
                             {openVersionMenuId === versionMenuId && (
-                              <div className="">
+                              <div>
                                 <button
                                   type="button"
-                                  className=""
                                   onClick={() => {
                                     setSelectedPackageId(item.id);
                                     setOpenVersionMenuId(null);
@@ -1871,7 +1852,6 @@ export default function SoftwareDistribution() {
                                 </button>
                                 <button
                                   type="button"
-                                  className=""
                                   onClick={() => {
                                     setOpenVersionMenuId(null);
                                     setOpenTreeMenuId(null);
@@ -1894,11 +1874,10 @@ export default function SoftwareDistribution() {
             })}
 
             {hasMoreTreeRows && (
-              <div className="">
-                <div className="">
+              <div>
+                <div>
                   <button
                     type="button"
-                    className=""
                     onClick={() =>
                       setTreeVisibleCount((current) =>
                         Math.min(current + TREE_PAGE_SIZE, treePackages.length)
@@ -1914,7 +1893,6 @@ export default function SoftwareDistribution() {
             {hasMoreTreeRows && (
               <button
                 type="button"
-                className=""
                 onClick={() =>
                   setTreeVisibleCount((current) =>
                     Math.min(current + TREE_PAGE_SIZE, treePackages.length)
@@ -1927,23 +1905,22 @@ export default function SoftwareDistribution() {
           </div>
         </aside>
 
-        <section className="">
-          <section className="">
+        <section>
+          <section>
             <div>
-              <span className="">Software Distribution</span>
+              <span>Software Distribution</span>
               <h2>Package Registry</h2>
               <p>Prepare, organise and deploy software packages to selected target devices.</p>
             </div>
 
-            <div className="">
-              <button type="button" className="" onClick={resetFilters}>
+            <div>
+              <button type="button" onClick={resetFilters}>
                 <span>Total Packages</span>
                 <strong>{summary.total}</strong>
                 <small>All registered packages</small>
               </button>
               <button
                 type="button"
-                className=""
                 onClick={() => {
                   setStatusFilter("Ready");
                   setPage(1);
@@ -1955,7 +1932,6 @@ export default function SoftwareDistribution() {
               </button>
               <button
                 type="button"
-                className=""
                 onClick={() => {
                   setStatusFilter("Deployed");
                   setPage(1);
@@ -1967,7 +1943,6 @@ export default function SoftwareDistribution() {
               </button>
               <button
                 type="button"
-                className=""
                 onClick={() => {
                   setStatusFilter("Draft");
                   setPage(1);
@@ -1980,8 +1955,8 @@ export default function SoftwareDistribution() {
             </div>
           </section>
 
-          <main className="">
-            <div className="">
+          <main>
+            <div>
               <div>
                 <h3>Package Registry</h3>
                 <p>
@@ -1990,10 +1965,9 @@ export default function SoftwareDistribution() {
                 </p>
               </div>
 
-              <div className="">
+              <div>
                 <button
                   type="button"
-                  className=""
                   onClick={() => {
                     setOpenTreeMenuId(null);
                     setOpenVersionMenuId(null);
@@ -2004,15 +1978,15 @@ export default function SoftwareDistribution() {
                   <Plus size={14} />
                   New Package
                 </button>
-                <button type="button" className="" onClick={exportCsv} title="Export CSV">
+                <button type="button" onClick={exportCsv} title="Export CSV">
                   <Download size={16} />
                   Export
                 </button>
               </div>
             </div>
 
-            <div className="">
-              <label className="">
+            <div>
+              <label>
                 <Search size={15} />
                 <input
                   value={searchTerm}
@@ -2023,14 +1997,13 @@ export default function SoftwareDistribution() {
                   placeholder="Search package or owner"
                 />
                 {searchTerm && (
-                  <button type="button" className="" onClick={() => setSearchTerm("")}>
+                  <button type="button" onClick={() => setSearchTerm("")}>
                     <X size={13} />
                   </button>
                 )}
               </label>
 
               <select
-                className=""
                 value={statusFilter}
                 onChange={(event) => {
                   setStatusFilter(event.target.value as "all" | PackageStatus);
@@ -2046,7 +2019,7 @@ export default function SoftwareDistribution() {
             </div>
 
             {apiError && (
-              <div className="">
+              <div>
                 <Server size={18} />
                 <div>
                   <strong>Data unavailable</strong>
@@ -2056,16 +2029,15 @@ export default function SoftwareDistribution() {
             )}
 
             {selectedPackages.length > 0 && (
-              <div className="">
+              <div>
                 <strong>{selectedPackages.length} package(s) selected</strong>
                 <span>Bulk deployment uses one target scope and one schedule.</span>
-                <div className="">
-                  <button type="button" className="" onClick={() => setSelectedIds(new Set())}>
+                <div>
+                  <button type="button" onClick={() => setSelectedIds(new Set())}>
                     Clear
                   </button>
                   <button
                     type="button"
-                    className=""
                     onClick={() => setModal({ type: "send", packageIds: selectedPackages.map((item) => item.id) })}
                   >
                     <Send size={15} />
@@ -2073,7 +2045,6 @@ export default function SoftwareDistribution() {
                   </button>
                   <button
                     type="button"
-                    className=""
                     onClick={() => setModal({ type: "delete", packageIds: selectedPackages.map((item) => item.id) })}
                   >
                     <Trash2 size={15} />
@@ -2083,8 +2054,8 @@ export default function SoftwareDistribution() {
               </div>
             )}
 
-            <div className="">
-              <table className="">
+            <div>
+              <table>
                 <thead>
                   <tr>
                     <th>
@@ -2131,10 +2102,10 @@ export default function SoftwareDistribution() {
                             onChange={() => toggleSelected(item.id)}
                           />
                         </td>
-                        <td><span className="">{(page - 1) * PAGE_SIZE + index + 1}</span></td>
+                        <td><span>{(page - 1) * PAGE_SIZE + index + 1}</span></td>
                         <td>
-                          <div className="">
-                            <span className=""><Package size={15} /></span>
+                          <div>
+                            <span><Package size={15} /></span>
                             <div>
                               <strong>{item.name}</strong>
                               <small>{item.description}</small>
@@ -2143,7 +2114,7 @@ export default function SoftwareDistribution() {
                         </td>
                         <td>{item.version}</td>
                         <td>
-                          <span className="">
+                          <span>
                             {item.status}
                           </span>
                         </td>
@@ -2152,7 +2123,6 @@ export default function SoftwareDistribution() {
                         <td onClick={(event) => event.stopPropagation()}>
                           <button
                             type="button"
-                            className=""
                             disabled={!canSelect}
                             title={canSelect ? "Deploy package" : "Archived packages cannot be deployed"}
                             onClick={() => {
@@ -2185,70 +2155,69 @@ export default function SoftwareDistribution() {
       </div>
 
       {selectedPackage && (
-        <div className="" onMouseDown={() => setSelectedPackageId(null)}>
-          <aside className="" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="">
-              <div className="">
-                <span className=""><Package size={18} /></span>
+        <div onMouseDown={() => setSelectedPackageId(null)}>
+          <aside onMouseDown={(event) => event.stopPropagation()}>
+            <div>
+              <div>
+                <span><Package size={18} /></span>
                 <div>
                   <h3>{selectedPackage.name}</h3>
                   <p>{selectedPackage.version} • {selectedPackage.status} • {selectedPackage.owner}</p>
                 </div>
               </div>
 
-              <button type="button" className="" onClick={() => setSelectedPackageId(null)}>
+              <button type="button" onClick={() => setSelectedPackageId(null)}>
                 <X size={18} />
               </button>
             </div>
 
-            <div className="">
-              <section className="">
-                <div className=""><span>Status:</span><strong>{selectedPackage.status}</strong><small>Current package state</small></div>
-                <div className=""><span>Delivery Method:</span><strong>{deliveryMethodLabels[selectedPackage.lastDeliveryMethod]}</strong><small>Last selected channel</small></div>
-                <div className=""><span>Targets:</span><strong>{selectedPackage.targetCount}</strong><small>Total assigned devices</small></div>
-                <div className=""><span>Package Size:</span><strong>{selectedPackage.sizeAfterCompression}</strong><small>After compression</small></div>
+            <div>
+              <section>
+                <div><span>Status:</span><strong>{selectedPackage.status}</strong><small>Current package state</small></div>
+                <div><span>Delivery Method:</span><strong>{deliveryMethodLabels[selectedPackage.lastDeliveryMethod]}</strong><small>Last selected channel</small></div>
+                <div><span>Targets:</span><strong>{selectedPackage.targetCount}</strong><small>Total assigned devices</small></div>
+                <div><span>Package Size:</span><strong>{selectedPackage.sizeAfterCompression}</strong><small>After compression</small></div>
               </section>
 
-              <section className="">
-                <div className=""><div><h4>Basic Information</h4><p>Package identity and ownership details</p></div></div>
-                <div className="">
-                  <label className=""><span>Package Name:</span><strong>{selectedPackage.name}</strong></label>
-                  <label className=""><span>Version:</span><strong>{selectedPackage.version}</strong></label>
-                  <label className=""><span>Owner:</span><strong>{selectedPackage.owner}</strong></label>
-                  <label className=""><span>Registered Date:</span><strong>{formatDate(selectedPackage.registeredDate)}</strong></label>
-                  <label className=""><span>Destination Directory:</span><strong>{selectedPackage.destinationDirectory}</strong></label>
-                  <label className=""><span>Description:</span><strong>{selectedPackage.description}</strong></label>
+              <section>
+                <div><div><h4>Basic Information</h4><p>Package identity and ownership details</p></div></div>
+                <div>
+                  <label><span>Package Name:</span><strong>{selectedPackage.name}</strong></label>
+                  <label><span>Version:</span><strong>{selectedPackage.version}</strong></label>
+                  <label><span>Owner:</span><strong>{selectedPackage.owner}</strong></label>
+                  <label><span>Registered Date:</span><strong>{formatDate(selectedPackage.registeredDate)}</strong></label>
+                  <label><span>Destination Directory:</span><strong>{selectedPackage.destinationDirectory}</strong></label>
+                  <label><span>Description:</span><strong>{selectedPackage.description}</strong></label>
                 </div>
               </section>
 
-              <section className="">
-                <div className=""><div><h4>Package Details</h4><p>Files, compression and execution scope</p></div></div>
-                <div className="">
-                  <label className=""><span>Files:</span><strong>{selectedPackage.fileCount}</strong></label>
-                  <label className=""><span>Versions:</span><strong>{selectedPackage.versions.join(", ")}</strong></label>
-                  <label className=""><span>Before Compression:</span><strong>{selectedPackage.sizeBeforeCompression}</strong></label>
-                  <label className=""><span>After Compression:</span><strong>{selectedPackage.sizeAfterCompression}</strong></label>
-                  <label className=""><span>Remote Execute File:</span><strong>{selectedPackage.remoteExecuteFile}</strong></label>
-                  <label className=""><span>Exclude OS:</span><strong>{selectedPackage.excludeOS}</strong></label>
+              <section>
+                <div><div><h4>Package Details</h4><p>Files, compression and execution scope</p></div></div>
+                <div>
+                  <label><span>Files:</span><strong>{selectedPackage.fileCount}</strong></label>
+                  <label><span>Versions:</span><strong>{selectedPackage.versions.join(", ")}</strong></label>
+                  <label><span>Before Compression:</span><strong>{selectedPackage.sizeBeforeCompression}</strong></label>
+                  <label><span>After Compression:</span><strong>{selectedPackage.sizeAfterCompression}</strong></label>
+                  <label><span>Remote Execute File:</span><strong>{selectedPackage.remoteExecuteFile}</strong></label>
+                  <label><span>Exclude OS:</span><strong>{selectedPackage.excludeOS}</strong></label>
                 </div>
               </section>
 
-              <section className="">
-                <div className=""><div><h4>Last Deployment</h4><p>Read-only deployment reference</p></div></div>
-                <div className="">
-                  <label className=""><span>Last Method:</span><strong>{deliveryMethodLabels[selectedPackage.lastDeliveryMethod]}</strong></label>
-                  <label className=""><span>Last Deployment:</span><strong>{formatDate(selectedPackage.lastDeployment)}</strong></label>
+              <section>
+                <div><div><h4>Last Deployment</h4><p>Read-only deployment reference</p></div></div>
+                <div>
+                  <label><span>Last Method:</span><strong>{deliveryMethodLabels[selectedPackage.lastDeliveryMethod]}</strong></label>
+                  <label><span>Last Deployment:</span><strong>{formatDate(selectedPackage.lastDeployment)}</strong></label>
                 </div>
               </section>
             </div>
 
-            <div className="">
-              <button type="button" className="" onClick={() => setSelectedPackageId(null)}>
+            <div>
+              <button type="button" onClick={() => setSelectedPackageId(null)}>
                 Close
               </button>
               <button
                 type="button"
-                className=""
                 disabled={!isDeployable(selectedPackage)}
                 onClick={() => {
                   const packageId = selectedPackage.id;

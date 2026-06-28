@@ -177,15 +177,15 @@ export default function SoftwarePolicySettings() {
   const illegalCount = rows.filter((row) => classification(row).toLowerCase() === "illegal").length;
 
   return (
-    <section className="ema-software-policy">
-      <div className="ema-sp-toolbar">
+    <section>
+      <div>
         <div>
-          <span className="ema-sp-eyebrow">SOFTWARE GOVERNANCE</span>
+          <span>SOFTWARE GOVERNANCE</span>
           <h3>Software Policy</h3>
           <p>Manage legal or illegal software classification, license count and expiry policy.</p>
         </div>
 
-        <div className="ema-sp-actions">
+        <div>
           <button type="button" onClick={loadPolicies} disabled={loading}>
             <RefreshCcw size={14} />
             {loading ? "Loading..." : "Refresh"}
@@ -197,26 +197,26 @@ export default function SoftwarePolicySettings() {
         </div>
       </div>
 
-      <div className="ema-sp-cards">
+      <div>
         <article>
-          <span className="blue"><ShieldCheck size={15} /></span>
+          <span><ShieldCheck size={15} /></span>
           <div><strong>{rows.length}</strong><small>Total Policies</small></div>
         </article>
         <article>
-          <span className="green"><ShieldCheck size={15} /></span>
+          <span><ShieldCheck size={15} /></span>
           <div><strong>{activeCount}</strong><small>Active Policies</small></div>
         </article>
         <article>
-          <span className="purple"><Clock3 size={15} /></span>
+          <span><Clock3 size={15} /></span>
           <div><strong>{legalCount}</strong><small>Legal Items</small></div>
         </article>
         <article>
-          <span className="red"><AlertTriangle size={15} /></span>
+          <span><AlertTriangle size={15} /></span>
           <div><strong>{illegalCount}</strong><small>Illegal Items</small></div>
         </article>
       </div>
 
-      <div className="ema-sp-filter">
+      <div>
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -224,10 +224,10 @@ export default function SoftwarePolicySettings() {
         />
       </div>
 
-      {error && <div className="ema-sp-error">{error}</div>}
+      {error && <div>{error}</div>}
 
-      <div className="ema-sp-table-wrap">
-        <table className="ema-sp-table">
+      <div>
+        <table>
           <thead>
             <tr>
               <th>No.</th>
@@ -243,7 +243,7 @@ export default function SoftwarePolicySettings() {
           <tbody>
             {filteredRows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="ema-sp-empty">
+                <td colSpan={8}>
                   {loading ? "Loading software policies..." : "No software policy records found."}
                 </td>
               </tr>
@@ -255,14 +255,14 @@ export default function SoftwarePolicySettings() {
                   <td>{softwareName(row)}</td>
                   <td>{categoryName(row)}</td>
                   <td>
-                    <span className={`ema-sp-pill ${classification(row).toLowerCase()}`}>
+                    <span>
                       {classification(row)}
                     </span>
                   </td>
                   <td>{licenseCount(row)}</td>
                   <td>{expiry(row)}</td>
                   <td>
-                    <span className={`ema-sp-status ${isActive(row) ? "active" : "inactive"}`}>
+                    <span>
                       {isActive(row) ? "Active" : "Inactive"}
                     </span>
                   </td>

@@ -72,10 +72,10 @@ export function EmaToastProvider({ children }: { children: ReactNode }) {
     <EmaToastContext.Provider value={api}>
       {children}
 
-      <div className="ema-toast-viewport" aria-live="polite" aria-relevant="additions">
+      <div aria-live="polite" aria-relevant="additions">
         {toasts.map((toast) => (
-          <div className={"ema-toast ema-toast-" + toast.type} key={toast.id}>
-            <span className="ema-toast-dot" />
+          <div key={toast.id}>
+            <span />
             <div>
               <strong>{toast.title}</strong>
               {toast.message && <small>{toast.message}</small>}

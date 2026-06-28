@@ -269,17 +269,17 @@ export default function Profile() {
   };
 
   return (
-    <main className="ema-screen ema-form-page">
-      <section className="ema-hero">
+    <main>
+      <section>
         <div>
-          <span className="ema-eyebrow">USER PROFILE</span>
+          <span>USER PROFILE</span>
           <h2>My Profile</h2>
           <p>
             Manage personal information, account details and password security for the current EMA login session.
           </p>
         </div>
 
-        <div className="ema-score-grid">
+        <div>
           <div>
             <span>ROLE</span>
             <strong>{roleLabel}</strong>
@@ -303,16 +303,16 @@ export default function Profile() {
         </div>
       </section>
 
-      <section className="ema-form-layout">
-        <aside className="ema-panel ema-summary-card">
-          <div className="ema-avatar-xl">{initials}</div>
+      <section>
+        <aside>
+          <div>{initials}</div>
 
-          <div className="ema-summary-title">
+          <div>
             <h3>{profileForm.name || profileForm.username || "Current User"}</h3>
             <p>{roleLabel}</p>
           </div>
 
-          <div className="ema-meta-list">
+          <div>
             <div>
               <UserCircle size={16} />
               <span>Account ID</span>
@@ -336,18 +336,17 @@ export default function Profile() {
           </div>
         </aside>
 
-        <section className="ema-panel">
-          <div className="ema-panel-head">
+        <section>
+          <div>
             <div>
-              <span className="ema-eyebrow">ACCOUNT CENTER</span>
+              <span>ACCOUNT CENTER</span>
               <h3>Profile Management</h3>
               <p>Update personal information or manage account password.</p>
             </div>
 
-            <div className="ema-tab-list">
+            <div>
               <button
                 type="button"
-                className={"ema-tab-btn " + (activeTab === "profile" ? "active" : "")}
                 onClick={() => setActiveTab("profile")}
               >
                 <UserCircle size={15} />
@@ -355,7 +354,6 @@ export default function Profile() {
               </button>
               <button
                 type="button"
-                className={"ema-tab-btn " + (activeTab === "security" ? "active" : "")}
                 onClick={() => setActiveTab("security")}
               >
                 <Lock size={15} />
@@ -365,60 +363,59 @@ export default function Profile() {
           </div>
 
           {notice && (
-            <div className={"ema-notice " + notice.tone}>
+            <div>
               {notice.tone === "success" ? <CheckCircle2 size={16} /> : <ShieldCheck size={16} />}
               <span>{notice.text}</span>
             </div>
           )}
 
           {activeTab === "profile" ? (
-            <form className="ema-form-card" onSubmit={handleSaveProfile}>
-              <div className="ema-form-grid">
-                <label className="ema-field">
+            <form onSubmit={handleSaveProfile}>
+              <div>
+                <label>
                   <span>Full Name</span>
-                  <input className="ema-input" value={profileForm.name} onChange={handleProfileChange("name")} />
+                  <input value={profileForm.name} onChange={handleProfileChange("name")} />
                 </label>
 
-                <label className="ema-field">
+                <label>
                   <span>Username</span>
-                  <input className="ema-input" value={profileForm.username} onChange={handleProfileChange("username")} />
+                  <input value={profileForm.username} onChange={handleProfileChange("username")} />
                 </label>
 
-                <label className="ema-field">
+                <label>
                   <span>Email</span>
-                  <input className="ema-input" type="email" value={profileForm.email} onChange={handleProfileChange("email")} />
+                  <input type="email" value={profileForm.email} onChange={handleProfileChange("email")} />
                 </label>
 
-                <label className="ema-field">
+                <label>
                   <span>Phone No</span>
-                  <input className="ema-input" value={profileForm.phone} onChange={handleProfileChange("phone")} />
+                  <input value={profileForm.phone} onChange={handleProfileChange("phone")} />
                 </label>
 
-                <label className="ema-field">
+                <label>
                   <span>Department / Branch</span>
-                  <input className="ema-input" value={profileForm.department} onChange={handleProfileChange("department")} />
+                  <input value={profileForm.department} onChange={handleProfileChange("department")} />
                 </label>
 
-                <label className="ema-field">
+                <label>
                   <span>Position</span>
-                  <input className="ema-input" value={profileForm.position} onChange={handleProfileChange("position")} />
+                  <input value={profileForm.position} onChange={handleProfileChange("position")} />
                 </label>
               </div>
 
-              <div className="ema-actions">
-                <button className="ema-btn primary" type="submit" disabled={saving}>
+              <div>
+                <button type="submit" disabled={saving}>
                   <Save size={15} />
                   {saving ? "Saving..." : "Save Profile"}
                 </button>
               </div>
             </form>
           ) : (
-            <form className="ema-form-card" onSubmit={handleChangePassword}>
-              <div className="ema-form-grid single">
-                <label className="ema-field">
+            <form onSubmit={handleChangePassword}>
+              <div>
+                <label>
                   <span>Current Password</span>
                   <input
-                    className="ema-input"
                     type="password"
                     value={passwordForm.currentPassword}
                     onChange={handlePasswordChange("currentPassword")}
@@ -426,10 +423,9 @@ export default function Profile() {
                   />
                 </label>
 
-                <label className="ema-field">
+                <label>
                   <span>New Password</span>
                   <input
-                    className="ema-input"
                     type="password"
                     value={passwordForm.newPassword}
                     onChange={handlePasswordChange("newPassword")}
@@ -437,10 +433,9 @@ export default function Profile() {
                   />
                 </label>
 
-                <label className="ema-field">
+                <label>
                   <span>Confirm New Password</span>
                   <input
-                    className="ema-input"
                     type="password"
                     value={passwordForm.confirmPassword}
                     onChange={handlePasswordChange("confirmPassword")}
@@ -449,13 +444,13 @@ export default function Profile() {
                 </label>
               </div>
 
-              <div className="ema-security-note">
+              <div>
                 <KeyRound size={16} />
                 <span>Password update uses /api/auth/change-password. Frontend validation requires minimum 8 characters.</span>
               </div>
 
-              <div className="ema-actions">
-                <button className="ema-btn primary" type="submit" disabled={changingPassword}>
+              <div>
+                <button type="submit" disabled={changingPassword}>
                   <Lock size={15} />
                   {changingPassword ? "Updating..." : "Update Password"}
                 </button>

@@ -17,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 
 import authService, { type LoginResponse } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
+import { getDefaultAccessiblePath, normalizeKey } from "../routes/accessControl";
 import "../styles/2fa.css";
 
 type AnyUser = Record<string, any>;
@@ -31,7 +32,6 @@ type MfaState = {
 function MicrosoftLogo() {
   return (
     <svg
-      className="login-provider-logo"
       viewBox="0 0 23 23"
       aria-hidden="true"
       focusable="false"
@@ -47,7 +47,6 @@ function MicrosoftLogo() {
 function GoogleLogo() {
   return (
     <svg
-      className="login-provider-logo"
       viewBox="0 0 48 48"
       aria-hidden="true"
       focusable="false"
@@ -121,6 +120,8 @@ function storeAuthToken(accessToken: string, user: AnyUser) {
   localStorage.setItem("ema-access-token", accessToken);
   localStorage.setItem("accessToken", accessToken);
   localStorage.setItem("token", accessToken);
+  localStorage.setItem("user", JSON.stringify(user));
+  localStorage.setItem("currentUser", JSON.stringify(user));
   localStorage.setItem(
     "ema-auth",
     JSON.stringify({
@@ -129,6 +130,174 @@ function storeAuthToken(accessToken: string, user: AnyUser) {
       user,
     })
   );
+}
+
+function firstValue(row: AnyUser, keys: string[]) {
+  for (const key of keys) {
+    const value = row?.[key];
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return "";
+}
+
+function arrayFromPayload(payload: AnyUser, key: string) {
+  const data = payload?.data || payload || {};
+  const value = data?.[key] || payload?.[key];
+
+  if (Array.isArray(value)) return value;
+
+  if (key === "permissions") {
+    return (
+      data?.permissions ||
+      data?.rolePermissions ||
+      data?.modulePermissions ||
+      data?.RoleModulePermissions ||
+      payload?.permissions ||
+      payload?.rolePermissions ||
+      payload?.modulePermissions ||
+      []
+    );
+  }
+
+  return [];
+}
+
+function moduleRoute(row: AnyUser) {
+  const explicit = String(firstValue(row, ["routePath", "RoutePath", "path", "Path", "url", "Url"])).trim();
+
+  if (explicit) {
+    const cleanedExplicit = explicit.split("/").filter(Boolean).join("/");
+    return cleanedExplicit ? "/" + cleanedExplicit : "/";
+  }
+
+  const text = normalizeKey([
+    firstValue(row, ["moduleKey", "ModuleKey", "key", "Key"]),
+    firstValue(row, ["moduleName", "ModuleName", "name", "Name", "label", "Label"]),
+  ].join(" "));
+
+  if (text.includes("management_dashboard")) return "/management-dashboard";
+  if (text.includes("it_operation") || text.includes("it_operations") || text.includes("operation_dashboard")) return "/dashboard";
+  if (text.includes("service_desk") || text.includes("incident") || text.includes("ticket")) return "/service-desk";
+  if (text.includes("hardware")) return "/hardware";
+  if (text.includes("software_distribution")) return "/software-distribution";
+  if (text.includes("software")) return "/software";
+  if (text.includes("network")) return "/network-inventory";
+  if (text.includes("app_metering") || text.includes("application_metering")) return "/appmetering";
+  if (text.includes("internet")) return "/internet-metering";
+  if (text.includes("app_restriction")) return "/app-restriction";
+  if (text.includes("web_restriction")) return "/web-restriction";
+  if (text.includes("patch")) return "/patch-management";
+  if (text.includes("task")) return "/tasklist";
+  if (text.includes("report")) return "/report";
+  if (text.includes("setting") || text.includes("user_access")) return "/settings";
+
+  return "";
+}
+
+async function enrichUserWithModuleAccess(accessToken: string, user: AnyUser) {
+  try {
+    const payload = await authService.getRoleModuleAccess(accessToken);
+
+    const roles = arrayFromPayload(payload, "roles");
+    const modules = arrayFromPayload(payload, "modules");
+    const permissions = arrayFromPayload(payload, "permissions");
+
+    const userRoleIds = new Set(
+      [
+        user.roleID,
+        user.RoleID,
+        user.roleId,
+        user.RoleId,
+      ]
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+    );
+
+    const userRoleNames = new Set(
+      [
+        user.role,
+        user.Role,
+        user.roleName,
+        user.RoleName,
+        ...(Array.isArray(user.roles) ? user.roles : []),
+      ]
+        .map((value) => normalizeKey(value))
+        .filter(Boolean)
+    );
+
+    const matchedRoleIds = new Set<string>();
+
+    roles.forEach((role: AnyUser) => {
+      const roleId = String(firstValue(role, ["roleID", "RoleID", "roleId", "RoleId", "id"])).trim();
+      const roleName = normalizeKey(firstValue(role, ["roleName", "RoleName", "name", "Name", "role", "Role"]));
+
+      if ((roleId && userRoleIds.has(roleId)) || (roleName && userRoleNames.has(roleName))) {
+        matchedRoleIds.add(roleId);
+      }
+    });
+
+    userRoleIds.forEach((id) => matchedRoleIds.add(id));
+
+    const allowedModuleIds = new Set<string>();
+
+    permissions.forEach((permission: AnyUser) => {
+      const roleId = String(firstValue(permission, ["roleID", "RoleID", "roleId", "RoleId"])).trim();
+      const roleName = normalizeKey(firstValue(permission, ["roleName", "RoleName", "role", "Role"]));
+      const canView = Boolean(
+        permission.canView ??
+        permission.CanView ??
+        permission.view ??
+        permission.View ??
+        permission.allowed ??
+        permission.Allowed ??
+        permission.isAllowed ??
+        permission.IsAllowed
+      );
+
+      const matchRole = (roleId && matchedRoleIds.has(roleId)) || (roleName && userRoleNames.has(roleName));
+
+      if (matchRole && canView) {
+        const moduleId = String(firstValue(permission, ["moduleID", "ModuleID", "moduleId", "ModuleId"])).trim();
+        if (moduleId) allowedModuleIds.add(moduleId);
+      }
+    });
+
+    const allowedRoutes = new Set<string>();
+    const allowedModules = new Set<string>();
+    const moduleAccess: Record<string, boolean> = {};
+
+    modules.forEach((module: AnyUser) => {
+      const moduleId = String(firstValue(module, ["moduleID", "ModuleID", "moduleId", "ModuleId", "id"])).trim();
+      if (!moduleId || !allowedModuleIds.has(moduleId)) return;
+
+      const route = moduleRoute(module);
+      if (route) allowedRoutes.add(route);
+
+      [
+        firstValue(module, ["moduleKey", "ModuleKey", "key", "Key"]),
+        firstValue(module, ["moduleName", "ModuleName", "name", "Name", "label", "Label"]),
+      ].forEach((key) => {
+        const normalized = normalizeKey(key);
+        if (normalized) {
+          allowedModules.add(normalized);
+          moduleAccess[normalized] = true;
+        }
+      });
+
+      if (route === "/management-dashboard") moduleAccess.management_dashboard = true;
+      if (route === "/dashboard") moduleAccess.it_operation_dashboard = true;
+    });
+
+    return {
+      ...user,
+      allowedRoutes: Array.from(allowedRoutes),
+      allowedModules: Array.from(allowedModules),
+      moduleAccess,
+    };
+  } catch (error) {
+    console.warn("Module access could not be loaded during login.", error);
+    return user;
+  }
 }
 
 export default function Login() {
@@ -158,12 +327,13 @@ export default function Login() {
     localStorage.setItem("ema-login-theme", loginTheme);
   }, [loginTheme]);
 
-  const finalizeLogin = (accessToken: string, rawUser: AnyUser, fallbackUsername = "User") => {
+  const finalizeLogin = async (accessToken: string, rawUser: AnyUser, fallbackUsername = "User") => {
     const normalizedUser = normalizeApiUser(rawUser, fallbackUsername);
+    const accessUser = await enrichUserWithModuleAccess(accessToken, normalizedUser);
 
-    storeAuthToken(accessToken, normalizedUser);
-    login(accessToken, normalizedUser);
-    navigate("/dashboard", { replace: true });
+    storeAuthToken(accessToken, accessUser);
+    login(accessToken, accessUser);
+    navigate(getDefaultAccessiblePath(accessUser), { replace: true });
   };
 
   useEffect(() => {
@@ -205,9 +375,9 @@ export default function Login() {
       try {
         const mePayload = await authService.getCurrentUser(token);
         const user = mePayload?.data || mePayload?.user || mePayload || fallbackUser;
-        finalizeLogin(token, user, email || provider || "SSO User");
+        await finalizeLogin(token, user, email || provider || "SSO User");
       } catch {
-        finalizeLogin(token, fallbackUser, email || provider || "SSO User");
+        await finalizeLogin(token, fallbackUser, email || provider || "SSO User");
       } finally {
         window.history.replaceState({}, "", "/login");
       }
@@ -324,7 +494,7 @@ export default function Login() {
       }
 
       const apiUser = payload?.data?.user || payload?.user || {};
-      finalizeLogin(accessToken, apiUser, cleanUsername);
+      await finalizeLogin(accessToken, apiUser, cleanUsername);
     } catch (err) {
       console.error("Sign-in error:", err);
       setError("Sign-in service is unavailable. Please try again or contact support.");
@@ -384,7 +554,7 @@ export default function Login() {
       }
 
       const apiUser = payload?.data?.user || payload?.user || mfaState.user;
-      finalizeLogin(accessToken, apiUser, username || "User");
+      await finalizeLogin(accessToken, apiUser, username || "User");
     } catch (err) {
       console.error("2FA verify error:", err);
       setError("Verification service is unavailable. Please try again.");
@@ -400,16 +570,15 @@ export default function Login() {
   };
 
   return (
-    <main className={`login-page login-page-${loginTheme}`}>
-      <div className="login-bg-orb orb-one" />
-      <div className="login-bg-orb orb-two" />
-      <div className="login-bg-orb orb-three" />
-      <div className="login-bg-grid" />
-      <div className="login-bg-glass" />
+    <main>
+      <div />
+      <div />
+      <div />
+      <div />
+      <div />
 
       <button
         type="button"
-        className="login-theme-toggle"
         onClick={() =>
           setLoginTheme((current) => (current === "light" ? "dark" : "light"))
         }
@@ -418,35 +587,34 @@ export default function Login() {
         {loginTheme === "light" ? <Moon size={18} /> : <Sun size={18} />}
       </button>
 
-      <section className="login-shell">
-        <aside className="login-visual-panel">
-          <div className="login-visual-frame">
-            <div className="login-brand-mark login-brand-mark-premium">
-              <span className="login-brand-orbit login-brand-orbit-top">
+      <section>
+        <aside>
+          <div>
+            <div>
+              <span>
                 <Cpu size={15} />
               </span>
 
               <Monitor size={30} />
 
-              <span className="login-brand-orbit login-brand-orbit-bottom">
+              <span>
                 <Network size={15} />
               </span>
             </div>
 
-            <div className="login-visual-content">
-              <span className="login-eyebrow">EMA System</span>
+            <div>
+              <span>EMA System</span>
 
-              <h1>Endpoint operations made cleaner.</h1>
+              <h1>Hello EMA System!</h1>
 
               <p>
-                A focused workspace for hardware inventory, access control and
-                system operations.
+                Manage IT operations, incidents, assets and reports in one unified workspace.
               </p>
             </div>
 
-            <div className="login-visual-footer">
+            <div>
               <div>
-                <span className="login-footer-icon">
+                <span>
                   <ShieldCheck size={18} />
                 </span>
                 <strong>Secure</strong>
@@ -454,7 +622,7 @@ export default function Login() {
               </div>
 
               <div>
-                <span className="login-footer-icon">
+                <span>
                   <Cpu size={18} />
                 </span>
                 <strong>Managed</strong>
@@ -462,7 +630,7 @@ export default function Login() {
               </div>
 
               <div>
-                <span className="login-footer-icon">
+                <span>
                   <Network size={18} />
                 </span>
                 <strong>Ready</strong>
@@ -472,13 +640,13 @@ export default function Login() {
           </div>
         </aside>
 
-        <section className="login-form-panel">
-          <div className="login-card">
-            <div className="login-card-header">
-              <div className="login-card-icon login-card-icon-premium">
+        <section>
+          <div>
+            <div>
+              <div>
                 <ShieldCheck size={25} />
 
-                <span className="login-card-spark">
+                <span>
                   <Sparkles size={13} />
                 </span>
               </div>
@@ -494,7 +662,7 @@ export default function Login() {
             </div>
 
             {error ? (
-              <div className="alert alert-danger login-alert" role="alert">
+              <div role="alert">
                 {error}
               </div>
             ) : null}
@@ -502,30 +670,30 @@ export default function Login() {
             {mfaState ? (
               <form onSubmit={handleMfaVerify}>
                 {mfaState.setupRequired ? (
-                  <div className="login-2fa-setup">
-                    <p className="login-2fa-text">
+                  <div>
+                    <p>
                       Scan this QR code in Microsoft Authenticator, Google
                       Authenticator, or any TOTP authenticator app.
                     </p>
 
                     {mfaState.qrCode ? (
-                      <div className="login-2fa-qr">
+                      <div>
                         <img src={mfaState.qrCode} alt="2FA QR code" />
                       </div>
                     ) : null}
 
                     {mfaState.secret ? (
-                      <p className="login-2fa-secret">
+                      <p>
                         Manual key: <strong>{mfaState.secret}</strong>
                       </p>
                     ) : null}
                   </div>
                 ) : null}
 
-                <div className="login-field">
+                <div>
                   <label htmlFor="mfaCode">Authentication code</label>
 
-                  <div className="login-input">
+                  <div>
                     <ShieldCheck size={18} />
                     <input
                       id="mfaCode"
@@ -542,11 +710,10 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="login-submit-btn"
                 >
                   {loading ? (
                     <>
-                      <span className="spinner-border spinner-border-sm" />
+                      <span />
                       Verifying
                     </>
                   ) : (
@@ -559,7 +726,6 @@ export default function Login() {
 
                 <button
                   type="button"
-                  className="login-secondary-btn"
                   onClick={resetMfa}
                   disabled={loading}
                 >
@@ -569,10 +735,10 @@ export default function Login() {
             ) : (
               <>
                 <form onSubmit={handleSubmit}>
-                  <div className="login-field">
+                  <div>
                     <label htmlFor="username">Username</label>
 
-                    <div className="login-input">
+                    <div>
                       <User size={18} />
                       <input
                         id="username"
@@ -585,10 +751,10 @@ export default function Login() {
                     </div>
                   </div>
 
-                  <div className="login-field">
+                  <div>
                     <label htmlFor="password">Password</label>
 
-                    <div className="login-input">
+                    <div>
                       <LockKeyhole size={18} />
                       <input
                         id="password"
@@ -609,8 +775,8 @@ export default function Login() {
                     </div>
                   </div>
 
-                  <div className="login-form-row">
-                    <label className="login-check">
+                  <div>
+                    <label>
                       <input
                         type="checkbox"
                         checked={rememberMe}
@@ -619,7 +785,7 @@ export default function Login() {
                       <span>Remember me</span>
                     </label>
 
-                    <button type="button" className="login-link-btn">
+                    <button type="button">
                       Forgot password?
                     </button>
                   </div>
@@ -627,11 +793,10 @@ export default function Login() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="login-submit-btn"
                   >
                     {loading ? (
                       <>
-                        <span className="spinner-border spinner-border-sm" />
+                        <span />
                         Signing in
                       </>
                     ) : (
@@ -643,26 +808,26 @@ export default function Login() {
                   </button>
                 </form>
 
-                <div className="login-authenticator-panel">
-                  <div className="login-authenticator-divider" />
+                <div>
+                  <div />
 
-                  <div className="login-authenticator-title">Secured by</div>
+                  <div>Secured by</div>
 
-                  <div className="login-authenticator-row">
-                    <button type="button" className="login-authenticator-brand" disabled>
+                  <div>
+                    <button type="button" disabled>
                       <MicrosoftLogo />
                       <span>Microsoft Authenticator</span>
                     </button>
 
-                    <span className="login-authenticator-separator" />
+                    <span />
 
-                    <button type="button" className="login-authenticator-brand" disabled>
+                    <button type="button" disabled>
                       <GoogleLogo />
                       <span>Google Authenticator</span>
                     </button>
                   </div>
 
-                  <div className="login-authenticator-badge">
+                  <div>
                     <ShieldCheck size={13} />
                     <span>Required for enabled users</span>
                   </div>
@@ -670,7 +835,7 @@ export default function Login() {
               </>
             )}
 
-            <div className="login-security-note">
+            <div>
               <ShieldCheck size={17} />
               <span>Authorized users only. Activity may be monitored.</span>
             </div>

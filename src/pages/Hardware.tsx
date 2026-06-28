@@ -27,7 +27,6 @@ import {
   X,
 } from "lucide-react";
 
-
 type StatusType = "Online" | "Locked" | "Stale Sync" | "Offline";
 type KpiFilter = "all" | "recent" | "stale" | "locked" | "running";
 type SortDirection = "asc" | "desc";
@@ -523,7 +522,7 @@ function generateStatisticTree(): StatisticNode[] {
       ],
     },
     {
-      id: "ema-management",
+      id: "hardware-management",
       name: "Hardware Management",
       type: "category",
       icon: "settings",
@@ -534,7 +533,7 @@ function generateStatisticTree(): StatisticNode[] {
       ],
     },
     {
-      id: "ema-statistics",
+      id: "hardware-statistics",
       name: "Hardware Statistics",
       type: "category",
       icon: "cpu",
@@ -1123,7 +1122,7 @@ async function scanHardwareInventory(payload: HardwareScanPayload): Promise<ApiE
     description: payload.description ?? `Hardware inventory scan - ${payload.scanMode}`,
   };
 
-  return apiRequest<HardwareScanResult>("/api/ema-inventory/scan", {
+  return apiRequest<HardwareScanResult>("/api/hardware-inventory/scan", {
     method: "POST",
     body: JSON.stringify(requestPayload),
   });
@@ -1801,10 +1800,9 @@ function HardwareDropdown({
   }, [disabled]);
 
   return (
-    <div ref={dropdownRef} className="">
+    <div ref={dropdownRef}>
       <button
         type="button"
-        className=""
         onClick={() => !disabled && setIsOpen((current) => !current)}
         disabled={disabled}
         aria-label={label}
@@ -1816,7 +1814,7 @@ function HardwareDropdown({
       </button>
 
       {isOpen && (
-        <div className="" role="listbox" aria-label={label}>
+        <div role="listbox" aria-label={label}>
           {options.map((option) => {
             const isSelected = option.value === value;
 
@@ -1824,7 +1822,6 @@ function HardwareDropdown({
               <button
                 key={option.value}
                 type="button"
-                className=""
                 role="option"
                 aria-selected={isSelected}
                 onClick={() => {
@@ -1833,7 +1830,7 @@ function HardwareDropdown({
                 }}
               >
                 <span>{option.label}</span>
-                {isSelected && <span className="">✓</span>}
+                {isSelected && <span>✓</span>}
               </button>
             );
           })}
@@ -1846,9 +1843,9 @@ function HardwareDropdown({
 
 function DetailItem({ label, value, mono = false }: { label: string; value?: string | number; mono?: boolean }) {
   return (
-    <div className="">
+    <div>
       <span>{label}</span>
-      <strong className="">{value || "-"}</strong>
+      <strong>{value || "-"}</strong>
     </div>
   );
 }
@@ -1875,15 +1872,15 @@ function DeviceDetailsDrawer({ device, isOpen, onClose }: { device: Device; isOp
   ];
 
   return (
-    <div className="">
-      <aside className="" onClick={(event) => event.stopPropagation()}>
-        <div className="">
-          <div className="">
-            <div className="">
+    <div>
+      <aside onClick={(event) => event.stopPropagation()}>
+        <div>
+          <div>
+            <div>
               <Monitor size={22} />
             </div>
             <div>
-              <div className="">Device Details</div>
+              <div>Device Details</div>
               <h2>{device.name}</h2>
               <p>
                 {device.os} • {device.ip} • {workgroup}
@@ -1891,45 +1888,45 @@ function DeviceDetailsDrawer({ device, isOpen, onClose }: { device: Device; isOp
             </div>
           </div>
 
-          <div className="">
-            <span className="">{device.status}</span>
-            <button type="button" className="" onClick={onClose} aria-label="Close device detail form" title="Close">
+          <div>
+            <span>{device.status}</span>
+            <button type="button" onClick={onClose} aria-label="Close device detail form" title="Close">
               <X size={18} />
             </button>
           </div>
         </div>
 
-        <div className="">
-          <div className="">
+        <div>
+          <div>
             <span>Last Connected</span>
             <strong>{device.lastConnected}</strong>
           </div>
-          <div className="">
+          <div>
             <span>Agent</span>
             <strong>{device.objectAgent || "-"}</strong>
           </div>
-          <div className="">
+          <div>
             <span>Storage Usage</span>
             <strong>{storageUsage === null ? "-" : `${storageUsage}%`}</strong>
           </div>
-          <div className="">
+          <div>
             <span>Status</span>
             <strong>{device.status}</strong>
           </div>
         </div>
 
-        <div className="">
+        <div>
           {detailTabs.map((tab) => (
-            <button key={tab.key} type="button" className="" onClick={() => setActiveTab(tab.key)}>
+            <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)}>
               {tab.label}
             </button>
           ))}
         </div>
 
-        <div className="">
+        <div>
           {activeTab === "overview" && (
-            <div className="">
-              <div className="">
+            <div>
+              <div>
                 <h3>Device Identity</h3>
                 <DetailItem label="Device Name" value={device.name} />
                 <DetailItem label="Device ID" value={device.deviceIdentifier || device.id} mono />
@@ -1938,7 +1935,7 @@ function DeviceDetailsDrawer({ device, isOpen, onClose }: { device: Device; isOp
                 <DetailItem label="Model" value={model} />
                 <DetailItem label="Status" value={device.status} />
               </div>
-              <div className="">
+              <div>
                 <h3>Operational Context</h3>
                 <DetailItem label="User" value={device.owner} />
                 <DetailItem label="Department" value={device.department} />
@@ -1951,8 +1948,8 @@ function DeviceDetailsDrawer({ device, isOpen, onClose }: { device: Device; isOp
           )}
 
           {activeTab === "hardware" && (
-            <div className="">
-              <div className="">
+            <div>
+              <div>
                 <h3>Hardware Profile</h3>
                 <DetailItem label="Platform" value={platform} />
                 <DetailItem label="Model" value={model} />
@@ -1961,7 +1958,7 @@ function DeviceDetailsDrawer({ device, isOpen, onClose }: { device: Device; isOp
                 <DetailItem label="Storage" value={device.storage} />
                 <DetailItem label="Last Update" value={device.lastUpdate} />
               </div>
-              <div className="">
+              <div>
                 <h3>Asset Reference</h3>
                 <DetailItem label="Asset ID" value={device.assetId || "-"} mono />
                 <DetailItem label="Device Identifier" value={device.deviceIdentifier || "-"} mono />
@@ -1973,15 +1970,15 @@ function DeviceDetailsDrawer({ device, isOpen, onClose }: { device: Device; isOp
           )}
 
           {activeTab === "network" && (
-            <div className="">
-              <div className="">
+            <div>
+              <div>
                 <h3>Operating System</h3>
                 <DetailItem label="OS" value={device.os} />
                 <DetailItem label="Platform" value={platform} />
                 <DetailItem label="Model" value={model} />
                 <DetailItem label="Connection Status" value={device.status} />
               </div>
-              <div className="">
+              <div>
                 <h3>Network</h3>
                 <DetailItem label="IP Address" value={device.ip} mono />
                 <DetailItem label="Workgroup" value={workgroup} />
@@ -1991,13 +1988,13 @@ function DeviceDetailsDrawer({ device, isOpen, onClose }: { device: Device; isOp
           )}
 
           {activeTab === "user" && (
-            <div className="">
-              <div className="">
+            <div>
+              <div>
                 <h3>User Ownership</h3>
                 <DetailItem label="Username" value={device.owner} />
                 <DetailItem label="Department" value={device.department} />
               </div>
-              <div className="">
+              <div>
                 <h3>Access Context</h3>
                 <DetailItem label="Lock State" value={device.status === "Locked" ? "Locked" : "-"} />
                 <DetailItem label="Remote Access" value="Managed by agent" />
@@ -2009,25 +2006,25 @@ function DeviceDetailsDrawer({ device, isOpen, onClose }: { device: Device; isOp
           )}
 
           {activeTab === "storage" && (
-            <div className="">
-              <div className="">
+            <div>
+              <div>
                 <h3>Storage Utilisation</h3>
                 <DetailItem label="Primary Storage" value={device.storage} />
                 <DetailItem label="Storage Usage" value={storageUsage === null ? "-" : `${storageUsage}%`} />
                 <DetailItem label="Platform" value={platform} />
                 <DetailItem label="Last Update" value={device.lastUpdate} />
               </div>
-              <div className="">
+              <div>
                 <h3>Capacity Reference</h3>
-                <div className="">
+                <div>
                   <div>
                     <span>Used Capacity</span>
                     <strong>{storageUsage === null ? "-" : `${storageUsage}%`}</strong>
                   </div>
-                  <div className="">{storageUsage === null ? "-" : `${storageUsage}%`}</div>
+                  <div>{storageUsage === null ? "-" : `${storageUsage}%`}</div>
                 </div>
-                <div className="">
-                  <div style={{}} />
+                <div>
+                  <div style={{ width: `${storageUsage === null ? 0 : storageUsage}%` }} />
                 </div>
                 <DetailItem label="Device Name" value={device.name} />
                 <DetailItem label="Asset ID" value={device.assetId || "-"} mono />
@@ -2036,18 +2033,18 @@ function DeviceDetailsDrawer({ device, isOpen, onClose }: { device: Device; isOp
           )}
 
           {activeTab === "timeline" && (
-            <div className="">
-              <div className="">
+            <div>
+              <div>
                 <h3>Lifecycle Timeline</h3>
                 <DetailItem label="Last Connected" value={device.lastConnected} />
                 <DetailItem label="Last Update" value={device.lastUpdate} />
                 <DetailItem label="Current Status" value={device.status} />
                 <DetailItem label="Device Record" value={device.deviceIdentifier || device.id} mono />
               </div>
-              <div className="">
+              <div>
                 <h3>Activity Reference</h3>
-                <div className="">
-                  <div className="">
+                <div>
+                  <div>
                     <span />
                     <div>
                       <strong>Last connected</strong>
@@ -2055,7 +2052,7 @@ function DeviceDetailsDrawer({ device, isOpen, onClose }: { device: Device; isOp
                       <small>Device record</small>
                     </div>
                   </div>
-                  <div className="">
+                  <div>
                     <span />
                     <div>
                       <strong>Last update</strong>
@@ -2063,7 +2060,7 @@ function DeviceDetailsDrawer({ device, isOpen, onClose }: { device: Device; isOp
                       <small>Device record</small>
                     </div>
                   </div>
-                  <div className="">
+                  <div>
                     <span />
                     <div>
                       <strong>Current status</strong>
@@ -2077,11 +2074,11 @@ function DeviceDetailsDrawer({ device, isOpen, onClose }: { device: Device; isOp
           )}
         </div>
 
-        <div className="">
-          <button type="button" className="" onClick={onClose}>
+        <div>
+          <button type="button" onClick={onClose}>
             Close
           </button>
-          <button type="button" className="" onClick={onClose}>
+          <button type="button" onClick={onClose}>
             Done
           </button>
         </div>
@@ -2127,25 +2124,24 @@ function FolderTree({
   const displayCount = countMap[node.key] || 0;
 
   return (
-    <div className="">
-      <div className="">
-        <button type="button" className="" onClick={() => hasChildren && onToggle(node.key)}>
+    <div>
+      <div>
+        <button type="button" onClick={() => hasChildren && onToggle(node.key)}>
           {hasChildren ? isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} /> : <span />}
         </button>
 
-        <button type="button" className="" onClick={() => onSelect(node.key)}>
-          <span className="">
+        <button type="button" onClick={() => onSelect(node.key)}>
+          <span>
             {hasChildren && isExpanded ? <FolderOpen size={15} /> : <Folder size={15} />}
           </span>
-          <span className="">{node.label}</span>
-          {node.key !== "organization" && displayCount > 0 && <span className="">{displayCount.toLocaleString()}</span>}
+          <span>{node.label}</span>
+          {node.key !== "organization" && displayCount > 0 && <span>{displayCount.toLocaleString()}</span>}
         </button>
 
         {node.key !== "organization" && (
-          <div className="">
+          <div>
             <button
               type="button"
-              className=""
               onClick={(event) => {
                 event.stopPropagation();
                 onMenu(folderMenuKey === node.key ? null : node.key);
@@ -2155,14 +2151,14 @@ function FolderTree({
             </button>
 
             {folderMenuKey === node.key && (
-              <div className="">
+              <div>
                 <button type="button" onClick={() => onAdd(node.key)}>
                   Add subfolder
                 </button>
                 <button type="button" onClick={() => onRename(node)}>
                   Rename folder
                 </button>
-                <button type="button" className="" onClick={() => onDelete(node)}>
+                <button type="button" onClick={() => onDelete(node)}>
                   Delete folder
                 </button>
               </div>
@@ -2172,7 +2168,7 @@ function FolderTree({
       </div>
 
       {hasChildren && isExpanded && (
-        <div className="">
+        <div>
           {node.children!.map((child) => (
             <FolderTree
               key={child.key}
@@ -2254,8 +2250,8 @@ export default function HardwareInventory() {
   const statisticTree = useMemo(() => generateStatisticTree(), []);
   const [expandedStatisticGroups, setExpandedStatisticGroups] = useState<Record<string, boolean>>({
     "connection-statistics": false,
-    "ema-management": false,
-    "ema-statistics": false,
+    "hardware-management": false,
+    "hardware-statistics": false,
     reports: false,
   });
   const [selectedStatistic, setSelectedStatistic] = useState<string>("conn-summary");
@@ -2674,8 +2670,8 @@ export default function HardwareInventory() {
   };
 
   const renderSortIndicator = (key: SortKey) => {
-    if (sortConfig.key !== key) return <span className="">↕</span>;
-    return <span className="">{sortConfig.direction === "asc" ? "↑" : "↓"}</span>;
+    if (sortConfig.key !== key) return <span>↕</span>;
+    return <span>{sortConfig.direction === "asc" ? "↑" : "↓"}</span>;
   };
 
   const getSelectedRelationID = useCallback(() => {
@@ -2705,38 +2701,38 @@ export default function HardwareInventory() {
       setStatisticDetailError("");
 
       if (selectedStatistic === "conn-summary") {
-        const response = await apiRequest<HardwareApiRow[]>(`/api/ema-statistics/${relationID}/connection-summary`);
+        const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-statistics/${relationID}/connection-summary`);
         rows = normalizeHardwareRows(response);
         description = "Connection period summary";
       } else if (selectedStatistic === "conn-list") {
-        const response = await apiRequest<HardwareApiRow[]>(`/api/ema-statistics/${relationID}/connection-list`);
+        const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-statistics/${relationID}/connection-list`);
         rows = normalizeHardwareRows(response);
         description = "Client connection list";
       } else if (selectedStatistic === "client-version") {
-        const response = await apiRequest<HardwareApiRow[]>(`/api/ema-statistics/${relationID}/client-version`);
+        const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-statistics/${relationID}/client-version`);
         rows = normalizeHardwareRows(response);
         description = "Client version distribution";
       } else if (selectedStatistic === "changed-items") {
-        const response = await apiRequest<HardwareApiRow[]>(`/api/ema-management/${relationID}/changed-items`);
+        const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-management/${relationID}/changed-items`);
         rows = normalizeHardwareRows(response);
         description = "Changed hardware item statistics";
       } else if (selectedStatistic === "duplicated-ip") {
-        const response = await apiRequest<HardwareApiRow[]>("/api/ema-management/duplicate-ips");
+        const response = await apiRequest<HardwareApiRow[]>("/api/hardware-management/duplicate-ips");
         rows = normalizeHardwareRows(response);
         description = "Duplicated IP list";
       } else if (selectedStatistic.startsWith("stat-")) {
         const categoryKey = STATISTIC_CATEGORY_KEY_MAP[selectedStatistic];
-        const response = await apiRequest<HardwareApiRow[]>(`/api/ema-statistics/${relationID}/category/${categoryKey}`);
+        const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-statistics/${relationID}/category/${categoryKey}`);
         rows = normalizeHardwareRows(response);
         totalDevices = Number(response.totalDevices || 0) || undefined;
         description = `${title} distribution`;
       } else if (selectedStatistic === "report-inventory") {
-        const response = await apiRequest<HardwareApiRow[]>(`/api/ema-reports/${relationID}/client-list`);
+        const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-reports/${relationID}/client-list`);
         rows = normalizeHardwareRows(response);
         description = "Hardware inventory report list";
       } else if (selectedStatistic.startsWith("report-")) {
         const reportKey = REPORT_KEY_MAP[selectedStatistic];
-        const response = await apiRequest<HardwareApiRow[]>(`/api/ema-reports/${relationID}/${reportKey}`);
+        const response = await apiRequest<HardwareApiRow[]>(`/api/hardware-reports/${relationID}/${reportKey}`);
         rows = normalizeHardwareRows(response);
         description = `${title} report`;
       }
@@ -2773,7 +2769,7 @@ export default function HardwareInventory() {
 
     try {
       const response = await apiRequest<HardwareApiRow[]>(
-        `/api/ema-statistics/${relationID}/category/${categoryKey}/list?value=${encodeURIComponent(rawValue)}&mode=2`,
+        `/api/hardware-statistics/${relationID}/category/${categoryKey}/list?value=${encodeURIComponent(rawValue)}&mode=2`,
       );
       const detailRows = normalizeHardwareRows(response);
       setStatisticDetail({
@@ -2940,7 +2936,7 @@ export default function HardwareInventory() {
     const link = document.createElement("a");
     const dateStamp = new Date().toISOString().slice(0, 10);
     link.href = url;
-    link.download = `ema-inventory-${dateStamp}.csv`;
+    link.download = `hardware-inventory-${dateStamp}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -3343,9 +3339,9 @@ export default function HardwareInventory() {
       try {
         popup.document.title = "Starting remote control";
         popup.document.body.innerHTML = `
-          <div style={{}}>
-            <h2 style={{}}>Starting remote control session...</h2>
-            <p style={{}}>Please wait while EMA prepares the remote support session.</p>
+          <div style="font-family: Inter, Segoe UI, Arial, sans-serif; padding: 32px; color: #102a5a;">
+            <h2 style="margin: 0 0 8px; font-size: 18px;">Starting remote control session...</h2>
+            <p style="margin: 0; color: #6079a6; font-size: 13px;">Please wait while EMA prepares the remote support session.</p>
           </div>
         `;
       } catch {
@@ -3512,21 +3508,21 @@ export default function HardwareInventory() {
     const isSelected = selectedStatistic === node.id;
 
     return (
-      <div key={node.id} className="">
-        <div className="">
-          <button type="button" className="" onClick={() => (hasChildren ? toggleStatisticGroup(node.id) : handleStatisticSelect(node))}>
+      <div key={node.id}>
+        <div>
+          <button type="button" onClick={() => (hasChildren ? toggleStatisticGroup(node.id) : handleStatisticSelect(node))}>
             {hasChildren ? isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} /> : <span />}
           </button>
-          <button type="button" className="" onClick={() => handleStatisticSelect(node)}>
-            <span className="">
+          <button type="button" onClick={() => handleStatisticSelect(node)}>
+            <span>
               {hasChildren ? isExpanded ? <FolderOpen size={15} /> : <Folder size={15} /> : <Database size={15} />}
             </span>
-            <span className="">{node.name}</span>
+            <span>{node.name}</span>
           </button>
         </div>
 
         {hasChildren && isExpanded && (
-          <div className="">
+          <div>
             {node.children!.map((child) => renderStatisticTreeNode(child, depth + 1))}
           </div>
         )}
@@ -3540,11 +3536,11 @@ export default function HardwareInventory() {
     const selectedCode = selectedStatistic ? selectedStatistic.toUpperCase() : "SELECT A CATEGORY";
 
     const emptyState = (title: string, message: string) => (
-      <div className="">
-        <div className="">
-          <Database className="" />
-          <p className="">{title}</p>
-          <p className="">{message}</p>
+      <div>
+        <div>
+          <Database />
+          <p>{title}</p>
+          <p>{message}</p>
         </div>
       </div>
     );
@@ -3556,10 +3552,10 @@ export default function HardwareInventory() {
 
       if (statisticLoading) {
         return (
-          <div className="">
-            <div className="">
-              <RefreshCw className="" />
-              <p className="">Loading statistic data...</p>
+          <div>
+            <div>
+              <RefreshCw />
+              <p>Loading statistic data...</p>
             </div>
           </div>
         );
@@ -3567,11 +3563,11 @@ export default function HardwareInventory() {
 
       if (statisticError) {
         return (
-          <div className="">
-            <div className="">
-              <AlertCircle className="" />
-              <p className="">Failed to load statistic</p>
-              <p className="">{statisticError}</p>
+          <div>
+            <div>
+              <AlertCircle />
+              <p>Failed to load statistic</p>
+              <p>{statisticError}</p>
             </div>
           </div>
         );
@@ -3587,9 +3583,9 @@ export default function HardwareInventory() {
         const periodData = summaryMetrics.periods;
 
         return (
-          <div className="">
-            <div className="">Total Connection(s) : {totalConnections}</div>
-            <table className="">
+          <div>
+            <div>Total Connection(s) : {totalConnections}</div>
+            <table>
               <thead>
                 <tr>
                   <th>Period</th>
@@ -3607,7 +3603,7 @@ export default function HardwareInventory() {
                 ))}
               </tbody>
             </table>
-            <div className="">
+            <div>
               Reference Date - {new Date().toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "numeric" })}
             </div>
           </div>
@@ -3616,18 +3612,18 @@ export default function HardwareInventory() {
 
       if (selectedStatistic === "conn-list") {
         return (
-          <div className="">
-            <table className="">
+          <div>
+            <table>
               <thead>
-                <tr className="">
-                  {connectionListColumns.map((column) => <th key={column.label} className="">{column.label}</th>)}
+                <tr>
+                  {connectionListColumns.map((column) => <th key={column.label}>{column.label}</th>)}
                 </tr>
               </thead>
-              <tbody className="">
+              <tbody>
                 {rows.map((row, index) => (
-                  <tr key={`conn-list-${index}`} className="">
+                  <tr key={`conn-list-${index}`}>
                     {connectionListColumns.map((column) => (
-                      <td key={`${index}-${column.label}`} className="">
+                      <td key={`${index}-${column.label}`}>
                         {readHardwareText(row, [...column.keys, `column${connectionListColumns.indexOf(column) + 1}`])}
                       </td>
                     ))}
@@ -3641,21 +3637,21 @@ export default function HardwareInventory() {
 
       if (selectedStatistic === "client-version") {
         return (
-          <table className="">
+          <table>
             <thead>
-              <tr className="">
-                <th className="">Client Version</th>
-                <th className="">Count</th>
+              <tr>
+                <th>Client Version</th>
+                <th>Count</th>
               </tr>
             </thead>
-            <tbody className="">
+            <tbody>
               {rows.map((row, index) => {
                 const version = readHardwareText(row, ["Client Version", "ClientVersion", "clientVersion", "Version", "TCAVersion", "Items", "Item", "column1"]);
                 const count = readHardwareNumber(row, ["CCount", "Count", "Cnt", "Total", "", "column2", "column3"], getStatisticCount(row));
                 return (
-                  <tr key={`${version}-${index}`} className="">
-                    <td className="">{version}</td>
-                    <td className=""><span className="">{count}</span></td>
+                  <tr key={`${version}-${index}`}>
+                    <td>{version}</td>
+                    <td><span>{count}</span></td>
                   </tr>
                 );
               })}
@@ -3669,31 +3665,31 @@ export default function HardwareInventory() {
 
         return (
           <div>
-            <div className="">
+            <div>
               <div>
-                <h4 className="">Changed Items</h4>
-                <p className="">Latest changed hardware records</p>
+                <h4>Changed Items</h4>
+                <p>Latest changed hardware records</p>
               </div>
-              <span className="">{rows.length} Records</span>
+              <span>{rows.length} Records</span>
             </div>
 
             {isSummaryResponse ? (
-              <table className="">
+              <table>
                 <thead>
-                  <tr className="">
-                    <th className="">Changed Item</th>
-                    <th className="">Count</th>
+                  <tr>
+                    <th>Changed Item</th>
+                    <th>Count</th>
                   </tr>
                 </thead>
-                <tbody className="">
+                <tbody>
                   {rows.map((row, index) => {
                     const fieldName = getChangedItemFieldName(row);
                     const count = getChangedItemFieldCount(row);
                     return (
-                      <tr key={`changed-summary-${fieldName}-${index}`} className="">
-                        <td className="">{fieldName}</td>
-                        <td className="">
-                          <span className="">{count}</span>
+                      <tr key={`changed-summary-${fieldName}-${index}`}>
+                        <td>{fieldName}</td>
+                        <td>
+                          <span>{count}</span>
                         </td>
                       </tr>
                     );
@@ -3701,17 +3697,17 @@ export default function HardwareInventory() {
                 </tbody>
               </table>
             ) : (
-              <table className="">
+              <table>
                 <thead>
-                  <tr className="">
-                    {fixedChangedItemColumns.map((col) => <th key={col} className="">{col}</th>)}
+                  <tr>
+                    {fixedChangedItemColumns.map((col) => <th key={col}>{col}</th>)}
                   </tr>
                 </thead>
-                <tbody className="">
+                <tbody>
                   {rows.map((row, index) => (
-                    <tr key={`changed-${index}`} className="">
+                    <tr key={`changed-${index}`}>
                       {fixedChangedItemColumns.map((col) => (
-                        <td key={`${index}-${col}`} className="">
+                        <td key={`${index}-${col}`}>
                           {readHardwareText(row, [...(changedItemColumnKeys[col] || [col]), `column${fixedChangedItemColumns.indexOf(col) + 1}`])}
                         </td>
                       ))}
@@ -3726,27 +3722,27 @@ export default function HardwareInventory() {
 
       if (selectedStatistic === "duplicated-ip") {
         return (
-          <table className="">
+          <table>
             <thead>
-              <tr className="">
-                <th className="">IP Address</th>
-                <th className="">Count</th>
-                <th className="">Status</th>
+              <tr>
+                <th>IP Address</th>
+                <th>Count</th>
+                <th>Status</th>
               </tr>
             </thead>
-            <tbody className="">
+            <tbody>
               {rows.length > 0 ? rows.map((row, index) => {
                 const ip = readHardwareText(row, ["IP Address", "IPAddress", "IP", "ip", "column1"]);
                 const count = readHardwareNumber(row, ["CCount", "Count", "Cnt", "Total", "", "column2", "column3"], getStatisticCount(row));
                 return (
-                  <tr key={`${ip}-${index}`} className="">
-                    <td className="">{ip}</td>
-                    <td className=""><span className="">{count}</span></td>
-                    <td className=""><span className=""><AlertCircle className="" /> Duplicate</span></td>
+                  <tr key={`${ip}-${index}`}>
+                    <td>{ip}</td>
+                    <td><span>{count}</span></td>
+                    <td><span><AlertCircle /> Duplicate</span></td>
                   </tr>
                 );
               }) : (
-                <tr><td colSpan={3} className=""><CheckCircle className="" /> No duplicated IP addresses found</td></tr>
+                <tr><td colSpan={3}><CheckCircle /> No duplicated IP addresses found</td></tr>
               )}
             </tbody>
           </table>
@@ -3778,19 +3774,19 @@ export default function HardwareInventory() {
 
         return (
           <div>
-            <div className="">
-              <h4 className="">Distribution</h4>
-              <p className="">Showing hardware values by device count. Click a row to view matching devices.</p>
+            <div>
+              <h4>Distribution</h4>
+              <p>Showing hardware values by device count. Click a row to view matching devices.</p>
             </div>
-            <table className="">
+            <table>
               <thead>
-                <tr className="">
-                  <th className="">Item</th>
-                  <th className="">Count</th>
-                  <th className="">Percentage</th>
+                <tr>
+                  <th>Item</th>
+                  <th>Count</th>
+                  <th>Percentage</th>
                 </tr>
               </thead>
-              <tbody className="">
+              <tbody>
                 {distributionRows.map(({ row, index, item, rawValue, count }) => {
                   const rawPercentage = getStatisticPercentage(row, count, totalCount);
                   const percentage = Number.isFinite(rawPercentage) ? rawPercentage.toFixed(1) : "0.0";
@@ -3798,7 +3794,6 @@ export default function HardwareInventory() {
                   return (
                     <tr
                       key={`${rawValue}-${index}`}
-                      className=""
                       role="button"
                       tabIndex={0}
                       onClick={() => void loadHardwareStatisticDetail(row)}
@@ -3809,12 +3804,12 @@ export default function HardwareInventory() {
                         }
                       }}
                     >
-                      <td className="">{item}</td>
-                      <td className=""><span className="">{count}</span></td>
-                      <td className="">
-                        <div className="">
-                          <div className=""><div className="" style={{}} /></div>
-                          <span className="">{percentage}%</span>
+                      <td>{item}</td>
+                      <td><span>{count}</span></td>
+                      <td>
+                        <div>
+                          <div><div style={{ width: barWidth }} /></div>
+                          <span>{percentage}%</span>
                         </div>
                       </td>
                     </tr>
@@ -3824,29 +3819,28 @@ export default function HardwareInventory() {
             </table>
 
             {statisticDetailLoading && (
-              <div className="">
-                <RefreshCw className="" />
+              <div>
+                <RefreshCw />
                 Loading matching devices...
               </div>
             )}
 
             {statisticDetailError && (
-              <div className="">
-                <AlertCircle className="" />
+              <div>
+                <AlertCircle />
                 {statisticDetailError}
               </div>
             )}
 
             {statisticDetail && !statisticDetailLoading && (
-              <div className="">
-                <div className="">
+              <div>
+                <div>
                   <div>
-                    <h5 className="">{statisticDetail.title}</h5>
-                    <p className="">{statisticDetail.rows.length} matching device record(s)</p>
+                    <h5>{statisticDetail.title}</h5>
+                    <p>{statisticDetail.rows.length} matching device record(s)</p>
                   </div>
                   <button
                     type="button"
-                    className=""
                     onClick={() => setStatisticDetail(null)}
                   >
                     Close details
@@ -3854,22 +3848,22 @@ export default function HardwareInventory() {
                 </div>
 
                 {statisticDetail.rows.length === 0 ? (
-                  <div className="">No matching device records were returned.</div>
+                  <div>No matching device records were returned.</div>
                 ) : (
-                  <div className="">
-                    <table className="">
+                  <div>
+                    <table>
                       <thead>
-                        <tr className="">
+                        <tr>
                           {statisticDetail.columns.map((column) => (
-                            <th key={column} className="">{formatHardwareLabel(column)}</th>
+                            <th key={column}>{formatHardwareLabel(column)}</th>
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="">
+                      <tbody>
                         {statisticDetail.rows.map((detailRow, detailIndex) => (
-                          <tr key={`stat-detail-${detailIndex}`} className="">
+                          <tr key={`stat-detail-${detailIndex}`}>
                             {statisticDetail.columns.map((column) => (
-                              <td key={`${detailIndex}-${column}`} className="">
+                              <td key={`${detailIndex}-${column}`}>
                                 {formatHardwareValue(detailRow[column])}
                               </td>
                             ))}
@@ -3887,17 +3881,17 @@ export default function HardwareInventory() {
 
       if (selectedStatistic === "report-inventory") {
         return (
-          <table className="">
+          <table>
             <thead>
-              <tr className="">
-                {reportInventoryColumns.map((column) => <th key={column.label} className="">{column.label}</th>)}
+              <tr>
+                {reportInventoryColumns.map((column) => <th key={column.label}>{column.label}</th>)}
               </tr>
             </thead>
-            <tbody className="">
+            <tbody>
               {rows.map((row, index) => (
-                <tr key={`report-inventory-${index}`} className="">
+                <tr key={`report-inventory-${index}`}>
                   {reportInventoryColumns.map((column) => (
-                    <td key={`${index}-${column.label}`} className="">
+                    <td key={`${index}-${column.label}`}>
                       {readHardwareText(row, [...column.keys, `column${reportInventoryColumns.indexOf(column) + 1}`])}
                     </td>
                   ))}
@@ -3919,18 +3913,18 @@ export default function HardwareInventory() {
           .filter(({ item, workgroup }) => !isReportSummaryLabel(item) && !isReportSummaryLabel(workgroup));
 
         return (
-          <table className="">
+          <table>
             <thead>
-              <tr className="">
-                <th className="">Item</th>
-                <th className="">Workgroup</th>
+              <tr>
+                <th>Item</th>
+                <th>Workgroup</th>
               </tr>
             </thead>
-            <tbody className="">
+            <tbody>
               {reportRows.map(({ index, item, workgroup }) => (
-                <tr key={`report-${index}`} className="">
-                  <td className="">{item}</td>
-                  <td className="">{workgroup}</td>
+                <tr key={`report-${index}`}>
+                  <td>{item}</td>
+                  <td>{workgroup}</td>
                 </tr>
               ))}
             </tbody>
@@ -3942,20 +3936,20 @@ export default function HardwareInventory() {
     };
 
     return (
-      <div className="">
-        <div className="">
+      <div>
+        <div>
           <div>
             <h3>Hardware Statistics</h3>
             <p>{selectedCode}</p>
           </div>
-          <button type="button" className="" onClick={() => void loadSelectedStatisticData()} disabled={statisticLoading}>
+          <button type="button" onClick={() => void loadSelectedStatisticData()} disabled={statisticLoading}>
             <RefreshCw size={16} />
             {statisticLoading ? "Loading" : "Refresh"}
           </button>
         </div>
 
-        <div className="">
-          <div className="">
+        <div>
+          <div>
             {renderStatisticTable()}
           </div>
         </div>
@@ -3972,51 +3966,1064 @@ export default function HardwareInventory() {
   ];
 
   return (
-    <main className="" data-section={activeTab}>
-<input aria-hidden="true" id="globalSearch" type="hidden" />
+    <main data-section={activeTab}>
+      <style>{`
+
+
+
+        /* Consistent Hardware detail drawer layout: all tabs keep the same clean form size. */
+        .hardware-module-root .hardware-detail-form-overlay,
+        .hardware-module-root .hardware-detail-drawer-overlay {
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 9999 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-end !important;
+          padding: 72px 22px 22px 260px !important;
+          background: rgba(15, 23, 42, 0.38) !important;
+          backdrop-filter: blur(3px) !important;
+          overflow: hidden !important;
+        }
+
+        .hardware-module-root .hardware-detail-form-modal,
+        .hardware-module-root .hardware-detail-drawer {
+          position: relative !important;
+          inset: auto !important;
+          width: min(1000px, calc(100vw - 322px)) !important;
+          height: min(78vh, 740px) !important;
+          min-height: 620px !important;
+          max-height: calc(100vh - 104px) !important;
+          margin: 0 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          overflow: hidden !important;
+          border: 1px solid rgba(203, 213, 225, 0.98) !important;
+          border-radius: 22px !important;
+          background: #ffffff !important;
+          box-shadow: 0 28px 80px rgba(15, 23, 42, 0.24) !important;
+          transform: none !important;
+        }
+
+        .hardware-module-root .hardware-detail-drawer-header {
+          flex: 0 0 auto !important;
+          min-height: 122px !important;
+          padding: 22px 26px 18px !important;
+          display: flex !important;
+          align-items: flex-start !important;
+          justify-content: space-between !important;
+          gap: 18px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.96) !important;
+          background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+        }
+
+        .hardware-module-root .hardware-detail-title-wrap {
+          min-width: 0 !important;
+          display: flex !important;
+          align-items: flex-start !important;
+          gap: 14px !important;
+        }
+
+        .hardware-module-root .hardware-detail-title-wrap h2 {
+          margin: 0 !important;
+          color: #0a2554 !important;
+          font-size: clamp(1.55rem, 2.2vw, 2.05rem) !important;
+          line-height: 1.04 !important;
+          font-weight: 950 !important;
+          letter-spacing: -0.045em !important;
+        }
+
+        .hardware-module-root .hardware-detail-title-wrap p {
+          margin: 6px 0 0 !important;
+          max-width: 620px !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+          color: #64748b !important;
+          font-size: 0.78rem !important;
+          font-weight: 800 !important;
+        }
+
+        .hardware-module-root .hardware-detail-eyebrow {
+          color: #1858ff !important;
+          font-size: 0.68rem !important;
+          font-weight: 950 !important;
+          letter-spacing: 0.13em !important;
+          text-transform: uppercase !important;
+        }
+
+        .hardware-module-root .hardware-detail-device-icon {
+          width: 42px !important;
+          height: 42px !important;
+          flex: 0 0 42px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          border: 1px solid #dbe7ff !important;
+          border-radius: 15px !important;
+          color: #1f63ff !important;
+          background: #eef4ff !important;
+        }
+
+        .hardware-module-root .hardware-detail-header-actions {
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 10px !important;
+          flex: 0 0 auto !important;
+        }
+
+        .hardware-module-root .hardware-detail-close {
+          width: 38px !important;
+          height: 38px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          border: 1px solid #d5e0ef !important;
+          border-radius: 14px !important;
+          background: #f8fbff !important;
+          color: #64748b !important;
+        }
+
+        .hardware-module-root .hardware-detail-summary-grid {
+          flex: 0 0 auto !important;
+          display: grid !important;
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          gap: 10px !important;
+          padding: 12px 26px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
+          background: #ffffff !important;
+        }
+
+        .hardware-module-root .hardware-detail-summary-card {
+          min-width: 0 !important;
+          height: 76px !important;
+          padding: 14px 16px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: flex-start !important;
+          gap: 6px !important;
+          border: 1px solid #e1e8f2 !important;
+          border-radius: 16px !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+        }
+
+        .hardware-module-root .hardware-detail-summary-card span {
+          min-width: 0 !important;
+          color: #334155 !important;
+          font-size: 0.75rem !important;
+          font-weight: 700 !important;
+          line-height: 1.15 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        .hardware-module-root .hardware-detail-summary-card strong {
+          min-width: 0 !important;
+          color: #0a2554 !important;
+          font-size: 0.9rem !important;
+          line-height: 1.15 !important;
+          font-weight: 950 !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          display: -webkit-box !important;
+          -webkit-line-clamp: 2 !important;
+          -webkit-box-orient: vertical !important;
+        }
+
+        .hardware-module-root .hardware-detail-tabs {
+          flex: 0 0 auto !important;
+          display: flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          padding: 12px 26px 10px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
+          background: #ffffff !important;
+          overflow-x: auto !important;
+          scrollbar-width: none !important;
+        }
+
+        .hardware-module-root .hardware-detail-tabs::-webkit-scrollbar {
+          display: none !important;
+        }
+
+        .hardware-module-root .hardware-detail-tabs button {
+          height: 35px !important;
+          min-width: 74px !important;
+          padding: 0 14px !important;
+          border: 1px solid #dbe5f1 !important;
+          border-radius: 999px !important;
+          background: #ffffff !important;
+          color: #5b6b83 !important;
+          font-size: 0.72rem !important;
+          font-weight: 900 !important;
+          white-space: nowrap !important;
+          box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04) !important;
+        }
+
+        .hardware-module-root .hardware-detail-tabs button.is-active {
+          border-color: #1f63ff !important;
+          background: linear-gradient(135deg, #1f63ff 0%, #3457e8 100%) !important;
+          color: #ffffff !important;
+          box-shadow: 0 10px 22px rgba(31, 99, 255, 0.22) !important;
+        }
+
+        .hardware-module-root .hardware-detail-body {
+          flex: 1 1 auto !important;
+          min-height: 0 !important;
+          padding: 14px 26px 22px !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          background: #ffffff !important;
+          scrollbar-gutter: stable !important;
+        }
+
+        .hardware-module-root .hardware-detail-section-grid {
+          min-height: 100% !important;
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 14px !important;
+          align-items: start !important;
+        }
+
+        .hardware-module-root .hardware-detail-card,
+        .hardware-module-root .hardware-detail-card.hardware-detail-card-wide {
+          min-width: 0 !important;
+          grid-column: auto !important;
+          min-height: 330px !important;
+          height: auto !important;
+          padding: 0 !important;
+          overflow: hidden !important;
+          border: 1px solid #e1e8f2 !important;
+          border-radius: 16px !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+        }
+
+        .hardware-module-root .hardware-detail-card h3 {
+          margin: 0 !important;
+          padding: 14px 16px 10px !important;
+          color: #0a2554 !important;
+          font-size: clamp(1.02rem, 1.5vw, 1.28rem) !important;
+          line-height: 1.1 !important;
+          font-weight: 950 !important;
+          letter-spacing: -0.035em !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.72) !important;
+        }
+
+        .hardware-module-root .hardware-detail-item {
+          min-height: 60px !important;
+          padding: 12px 16px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
+          gap: 5px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.82) !important;
+          background: #ffffff !important;
+        }
+
+        .hardware-module-root .hardware-detail-item:last-child {
+          border-bottom: 0 !important;
+        }
+
+        .hardware-module-root .hardware-detail-item span {
+          color: #64748b !important;
+          font-size: 0.62rem !important;
+          font-weight: 950 !important;
+          letter-spacing: 0.08em !important;
+          line-height: 1.1 !important;
+          text-transform: uppercase !important;
+        }
+
+        .hardware-module-root .hardware-detail-item strong {
+          min-width: 0 !important;
+          color: #0a2554 !important;
+          font-size: 0.84rem !important;
+          font-weight: 950 !important;
+          line-height: 1.25 !important;
+          overflow-wrap: anywhere !important;
+        }
+
+        .hardware-module-root .hardware-storage-hero {
+          margin: 12px 16px !important;
+          padding: 12px !important;
+          min-height: 72px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 12px !important;
+          border: 1px solid #e1e8f2 !important;
+          border-radius: 14px !important;
+          background: #f8fbff !important;
+        }
+
+        .hardware-module-root .hardware-storage-hero span {
+          display: block !important;
+          color: #64748b !important;
+          font-size: 0.65rem !important;
+          font-weight: 900 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.08em !important;
+        }
+
+        .hardware-module-root .hardware-storage-hero strong,
+        .hardware-module-root .hardware-storage-percent {
+          color: #0a2554 !important;
+          font-size: 1rem !important;
+          font-weight: 950 !important;
+        }
+
+        .hardware-module-root .hardware-storage-bar {
+          height: 10px !important;
+          margin: 0 16px 12px !important;
+          border-radius: 999px !important;
+          background: #e8eef8 !important;
+          overflow: hidden !important;
+        }
+
+        .hardware-module-root .hardware-storage-bar > div {
+          height: 100% !important;
+          border-radius: inherit !important;
+          background: linear-gradient(90deg, #2563eb, #22c55e) !important;
+        }
+
+        .hardware-module-root .hardware-detail-clean-timeline {
+          padding: 10px 14px 14px !important;
+          display: grid !important;
+          gap: 10px !important;
+        }
+
+        .hardware-module-root .hardware-detail-timeline {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 14px !important;
+        }
+
+        .hardware-module-root .hardware-timeline-item {
+          min-height: 70px !important;
+          padding: 12px 12px !important;
+          display: grid !important;
+          grid-template-columns: 16px minmax(0, 1fr) !important;
+          gap: 10px !important;
+          border: 1px solid #e1e8f2 !important;
+          border-radius: 14px !important;
+          background: #f8fbff !important;
+        }
+
+        .hardware-module-root .hardware-timeline-item > span {
+          width: 10px !important;
+          height: 10px !important;
+          margin-top: 3px !important;
+          border-radius: 999px !important;
+          background: #cbd5e1 !important;
+          box-shadow: 0 0 0 4px #eef4ff !important;
+        }
+
+        .hardware-module-root .hardware-timeline-item.is-current > span {
+          background: #2563eb !important;
+        }
+
+        .hardware-module-root .hardware-timeline-item strong {
+          display: block !important;
+          color: #0a2554 !important;
+          font-size: 0.82rem !important;
+          font-weight: 950 !important;
+        }
+
+        .hardware-module-root .hardware-timeline-item p,
+        .hardware-module-root .hardware-timeline-item small {
+          margin: 4px 0 0 !important;
+          color: #334155 !important;
+          font-size: 0.78rem !important;
+          font-weight: 700 !important;
+        }
+
+        .hardware-module-root .hardware-timeline-item small {
+          color: #64748b !important;
+          font-size: 0.65rem !important;
+          font-weight: 900 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.06em !important;
+        }
+
+        .hardware-module-root .hardware-detail-form-footer {
+          display: none !important;
+        }
+
+        @media (max-width: 1180px) {
+          .hardware-module-root .hardware-detail-form-overlay,
+          .hardware-module-root .hardware-detail-drawer-overlay {
+            padding-left: 18px !important;
+          }
+
+          .hardware-module-root .hardware-detail-form-modal,
+          .hardware-module-root .hardware-detail-drawer {
+            width: min(920px, calc(100vw - 36px)) !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .hardware-module-root .hardware-detail-form-overlay,
+          .hardware-module-root .hardware-detail-drawer-overlay {
+            align-items: stretch !important;
+            padding: 12px !important;
+          }
+
+          .hardware-module-root .hardware-detail-form-modal,
+          .hardware-module-root .hardware-detail-drawer {
+            width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: calc(100vh - 24px) !important;
+          }
+
+          .hardware-module-root .hardware-detail-drawer-header,
+          .hardware-module-root .hardware-detail-summary-grid,
+          .hardware-module-root .hardware-detail-tabs,
+          .hardware-module-root .hardware-detail-body {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+          }
+
+          .hardware-module-root .hardware-detail-summary-grid,
+          .hardware-module-root .hardware-detail-section-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+
+        /* Hardware sidebar fix: wider panel + keep Branch/Statistics switcher compact. */
+        .hardware-module-root .settings-layout.hardware-settings-layout {
+          grid-template-columns: minmax(300px, 322px) minmax(0, 1fr) !important;
+        }
+
+        .hardware-module-root .settings-menu.hardware-left-panel {
+          min-width: 300px !important;
+        }
+
+        .hardware-module-root .settings-menu > .ema-module-sidebar-switcher {
+          flex: 0 0 auto !important;
+          margin: 0 !important;
+        }
+
+        .hardware-module-root .settings-menu > .ema-sidebar-content {
+          flex: 1 1 auto !important;
+          padding-top: 0.65rem !important;
+        }
+
+        .hardware-module-root .ema-sidebar-subpanel {
+          justify-content: flex-start !important;
+        }
+
+        .hardware-module-root .ema-sidebar-tree {
+          min-height: 0 !important;
+        }
+
+        /* Device registry table: force 7 fixed grid columns after adding Branch.
+           This prevents Network/IP from wrapping into a second header/body line. */
+        .hardware-module-root .hardware-device-table {
+          width: 100% !important;
+          overflow-x: auto !important;
+          overflow-y: visible !important;
+        }
+
+        .hardware-module-root .hardware-device-table .hardware-device-table-row {
+          display: grid !important;
+          grid-template-columns: 52px minmax(240px, 1.55fr) minmax(150px, 0.95fr) minmax(210px, 1.35fr) minmax(105px, 0.65fr) minmax(150px, 0.9fr) minmax(130px, 0.8fr) !important;
+          align-items: center !important;
+          column-gap: 0 !important;
+          min-width: 1037px !important;
+          width: 100% !important;
+        }
+
+        .hardware-module-root .hardware-device-table .user-cell {
+          min-width: 0 !important;
+          overflow: hidden !important;
+        }
+
+        .hardware-module-root .hardware-device-table .head .user-cell {
+          display: flex !important;
+          align-items: center !important;
+          min-height: 44px !important;
+        }
+
+        .hardware-module-root .hardware-device-table .hardware-sort-btn {
+          max-width: 100% !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+        }
+
+        .hardware-module-root .hardware-device-main-cell,
+        .hardware-module-root .hardware-user-name,
+        .hardware-module-root .hardware-user-name > div {
+          min-width: 0 !important;
+        }
+
+        /* Strong override for existing global Hardware table CSS.
+           The global stylesheet still has the old 6-column grid with higher specificity,
+           so these selectors pin every header/body cell into one 7-column row. */
+        .hardware-module-root .hardware-device-table.hardware-standard-table {
+          display: block !important;
+          width: calc(100% - 2.1rem) !important;
+          max-width: calc(100% - 2.1rem) !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+        }
+
+        .hardware-module-root .hardware-device-table .user-row.advanced.clean-table-row.hardware-standard-row.hardware-device-table-row,
+        .hardware-module-root .hardware-device-table .hardware-standard-row.hardware-device-table-row,
+        .hardware-module-root .hardware-device-table .hardware-device-table-row {
+          display: grid !important;
+          grid-template-columns: 56px minmax(250px, 1.6fr) minmax(170px, 0.95fr) minmax(220px, 1.25fr) 112px 180px 160px !important;
+          grid-auto-flow: row !important;
+          grid-auto-rows: auto !important;
+          align-items: center !important;
+          gap: 0 !important;
+          column-gap: 0 !important;
+          min-width: 1160px !important;
+          width: 100% !important;
+        }
+
+        .hardware-module-root .hardware-device-table .hardware-device-table-row > .user-cell:nth-child(1) { grid-column: 1 !important; grid-row: 1 !important; }
+        .hardware-module-root .hardware-device-table .hardware-device-table-row > .user-cell:nth-child(2) { grid-column: 2 !important; grid-row: 1 !important; }
+        .hardware-module-root .hardware-device-table .hardware-device-table-row > .user-cell:nth-child(3) { grid-column: 3 !important; grid-row: 1 !important; }
+        .hardware-module-root .hardware-device-table .hardware-device-table-row > .user-cell:nth-child(4) { grid-column: 4 !important; grid-row: 1 !important; }
+        .hardware-module-root .hardware-device-table .hardware-device-table-row > .user-cell:nth-child(5) { grid-column: 5 !important; grid-row: 1 !important; }
+        .hardware-module-root .hardware-device-table .hardware-device-table-row > .user-cell:nth-child(6) { grid-column: 6 !important; grid-row: 1 !important; }
+        .hardware-module-root .hardware-device-table .hardware-device-table-row > .user-cell:nth-child(7) { grid-column: 7 !important; grid-row: 1 !important; }
+
+        .hardware-module-root .hardware-device-table .hardware-device-table-row > .user-cell,
+        .hardware-module-root .hardware-device-table .hardware-standard-row.hardware-device-table-row > .user-cell {
+          min-width: 0 !important;
+          max-width: 100% !important;
+          overflow: hidden !important;
+          box-sizing: border-box !important;
+        }
+
+        .hardware-module-root .hardware-device-table .head.hardware-device-table-row > .user-cell {
+          min-height: 44px !important;
+          white-space: nowrap !important;
+        }
+
+        .hardware-module-root .hardware-location-cell,
+        .hardware-module-root .hardware-network-cell {
+          min-width: 0 !important;
+          max-width: 100% !important;
+          overflow: hidden !important;
+          display: grid !important;
+          gap: 0.12rem !important;
+          align-content: center !important;
+        }
+
+        .hardware-module-root .hardware-location-cell strong,
+        .hardware-module-root .hardware-location-cell small,
+        .hardware-module-root .hardware-network-cell strong,
+        .hardware-module-root .hardware-network-cell small,
+        .hardware-module-root .hardware-model-text,
+        .hardware-module-root .hardware-date-cell {
+          max-width: 100% !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+        }
+
+        .hardware-module-root .hardware-user-name strong,
+        .hardware-module-root .hardware-user-name small,
+        .hardware-module-root .hardware-user-name em,
+        .hardware-module-root .hardware-model-text,
+        .hardware-module-root .hardware-date-cell {
+          max-width: 100% !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+        }
+
+        .hardware-module-root .hardware-location-cell,
+        .hardware-module-root .hardware-network-cell {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: flex-start !important;
+          justify-content: center !important;
+          gap: 0.18rem !important;
+          min-width: 0 !important;
+        }
+
+        .hardware-module-root .hardware-location-cell strong,
+        .hardware-module-root .hardware-network-cell strong {
+          display: block !important;
+          max-width: 100% !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+          font-size: 0.76rem !important;
+          font-weight: 900 !important;
+          color: #102a5a !important;
+          line-height: 1.1 !important;
+        }
+
+        .hardware-module-root .hardware-location-cell small {
+          display: block !important;
+          max-width: 100% !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+          color: #64748b !important;
+          font-size: 0.66rem !important;
+          font-weight: 800 !important;
+          line-height: 1.15 !important;
+        }
+
+        @media (max-width: 1100px) {
+          .hardware-module-root .settings-layout.hardware-settings-layout {
+            grid-template-columns: 1fr !important;
+          }
+
+          .hardware-module-root .settings-menu.hardware-left-panel {
+            min-width: 0 !important;
+          }
+        }
+
+
+
+        /* Hardware registry table vertical-scroll fix.
+           Keep toolbar + summary + pagination visible, and scroll only the device rows/table area. */
+        .hardware-module-root .hardware-settings-content,
+        .hardware-module-root .hardware-main-grid {
+          min-height: 0 !important;
+          overflow: hidden !important;
+        }
+
+        .hardware-module-root .hardware-registry-card {
+          display: flex !important;
+          flex-direction: column !important;
+          min-height: 0 !important;
+          max-height: calc(100dvh - 196px) !important;
+          overflow: hidden !important;
+        }
+
+        .hardware-module-root .hardware-registry-toolbar,
+        .hardware-module-root .hardware-registry-subhead,
+        .hardware-module-root .hardware-pagination {
+          flex: 0 0 auto !important;
+        }
+
+        .hardware-module-root .hardware-device-table.hardware-standard-table {
+          flex: 1 1 auto !important;
+          min-height: 260px !important;
+          max-height: min(54vh, 560px) !important;
+          overflow-y: auto !important;
+          overflow-x: auto !important;
+          padding-bottom: 0 !important;
+          scrollbar-gutter: stable !important;
+          -webkit-overflow-scrolling: touch !important;
+        }
+
+        .hardware-module-root .hardware-device-table.hardware-standard-table::-webkit-scrollbar {
+          width: 8px !important;
+          height: 8px !important;
+        }
+
+        .hardware-module-root .hardware-device-table.hardware-standard-table::-webkit-scrollbar-track {
+          background: rgba(226, 232, 240, 0.58) !important;
+          border-radius: 999px !important;
+        }
+
+        .hardware-module-root .hardware-device-table.hardware-standard-table::-webkit-scrollbar-thumb {
+          background: rgba(100, 116, 139, 0.62) !important;
+          border-radius: 999px !important;
+          border: 2px solid rgba(248, 250, 252, 0.9) !important;
+        }
+
+        .hardware-module-root .hardware-device-table .head.hardware-device-table-row {
+          position: sticky !important;
+          top: 0 !important;
+          z-index: 8 !important;
+          background: #f3f6fb !important;
+          box-shadow: 0 1px 0 rgba(203, 213, 225, 0.85) !important;
+        }
+
+        .hardware-module-root .hardware-device-table .hardware-device-row {
+          min-height: 58px !important;
+        }
+
+        @media (max-height: 760px) {
+          .hardware-module-root .hardware-registry-card {
+            max-height: calc(100dvh - 168px) !important;
+          }
+
+          .hardware-module-root .hardware-device-table.hardware-standard-table {
+            max-height: min(48vh, 440px) !important;
+          }
+        }
+
+
+        /* Hardware toolbar layout fix: keep actions, search, refresh and filters aligned. */
+        .hardware-module-root .hardware-registry-toolbar.hardware-registry-toolbar-stacked {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) !important;
+          align-items: stretch !important;
+          gap: 12px !important;
+          width: 100% !important;
+          min-width: 0 !important;
+        }
+
+        .hardware-module-root .hardware-scan-command-row {
+          display: grid !important;
+          grid-template-columns: max-content max-content max-content minmax(280px, 1fr) 42px max-content !important;
+          align-items: center !important;
+          gap: 10px !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          flex-wrap: nowrap !important;
+        }
+
+        .hardware-module-root .hardware-command-btn {
+          height: 38px;
+          min-width: 132px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          padding: 0 16px;
+          border: 1px solid #a9befd;
+          border-radius: 13px;
+          background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+          color: #1858ff;
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: -0.01em;
+          white-space: nowrap;
+          box-shadow: 0 10px 24px rgba(40, 85, 200, 0.08);
+          transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+        }
+
+        .hardware-command-btn:hover:not(:disabled) {
+          transform: translateY(-1px);
+          border-color: #6f8fff;
+          box-shadow: 0 14px 28px rgba(40, 85, 200, 0.14);
+        }
+
+        .hardware-command-btn:disabled {
+          color: #9eb0e8;
+          background: #f8faff;
+          border-color: #d4ddff;
+          box-shadow: none;
+          cursor: not-allowed;
+        }
+
+        .hardware-command-btn-muted b {
+          padding: 3px 8px;
+          border-radius: 999px;
+          background: #e9efff;
+          color: #1858ff;
+          font-size: 11px;
+          line-height: 1;
+        }
+
+        .hardware-module-root .hardware-toolbar-search {
+          flex: 1 1 auto !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: none !important;
+          height: 38px !important;
+        }
+
+        .hardware-module-root .hardware-toolbar-refresh {
+          flex: 0 0 auto !important;
+          width: 42px !important;
+          height: 38px !important;
+          justify-self: end !important;
+          align-self: center !important;
+        }
+
+        .hardware-module-root .hardware-toolbar-export {
+          flex: 0 0 auto !important;
+          height: 38px !important;
+          min-width: 92px !important;
+          justify-self: end !important;
+          align-self: center !important;
+          border-color: #0b7ed7 !important;
+          background: linear-gradient(135deg, #1d6fd7 0%, #0b83c7 100%) !important;
+          color: #ffffff !important;
+          box-shadow: 0 14px 28px rgba(11, 126, 215, 0.22) !important;
+        }
+
+        .hardware-module-root .hardware-toolbar-export:hover:not(:disabled) {
+          border-color: #075fa7 !important;
+          box-shadow: 0 18px 34px rgba(11, 126, 215, 0.28) !important;
+        }
+
+        .hardware-module-root .hardware-toolbar-export:disabled {
+          border-color: #cbd5e1 !important;
+          background: #eff4fb !important;
+          color: #94a3b8 !important;
+          box-shadow: none !important;
+        }
+
+        .hardware-module-root .hardware-registry-filter-row {
+          display: grid !important;
+          grid-template-columns: minmax(210px, 240px) minmax(210px, 240px) max-content !important;
+          justify-content: end !important;
+          align-items: end !important;
+          gap: 10px !important;
+          width: 100% !important;
+          min-width: 0 !important;
+        }
+
+        .hardware-module-root .hardware-filter-group,
+        .hardware-module-root .ema-hw-select,
+        .hardware-module-root .ema-hw-select-trigger {
+          min-width: 0 !important;
+          width: 100% !important;
+        }
+
+        .hardware-module-root .hardware-clear-filters-btn {
+          height: 38px !important;
+          align-self: end !important;
+          white-space: nowrap !important;
+        }
+
+        /* Hardware toast position fix: always top-right, not bottom-right. */
+        .hardware-module-root .hardware-toast,
+        body .hardware-toast {
+          position: fixed !important;
+          top: 86px !important;
+          right: 24px !important;
+          bottom: auto !important;
+          left: auto !important;
+          z-index: 2147483647 !important;
+          max-width: min(26rem, calc(100vw - 32px)) !important;
+          pointer-events: auto !important;
+          display: flex !important;
+          align-items: flex-start !important;
+          gap: 12px !important;
+          padding: 16px 18px !important;
+          border: 1px solid #bfdbfe !important;
+          border-radius: 18px !important;
+          background: #ffffff !important;
+          box-shadow: 0 18px 42px rgba(15, 23, 42, 0.16) !important;
+        }
+
+        .hardware-module-root .hardware-toast-icon,
+        body .hardware-toast .hardware-toast-icon {
+          width: 40px !important;
+          height: 40px !important;
+          flex: 0 0 40px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          border-radius: 14px !important;
+          color: #2563eb !important;
+          background: #eff6ff !important;
+          border: 1px solid #bfdbfe !important;
+        }
+
+        .hardware-module-root .hardware-toast-success,
+        body .hardware-toast-success {
+          border-color: #bbf7d0 !important;
+        }
+
+        .hardware-module-root .hardware-toast-success .hardware-toast-icon,
+        body .hardware-toast-success .hardware-toast-icon {
+          color: #16a34a !important;
+          background: #dcfce7 !important;
+          border-color: #bbf7d0 !important;
+        }
+
+        .hardware-module-root .hardware-toast-error,
+        .hardware-module-root .hardware-toast-delete,
+        body .hardware-toast-error,
+        body .hardware-toast-delete {
+          border-color: #fecaca !important;
+        }
+
+        .hardware-module-root .hardware-toast-error .hardware-toast-icon,
+        .hardware-module-root .hardware-toast-delete .hardware-toast-icon,
+        body .hardware-toast-error .hardware-toast-icon,
+        body .hardware-toast-delete .hardware-toast-icon {
+          color: #dc2626 !important;
+          background: #fee2e2 !important;
+          border-color: #fecaca !important;
+        }
+
+        .hardware-module-root .hardware-toast-info,
+        body .hardware-toast-info {
+          border-color: #bfdbfe !important;
+        }
+
+        .hardware-module-root .hardware-toast-info .hardware-toast-icon,
+        body .hardware-toast-info .hardware-toast-icon {
+          color: #2563eb !important;
+          background: #eff6ff !important;
+          border-color: #bfdbfe !important;
+        }
+
+        @media (max-width: 720px) {
+          .hardware-module-root .hardware-toast,
+          body .hardware-toast {
+            top: 18px !important;
+            right: 16px !important;
+            left: 16px !important;
+            bottom: auto !important;
+            width: auto !important;
+            max-width: none !important;
+          }
+        }
+
+
+
+        .hardware-stat-summary-layout {
+          padding: 18px 18px 16px;
+        }
+
+        .hardware-stat-summary-total {
+          margin-bottom: 18px;
+          color: #1559ff;
+          font-size: 15px;
+          font-weight: 900;
+          letter-spacing: -0.01em;
+        }
+
+        .hardware-stat-summary-table {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+          font-size: 12px;
+          color: #0f2854;
+        }
+
+        .hardware-stat-summary-table thead tr {
+          background: #2847a8;
+        }
+
+        .hardware-stat-summary-table thead th {
+          padding: 11px 14px;
+          color: #ffffff !important;
+          font-size: 10px;
+          line-height: 1.2;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          text-align: left;
+          border: 0;
+        }
+
+        .hardware-stat-summary-table tbody td {
+          padding: 12px 14px;
+          font-weight: 700;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+          background: #ffffff;
+        }
+
+        .hardware-stat-summary-table tbody td:nth-child(2) {
+          background: #e8f1ff;
+          color: #0639b7;
+        }
+
+        .hardware-stat-summary-table tbody td:nth-child(3) {
+          background: #eefcf4;
+          color: #047857;
+        }
+
+        .hardware-stat-summary-reference {
+          margin-top: 16px;
+          color: #8b9ab5;
+          font-size: 10px;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        @media (max-width: 1250px) {
+          .hardware-module-root .hardware-scan-command-row {
+            grid-template-columns: repeat(3, minmax(132px, 1fr)) 42px max-content !important;
+          }
+
+          .hardware-module-root .hardware-toolbar-search {
+            grid-column: 1 / -3 !important;
+            grid-row: 2 !important;
+          }
+
+          .hardware-module-root .hardware-toolbar-refresh {
+            grid-column: -3 / -2 !important;
+            grid-row: 2 !important;
+          }
+
+          .hardware-module-root .hardware-toolbar-export {
+            grid-column: -2 / -1 !important;
+            grid-row: 2 !important;
+          }
+        }
+
+        @media (max-width: 1100px) {
+          .hardware-module-root .hardware-registry-filter-row {
+            grid-template-columns: 1fr !important;
+            justify-content: stretch !important;
+          }
+          .hardware-module-root .hardware-toolbar-search {
+            flex-basis: 100% !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .hardware-module-root .hardware-scan-command-row {
+            grid-template-columns: 1fr !important;
+          }
+
+          .hardware-module-root .hardware-toolbar-search,
+          .hardware-module-root .hardware-toolbar-refresh,
+          .hardware-module-root .hardware-toolbar-export {
+            grid-column: auto !important;
+            grid-row: auto !important;
+            width: 100% !important;
+            justify-self: stretch !important;
+          }
+        }
+      `}</style>
+      <input aria-hidden="true" id="globalSearch" type="hidden" />
       <button hidden id="themeBtn" type="button">
         <span id="themeLabel">Dark Mode</span>
       </button>
 
-      <div className="">
-        <aside className="">
-          <div className="">
+      <div>
+        <aside>
+          <div>
             <span>HARDWARE</span>
             <strong>Hardware Inventory</strong>
             <small>Manage hardware folders and device records.</small>
           </div>
 
-          <nav className="" id="hardwareMenu" role="tablist" aria-label="Hardware navigation">
+          <nav id="hardwareMenu" role="tablist" aria-label="Hardware navigation">
             <button
               type="button"
-              className=""
               onClick={() => setActiveTab("organization")}
             >
-              <span className=""><FolderOpen size={16} /></span>
+              <span><FolderOpen size={16} /></span>
               <span><strong>Branch</strong><small>Branch device scope</small></span>
             </button>
             <button
               type="button"
-              className=""
               onClick={() => setActiveTab("statistics")}
             >
-              <span className=""><Database size={16} /></span>
+              <span><Database size={16} /></span>
               <span><strong>Statistics</strong><small>Hardware operational views</small></span>
             </button>
           </nav>
 
-          <div className="">
-            <div className="">
+          <div>
+            <div>
               {activeTab === "organization" ? (
                 <>
-                  <div className="">
+                  <div>
                     <Search size={15} />
                     <input value={searchHierarchy} onChange={(event) => setSearchHierarchy(event.target.value)} placeholder="Search branches..." />
                   </div>
 
-                  <button type="button" className="" onClick={() => handleAddFolder()}><FolderPlus size={13} /> New Branch Path</button>
+                  <button type="button" onClick={() => handleAddFolder()}><FolderPlus size={13} /> New Branch Path</button>
 
-                  <div className="" aria-label="Hardware location tree">
+                  <div aria-label="Hardware location tree">
                     {treeNodes.map((node) => (
                       <FolderTree
                         key={node.key}
@@ -4039,13 +5046,13 @@ export default function HardwareInventory() {
                 </>
               ) : (
                 <>
-                  <div className="">
+                  <div>
                     <strong>{selectedFolderLabel}</strong>
                     <span>{getSelectedRelationID() === -1 ? "All departments" : "Selected folder"}</span>
                   </div>
 
-                  <div className="" aria-label="Hardware statistics tree">
-                    <div className=""><Database size={14} /><span>Statistics</span></div>
+                  <div aria-label="Hardware statistics tree">
+                    <div><Database size={14} /><span>Statistics</span></div>
                     {statisticTree.map((node) => renderStatisticTreeNode(node))}
                   </div>
                 </>
@@ -4054,43 +5061,41 @@ export default function HardwareInventory() {
           </div>
         </aside>
 
-        <section className="">
-          <div className="">
+        <section>
+          <div>
             <div>
-              <span className="">ENDPOINT OPERATIONS</span>
+              <span>ENDPOINT OPERATIONS</span>
               <h2>{activeTab === "statistics" ? "Hardware Statistics" : "Device Registry"}</h2>
               <p>Live hardware inventory with device actions, location view, remote support and security controls.</p>
             </div>
-            <div className="">
+            <div>
               {kpiCards.map((card) => (
                 <button
                   key={card.key}
                   type="button"
-                  className=""
                   onClick={() => handleKpiFilterClick(card.key)}
                   aria-pressed={activeKpiFilter === card.key}
                 >
-                  <div className="">
-                    <i className="">{card.icon}</i>
-                    <span className="">{card.title}</span>
-                    <strong className="">{card.value}</strong>
-                    <small className="">{card.subtitle}</small>
+                  <div>
+                    <i>{card.icon}</i>
+                    <span>{card.title}</span>
+                    <strong>{card.value}</strong>
+                    <small>{card.subtitle}</small>
                   </div>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="">
-        <section className="">
+          <div>
+        <section>
         {activeTab === "statistics" ? renderStatisticsWorkbench() : (
           <>
 
-          <div ref={hardwareRegistryToolbarRef} className="">
-            <div className="">
+          <div ref={hardwareRegistryToolbarRef}>
+            <div>
               {/* <button
                 type="button"
-                className=""
                 onClick={() => setActiveTab("statistics")}
                 title="Open hardware statistics and insights"
               >
@@ -4101,7 +5106,6 @@ export default function HardwareInventory() {
 
               <button
                 type="button"
-                className=""
                 onClick={() => void handleScanHardware("device")}
                 disabled={hardwareScanLoading || !hasSelectedDevice || String(selectedDevice.objectAgent || "EM").toUpperCase() !== "EM"}
                 title={!hasSelectedDevice ? "Select a device first" : String(selectedDevice.objectAgent || "EM").toUpperCase() !== "EM" ? "Only supported Windows/EM devices can be scanned" : `Refresh hardware inventory for ${selectedDevice.name}`}
@@ -4112,7 +5116,6 @@ export default function HardwareInventory() {
 
               <button
                 type="button"
-                className=""
                 onClick={() => void handleScanHardware("folder")}
                 disabled={hardwareScanLoading || getSelectedRelationID() === -1}
                 title={getSelectedRelationID() === -1 ? "Select a folder first, or use Scan All" : `Refresh hardware inventory for ${selectedFolderLabel}`}
@@ -4123,7 +5126,6 @@ export default function HardwareInventory() {
 
               <button
                 type="button"
-                className=""
                 onClick={() => void handleScanHardware("all")}
                 disabled={hardwareScanLoading}
                 title="Refresh hardware inventory for all EM/Windows devices"
@@ -4132,7 +5134,7 @@ export default function HardwareInventory() {
                 {hardwareScanLoading ? "Scanning..." : "Scan All"}
               </button>
 
-              <div className="">
+              <div>
                 <Search size={15} />
                 <input
                   type="text"
@@ -4147,7 +5149,6 @@ export default function HardwareInventory() {
                 {searchDevices && (
                   <button
                     type="button"
-                    className=""
                     onClick={() => {
                       setSearchDevices("");
                       setPage(1);
@@ -4160,13 +5161,12 @@ export default function HardwareInventory() {
                 )}
               </div>
 
-              <button type="button" className="" onClick={handleRefresh} title="Refresh inventory">
+              <button type="button" onClick={handleRefresh} title="Refresh inventory">
                 <RefreshCw size={16} />
               </button>
 
               <button
                 type="button"
-                className=""
                 onClick={handleExportHardwareTable}
                 disabled={!filteredDevices.length}
                 title="Export current table data"
@@ -4176,8 +5176,8 @@ export default function HardwareInventory() {
               </button>
             </div>
 
-            <div className="">
-              <div className="">
+            <div>
+              <div>
                 <label>Status</label>
                 <HardwareDropdown
                   label="Status filter"
@@ -4190,7 +5190,7 @@ export default function HardwareInventory() {
                 />
               </div>
 
-              <div className="">
+              <div>
                 <label>Platform</label>
                 <HardwareDropdown
                   label="Platform filter"
@@ -4203,14 +5203,14 @@ export default function HardwareInventory() {
                 />
               </div>
 
-              <button type="button" className="" onClick={clearTableFilters} disabled={!searchDevices && activeTableFilterCount === 0}>
+              <button type="button" onClick={clearTableFilters} disabled={!searchDevices && activeTableFilterCount === 0}>
                 <X size={14} />
                 Reset
               </button>
             </div>
           </div>
 
-          <div className="">
+          <div>
             <div>
               <span>
                 {selectedFolderLabel} scope
@@ -4223,36 +5223,36 @@ export default function HardwareInventory() {
             </div>
           </div>
 
-          <div className="">
-            <div className="">
-              <div className="">No</div>
-              <div className="">
-                <button type="button" className="" onClick={() => handleSort("name")}>
+          <div>
+            <div>
+              <div>No</div>
+              <div>
+                <button type="button" onClick={() => handleSort("name")}>
                   Device {renderSortIndicator("name")}
                 </button>
               </div>
-              <div className="">
-                <button type="button" className="" onClick={() => handleSort("groupPath")}>
+              <div>
+                <button type="button" onClick={() => handleSort("groupPath")}>
                   Branch {renderSortIndicator("groupPath")}
                 </button>
               </div>
-              <div className="">
-                <button type="button" className="" onClick={() => handleSort("platformModel")}>
+              <div>
+                <button type="button" onClick={() => handleSort("platformModel")}>
                   Platform / Model {renderSortIndicator("platformModel")}
                 </button>
               </div>
-              <div className="">
-                <button type="button" className="" onClick={() => handleSort("status")}>
+              <div>
+                <button type="button" onClick={() => handleSort("status")}>
                   Status {renderSortIndicator("status")}
                 </button>
               </div>
-              <div className="">
-                <button type="button" className="" onClick={() => handleSort("lastConnected")}>
+              <div>
+                <button type="button" onClick={() => handleSort("lastConnected")}>
                   Last Connected {renderSortIndicator("lastConnected")}
                 </button>
               </div>
-              <div className="">
-                <button type="button" className="" onClick={() => handleSort("ip")}>
+              <div>
+                <button type="button" onClick={() => handleSort("ip")}>
                   Network {renderSortIndicator("ip")}
                 </button>
               </div>
@@ -4263,18 +5263,17 @@ export default function HardwareInventory() {
                 role="button"
                 tabIndex={0}
                 key={device.id}
-                className=""
                 onClick={() => handleDeviceRowSelect(device)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") handleDeviceRowSelect(device);
                 }}
               >
-                <div className="">
-                  <span className="">{String((page - 1) * PAGE_SIZE + index + 1).padStart(2, "0")}</span>
+                <div>
+                  <span>{String((page - 1) * PAGE_SIZE + index + 1).padStart(2, "0")}</span>
                 </div>
-                <div className="">
-                  <div className="">
-                    <i className="" />
+                <div>
+                  <div>
+                    <i />
                     <div>
                       <strong
                         role="button"
@@ -4294,38 +5293,38 @@ export default function HardwareInventory() {
                     </div>
                   </div>
                 </div>
-                <div className="">
+                <div>
                   <strong>{device.department}</strong>
                   <small title={device.groupPath}>{device.groupPath}</small>
                 </div>
-                <div className=""><span className="">{device.platformModel}</span></div>
-                <div className=""><span className="">{device.status}</span></div>
-                <div className=""><span className="">{device.lastConnected}</span></div>
-                <div className="">
+                <div><span>{device.platformModel}</span></div>
+                <div><span>{device.status}</span></div>
+                <div><span>{device.lastConnected}</span></div>
+                <div>
                   <strong>{device.ip}</strong>
                 </div>
               </div>
             ))}
 
             {pagedDevices.length === 0 && (
-              <div className="">{inventoryLoading ? "Loading hardware inventory..." : "No device found for current filter/search."}</div>
+              <div>{inventoryLoading ? "Loading hardware inventory..." : "No device found for current filter/search."}</div>
             )}
           </div>
 
-          <div className="">
-            <div className="">Page {page} of {pageCount}</div>
-            <div className="" aria-label="Hardware inventory pagination">
-              <button className="" type="button" onClick={() => { setPage(1); setNote("Device panel remains open until you close it."); }} disabled={page === 1} aria-label="First page">
+          <div>
+            <div>Page {page} of {pageCount}</div>
+            <div aria-label="Hardware inventory pagination">
+              <button type="button" onClick={() => { setPage(1); setNote("Device panel remains open until you close it."); }} disabled={page === 1} aria-label="First page">
                 «
               </button>
-              <button className="" type="button" onClick={() => { setPage((current) => Math.max(1, current - 1)); setNote("Device panel remains open until you close it."); }} disabled={page === 1} aria-label="Previous page">
+              <button type="button" onClick={() => { setPage((current) => Math.max(1, current - 1)); setNote("Device panel remains open until you close it."); }} disabled={page === 1} aria-label="Previous page">
                 ‹
               </button>
-              <span className="">{page}</span>
-              <button className="" type="button" onClick={() => { setPage((current) => Math.min(pageCount, current + 1)); setNote("Device panel remains open until you close it."); }} disabled={page === pageCount} aria-label="Next page">
+              <span>{page}</span>
+              <button type="button" onClick={() => { setPage((current) => Math.min(pageCount, current + 1)); setNote("Device panel remains open until you close it."); }} disabled={page === pageCount} aria-label="Next page">
                 ›
               </button>
-              <button className="" type="button" onClick={() => { setPage(pageCount); setNote("Device panel remains open until you close it."); }} disabled={page === pageCount} aria-label="Last page">
+              <button type="button" onClick={() => { setPage(pageCount); setNote("Device panel remains open until you close it."); }} disabled={page === pageCount} aria-label="Last page">
                 »
               </button>
             </div>
@@ -4336,13 +5335,13 @@ export default function HardwareInventory() {
       </section>
 
       {hasSelectedDevice && !showDeviceDetails && (
-      <aside ref={hardwareQuickPanelRef} className="">
-        <div className="">
-          <div className="">
-            <div className="">
+      <aside ref={hardwareQuickPanelRef}>
+        <div>
+          <div>
+            <div>
               <Monitor size={20} />
             </div>
-            <div className="">
+            <div>
               <h3>{selectedDevice.name}</h3>
               <p>
                 {selectedDevice.os} • {selectedDevice.ip}
@@ -4350,7 +5349,6 @@ export default function HardwareInventory() {
             </div>
             <button
               type="button"
-              className=""
               onClick={() => clearSelectedDevice("Device actions panel closed.")}
               aria-label="Close device actions panel"
               title="Close panel"
@@ -4359,9 +5357,9 @@ export default function HardwareInventory() {
             </button>
           </div>
 
-          <div className="">
-            <button type="button" className="" onClick={() => setActiveModal("message")} disabled={messageLoading}>
-              <div className="">
+          <div>
+            <button type="button" onClick={() => setActiveModal("message")} disabled={messageLoading}>
+              <div>
                 <Send size={16} />
               </div>
               <div>
@@ -4370,8 +5368,8 @@ export default function HardwareInventory() {
               </div>
             </button>
 
-            <button type="button" className="" onClick={() => setActiveModal("remote")}>
-              <div className="">
+            <button type="button" onClick={() => setActiveModal("remote")}>
+              <div>
                 <Monitor size={16} />
               </div>
               <div>
@@ -4380,8 +5378,8 @@ export default function HardwareInventory() {
               </div>
             </button>
 
-            <button type="button" className="" onClick={openGeolocationModal} disabled={geoLoading}>
-              <div className="">
+            <button type="button" onClick={openGeolocationModal} disabled={geoLoading}>
+              <div>
                 <MapPin size={16} />
               </div>
               <div>
@@ -4391,8 +5389,8 @@ export default function HardwareInventory() {
             </button>
 
             {selectedDevice.status === "Locked" ? (
-              <button type="button" className="" onClick={() => void handleLockUnlockDevice("unlock")} disabled={lockActionLoading}>
-                <div className="">
+              <button type="button" onClick={() => void handleLockUnlockDevice("unlock")} disabled={lockActionLoading}>
+                <div>
                   <Unlock size={16} />
                 </div>
                 <div>
@@ -4401,8 +5399,8 @@ export default function HardwareInventory() {
                 </div>
               </button>
             ) : (
-              <button type="button" className="" onClick={() => setActiveModal("lock")} disabled={lockActionLoading}>
-                <div className="">
+              <button type="button" onClick={() => setActiveModal("lock")} disabled={lockActionLoading}>
+                <div>
                   <Lock size={16} />
                 </div>
                 <div>
@@ -4413,8 +5411,8 @@ export default function HardwareInventory() {
             )}
 
 
-            <button type="button" className="" onClick={openMoveDepartmentModal}>
-              <div className="">
+            <button type="button" onClick={openMoveDepartmentModal}>
+              <div>
                 <Database size={16} />
               </div>
               <div>
@@ -4431,9 +5429,1942 @@ export default function HardwareInventory() {
       </div>
 
       <DeviceDetailsDrawer device={detailDevice} isOpen={hasDetailDevice} onClose={closeDeviceDetails} />
-{toast && (
-        <div className="" role="status">
-          <div className="">{toast.type === "success" ? <CheckCircle size={18} /> : toast.type === "delete" ? <Trash2 size={18} /> : <AlertCircle size={18} />}</div>
+
+      
+      <style>{`
+        /* HARDWARE_FINAL_STANDARD_HERO_KPI_STYLE */
+        html body .hardware-module-root.settings-module-root .settings-hero.hardware-hero {
+          height: 132px !important;
+          min-height: 132px !important;
+          max-height: 132px !important;
+          padding: 18px 20px !important;
+          display: grid !important;
+          grid-template-columns: minmax(360px, 0.86fr) minmax(720px, 1.14fr) !important;
+          align-items: center !important;
+          gap: 18px !important;
+          overflow: hidden !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 16px !important;
+          background:
+            radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.08), transparent 32%),
+            #ffffff !important;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .settings-hero.hardware-hero > div:first-child {
+          min-width: 0 !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .settings-hero.hardware-hero h2 {
+          margin: 9px 0 0 !important;
+          color: #0f2746 !important;
+          font-size: 28px !important;
+          line-height: 1.05 !important;
+          font-weight: 650 !important;
+          letter-spacing: -0.055em !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .settings-hero.hardware-hero p {
+          margin: 8px 0 0 !important;
+          color: #64748b !important;
+          font-size: 12.5px !important;
+          line-height: 1.35 !important;
+          max-width: 760px !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          height: 78px !important;
+          min-height: 78px !important;
+          max-height: 78px !important;
+          display: grid !important;
+          grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+          grid-auto-rows: 78px !important;
+          gap: 10px !important;
+          align-items: stretch !important;
+          justify-items: stretch !important;
+          overflow: hidden !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-card {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          height: 78px !important;
+          min-height: 78px !important;
+          max-height: 78px !important;
+          margin: 0 !important;
+          padding: 10px 11px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 14px !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+          outline: none !important;
+          color: #0f2746 !important;
+          display: block !important;
+          overflow: hidden !important;
+          cursor: pointer !important;
+          transform: none !important;
+          text-align: left !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-card:hover,
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-card.is-active {
+          border-color: #c7d2fe !important;
+          background: #f8f7ff !important;
+          box-shadow: inset 3px 0 0 #4f46e5 !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-content {
+          width: 100% !important;
+          height: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          display: grid !important;
+          grid-template-columns: 30px minmax(0, 1fr) !important;
+          grid-template-rows: 13px 24px 13px !important;
+          column-gap: 8px !important;
+          row-gap: 3px !important;
+          align-items: center !important;
+          justify-content: stretch !important;
+          overflow: hidden !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-icon {
+          grid-column: 1 !important;
+          grid-row: 1 / 4 !important;
+          width: 30px !important;
+          height: 30px !important;
+          min-width: 30px !important;
+          min-height: 30px !important;
+          padding: 7px !important;
+          border-radius: 999px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+          box-shadow: none !important;
+          margin: 0 !important;
+          align-self: center !important;
+          justify-self: center !important;
+          display: grid !important;
+          place-items: center !important;
+          font-style: normal !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-icon svg {
+          width: 16px !important;
+          height: 16px !important;
+          min-width: 16px !important;
+          min-height: 16px !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          color: currentColor !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          display: block !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-label {
+          grid-column: 2 !important;
+          grid-row: 1 !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          color: #64748b !important;
+          font-size: 8.8px !important;
+          font-weight: 600 !important;
+          line-height: 1 !important;
+          letter-spacing: 0.045em !important;
+          text-transform: uppercase !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: block !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-value {
+          grid-column: 2 !important;
+          grid-row: 2 !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          color: #0f2746 !important;
+          font-size: 18px !important;
+          font-weight: 650 !important;
+          line-height: 1 !important;
+          letter-spacing: -0.025em !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: block !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-note {
+          grid-column: 2 !important;
+          grid-row: 3 !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          color: #64748b !important;
+          font-size: 9.2px !important;
+          font-weight: 500 !important;
+          line-height: 1.05 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: block !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .settings-hero.hardware-hero::before,
+        html body .hardware-module-root.settings-module-root .settings-hero.hardware-hero::after {
+          display: none !important;
+          content: none !important;
+        }
+
+        @media (max-width: 1320px) {
+          html body .hardware-module-root.settings-module-root .settings-hero.hardware-hero {
+            grid-template-columns: minmax(320px, 0.8fr) minmax(660px, 1.2fr) !important;
+          }
+
+          html body .hardware-module-root.settings-module-root .hardware-hero-score .hardware-kpi-note {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      
+      <style>{`
+        /* HARDWARE_RESTORE_ACTIONS_AND_STANDARD_SIDEBAR */
+
+        /* Sidebar must match all other modules */
+        html body .hardware-module-root.settings-module-root .settings-layout.hardware-settings-layout {
+          width: 100% !important;
+          height: 100% !important;
+          min-height: 0 !important;
+          max-height: 100% !important;
+          display: grid !important;
+          grid-template-columns: 280px minmax(0, 1fr) !important;
+          gap: 14px !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root.settings-module-root .settings-menu.hardware-left-panel {
+          width: 280px !important;
+          min-width: 280px !important;
+          max-width: 280px !important;
+          height: 100% !important;
+          min-height: 0 !important;
+          max-height: 100% !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 16px !important;
+          background: #ffffff !important;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+          display: grid !important;
+          grid-template-rows: 86px auto minmax(0, 1fr) !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .ema-sidebar-content {
+          min-height: 0 !important;
+          height: 100% !important;
+          padding: 12px !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .ema-sidebar-subpanel {
+          min-height: 0 !important;
+          height: 100% !important;
+          display: grid !important;
+          grid-template-rows: auto auto minmax(0, 1fr) !important;
+          gap: 8px !important;
+          overflow: hidden !important;
+          align-content: start !important;
+        }
+
+        html body .hardware-module-root .ema-sidebar-tree {
+          min-height: 0 !important;
+          height: 100% !important;
+          overflow: auto !important;
+          display: grid !important;
+          gap: 6px !important;
+          align-content: start !important;
+        }
+
+        /* Main area must allow right advanced action panel */
+        html body .hardware-module-root .hardware-settings-content {
+          min-height: 0 !important;
+          height: 100% !important;
+          display: grid !important;
+          grid-template-rows: 132px minmax(0, 1fr) !important;
+          gap: 14px !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-main-grid {
+          min-height: 0 !important;
+          height: 100% !important;
+          max-height: 100% !important;
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) !important;
+          gap: 14px !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-main-grid.has-inspector {
+          grid-template-columns: minmax(0, 1fr) 340px !important;
+        }
+
+        /* Device table card */
+        html body .hardware-module-root .hardware-registry-card {
+          min-width: 0 !important;
+          min-height: 0 !important;
+          height: 100% !important;
+          max-height: none !important;
+          display: grid !important;
+          grid-template-rows: auto auto minmax(0, 1fr) 54px !important;
+          overflow: hidden !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 16px !important;
+          background: #ffffff !important;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+        }
+
+        html body .hardware-module-root .hardware-registry-toolbar.hardware-registry-toolbar-stacked {
+          width: calc(100% - 28px) !important;
+          max-width: calc(100% - 28px) !important;
+          margin: 14px 14px 0 !important;
+          padding: 12px !important;
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 14px !important;
+          background: #fbfdff !important;
+          box-shadow: none !important;
+          display: grid !important;
+          grid-template-rows: 38px 54px !important;
+          gap: 12px !important;
+          overflow: visible !important;
+        }
+
+        html body .hardware-module-root .hardware-scan-command-row {
+          width: 100% !important;
+          min-width: 0 !important;
+          display: grid !important;
+          grid-template-columns: 132px 132px 132px minmax(280px, 1fr) 38px 94px !important;
+          gap: 10px !important;
+          align-items: center !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-registry-filters.hardware-registry-filter-row {
+          width: 100% !important;
+          min-width: 0 !important;
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) 230px 230px 82px !important;
+          gap: 10px !important;
+          align-items: end !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-registry-filters.hardware-registry-filter-row::before {
+          content: "" !important;
+          display: block !important;
+        }
+
+        html body .hardware-module-root .hardware-registry-subhead {
+          width: calc(100% - 28px) !important;
+          max-width: calc(100% - 28px) !important;
+          min-height: 34px !important;
+          margin: 10px 14px 6px !important;
+          padding: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-device-table.hardware-standard-table {
+          width: calc(100% - 28px) !important;
+          max-width: calc(100% - 28px) !important;
+          margin: 0 14px !important;
+          min-height: 0 !important;
+          max-height: none !important;
+          overflow: auto !important;
+          display: block !important;
+          pointer-events: auto !important;
+        }
+
+        html body .hardware-module-root .hardware-device-row,
+        html body .hardware-module-root .hardware-device-table .hardware-device-table-row {
+          cursor: pointer !important;
+          pointer-events: auto !important;
+        }
+
+        html body .hardware-module-root .hardware-device-row * {
+          pointer-events: auto !important;
+        }
+
+        html body .hardware-module-root .hardware-pagination {
+          width: calc(100% - 28px) !important;
+          max-width: calc(100% - 28px) !important;
+          margin: 0 14px 12px !important;
+        }
+
+        /* Restore right advanced module panel */
+        html body .hardware-module-root .hardware-right-panel {
+          min-width: 0 !important;
+          width: 340px !important;
+          height: 100% !important;
+          min-height: 0 !important;
+          max-height: 100% !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 16px !important;
+          background: #ffffff !important;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+          display: grid !important;
+          grid-template-rows: minmax(0, 1fr) !important;
+          overflow: hidden !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          position: relative !important;
+          z-index: 4 !important;
+        }
+
+        html body .hardware-module-root .hardware-right-device {
+          min-height: 0 !important;
+          height: 100% !important;
+          display: grid !important;
+          grid-template-rows: 78px minmax(0, 1fr) !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-right-header {
+          min-height: 78px !important;
+          padding: 14px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.95) !important;
+          background: #fbfdff !important;
+          display: grid !important;
+          grid-template-columns: 40px minmax(0, 1fr) 34px !important;
+          gap: 10px !important;
+          align-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-right-icon {
+          width: 40px !important;
+          height: 40px !important;
+          border-radius: 13px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+          display: grid !important;
+          place-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-right-title {
+          min-width: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-right-title h3 {
+          margin: 0 !important;
+          color: #0f2746 !important;
+          font-size: 14px !important;
+          font-weight: 650 !important;
+          line-height: 1.15 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root .hardware-right-title p {
+          margin: 4px 0 0 !important;
+          color: #64748b !important;
+          font-size: 11px !important;
+          line-height: 1.25 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root .hardware-right-close {
+          width: 34px !important;
+          height: 34px !important;
+          border-radius: 11px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          background: #ffffff !important;
+          color: #64748b !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-action-list {
+          min-height: 0 !important;
+          height: 100% !important;
+          overflow: auto !important;
+          padding: 12px !important;
+          display: grid !important;
+          gap: 10px !important;
+          align-content: start !important;
+        }
+
+        html body .hardware-module-root .hardware-action-item {
+          width: 100% !important;
+          min-height: 62px !important;
+          border-radius: 14px !important;
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          padding: 10px !important;
+          display: grid !important;
+          grid-template-columns: 38px minmax(0, 1fr) !important;
+          gap: 10px !important;
+          align-items: center !important;
+          text-align: left !important;
+          box-shadow: none !important;
+          cursor: pointer !important;
+          pointer-events: auto !important;
+        }
+
+        html body .hardware-module-root .hardware-action-item:hover:not(:disabled) {
+          border-color: #c9dbff !important;
+          background: #eef5ff !important;
+        }
+
+        html body .hardware-module-root .hardware-action-item:disabled {
+          opacity: 0.45 !important;
+          cursor: not-allowed !important;
+        }
+
+        html body .hardware-module-root .hardware-action-icon {
+          width: 38px !important;
+          height: 38px !important;
+          border-radius: 12px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+          display: grid !important;
+          place-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-action-item strong {
+          display: block !important;
+          color: #0f2746 !important;
+          font-size: 12.5px !important;
+          font-weight: 650 !important;
+          line-height: 1.15 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root .hardware-action-item span {
+          display: block !important;
+          margin-top: 3px !important;
+          color: #64748b !important;
+          font-size: 10.5px !important;
+          font-weight: 500 !important;
+          line-height: 1.25 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        /* Keep device scan usable after row selection */
+        html body .hardware-module-root .hardware-command-btn[title*="Refresh hardware inventory for"] {
+          pointer-events: auto !important;
+        }
+
+        html body .hardware-module-root .hardware-command-btn:disabled {
+          pointer-events: auto !important;
+        }
+
+        @media (max-width: 1360px) {
+          html body .hardware-module-root .hardware-main-grid.has-inspector {
+            grid-template-columns: minmax(0, 1fr) 320px !important;
+          }
+
+          html body .hardware-module-root .hardware-right-panel {
+            width: 320px !important;
+          }
+
+          html body .hardware-module-root .hardware-scan-command-row {
+            grid-template-columns: 116px 116px 116px minmax(240px, 1fr) 38px 90px !important;
+          }
+
+          html body .hardware-module-root .hardware-registry-filters.hardware-registry-filter-row {
+            grid-template-columns: minmax(0, 1fr) 210px 210px 82px !important;
+          }
+        }
+      `}</style>
+
+      
+      <style>{`
+        /* HARDWARE_ADVANCED_MODAL_UI_FIX */
+
+        html body .hardware-module-root .hardware-modal-overlay {
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 2147482600 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          background: rgba(15, 23, 42, 0.52) !important;
+          backdrop-filter: blur(10px) saturate(120%) !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 24px !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-modal {
+          width: min(620px, calc(100vw - 48px)) !important;
+          max-width: calc(100vw - 48px) !important;
+          max-height: calc(100vh - 48px) !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 20px !important;
+          background: #ffffff !important;
+          box-shadow: 0 36px 90px rgba(8, 26, 55, 0.35) !important;
+          overflow: hidden !important;
+          display: grid !important;
+          grid-template-rows: 76px minmax(0, 1fr) 66px !important;
+          color: #0f2746 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-message,
+        html body .hardware-module-root .hardware-modal-colored,
+        html body .hardware-module-root .hardware-folder-modal,
+        html body .hardware-module-root .hardware-move-modal {
+          width: min(640px, calc(100vw - 48px)) !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-geo,
+        html body .hardware-module-root .hardware-modal-geo-v2 {
+          width: min(1180px, calc(100vw - 48px)) !important;
+          height: min(780px, calc(100vh - 48px)) !important;
+          grid-template-rows: 76px minmax(0, 1fr) 66px !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-header {
+          min-height: 76px !important;
+          padding: 14px 16px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.95) !important;
+          background:
+            radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.10), transparent 36%),
+            #ffffff !important;
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) 38px !important;
+          gap: 14px !important;
+          align-items: center !important;
+          color: #0f2746 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title {
+          min-width: 0 !important;
+          display: grid !important;
+          grid-template-columns: 42px minmax(0, 1fr) !important;
+          gap: 12px !important;
+          align-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title > svg {
+          width: 42px !important;
+          height: 42px !important;
+          min-width: 42px !important;
+          min-height: 42px !important;
+          padding: 10px !important;
+          border-radius: 14px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-header.red .hardware-modal-title > svg {
+          background: #fef2f2 !important;
+          color: #dc2626 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-header.green .hardware-modal-title > svg {
+          background: #ecfdf5 !important;
+          color: #15803d !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title strong {
+          display: block !important;
+          margin: 0 !important;
+          color: #0f2746 !important;
+          font-size: 15px !important;
+          font-weight: 650 !important;
+          line-height: 1.15 !important;
+          letter-spacing: 0 !important;
+          text-transform: none !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title span {
+          display: block !important;
+          margin-top: 4px !important;
+          color: #64748b !important;
+          font-size: 11.5px !important;
+          font-weight: 500 !important;
+          line-height: 1.25 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-close,
+        html body .hardware-module-root .hardware-modal-close.inverse {
+          width: 38px !important;
+          height: 38px !important;
+          min-width: 38px !important;
+          min-height: 38px !important;
+          border-radius: 12px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          background: #ffffff !important;
+          color: #64748b !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          box-shadow: none !important;
+          cursor: pointer !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-close:hover {
+          background: #fef2f2 !important;
+          color: #dc2626 !important;
+          border-color: #fecaca !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-body {
+          min-height: 0 !important;
+          padding: 16px !important;
+          background: #f8fbff !important;
+          overflow: auto !important;
+          display: grid !important;
+          gap: 14px !important;
+          align-content: start !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-footer,
+        html body .hardware-module-root .hardware-modal-footer.embedded {
+          min-height: 66px !important;
+          padding: 12px 16px !important;
+          border-top: 1px solid rgba(226, 232, 240, 0.95) !important;
+          background: #ffffff !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-end !important;
+          gap: 10px !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-footer.embedded {
+          border-top: 0 !important;
+          padding: 4px 0 0 !important;
+          min-height: 42px !important;
+        }
+
+        html body .hardware-module-root .hardware-device-target-card,
+        html body .hardware-module-root .hardware-preview-card,
+        html body .hardware-module-root .hardware-info-banner,
+        html body .hardware-module-root .hardware-option-card {
+          width: 100% !important;
+          min-height: 54px !important;
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 14px !important;
+          background: #ffffff !important;
+          padding: 12px !important;
+          display: grid !important;
+          grid-template-columns: 38px minmax(0, 1fr) !important;
+          gap: 10px !important;
+          align-items: center !important;
+          box-shadow: none !important;
+          color: #0f2746 !important;
+        }
+
+        html body .hardware-module-root .hardware-info-banner.yellow {
+          background: #fff7ed !important;
+          border-color: #fed7aa !important;
+        }
+
+        html body .hardware-module-root .hardware-info-banner.red {
+          background: #fef2f2 !important;
+          border-color: #fecaca !important;
+        }
+
+        html body .hardware-module-root .hardware-info-banner.blue {
+          background: #eef5ff !important;
+          border-color: #c9dbff !important;
+        }
+
+        html body .hardware-module-root .hardware-info-banner.green {
+          background: #ecfdf5 !important;
+          border-color: #bbf7d0 !important;
+        }
+
+        html body .hardware-module-root .hardware-device-target-card > svg,
+        html body .hardware-module-root .hardware-info-banner > svg {
+          width: 38px !important;
+          height: 38px !important;
+          min-width: 38px !important;
+          min-height: 38px !important;
+          padding: 10px !important;
+          border-radius: 12px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+        }
+
+        html body .hardware-module-root .hardware-device-target-card strong,
+        html body .hardware-module-root .hardware-preview-card strong,
+        html body .hardware-module-root .hardware-info-banner strong,
+        html body .hardware-module-root .hardware-option-card strong {
+          display: block !important;
+          color: #0f2746 !important;
+          font-size: 12.5px !important;
+          font-weight: 650 !important;
+          line-height: 1.2 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root .hardware-device-target-card span,
+        html body .hardware-module-root .hardware-preview-card span,
+        html body .hardware-module-root .hardware-info-banner span,
+        html body .hardware-module-root .hardware-option-card span,
+        html body .hardware-module-root .hardware-move-helper {
+          display: block !important;
+          margin-top: 3px !important;
+          color: #64748b !important;
+          font-size: 11px !important;
+          font-weight: 500 !important;
+          line-height: 1.35 !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group {
+          display: grid !important;
+          gap: 7px !important;
+          min-width: 0 !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group label,
+        html body .hardware-module-root .hardware-check span {
+          color: #0f2746 !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          line-height: 1.1 !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group input,
+        html body .hardware-module-root .hardware-form-group textarea {
+          width: 100% !important;
+          min-width: 0 !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          font-size: 12px !important;
+          font-weight: 500 !important;
+          outline: none !important;
+          box-shadow: none !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group input {
+          height: 38px !important;
+          min-height: 38px !important;
+          padding: 0 12px !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group textarea {
+          min-height: 126px !important;
+          resize: vertical !important;
+          padding: 11px 12px !important;
+          line-height: 1.45 !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group input:focus,
+        html body .hardware-module-root .hardware-form-group textarea:focus {
+          border-color: #93c5fd !important;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10) !important;
+        }
+
+        html body .hardware-module-root .hardware-check {
+          width: fit-content !important;
+          min-height: 30px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          margin: 0 !important;
+          color: #0f2746 !important;
+          cursor: pointer !important;
+        }
+
+        html body .hardware-module-root .hardware-check input,
+        html body .hardware-module-root .hardware-option-card input {
+          width: 16px !important;
+          height: 16px !important;
+          min-width: 16px !important;
+          min-height: 16px !important;
+          accent-color: #2563eb !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-option-card {
+          grid-template-columns: 18px minmax(0, 1fr) !important;
+          cursor: pointer !important;
+        }
+
+        html body .hardware-module-root .hardware-session-grid {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 10px !important;
+        }
+
+        html body .hardware-module-root .hardware-session-grid button {
+          min-height: 72px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 14px !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          padding: 12px !important;
+          display: grid !important;
+          gap: 8px !important;
+          place-items: center !important;
+          text-align: center !important;
+          box-shadow: none !important;
+          cursor: pointer !important;
+        }
+
+        html body .hardware-module-root .hardware-session-grid button.is-active,
+        html body .hardware-module-root .hardware-session-grid button:hover:not(:disabled) {
+          border-color: #c7d2fe !important;
+          background: #f8f7ff !important;
+          color: #2563eb !important;
+          box-shadow: inset 3px 0 0 #4f46e5 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-section-title {
+          color: #0f2746 !important;
+          font-size: 12px !important;
+          font-weight: 650 !important;
+          line-height: 1.2 !important;
+        }
+
+        html body .hardware-module-root .hardware-btn,
+        html body .hardware-module-root .hardware-btn.link,
+        html body .hardware-module-root .hardware-btn.primary,
+        html body .hardware-module-root .hardware-btn.danger {
+          height: 38px !important;
+          min-height: 38px !important;
+          border-radius: 12px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          padding: 0 14px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 8px !important;
+          font-size: 11.5px !important;
+          font-weight: 600 !important;
+          line-height: 1 !important;
+          box-shadow: none !important;
+          cursor: pointer !important;
+        }
+
+        html body .hardware-module-root .hardware-btn.primary {
+          border-color: #4f46e5 !important;
+          background: linear-gradient(135deg, #4f46e5, #2563eb) !important;
+          color: #ffffff !important;
+          box-shadow: 0 12px 24px rgba(79, 70, 229, 0.16) !important;
+        }
+
+        html body .hardware-module-root .hardware-btn.danger {
+          border-color: #dc2626 !important;
+          background: #dc2626 !important;
+          color: #ffffff !important;
+          box-shadow: 0 12px 24px rgba(220, 38, 38, 0.16) !important;
+        }
+
+        html body .hardware-module-root .hardware-btn.link:hover {
+          border-color: #c9dbff !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+        }
+
+        html body .hardware-module-root .hardware-form-error {
+          min-height: 34px !important;
+          border-radius: 12px !important;
+          border: 1px solid #fecaca !important;
+          background: #fef2f2 !important;
+          color: #dc2626 !important;
+          padding: 10px 12px !important;
+          font-size: 11.5px !important;
+          font-weight: 500 !important;
+        }
+
+        /* Geo modal layout */
+        html body .hardware-module-root .hardware-geo-redesign-body {
+          grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr) !important;
+          gap: 16px !important;
+          align-content: stretch !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-redesign-left,
+        html body .hardware-module-root .hardware-geo-history-modern {
+          min-height: 0 !important;
+          display: grid !important;
+          gap: 12px !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-redesign-left {
+          grid-template-rows: auto minmax(0, 1fr) !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-modern {
+          grid-template-rows: auto minmax(0, 1fr) auto !important;
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 16px !important;
+          background: #ffffff !important;
+          padding: 12px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-card,
+        html body .hardware-module-root .hardware-geo-map-shell {
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 16px !important;
+          background: #ffffff !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-frame {
+          min-height: 360px !important;
+          height: 100% !important;
+          background: #eef5f9 !important;
+          position: relative !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-frame iframe {
+          width: 100% !important;
+          height: 100% !important;
+          min-height: 360px !important;
+          border: 0 !important;
+          display: block !important;
+        }
+
+        @media (max-width: 980px) {
+          html body .hardware-module-root .hardware-modal {
+            width: min(640px, calc(100vw - 28px)) !important;
+            max-width: calc(100vw - 28px) !important;
+          }
+
+          html body .hardware-module-root .hardware-modal-geo,
+          html body .hardware-module-root .hardware-modal-geo-v2 {
+            height: calc(100vh - 28px) !important;
+          }
+
+          html body .hardware-module-root .hardware-geo-redesign-body {
+            grid-template-columns: 1fr !important;
+            overflow: auto !important;
+          }
+        }
+      `}</style>
+
+      
+      <style>{`
+        /* HARDWARE_ADVANCED_MODAL_FINAL_POLISH */
+
+        html body .hardware-module-root .hardware-modal-overlay {
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 2147482600 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          display: grid !important;
+          place-items: center !important;
+          padding: 24px !important;
+          background: rgba(15, 23, 42, 0.54) !important;
+          backdrop-filter: blur(10px) saturate(120%) !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-modal {
+          width: min(640px, calc(100vw - 48px)) !important;
+          max-width: calc(100vw - 48px) !important;
+          max-height: calc(100vh - 48px) !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 20px !important;
+          background: #ffffff !important;
+          box-shadow: 0 36px 90px rgba(8, 26, 55, 0.35) !important;
+          color: #0f2746 !important;
+          overflow: hidden !important;
+          display: grid !important;
+          grid-template-rows: 76px minmax(0, 1fr) 66px !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-message,
+        html body .hardware-module-root .hardware-move-modal,
+        html body .hardware-module-root .hardware-modal-colored,
+        html body .hardware-module-root .hardware-folder-modal {
+          width: min(640px, calc(100vw - 48px)) !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-geo,
+        html body .hardware-module-root .hardware-modal-geo-v2 {
+          width: min(1180px, calc(100vw - 48px)) !important;
+          height: min(780px, calc(100vh - 48px)) !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-header {
+          height: 76px !important;
+          min-height: 76px !important;
+          padding: 14px 16px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.95) !important;
+          background:
+            radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.10), transparent 36%),
+            #ffffff !important;
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) 38px !important;
+          gap: 14px !important;
+          align-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title {
+          min-width: 0 !important;
+          display: grid !important;
+          grid-template-columns: 42px minmax(0, 1fr) !important;
+          gap: 12px !important;
+          align-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title > svg {
+          width: 42px !important;
+          height: 42px !important;
+          padding: 10px !important;
+          border-radius: 14px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-header.red .hardware-modal-title > svg {
+          background: #fef2f2 !important;
+          color: #dc2626 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-header.green .hardware-modal-title > svg {
+          background: #ecfdf5 !important;
+          color: #15803d !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title strong,
+        html body .hardware-module-root .hardware-modal-title span {
+          display: block !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title strong {
+          color: #0f2746 !important;
+          font-size: 15px !important;
+          font-weight: 650 !important;
+          line-height: 1.15 !important;
+          text-transform: none !important;
+          letter-spacing: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-title span {
+          margin-top: 4px !important;
+          color: #64748b !important;
+          font-size: 11.5px !important;
+          font-weight: 500 !important;
+          line-height: 1.25 !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-close,
+        html body .hardware-module-root .hardware-modal-close.inverse {
+          width: 38px !important;
+          height: 38px !important;
+          border-radius: 12px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          background: #ffffff !important;
+          color: #64748b !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 0 !important;
+          box-shadow: none !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-body {
+          min-height: 0 !important;
+          padding: 16px !important;
+          background: #f8fbff !important;
+          overflow: auto !important;
+          display: grid !important;
+          gap: 14px !important;
+          align-content: start !important;
+        }
+
+        html body .hardware-module-root .hardware-modal-footer {
+          min-height: 66px !important;
+          padding: 12px 16px !important;
+          border-top: 1px solid rgba(226, 232, 240, 0.95) !important;
+          background: #ffffff !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-end !important;
+          gap: 10px !important;
+          margin: 0 !important;
+        }
+
+        /* Common modal fields */
+        html body .hardware-module-root .hardware-form-group {
+          display: grid !important;
+          gap: 7px !important;
+          margin: 0 !important;
+          min-width: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group label,
+        html body .hardware-module-root .hardware-check span {
+          display: block !important;
+          color: #0f2746 !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          line-height: 1.1 !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group input,
+        html body .hardware-module-root .hardware-form-group textarea {
+          width: 100% !important;
+          min-width: 0 !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          font-size: 12px !important;
+          font-weight: 500 !important;
+          outline: none !important;
+          box-shadow: none !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group input {
+          height: 38px !important;
+          padding: 0 12px !important;
+        }
+
+        html body .hardware-module-root .hardware-form-group textarea {
+          min-height: 124px !important;
+          padding: 11px 12px !important;
+          line-height: 1.45 !important;
+          resize: vertical !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown,
+        html body .hardware-module-root .hardware-move-select-group .hardware-dropdown {
+          width: 100% !important;
+          min-width: 0 !important;
+          position: relative !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-button,
+        html body .hardware-module-root .hardware-select-button,
+        html body .hardware-module-root .hardware-dropdown-trigger {
+          width: 100% !important;
+          height: 38px !important;
+          min-height: 38px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          padding: 0 12px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 8px !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          box-shadow: none !important;
+          outline: none !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-menu,
+        html body .hardware-module-root .hardware-select-menu {
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background: #ffffff !important;
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16) !important;
+          padding: 6px !important;
+          z-index: 2147482800 !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-option,
+        html body .hardware-module-root .hardware-select-option {
+          min-height: 32px !important;
+          border-radius: 9px !important;
+          color: #0f2746 !important;
+          background: transparent !important;
+          font-size: 11.5px !important;
+          font-weight: 500 !important;
+          padding: 0 10px !important;
+          display: flex !important;
+          align-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-option:hover,
+        html body .hardware-module-root .hardware-select-option:hover {
+          background: #eef5ff !important;
+          color: #2563eb !important;
+        }
+
+        html body .hardware-module-root .hardware-btn {
+          height: 38px !important;
+          min-height: 38px !important;
+          border-radius: 12px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          padding: 0 14px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 8px !important;
+          font-size: 11.5px !important;
+          font-weight: 600 !important;
+          line-height: 1 !important;
+          box-shadow: none !important;
+          cursor: pointer !important;
+        }
+
+        html body .hardware-module-root .hardware-btn.primary {
+          border-color: #4f46e5 !important;
+          background: linear-gradient(135deg, #4f46e5, #2563eb) !important;
+          color: #ffffff !important;
+          box-shadow: 0 12px 24px rgba(79, 70, 229, 0.16) !important;
+        }
+
+        html body .hardware-module-root .hardware-btn.danger {
+          border-color: #dc2626 !important;
+          background: #dc2626 !important;
+          color: #ffffff !important;
+          box-shadow: 0 12px 24px rgba(220, 38, 38, 0.16) !important;
+        }
+
+        html body .hardware-module-root .hardware-device-target-card,
+        html body .hardware-module-root .hardware-preview-card,
+        html body .hardware-module-root .hardware-info-banner {
+          width: 100% !important;
+          min-height: 54px !important;
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 14px !important;
+          background: #ffffff !important;
+          padding: 12px !important;
+          display: grid !important;
+          grid-template-columns: 38px minmax(0, 1fr) !important;
+          gap: 10px !important;
+          align-items: center !important;
+          box-shadow: none !important;
+        }
+
+        html body .hardware-module-root .hardware-info-banner.yellow {
+          background: #fff7ed !important;
+          border-color: #fed7aa !important;
+        }
+
+        html body .hardware-module-root .hardware-info-banner.blue {
+          background: #eef5ff !important;
+          border-color: #c9dbff !important;
+        }
+
+        html body .hardware-module-root .hardware-device-target-card > svg,
+        html body .hardware-module-root .hardware-info-banner > svg {
+          width: 38px !important;
+          height: 38px !important;
+          padding: 10px !important;
+          border-radius: 12px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+        }
+
+        html body .hardware-module-root .hardware-device-target-card strong,
+        html body .hardware-module-root .hardware-preview-card strong,
+        html body .hardware-module-root .hardware-info-banner strong {
+          display: block !important;
+          color: #0f2746 !important;
+          font-size: 12.5px !important;
+          font-weight: 650 !important;
+          line-height: 1.2 !important;
+        }
+
+        html body .hardware-module-root .hardware-device-target-card span,
+        html body .hardware-module-root .hardware-preview-card span,
+        html body .hardware-module-root .hardware-info-banner span,
+        html body .hardware-module-root .hardware-move-helper {
+          display: block !important;
+          margin-top: 3px !important;
+          color: #64748b !important;
+          font-size: 11px !important;
+          font-weight: 500 !important;
+          line-height: 1.35 !important;
+        }
+
+        html body .hardware-module-root .hardware-check {
+          width: fit-content !important;
+          min-height: 30px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          margin: 0 !important;
+          cursor: pointer !important;
+        }
+
+        html body .hardware-module-root .hardware-check input {
+          width: 16px !important;
+          height: 16px !important;
+          accent-color: #2563eb !important;
+          margin: 0 !important;
+        }
+
+        /* Geolocation modal */
+        html body .hardware-module-root .hardware-geo-redesign-body {
+          grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.65fr) !important;
+          gap: 16px !important;
+          align-content: stretch !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-redesign-left {
+          min-height: 0 !important;
+          display: grid !important;
+          grid-template-rows: auto minmax(0, 1fr) !important;
+          gap: 12px !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-card,
+        html body .hardware-module-root .hardware-geo-map-shell,
+        html body .hardware-module-root .hardware-geo-history-modern {
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 16px !important;
+          background: #ffffff !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-card {
+          padding: 14px !important;
+          display: grid !important;
+          gap: 12px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-head {
+          display: grid !important;
+          grid-template-columns: 42px minmax(0, 1fr) auto !important;
+          gap: 12px !important;
+          align-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-icon {
+          width: 42px !important;
+          height: 42px !important;
+          border-radius: 14px !important;
+          background: #ecfdf5 !important;
+          color: #15803d !important;
+          display: grid !important;
+          place-items: center !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-head span,
+        html body .hardware-module-root .hardware-geo-current-head strong,
+        html body .hardware-module-root .hardware-geo-current-head p,
+        html body .hardware-module-root .hardware-geo-history-modern-head span,
+        html body .hardware-module-root .hardware-geo-history-modern-head strong {
+          display: block !important;
+          margin: 0 !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-head span,
+        html body .hardware-module-root .hardware-geo-history-modern-head span {
+          color: #64748b !important;
+          font-size: 10px !important;
+          font-weight: 650 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.055em !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-head strong,
+        html body .hardware-module-root .hardware-geo-history-modern-head strong {
+          margin-top: 4px !important;
+          color: #0f2746 !important;
+          font-size: 14px !important;
+          font-weight: 650 !important;
+          line-height: 1.2 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-head p {
+          margin-top: 4px !important;
+          color: #64748b !important;
+          font-size: 11.5px !important;
+          line-height: 1.35 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-state {
+          min-height: 28px !important;
+          border-radius: 999px !important;
+          border: 1px solid #bbf7d0 !important;
+          background: #ecfdf5 !important;
+          color: #15803d !important;
+          padding: 0 10px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 6px !important;
+          font-size: 10.5px !important;
+          font-weight: 600 !important;
+          white-space: nowrap !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-grid {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 10px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-grid > div {
+          min-width: 0 !important;
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 13px !important;
+          background: #fbfdff !important;
+          padding: 10px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-grid > div.is-wide {
+          grid-column: 1 / -1 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-grid small,
+        html body .hardware-module-root .hardware-geo-current-grid strong,
+        html body .hardware-module-root .hardware-geo-current-grid span {
+          display: block !important;
+          margin: 0 !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-grid small {
+          color: #64748b !important;
+          font-size: 10px !important;
+          font-weight: 650 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.055em !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-current-grid strong {
+          margin-top: 5px !important;
+          color: #0f2746 !important;
+          font-size: 12px !important;
+          font-weight: 650 !important;
+          line-height: 1.35 !important;
+          word-break: break-word !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-shell {
+          display: grid !important;
+          grid-template-rows: 58px minmax(0, 1fr) !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-shell-head {
+          padding: 12px 14px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.96) !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 12px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-shell-head span,
+        html body .hardware-module-root .hardware-geo-map-shell-head strong {
+          display: block !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-shell-head span {
+          color: #64748b !important;
+          font-size: 10px !important;
+          font-weight: 650 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.055em !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-shell-head strong {
+          margin-top: 4px !important;
+          color: #0f2746 !important;
+          font-size: 12px !important;
+          font-weight: 650 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-frame {
+          min-height: 350px !important;
+          height: 100% !important;
+          background: #eef5f9 !important;
+          position: relative !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-map-frame iframe {
+          width: 100% !important;
+          height: 100% !important;
+          min-height: 350px !important;
+          border: 0 !important;
+          display: block !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-modern {
+          min-height: 0 !important;
+          padding: 12px !important;
+          display: grid !important;
+          grid-template-rows: auto minmax(0, 1fr) auto !important;
+          gap: 12px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-modern-head {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 12px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-count {
+          min-width: 64px !important;
+          border-radius: 13px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+          padding: 8px 10px !important;
+          text-align: center !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-count strong,
+        html body .hardware-module-root .hardware-geo-history-count span {
+          display: block !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-list-modern {
+          min-height: 0 !important;
+          overflow: auto !important;
+          display: grid !important;
+          gap: 8px !important;
+          align-content: start !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-item-modern {
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 13px !important;
+          background: #fbfdff !important;
+          padding: 10px !important;
+          display: grid !important;
+          grid-template-columns: 28px minmax(0, 1fr) !important;
+          gap: 10px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-index-modern {
+          width: 28px !important;
+          height: 28px !important;
+          border-radius: 9px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+          display: grid !important;
+          place-items: center !important;
+          font-size: 10.5px !important;
+          font-weight: 650 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-content-modern {
+          min-width: 0 !important;
+          display: grid !important;
+          gap: 6px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-date-modern strong,
+        html body .hardware-module-root .hardware-geo-history-date-modern span,
+        html body .hardware-module-root .hardware-geo-history-content-modern p {
+          display: block !important;
+          margin: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-date-modern strong {
+          color: #0f2746 !important;
+          font-size: 11.5px !important;
+          font-weight: 650 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-date-modern span,
+        html body .hardware-module-root .hardware-geo-history-content-modern p {
+          color: #64748b !important;
+          font-size: 10.8px !important;
+          line-height: 1.35 !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-meta-modern {
+          display: flex !important;
+          flex-wrap: wrap !important;
+          gap: 6px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-history-meta-modern span {
+          min-height: 22px !important;
+          border-radius: 999px !important;
+          background: #ffffff !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          color: #0f2746 !important;
+          padding: 0 8px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          font-size: 10px !important;
+        }
+
+        html body .hardware-module-root .hardware-geo-pagination {
+          width: 100% !important;
+          margin: 0 !important;
+          border: 1px solid rgba(226, 232, 240, 0.96) !important;
+          border-radius: 14px !important;
+        }
+
+        @media (max-width: 980px) {
+          html body .hardware-module-root .hardware-modal {
+            width: min(640px, calc(100vw - 28px)) !important;
+            max-width: calc(100vw - 28px) !important;
+          }
+
+          html body .hardware-module-root .hardware-modal-geo,
+          html body .hardware-module-root .hardware-modal-geo-v2 {
+            height: calc(100vh - 28px) !important;
+          }
+
+          html body .hardware-module-root .hardware-geo-redesign-body {
+            grid-template-columns: 1fr !important;
+            overflow: auto !important;
+          }
+        }
+      `}</style>
+
+      
+      <style>{`
+        /* HARDWARE_DROPDOWN_STANDARD_FIX */
+
+        html body .hardware-module-root .hardware-filter-group {
+          min-width: 0 !important;
+          display: grid !important;
+          gap: 6px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        html body .hardware-module-root .hardware-filter-group label {
+          margin: 0 !important;
+          color: #0f2746 !important;
+          font-size: 11px !important;
+          font-weight: 650 !important;
+          line-height: 1 !important;
+          letter-spacing: 0 !important;
+          text-transform: none !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown,
+        html body .hardware-module-root .hardware-filter-group .hardware-dropdown,
+        html body .hardware-module-root .hardware-registry-filters .hardware-dropdown {
+          width: 100% !important;
+          min-width: 0 !important;
+          height: 38px !important;
+          position: relative !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-button,
+        html body .hardware-module-root .hardware-select-button,
+        html body .hardware-module-root .hardware-dropdown-trigger,
+        html body .hardware-module-root .hardware-filter-group select,
+        html body .hardware-module-root .hardware-registry-filters select,
+        html body .hardware-module-root select.hardware-dropdown-button,
+        html body .hardware-module-root select.hardware-select-button {
+          width: 100% !important;
+          min-width: 0 !important;
+          height: 38px !important;
+          min-height: 38px !important;
+          max-height: 38px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background-color: #ffffff !important;
+          color: #0f2746 !important;
+          padding: 0 36px 0 12px !important;
+          margin: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 8px !important;
+          text-align: left !important;
+          font-size: 11.8px !important;
+          font-weight: 600 !important;
+          line-height: 1 !important;
+          box-shadow: none !important;
+          outline: none !important;
+          cursor: pointer !important;
+          overflow: hidden !important;
+        }
+
+        html body .hardware-module-root .hardware-filter-group select,
+        html body .hardware-module-root .hardware-registry-filters select,
+        html body .hardware-module-root select.hardware-dropdown-button,
+        html body .hardware-module-root select.hardware-select-button {
+          appearance: none !important;
+          -webkit-appearance: none !important;
+          background-image:
+            linear-gradient(45deg, transparent 50%, #0f2746 50%),
+            linear-gradient(135deg, #0f2746 50%, transparent 50%) !important;
+          background-position:
+            calc(100% - 17px) 16px,
+            calc(100% - 12px) 16px !important;
+          background-size:
+            5px 5px,
+            5px 5px !important;
+          background-repeat: no-repeat !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-button:hover,
+        html body .hardware-module-root .hardware-select-button:hover,
+        html body .hardware-module-root .hardware-dropdown-trigger:hover,
+        html body .hardware-module-root .hardware-filter-group select:hover,
+        html body .hardware-module-root .hardware-registry-filters select:hover {
+          border-color: #c9dbff !important;
+          background-color: #fbfdff !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-button:focus,
+        html body .hardware-module-root .hardware-dropdown-button:focus-visible,
+        html body .hardware-module-root .hardware-select-button:focus,
+        html body .hardware-module-root .hardware-select-button:focus-visible,
+        html body .hardware-module-root .hardware-dropdown-trigger:focus,
+        html body .hardware-module-root .hardware-dropdown-trigger:focus-visible,
+        html body .hardware-module-root .hardware-filter-group select:focus,
+        html body .hardware-module-root .hardware-filter-group select:focus-visible,
+        html body .hardware-module-root .hardware-registry-filters select:focus,
+        html body .hardware-module-root .hardware-registry-filters select:focus-visible {
+          border-color: #93c5fd !important;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10) !important;
+          outline: none !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-button *,
+        html body .hardware-module-root .hardware-select-button *,
+        html body .hardware-module-root .hardware-dropdown-trigger * {
+          min-width: 0 !important;
+          max-width: 100% !important;
+          color: inherit !important;
+          font-size: inherit !important;
+          font-weight: inherit !important;
+          line-height: 1 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-button svg,
+        html body .hardware-module-root .hardware-select-button svg,
+        html body .hardware-module-root .hardware-dropdown-trigger svg {
+          width: 14px !important;
+          height: 14px !important;
+          min-width: 14px !important;
+          color: #64748b !important;
+          margin-left: auto !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-menu,
+        html body .hardware-module-root .hardware-select-menu {
+          min-width: 100% !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background: #ffffff !important;
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16) !important;
+          padding: 6px !important;
+          overflow: hidden !important;
+          z-index: 2147482800 !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-option,
+        html body .hardware-module-root .hardware-select-option {
+          min-height: 32px !important;
+          border: 0 !important;
+          border-radius: 9px !important;
+          background: transparent !important;
+          color: #0f2746 !important;
+          font-size: 11.5px !important;
+          font-weight: 500 !important;
+          padding: 0 10px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-start !important;
+          text-align: left !important;
+          cursor: pointer !important;
+        }
+
+        html body .hardware-module-root .hardware-dropdown-option:hover,
+        html body .hardware-module-root .hardware-dropdown-option.is-active,
+        html body .hardware-module-root .hardware-select-option:hover,
+        html body .hardware-module-root .hardware-select-option.is-active {
+          background: #eef5ff !important;
+          color: #2563eb !important;
+        }
+
+        html body .hardware-module-root .hardware-clear-filters-btn {
+          height: 38px !important;
+          min-height: 38px !important;
+          max-height: 38px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background: #ffffff !important;
+          color: #64748b !important;
+          box-shadow: none !important;
+          outline: none !important;
+        }
+
+        html body .hardware-module-root .hardware-clear-filters-btn:not(:disabled):hover {
+          border-color: #fecaca !important;
+          background: #fef2f2 !important;
+          color: #dc2626 !important;
+        }
+      `}</style>
+
+      {toast && (
+        <div role="status">
+          <div>{toast.type === "success" ? <CheckCircle size={18} /> : toast.type === "delete" ? <Trash2 size={18} /> : <AlertCircle size={18} />}</div>
           <div>
             <strong>{toast.title}</strong>
             <span>{toast.message}</span>
@@ -4445,41 +7376,40 @@ export default function HardwareInventory() {
       )}
 
       {activeModal === "addFolder" && (
-        <div className="" onClick={closeModal}>
-          <div className="" onClick={(event) => event.stopPropagation()}>
-            <div className="">
-              <div className="">
+        <div onClick={closeModal}>
+          <div onClick={(event) => event.stopPropagation()}>
+            <div>
+              <div>
                 <FolderPlus size={20} />
                 <div>
                   <strong>{folderModalMode === "main" ? "CREATE MAIN FOLDER" : "CREATE SUBFOLDER"}</strong>
                   <span>{folderModalMode === "main" ? "Create a new top-level folder." : `Parent folder: ${folderModalParentLabel}`}</span>
                 </div>
               </div>
-              <button type="button" className="" onClick={closeModal}>
+              <button type="button" onClick={closeModal}>
                 <X size={18} />
               </button>
             </div>
             <form
-              className=""
               onSubmit={(event) => {
                 event.preventDefault();
                 void handleCreateFolderSubmit();
               }}
             >
-              <div className="">
+              <div>
                 <label>Folder Name</label>
                 <input autoFocus type="text" value={folderNameInput} disabled={folderCreateLoading} onChange={(event) => setFolderNameInput(event.target.value)} placeholder="Example: Johor, Kuala Lumpur, HQ" />
-                {folderNameError && <div className="">{folderNameError}</div>}
+                {folderNameError && <div>{folderNameError}</div>}
               </div>
-              <div className="">
+              <div>
                 <span>Preview</span>
                 <strong>{folderModalMode === "main" ? folderNameInput.trim() || "New Main Folder" : `${folderModalParentLabel} \\ ${folderNameInput.trim() || "New Subfolder"}`}</strong>
               </div>
-              <div className="">
-                <button type="button" className="" onClick={closeModal} disabled={folderCreateLoading}>
+              <div>
+                <button type="button" onClick={closeModal} disabled={folderCreateLoading}>
                   Cancel
                 </button>
-                <button type="submit" className="" disabled={folderCreateLoading || !folderNameInput.trim()}>
+                <button type="submit" disabled={folderCreateLoading || !folderNameInput.trim()}>
                   {folderCreateLoading ? "Creating..." : "Create Folder"}
                 </button>
               </div>
@@ -4489,41 +7419,40 @@ export default function HardwareInventory() {
       )}
 
       {activeModal === "renameFolder" && folderActionNode && (
-        <div className="" onClick={closeModal}>
-          <div className="" onClick={(event) => event.stopPropagation()}>
-            <div className="">
-              <div className="">
+        <div onClick={closeModal}>
+          <div onClick={(event) => event.stopPropagation()}>
+            <div>
+              <div>
                 <Pencil size={20} />
                 <div>
                   <strong>RENAME FOLDER</strong>
                   <span>Update department hierarchy label.</span>
                 </div>
               </div>
-              <button type="button" className="" onClick={closeModal} disabled={folderActionLoading}>
+              <button type="button" onClick={closeModal} disabled={folderActionLoading}>
                 <X size={18} />
               </button>
             </div>
             <form
-              className=""
               onSubmit={(event) => {
                 event.preventDefault();
                 void handleRenameFolderSubmit();
               }}
             >
-              <div className="">
+              <div>
                 <span>Current Folder</span>
                 <strong>{folderActionNode.label}</strong>
               </div>
-              <div className="">
+              <div>
                 <label>New Folder Name</label>
                 <input autoFocus type="text" value={folderActionInput} disabled={folderActionLoading} onChange={(event) => setFolderActionInput(event.target.value)} />
-                {folderActionError && <div className="">{folderActionError}</div>}
+                {folderActionError && <div>{folderActionError}</div>}
               </div>
-              <div className="">
-                <button type="button" className="" onClick={closeModal} disabled={folderActionLoading}>
+              <div>
+                <button type="button" onClick={closeModal} disabled={folderActionLoading}>
                   Cancel
                 </button>
-                <button type="submit" className="" disabled={folderActionLoading || !folderActionInput.trim()}>
+                <button type="submit" disabled={folderActionLoading || !folderActionInput.trim()}>
                   {folderActionLoading ? "Renaming..." : "Rename Folder"}
                 </button>
               </div>
@@ -4533,34 +7462,34 @@ export default function HardwareInventory() {
       )}
 
       {activeModal === "deleteFolder" && folderActionNode && (
-        <div className="" onClick={closeModal}>
-          <div className="" onClick={(event) => event.stopPropagation()}>
-            <div className="">
-              <div className="">
+        <div onClick={closeModal}>
+          <div onClick={(event) => event.stopPropagation()}>
+            <div>
+              <div>
                 <Trash2 size={20} />
                 <div>
                   <strong>DELETE FOLDER</strong>
                   <span>This will remove the folder from hierarchy.</span>
                 </div>
               </div>
-              <button type="button" className="" onClick={closeModal} disabled={folderActionLoading}>
+              <button type="button" onClick={closeModal} disabled={folderActionLoading}>
                 <X size={18} />
               </button>
             </div>
-            <div className="">
-              <div className="">
+            <div>
+              <div>
                 <AlertCircle size={16} />
                 <div>
                   <strong>{folderActionNode.label}</strong>
                   <span>Delete is only allowed when this folder has no child folders and no devices.</span>
                 </div>
               </div>
-              {folderActionError && <div className="">{folderActionError}</div>}
-              <div className="">
-                <button type="button" className="" onClick={closeModal} disabled={folderActionLoading}>
+              {folderActionError && <div>{folderActionError}</div>}
+              <div>
+                <button type="button" onClick={closeModal} disabled={folderActionLoading}>
                   Cancel
                 </button>
-                <button type="button" className="" onClick={() => void handleDeleteFolderSubmit()} disabled={folderActionLoading}>
+                <button type="button" onClick={() => void handleDeleteFolderSubmit()} disabled={folderActionLoading}>
                   {folderActionLoading ? "Deleting..." : "Delete Folder"}
                 </button>
               </div>
@@ -4570,29 +7499,29 @@ export default function HardwareInventory() {
       )}
 
       {hasSelectedDevice && activeModal === "move" && (
-        <div className="" onClick={closeModal}>
-          <div className="" onClick={(event) => event.stopPropagation()}>
-            <div className="">
-              <div className="">
+        <div onClick={closeModal}>
+          <div onClick={(event) => event.stopPropagation()}>
+            <div>
+              <div>
                 <Database size={20} />
                 <div>
                   <strong>MOVE DEPARTMENT</strong>
                   <span>Move selected device to another folder</span>
                 </div>
               </div>
-              <button type="button" className="" onClick={closeModal} disabled={moveLoading}>
+              <button type="button" onClick={closeModal} disabled={moveLoading}>
                 <X size={18} />
               </button>
             </div>
-            <div className="">
-              <div className="">
+            <div>
+              <div>
                 <AlertCircle size={16} />
                 <div>
                   <strong>{selectedDevice.name}</strong>
                   <span>Current location: {selectedDevice.groupPath || selectedDevice.department || "-"}</span>
                 </div>
               </div>
-              <div className="">
+              <div>
                 <label>Destination Folder</label>
                 <HardwareDropdown
                   label="Destination folder"
@@ -4606,14 +7535,14 @@ export default function HardwareInventory() {
                       : departmentOptions.map((department) => ({ value: department.key, label: department.groupPath }))
                   }
                 />
-                <p className="">Choose the folder where this device should be placed.</p>
+                <p>Choose the folder where this device should be placed.</p>
               </div>
             </div>
-            <div className="">
-              <button type="button" className="" onClick={closeModal}>
+            <div>
+              <button type="button" onClick={closeModal}>
                 Cancel
               </button>
-              <button type="button" className="" onClick={handleMoveDepartmentSubmit} disabled={moveLoading || !moveTargetKey}>
+              <button type="button" onClick={handleMoveDepartmentSubmit} disabled={moveLoading || !moveTargetKey}>
                 {moveLoading ? "Moving..." : "Move Device"}
               </button>
             </div>
@@ -4622,22 +7551,22 @@ export default function HardwareInventory() {
       )}
 
       {hasSelectedDevice && activeModal === "message" && (
-        <div className="" onClick={messageLoading ? undefined : closeModal}>
-          <div className="" onClick={(event) => event.stopPropagation()}>
-            <div className="">
-              <div className="">
+        <div onClick={messageLoading ? undefined : closeModal}>
+          <div onClick={(event) => event.stopPropagation()}>
+            <div>
+              <div>
                 <MessageSquare size={20} />
                 <div>
                   <strong>SEND MESSAGE</strong>
                   <span>Target device: {selectedDevice.name}</span>
                 </div>
               </div>
-              <button type="button" className="" onClick={closeModal} disabled={messageLoading}>
+              <button type="button" onClick={closeModal} disabled={messageLoading}>
                 <X size={18} />
               </button>
             </div>
-            <div className="">
-              <div className="">
+            <div>
+              <div>
                 <Monitor size={18} />
                 <div>
                   <strong>{selectedDevice.name}</strong>
@@ -4646,12 +7575,12 @@ export default function HardwareInventory() {
                   </span>
                 </div>
               </div>
-              <label className="">
+              <label>
                 <input type="checkbox" checked={broadcastMessage} onChange={(event) => setBroadcastMessage(event.target.checked)} disabled={messageLoading} />
                 <span>Broadcast Message</span>
               </label>
               {broadcastMessage && (
-                <div className="">
+                <div>
                   <AlertCircle size={16} />
                   <div>
                     <strong>Platform broadcast</strong>
@@ -4659,25 +7588,25 @@ export default function HardwareInventory() {
                   </div>
                 </div>
               )}
-              <div className="">
+              <div>
                 <label>Message Subject</label>
                 <input type="text" value={messageSubject} onChange={(event) => setMessageSubject(event.target.value)} placeholder="Message subject" disabled={messageLoading} />
               </div>
-              <div className="">
+              <div>
                 <label>Message Body</label>
                 <textarea rows={6} value={messageBody} onChange={(event) => setMessageBody(event.target.value)} placeholder="Enter message for device user" disabled={messageLoading} />
               </div>
-              <label className="">
+              <label>
                 <input type="checkbox" checked={forceRead} onChange={(event) => setForceRead(event.target.checked)} disabled={messageLoading} />
                 <span>Force Read</span>
               </label>
-              {messageError && <div className="">{messageError}</div>}
+              {messageError && <div>{messageError}</div>}
             </div>
-            <div className="">
-              <button type="button" className="" onClick={closeModal} disabled={messageLoading}>
+            <div>
+              <button type="button" onClick={closeModal} disabled={messageLoading}>
                 Close
               </button>
-              <button type="button" className="" onClick={() => void handleSendMessage()} disabled={messageLoading}>
+              <button type="button" onClick={() => void handleSendMessage()} disabled={messageLoading}>
                 {messageLoading ? "Sending..." : "Send Message"}
               </button>
             </div>
@@ -4686,22 +7615,22 @@ export default function HardwareInventory() {
       )}
 
       {hasSelectedDevice && activeModal === "remote" && (
-        <div className="" onClick={remoteLoading ? undefined : closeModal}>
-          <div className="" onClick={(event) => event.stopPropagation()}>
-            <div className="">
-              <div className="">
+        <div onClick={remoteLoading ? undefined : closeModal}>
+          <div onClick={(event) => event.stopPropagation()}>
+            <div>
+              <div>
                 <Monitor size={20} />
                 <div>
                   <strong>ADVANCED REMOTE CONTROL</strong>
                   <span>{selectedDevice.name}</span>
                 </div>
               </div>
-              <button type="button" className="" onClick={closeModal} disabled={remoteLoading}>
+              <button type="button" onClick={closeModal} disabled={remoteLoading}>
                 <X size={18} />
               </button>
             </div>
-            <div className="">
-              <div className="">
+            <div>
+              <div>
                 <AlertCircle size={16} />
                 <div>
                   <strong>Remote assistance</strong>
@@ -4709,25 +7638,25 @@ export default function HardwareInventory() {
                 </div>
               </div>
 
-              <div className="">Remote Support Mode</div>
-              <div className="">
-                <button type="button" className="" onClick={() => setSessionType("full")} disabled={remoteLoading}>
+              <div>Remote Support Mode</div>
+              <div>
+                <button type="button" onClick={() => setSessionType("full")} disabled={remoteLoading}>
                   <Monitor size={18} />
                   <span>Normal Session</span>
                 </button>
-                <button type="button" className="" onClick={() => setSessionType("view")} disabled={remoteLoading}>
+                <button type="button" onClick={() => setSessionType("view")} disabled={remoteLoading}>
                   <Monitor size={18} />
                   <span>Screen Only</span>
                 </button>
               </div>
-              <label className="">
+              <label>
                 <input type="checkbox" checked={notifyUser} onChange={(event) => setNotifyUser(event.target.checked)} disabled={remoteLoading} />
                 <div>
                   <strong>Notify User</strong>
                   <span>Notify the user before the support session starts</span>
                 </div>
               </label>
-              <label className="">
+              <label>
                 <input type="checkbox" checked={recordSession} onChange={(event) => setRecordSession(event.target.checked)} disabled={remoteLoading} />
                 <div>
                   <strong>Record Session</strong>
@@ -4735,11 +7664,11 @@ export default function HardwareInventory() {
                 </div>
               </label>
             </div>
-            <div className="">
-              <button type="button" className="" onClick={closeModal} disabled={remoteLoading}>
+            <div>
+              <button type="button" onClick={closeModal} disabled={remoteLoading}>
                 Cancel
               </button>
-              <button type="button" className="" onClick={() => void handleStartRemoteControl()} disabled={remoteLoading}>
+              <button type="button" onClick={() => void handleStartRemoteControl()} disabled={remoteLoading}>
                 {remoteLoading ? "Starting..." : "Start Remote Control"}
               </button>
             </div>
@@ -4748,27 +7677,27 @@ export default function HardwareInventory() {
       )}
 
       {hasSelectedDevice && activeModal === "geo" && (
-        <div className="" onClick={geoLoading ? undefined : closeModal}>
-          <div className="" onClick={(event) => event.stopPropagation()}>
-            <div className="">
-              <div className="">
+        <div onClick={geoLoading ? undefined : closeModal}>
+          <div onClick={(event) => event.stopPropagation()}>
+            <div>
+              <div>
                 <MapPin size={20} />
                 <div>
                   <strong>DEVICE GEOLOCATION</strong>
                   <span>{selectedDevice.name} • Location history</span>
                 </div>
               </div>
-              <button type="button" className="" onClick={closeModal} disabled={geoLoading}>
+              <button type="button" onClick={closeModal} disabled={geoLoading}>
                 <X size={18} />
               </button>
             </div>
 
 
-            <div className="">
-              <section className="">
-                <div className="">
-                  <div className="">
-                    <div className="">
+            <div>
+              <section>
+                <div>
+                  <div>
+                    <div>
                       <MapPin size={18} />
                     </div>
                     <div>
@@ -4776,14 +7705,14 @@ export default function HardwareInventory() {
                       <strong>{selectedDevice.name}</strong>
                       <p>{geoLoading ? "Loading saved location automatically..." : geoStatus}</p>
                     </div>
-                    <div className="">
+                    <div>
                       <span />
                       {geoMeta.hasLocation ? "Location found" : geoLoading ? "Loading" : "No coordinate"}
                     </div>
                   </div>
 
-                  <div className="">
-                    <div className="">
+                  <div>
+                    <div>
                       <small>Location Name</small>
                       <strong>{geoLocationName}</strong>
                     </div>
@@ -4800,7 +7729,7 @@ export default function HardwareInventory() {
                       <small>Accuracy</small>
                       <strong>{geoLatestAccuracy}</strong>
                     </div>
-                    <div className="">
+                    <div>
                       <small>Device Reference</small>
                       <strong>{geoLatestDeviceID}</strong>
                       <span>{selectedDevice.ip || "No IP"} • {selectedDevice.department || selectedDevice.groupPath || "No department"}</span>
@@ -4808,23 +7737,23 @@ export default function HardwareInventory() {
                   </div>
                 </div>
 
-                <div className="">
-                  <div className="">
+                <div>
+                  <div>
                     <div>
                       <span>Map View</span>
                       <strong>{geoMeta.hasLocation ? `${geoMeta.latitude.toFixed(6)}, ${geoMeta.longitude.toFixed(6)}` : "No map coordinate"}</strong>
                     </div>
                     {geoMeta.hasLocation && (
-                      <a className="" href={geoMeta.mapOpenUrl} target="_blank" rel="noreferrer">
+                      <a href={geoMeta.mapOpenUrl} target="_blank" rel="noreferrer">
                         Open Map
                       </a>
                     )}
                   </div>
-                  <div className="">
+                  <div>
                     {geoMeta.hasLocation ? (
                       <>
                         <iframe title={`Map for ${selectedDevice.name}`} src={geoMeta.mapEmbedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-                        <div className="">
+                        <div>
                           <MapPin size={15} />
                           <div>
                             <strong>{selectedDevice.name}</strong>
@@ -4833,7 +7762,7 @@ export default function HardwareInventory() {
                         </div>
                       </>
                     ) : (
-                      <div className="">
+                      <div>
                         <MapPin size={28} />
                         <strong>No coordinate available</strong>
                         <span>{geoLoading ? "Loading current location..." : "No location has been recorded for this device yet."}</span>
@@ -4843,13 +7772,13 @@ export default function HardwareInventory() {
                 </div>
               </section>
 
-              <section className="">
-                <div className="">
+              <section>
+                <div>
                   <div>
                     <span>Location History</span>
                     <strong>Latest movement records</strong>
                   </div>
-                  <div className="">
+                  <div>
                     <strong>{geoHistory.length}</strong>
                     <span>loaded</span>
                   </div>
@@ -4857,7 +7786,7 @@ export default function HardwareInventory() {
 
                 {geoHistory.length ? (
                   <>
-                    <div className="">
+                    <div>
                       {geoHistoryPageRows.map((row, index) => {
                         const absoluteIndex = geoHistoryStartIndex + index + 1;
                         const rowTime = getGeoField(row, ["Time", "DateTime", "LastUpdate"]);
@@ -4867,15 +7796,15 @@ export default function HardwareInventory() {
                         const rowDateParts = getGeoDateParts(rowTime);
 
                         return (
-                          <article className="" key={`${getGeoField(row, ["DeviceID", "deviceID"])}-${rowTime}-${absoluteIndex}`}>
-                            <div className="">{absoluteIndex}</div>
-                            <div className="">
-                              <div className="">
+                          <article key={`${getGeoField(row, ["DeviceID", "deviceID"])}-${rowTime}-${absoluteIndex}`}>
+                            <div>{absoluteIndex}</div>
+                            <div>
+                              <div>
                                 <strong>{rowDateParts.dayDate}</strong>
                                 <span>{rowDateParts.time}</span>
                               </div>
                               <p title={rowLocation}>{rowLocation}</p>
-                              <div className="" aria-label={`Latitude ${rowLatitude}, longitude ${rowLongitude}`}>
+                              <div aria-label={`Latitude ${rowLatitude}, longitude ${rowLongitude}`}>
                                 <span>{rowLatitude}</span>
                                 <span>{rowLongitude}</span>
                               </div>
@@ -4885,11 +7814,10 @@ export default function HardwareInventory() {
                       })}
                     </div>
 
-                    <div className="">
-                      <div className="">Page {geoHistoryCurrentPage} of {geoHistoryTotalPages}</div>
-                      <div className="" aria-label="Device location history pagination">
+                    <div>
+                      <div>Page {geoHistoryCurrentPage} of {geoHistoryTotalPages}</div>
+                      <div aria-label="Device location history pagination">
                         <button
-                          className=""
                           type="button"
                           onClick={() => setGeoHistoryPage(1)}
                           disabled={geoHistoryCurrentPage <= 1}
@@ -4898,7 +7826,6 @@ export default function HardwareInventory() {
                           «
                         </button>
                         <button
-                          className=""
                           type="button"
                           onClick={() => setGeoHistoryPage((current) => Math.max(1, current - 1))}
                           disabled={geoHistoryCurrentPage <= 1}
@@ -4906,9 +7833,8 @@ export default function HardwareInventory() {
                         >
                           ‹
                         </button>
-                        <span className="">{geoHistoryCurrentPage}</span>
+                        <span>{geoHistoryCurrentPage}</span>
                         <button
-                          className=""
                           type="button"
                           onClick={() => setGeoHistoryPage((current) => Math.min(geoHistoryTotalPages, current + 1))}
                           disabled={geoHistoryCurrentPage >= geoHistoryTotalPages}
@@ -4917,7 +7843,6 @@ export default function HardwareInventory() {
                           ›
                         </button>
                         <button
-                          className=""
                           type="button"
                           onClick={() => setGeoHistoryPage(geoHistoryTotalPages)}
                           disabled={geoHistoryCurrentPage >= geoHistoryTotalPages}
@@ -4929,7 +7854,7 @@ export default function HardwareInventory() {
                     </div>
                   </>
                 ) : (
-                  <div className="">
+                  <div>
                     <MapPin size={24} />
                     <strong>{geoLoading ? "Loading location history..." : "No location history"}</strong>
                     <span>{geoLoading ? "The latest records will appear here automatically." : "No location history is available for this device yet."}</span>
@@ -4938,11 +7863,11 @@ export default function HardwareInventory() {
               </section>
             </div>
 
-            <div className="">
-              <button type="button" className="" onClick={closeModal} disabled={geoLoading}>
+            <div>
+              <button type="button" onClick={closeModal} disabled={geoLoading}>
                 Close
               </button>
-              <button type="button" className="" onClick={() => void handleRefreshGeolocation(true)} disabled={geoLoading}>
+              <button type="button" onClick={() => void handleRefreshGeolocation(true)} disabled={geoLoading}>
                 {geoLoading ? "Refreshing..." : "Refresh Live Location"}
               </button>
             </div>
@@ -4952,33 +7877,33 @@ export default function HardwareInventory() {
 
 
       {hasSelectedDevice && activeModal === "lock" && (
-        <div className="" onClick={lockActionLoading ? undefined : closeModal}>
-          <div className="" onClick={(event) => event.stopPropagation()}>
-            <div className="">
-              <div className="">
+        <div onClick={lockActionLoading ? undefined : closeModal}>
+          <div onClick={(event) => event.stopPropagation()}>
+            <div>
+              <div>
                 <Lock size={20} />
                 <div>
                   <strong>LOCK DEVICE</strong>
                   <span>{selectedDevice.name}</span>
                 </div>
               </div>
-              <button type="button" className="" onClick={closeModal} disabled={lockActionLoading}>
+              <button type="button" onClick={closeModal} disabled={lockActionLoading}>
                 <X size={18} />
               </button>
             </div>
-            <div className="">
-              <div className="">
+            <div>
+              <div>
                 <AlertCircle size={16} />
                 <div>
                   <strong>Security Warning</strong>
                   <span>Locking this device will restrict access and user interaction.</span>
                 </div>
               </div>
-              <div className="">
+              <div>
                 <label>Reason for Lock</label>
                 <textarea rows={4} placeholder="Enter reason for locking this device..." value={lockReason} onChange={(event) => setLockReason(event.target.value)} disabled={lockActionLoading} />
               </div>
-              <div className="">
+              <div>
                 <label>Lock Duration</label>
                 <HardwareDropdown
                   label="Lock duration"
@@ -4992,11 +7917,11 @@ export default function HardwareInventory() {
                 />
               </div>
             </div>
-            <div className="">
-              <button type="button" className="" onClick={closeModal} disabled={lockActionLoading}>
+            <div>
+              <button type="button" onClick={closeModal} disabled={lockActionLoading}>
                 Cancel
               </button>
-              <button type="button" className="" onClick={handleLockSubmit} disabled={lockActionLoading}>
+              <button type="button" onClick={handleLockSubmit} disabled={lockActionLoading}>
                 {lockActionLoading ? "Locking..." : "Lock Device"}
               </button>
             </div>

@@ -20,7 +20,6 @@ import {
   X,
 } from "lucide-react";
 
-
 type ApiSoftwareRecord = {
   SoftwareID?: number | string | null;
   SoftwareName?: string | null;
@@ -1114,20 +1113,20 @@ export default function Software() {
     const isOpen = openSelect === selectKey;
     const displayValue = value === "all" ? allLabel : value;
     return (
-      <div className="">
+      <div>
         <label>{label}</label>
-        <div className="">
-          <button type="button" className="" onClick={() => setOpenSelect(isOpen ? null : selectKey)}>
+        <div>
+          <button type="button" onClick={() => setOpenSelect(isOpen ? null : selectKey)}>
             <span>{displayValue}</span>
             <ChevronDown size={15} />
           </button>
           {isOpen && (
-            <div className="">
-              <button type="button" className="" onClick={() => { onChange("all"); setOpenSelect(null); }}>
+            <div>
+              <button type="button" onClick={() => { onChange("all"); setOpenSelect(null); }}>
                 <span>{allLabel}</span>
               </button>
               {options.map((option) => (
-                <button type="button" key={option} className="" onClick={() => { onChange(option); setOpenSelect(null); }}>
+                <button type="button" key={option} onClick={() => { onChange(option); setOpenSelect(null); }}>
                   <span>{option}</span>
                 </button>
               ))}
@@ -1139,21 +1138,21 @@ export default function Software() {
   };
 
   const SortButton = ({ label, columnKey }: { label: string; columnKey: SortKey }) => (
-    <button type="button" className="" onClick={() => handleRegistrySort(columnKey)}>
+    <button type="button" onClick={() => handleRegistrySort(columnKey)}>
       <span>{label}</span>
-      <ArrowUpDown size={12} className="" />
+      <ArrowUpDown size={12} />
     </button>
   );
 
   const TableSortButton = ({ label, index }: { label: string; index: number }) => (
-    <button type="button" className="" onClick={() => handleTableSort(index)}>
+    <button type="button" onClick={() => handleTableSort(index)}>
       <span>{label}</span>
-      <ArrowUpDown size={12} className="" />
+      <ArrowUpDown size={12} />
     </button>
   );
 
   const renderTree = (nodes: TreeNode[], depth = 0, mode: "organization" | "statistic" = "organization") => (
-    <div className="">
+    <div>
       {nodes.map((node) => {
         const hasChildren = Boolean(node.children?.length);
         const isExpanded = expandedGroups.has(node.id);
@@ -1183,19 +1182,18 @@ export default function Software() {
         };
 
         return (
-          <div key={node.id} className="">
-            <div className="">
+          <div key={node.id}>
+            <div>
               <button
                 type="button"
-                className=""
                 onClick={handleNodeAction}
                 aria-label={isExpandable ? (isExpanded ? "Collapse" : "Expand") : "Open"}
               >
                 {isExpandable ? (isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />) : <span aria-hidden="true" />}
               </button>
 
-              <button type="button" className="" onClick={handleNodeAction}>
-                <span className="">
+              <button type="button" onClick={handleNodeAction}>
+                <span>
                   {isDevice
                     ? <MonitorSmartphone size={13} />
                     : mode === "statistic"
@@ -1204,11 +1202,11 @@ export default function Software() {
                         ? <FolderOpen size={15} />
                         : <Folder size={15} />}
                 </span>
-                <span className="">{node.label}</span>
-                {node.type !== "org" && getSoftwareTreeCount(node) > 0 && <span className="">{getSoftwareTreeCount(node).toLocaleString()}</span>}
+                <span>{node.label}</span>
+                {node.type !== "org" && getSoftwareTreeCount(node) > 0 && <span>{getSoftwareTreeCount(node).toLocaleString()}</span>}
               </button>
 
-              {node.devicesLoading ? <RefreshCw size={12} className="" /> : null}
+              {node.devicesLoading ? <RefreshCw size={12} /> : null}
             </div>
 
             {hasChildren && isExpanded && renderTree(node.children || [], depth + 1, mode)}
@@ -1224,66 +1222,1237 @@ export default function Software() {
   const tableTitle = selected.tableKey === "registry" ? "Software" : selected.label;
 
   return (
-    <main className="" data-section="software">
-{toast && (
-        <div className="">
-          <div className="">
-            <div className="">{toast.type === "error" ? <AlertTriangle size={18} /> : <ShieldCheck size={18} />}</div>
+    <main data-section="software">
+        <style>{`
+          /* Software sidebar alignment: match Hardware sidebar width and prevent the switcher from pushing the tree down. */
+          .software-inventory-module .settings-layout.software-settings-layout {
+            grid-template-columns: minmax(300px, 322px) minmax(0, 1fr) !important;
+            height: 100% !important;
+            min-height: 0 !important;
+            gap: 0.85rem !important;
+            overflow: hidden !important;
+          }
+
+          .software-inventory-module .settings-menu.software-left-panel {
+            min-width: 300px !important;
+            max-width: 322px !important;
+            min-height: 0 !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+          }
+
+          .software-inventory-module .settings-menu > .ema-module-sidebar-switcher {
+            flex: 0 0 auto !important;
+            margin: 0 !important;
+            overflow: visible !important;
+          }
+
+          .software-inventory-module .settings-menu > .ema-sidebar-content {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            padding-top: 0.65rem !important;
+          }
+
+          .software-inventory-module .ema-sidebar-subpanel {
+            justify-content: flex-start !important;
+            min-height: 0 !important;
+          }
+
+          .software-inventory-module .ema-sidebar-tree {
+            min-height: 0 !important;
+          }
+
+
+          /* Software toolbar alignment: keep actions, search, refresh/export and filters in fixed rows. */
+          .software-inventory-module .software-registry-card--full {
+            min-width: 0 !important;
+            overflow: hidden !important;
+          }
+
+          .software-inventory-module .software-registry-head.software-registry-head--standard {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 0.75rem !important;
+            padding: 1rem 1rem 0.85rem !important;
+            overflow: visible !important;
+          }
+
+          .software-inventory-module .software-registry-tools.software-registry-tools--standard {
+            display: grid !important;
+            grid-template-columns: max-content max-content max-content max-content minmax(280px, 1fr) 44px max-content !important;
+            align-items: center !important;
+            gap: 0.6rem !important;
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+
+          .software-inventory-module .software-registry-tools--standard .soft-btn,
+          .software-inventory-module .software-registry-tools--standard .primary-btn,
+          .software-inventory-module .software-registry-tools--standard .icon-action-btn {
+            height: 42px !important;
+            min-height: 42px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 0.45rem !important;
+            white-space: nowrap !important;
+            flex: 0 0 auto !important;
+            margin: 0 !important;
+          }
+
+          .software-inventory-module .software-registry-tools--standard .software-insights-toggle,
+          .software-inventory-module .software-registry-tools--standard .software-scan-btn {
+            min-width: 126px !important;
+            padding-inline: 0.95rem !important;
+          }
+
+          .software-inventory-module .software-registry-tools--standard .software-icon-btn {
+            width: 44px !important;
+            min-width: 44px !important;
+            padding: 0 !important;
+          }
+
+          .software-inventory-module .software-registry-tools--standard .software-export-btn {
+            min-width: 92px !important;
+            padding-inline: 1rem !important;
+          }
+
+          .software-inventory-module .software-search-box {
+            width: 100% !important;
+            min-width: 280px !important;
+            height: 42px !important;
+            margin: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+          }
+
+          .software-inventory-module .software-search-box input {
+            min-width: 0 !important;
+            width: 100% !important;
+          }
+
+          .software-inventory-module .software-filter-row.software-filter-row--toolbar {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(190px, 230px)) !important;
+            gap: 0.7rem !important;
+            align-items: end !important;
+            justify-content: start !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            clear: both !important;
+          }
+
+          .software-inventory-module .software-filter-row--toolbar .software-filter-group,
+          .software-inventory-module .software-filter-row--toolbar .form-field {
+            min-width: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+          }
+
+          .software-inventory-module .software-filter-row--toolbar label {
+            display: block !important;
+            margin: 0 0 0.35rem !important;
+            line-height: 1 !important;
+            white-space: nowrap !important;
+          }
+
+          .software-inventory-module .software-filter-row--toolbar .ema-sw-select,
+          .software-inventory-module .software-filter-row--toolbar .setting-select-dropdown,
+          .software-inventory-module .software-filter-row--toolbar .ema-sw-select-trigger,
+          .software-inventory-module .software-filter-row--toolbar .setting-select-trigger {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+
+          .software-inventory-module .software-filter-row--toolbar .ema-sw-select-trigger,
+          .software-inventory-module .software-filter-row--toolbar .setting-select-trigger {
+            height: 40px !important;
+            min-height: 40px !important;
+          }
+
+          /* Match Software table design to Hardware table design. */
+          .software-inventory-module .software-registry-card {
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: 0 !important;
+            max-height: calc(100dvh - 196px) !important;
+            overflow: hidden !important;
+          }
+
+          .software-inventory-module .software-registry-head,
+          .software-inventory-module .software-stat-summary-row,
+          .software-inventory-module .software-page-pagination,
+          .software-inventory-module .software-table-status-row,
+          .software-inventory-module .software-error-banner {
+            flex: 0 0 auto !important;
+          }
+
+          .software-inventory-module .software-table-status-row {
+            padding: 0 1rem 0.65rem !important;
+            color: #102a5a !important;
+            font-size: 0.92rem !important;
+            font-weight: 800 !important;
+          }
+
+          .software-inventory-module .software-device-table.software-standard-table {
+            display: block !important;
+            flex: 1 1 auto !important;
+            min-height: 260px !important;
+            max-height: min(54vh, 560px) !important;
+            width: calc(100% - 2.1rem) !important;
+            max-width: calc(100% - 2.1rem) !important;
+            margin: 0 1.05rem 0.5rem !important;
+            overflow-y: auto !important;
+            overflow-x: auto !important;
+            scrollbar-gutter: stable !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+
+          .software-inventory-module .software-device-table.software-standard-table::-webkit-scrollbar {
+            width: 8px !important;
+            height: 8px !important;
+          }
+
+          .software-inventory-module .software-device-table.software-standard-table::-webkit-scrollbar-track {
+            background: rgba(226, 232, 240, 0.58) !important;
+            border-radius: 999px !important;
+          }
+
+          .software-inventory-module .software-device-table.software-standard-table::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.62) !important;
+            border-radius: 999px !important;
+          }
+
+          .software-inventory-module .software-device-table .software-device-table-row {
+            align-items: center !important;
+            column-gap: 0 !important;
+            min-width: 1080px !important;
+            width: 100% !important;
+          }
+
+          .software-inventory-module .software-device-table .software-registry-row {
+            display: grid !important;
+            grid-template-columns: 56px minmax(250px, 1.8fr) minmax(170px, 1fr) minmax(210px, 1.2fr) minmax(140px, 0.8fr) minmax(160px, 0.95fr) minmax(170px, 0.9fr) !important;
+            min-width: 1150px !important;
+          }
+
+          .software-inventory-module .software-device-table .software-dynamic-row {
+            min-width: max-content !important;
+          }
+
+          .software-inventory-module .software-device-table .user-cell {
+            min-width: 0 !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
+          }
+
+          .software-inventory-module .software-device-table .head.software-device-table-row {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 3 !important;
+            background: #eef3fb !important;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.28) !important;
+          }
+
+          .software-inventory-module .software-device-table .head.software-device-table-row > .user-cell {
+            min-height: 44px !important;
+            display: flex !important;
+            align-items: center !important;
+            white-space: nowrap !important;
+            text-transform: uppercase !important;
+            color: #64748b !important;
+            font-size: 0.72rem !important;
+            letter-spacing: 0.08em !important;
+            font-weight: 900 !important;
+          }
+
+          .software-inventory-module .software-device-table .software-sort-btn {
+            max-width: 100% !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+            color: #2f5fe3 !important;
+            font-size: 0.76rem !important;
+            font-weight: 900 !important;
+            letter-spacing: 0.04em !important;
+            text-transform: uppercase !important;
+          }
+
+          .software-inventory-module .software-device-table .software-standard-row.software-device-table-row:not(.head) {
+            border-bottom: 1px solid rgba(148, 163, 184, 0.18) !important;
+            min-height: 68px !important;
+            background: #ffffff !important;
+          }
+
+          .software-inventory-module .software-device-table .software-standard-row.software-device-table-row:not(.head):hover {
+            background: rgba(239, 244, 255, 0.65) !important;
+          }
+
+          .software-inventory-module .software-device-main-cell,
+          .software-inventory-module .software-user-name,
+          .software-inventory-module .software-user-name > div,
+          .software-inventory-module .software-location-cell,
+          .software-inventory-module .software-device-cell,
+          .software-inventory-module .software-category-cell,
+          .software-inventory-module .software-type-cell {
+            min-width: 0 !important;
+          }
+
+          .software-inventory-module .software-user-name,
+          .software-inventory-module .software-device-cell,
+          .software-inventory-module .software-category-cell,
+          .software-inventory-module .software-type-cell {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            justify-content: center !important;
+            gap: 0.18rem !important;
+          }
+
+          .software-inventory-module .software-user-name strong,
+          .software-inventory-module .software-device-cell strong,
+          .software-inventory-module .software-category-cell strong,
+          .software-inventory-module .software-type-cell strong,
+          .software-inventory-module .software-model-text,
+          .software-inventory-module .software-date-cell {
+            display: block !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+            color: #102a5a !important;
+            font-size: 0.76rem !important;
+            font-weight: 900 !important;
+            line-height: 1.12 !important;
+          }
+
+          .software-inventory-module .software-user-name small,
+          .software-inventory-module .software-device-cell small,
+          .software-inventory-module .software-category-cell small,
+          .software-inventory-module .software-type-cell small,
+          .software-inventory-module .software-text-cell {
+            display: block !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+            color: #64748b !important;
+            font-size: 0.66rem !important;
+            font-weight: 800 !important;
+            line-height: 1.15 !important;
+          }
+
+          .software-inventory-module .software-status-dot {
+            width: 11px !important;
+            height: 11px !important;
+            min-width: 11px !important;
+            border-radius: 999px !important;
+            background: #94a3b8 !important;
+            box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.18) !important;
+            margin-top: 0.2rem !important;
+          }
+
+          .software-inventory-module .row-index-pill.software-row-no {
+            min-width: 34px !important;
+            height: 30px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 0 0.55rem !important;
+            border-radius: 12px !important;
+            border: 1px solid rgba(91, 123, 255, 0.42) !important;
+            background: rgba(241, 245, 255, 0.98) !important;
+            color: #5b6b87 !important;
+            font-size: 0.82rem !important;
+            font-weight: 900 !important;
+          }
+
+          .software-inventory-module .software-empty-state {
+            min-height: 220px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 0.45rem !important;
+            color: #64748b !important;
+          }
+
+          .software-inventory-module .settings-toast-layer.software-toast-layer {
+            position: fixed !important;
+            top: 86px !important;
+            right: 24px !important;
+            bottom: auto !important;
+            left: auto !important;
+            z-index: 2147483647 !important;
+            pointer-events: none !important;
+          }
+
+          .software-inventory-module .software-toast {
+            pointer-events: auto !important;
+            max-width: min(26rem, calc(100vw - 32px)) !important;
+          }
+
+          @media (max-width: 1320px) {
+            .software-inventory-module .software-registry-tools.software-registry-tools--standard {
+              grid-template-columns: max-content max-content max-content max-content minmax(240px, 1fr) 44px max-content !important;
+            }
+
+            .software-inventory-module .software-registry-tools--standard .software-insights-toggle,
+            .software-inventory-module .software-registry-tools--standard .software-scan-btn {
+              min-width: 118px !important;
+              padding-inline: 0.75rem !important;
+            }
+          }
+
+          @media (max-width: 1180px) {
+            .software-inventory-module .software-registry-tools.software-registry-tools--standard {
+              grid-template-columns: repeat(4, minmax(120px, max-content)) 1fr 44px max-content !important;
+            }
+
+            .software-inventory-module .software-search-box {
+              min-width: 220px !important;
+            }
+          }
+
+          @media (max-width: 980px) {
+            .software-inventory-module .software-registry-tools.software-registry-tools--standard {
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+
+            .software-inventory-module .software-search-box,
+            .software-inventory-module .software-registry-tools--standard .software-export-btn,
+            .software-inventory-module .software-registry-tools--standard .software-icon-btn {
+              width: 100% !important;
+              min-width: 0 !important;
+            }
+
+            .software-inventory-module .software-filter-row.software-filter-row--toolbar {
+              grid-template-columns: 1fr !important;
+            }
+          }
+
+          @media (max-width: 1100px) {
+            .software-inventory-module .settings-layout.software-settings-layout {
+              grid-template-columns: 1fr !important;
+            }
+
+            .software-inventory-module .settings-menu.software-left-panel {
+              min-width: 0 !important;
+              max-width: none !important;
+            }
+          }
+
+
+          /* Final rescue fix: prevent Software toolbar clipping/overlap with statistic cards. */
+          body .software-inventory-module .content-shell.software-registry-card.software-registry-card--full,
+          body .software-inventory-module .software-registry-card.software-registry-card--full {
+            position: relative !important;
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: 0 !important;
+            overflow: hidden !important;
+            padding: 0 !important;
+          }
+
+          body .software-inventory-module .software-registry-head.software-registry-head--standard {
+            position: relative !important;
+            flex: 0 0 auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            justify-content: flex-start !important;
+            gap: 0.85rem !important;
+            min-height: auto !important;
+            height: auto !important;
+            padding: 1rem 1rem 0.95rem !important;
+            margin: 0 !important;
+            overflow: visible !important;
+            border-bottom: 1px solid rgba(203, 213, 225, 0.62) !important;
+            background: #ffffff !important;
+            z-index: 5 !important;
+          }
+
+          body .software-inventory-module .software-registry-tools.software-registry-tools--standard {
+            position: relative !important;
+            display: grid !important;
+            grid-template-columns: max-content max-content max-content max-content minmax(260px, 1fr) 44px max-content !important;
+            align-items: center !important;
+            gap: 0.62rem !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            height: auto !important;
+            min-height: 44px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+          }
+
+          body .software-inventory-module .software-registry-tools--standard .soft-btn,
+          body .software-inventory-module .software-registry-tools--standard .primary-btn,
+          body .software-inventory-module .software-registry-tools--standard .icon-action-btn {
+            position: static !important;
+            height: 42px !important;
+            min-height: 42px !important;
+            max-height: 42px !important;
+            line-height: 1 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 0.45rem !important;
+            margin: 0 !important;
+            transform: none !important;
+            white-space: nowrap !important;
+            flex: 0 0 auto !important;
+          }
+
+          body .software-inventory-module .software-registry-tools--standard .software-insights-toggle,
+          body .software-inventory-module .software-registry-tools--standard .software-scan-btn {
+            min-width: 118px !important;
+            padding: 0 0.82rem !important;
+          }
+
+          body .software-inventory-module .software-registry-tools--standard .software-icon-btn {
+            width: 44px !important;
+            min-width: 44px !important;
+            padding: 0 !important;
+          }
+
+          body .software-inventory-module .software-registry-tools--standard .software-header-export-btn,
+          body .software-inventory-module .software-registry-tools--standard .software-export-btn {
+            min-width: 96px !important;
+            padding: 0 1rem !important;
+            margin-left: 0 !important;
+            order: initial !important;
+          }
+
+          body .software-inventory-module .software-search-box {
+            position: relative !important;
+            width: 100% !important;
+            min-width: 260px !important;
+            max-width: none !important;
+            height: 42px !important;
+            min-height: 42px !important;
+            margin: 0 !important;
+            padding: 0 0.75rem !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 0.48rem !important;
+            overflow: hidden !important;
+          }
+
+          body .software-inventory-module .software-search-box input {
+            width: 100% !important;
+            min-width: 0 !important;
+            height: 100% !important;
+            border: 0 !important;
+            outline: 0 !important;
+            background: transparent !important;
+          }
+
+          body .software-inventory-module .software-filter-row.software-filter-row--toolbar {
+            position: relative !important;
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(190px, 230px)) !important;
+            align-items: end !important;
+            justify-content: start !important;
+            gap: 0.72rem !important;
+            width: 100% !important;
+            min-height: 58px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+          }
+
+          body .software-inventory-module .software-filter-row--toolbar .software-filter-group,
+          body .software-inventory-module .software-filter-row--toolbar .form-field {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0.36rem !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+          }
+
+          body .software-inventory-module .software-filter-row--toolbar label {
+            height: auto !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            line-height: 1 !important;
+            display: block !important;
+          }
+
+          body .software-inventory-module .software-toolbar-spacer {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          body .software-inventory-module .software-stat-summary-row {
+            flex: 0 0 auto !important;
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 0.7rem !important;
+            padding: 0.8rem 1rem 0.72rem !important;
+            margin: 0 !important;
+            border-bottom: 1px solid rgba(203, 213, 225, 0.58) !important;
+            background: #ffffff !important;
+            overflow: visible !important;
+          }
+
+          body .software-inventory-module .software-table-status-row {
+            flex: 0 0 auto !important;
+          }
+
+          body .software-inventory-module .software-standard-table {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            overflow: auto !important;
+          }
+
+          body .software-inventory-module .software-page-pagination {
+            flex: 0 0 auto !important;
+          }
+
+          @media (max-width: 1240px) {
+            body .software-inventory-module .software-registry-tools.software-registry-tools--standard {
+              grid-template-columns: repeat(4, max-content) minmax(220px, 1fr) 44px max-content !important;
+            }
+
+            body .software-inventory-module .software-registry-tools--standard .software-insights-toggle,
+            body .software-inventory-module .software-registry-tools--standard .software-scan-btn {
+              min-width: 108px !important;
+              padding-inline: 0.7rem !important;
+            }
+          }
+
+          @media (max-width: 1040px) {
+            body .software-inventory-module .software-registry-tools.software-registry-tools--standard {
+              grid-template-columns: repeat(4, minmax(120px, 1fr)) !important;
+            }
+
+            body .software-inventory-module .software-search-box,
+            body .software-inventory-module .software-registry-tools--standard .software-icon-btn,
+            body .software-inventory-module .software-registry-tools--standard .software-export-btn {
+              width: 100% !important;
+              min-width: 0 !important;
+            }
+
+            body .software-inventory-module .software-search-box {
+              grid-column: 1 / -1 !important;
+            }
+
+            body .software-inventory-module .software-stat-summary-row,
+            body .software-inventory-module .software-filter-row.software-filter-row--toolbar {
+              grid-template-columns: 1fr !important;
+            }
+          }
+
+
+
+          /* Final polish: align the 2 Software filters to the right and remove the thin divider line above the table. */
+          body .software-inventory-module .software-filter-row.software-filter-row--toolbar,
+          .software-inventory-module .software-filter-row.software-filter-row--toolbar {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(210px, 230px)) !important;
+            justify-content: end !important;
+            justify-items: stretch !important;
+            align-items: end !important;
+            gap: 0.72rem !important;
+            width: 100% !important;
+            min-height: 58px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+          }
+
+          body .software-inventory-module .software-registry-head.software-registry-head--standard,
+          .software-inventory-module .software-registry-head.software-registry-head--standard {
+            border-bottom: 0 !important;
+            box-shadow: none !important;
+          }
+
+          body .software-inventory-module .software-table-status-row,
+          .software-inventory-module .software-table-status-row {
+            border: 0 !important;
+            box-shadow: none !important;
+          }
+
+          body .software-inventory-module .software-device-table.software-standard-table,
+          .software-inventory-module .software-device-table.software-standard-table {
+            border-top: 0 !important;
+            box-shadow: none !important;
+          }
+
+          body .software-inventory-module .software-device-table .head.software-device-table-row,
+          .software-inventory-module .software-device-table .head.software-device-table-row {
+            border-top: 0 !important;
+          }
+
+          @media (max-width: 980px) {
+            body .software-inventory-module .software-filter-row.software-filter-row--toolbar,
+            .software-inventory-module .software-filter-row.software-filter-row--toolbar {
+              grid-template-columns: 1fr !important;
+              justify-content: stretch !important;
+            }
+          }
+
+        `}</style>
+
+      
+      <style>{`
+        /* SOFTWARE_FINAL_STANDARD_HERO_KPI_STYLE */
+        html body .software-inventory-module.settings-module-root .settings-hero.software-hero {
+          height: 132px !important;
+          min-height: 132px !important;
+          max-height: 132px !important;
+          padding: 18px 20px !important;
+          display: grid !important;
+          grid-template-columns: minmax(360px, 0.86fr) minmax(720px, 1.14fr) !important;
+          align-items: center !important;
+          gap: 18px !important;
+          overflow: hidden !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 16px !important;
+          background:
+            radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.08), transparent 32%),
+            #ffffff !important;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04) !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .settings-hero.software-hero > div:first-child {
+          min-width: 0 !important;
+          overflow: hidden !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .settings-hero.software-hero h2 {
+          margin: 9px 0 0 !important;
+          color: #0f2746 !important;
+          font-size: 28px !important;
+          line-height: 1.05 !important;
+          font-weight: 650 !important;
+          letter-spacing: -0.055em !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .settings-hero.software-hero p {
+          margin: 8px 0 0 !important;
+          color: #64748b !important;
+          font-size: 12.5px !important;
+          line-height: 1.35 !important;
+          max-width: 760px !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          height: 78px !important;
+          min-height: 78px !important;
+          max-height: 78px !important;
+          display: grid !important;
+          grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+          grid-auto-rows: 78px !important;
+          gap: 10px !important;
+          align-items: stretch !important;
+          justify-items: stretch !important;
+          overflow: hidden !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-card,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-card {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          height: 78px !important;
+          min-height: 78px !important;
+          max-height: 78px !important;
+          margin: 0 !important;
+          padding: 10px 11px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 14px !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+          outline: none !important;
+          color: #0f2746 !important;
+          display: block !important;
+          overflow: hidden !important;
+          cursor: pointer !important;
+          transform: none !important;
+          text-align: left !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-card:hover,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-card.is-active,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-card:hover,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-card.is-active {
+          border-color: #c7d2fe !important;
+          background: #f8f7ff !important;
+          box-shadow: inset 3px 0 0 #4f46e5 !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-content,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-content {
+          width: 100% !important;
+          height: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          display: grid !important;
+          grid-template-columns: 30px minmax(0, 1fr) !important;
+          grid-template-rows: 13px 24px 13px !important;
+          column-gap: 8px !important;
+          row-gap: 3px !important;
+          align-items: center !important;
+          justify-content: stretch !important;
+          overflow: hidden !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-icon,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-icon {
+          grid-column: 1 !important;
+          grid-row: 1 / 4 !important;
+          width: 30px !important;
+          height: 30px !important;
+          min-width: 30px !important;
+          min-height: 30px !important;
+          padding: 7px !important;
+          border-radius: 999px !important;
+          background: #eef5ff !important;
+          color: #2563eb !important;
+          box-shadow: none !important;
+          margin: 0 !important;
+          align-self: center !important;
+          justify-self: center !important;
+          display: grid !important;
+          place-items: center !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-icon svg,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-icon svg {
+          width: 16px !important;
+          height: 16px !important;
+          min-width: 16px !important;
+          min-height: 16px !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          color: currentColor !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          display: block !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-label,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-label {
+          grid-column: 2 !important;
+          grid-row: 1 !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          color: #64748b !important;
+          font-size: 8.8px !important;
+          font-weight: 600 !important;
+          line-height: 1 !important;
+          letter-spacing: 0.045em !important;
+          text-transform: uppercase !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: block !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-value,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-value {
+          grid-column: 2 !important;
+          grid-row: 2 !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          color: #0f2746 !important;
+          font-size: 18px !important;
+          font-weight: 650 !important;
+          line-height: 1 !important;
+          letter-spacing: -0.025em !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: block !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-note,
+        html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-note {
+          grid-column: 2 !important;
+          grid-row: 3 !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          color: #64748b !important;
+          font-size: 9.2px !important;
+          font-weight: 500 !important;
+          line-height: 1.05 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: block !important;
+        }
+
+        html body .software-inventory-module.settings-module-root .settings-hero.software-hero::before,
+        html body .software-inventory-module.settings-module-root .settings-hero.software-hero::after {
+          display: none !important;
+          content: none !important;
+        }
+
+        @media (max-width: 1320px) {
+          html body .software-inventory-module.settings-module-root .settings-hero.software-hero {
+            grid-template-columns: minmax(320px, 0.8fr) minmax(660px, 1.2fr) !important;
+          }
+
+          html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .software-kpi-note,
+          html body .software-inventory-module.settings-module-root .software-hero-kpi-grid .ema-kpi-note {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      
+      <style>{`
+        /* SOFTWARE_DROPDOWN_AND_TABLE_WRAP_FINAL_FIX */
+
+        /* Dropdown final fix */
+        html body .software-inventory-module .software-filter-row.software-filter-row--toolbar {
+          overflow: visible !important;
+          position: relative !important;
+          z-index: 20 !important;
+        }
+
+        html body .software-inventory-module .software-filter-group {
+          min-width: 0 !important;
+          width: 100% !important;
+          display: grid !important;
+          gap: 7px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: visible !important;
+          position: relative !important;
+        }
+
+        html body .software-inventory-module .software-filter-group label {
+          margin: 0 !important;
+          color: #0f2746 !important;
+          font-size: 11px !important;
+          font-weight: 650 !important;
+          line-height: 1 !important;
+          letter-spacing: 0 !important;
+          text-transform: none !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select {
+          width: 100% !important;
+          min-width: 0 !important;
+          height: 38px !important;
+          position: relative !important;
+          display: block !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: visible !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select-trigger {
+          width: 100% !important;
+          min-width: 0 !important;
+          height: 38px !important;
+          min-height: 38px !important;
+          max-height: 38px !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background: #ffffff !important;
+          color: #0f2746 !important;
+          padding: 0 12px !important;
+          margin: 0 !important;
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) 16px !important;
+          gap: 8px !important;
+          align-items: center !important;
+          text-align: left !important;
+          font-size: 11.8px !important;
+          font-weight: 600 !important;
+          line-height: 1 !important;
+          box-shadow: none !important;
+          outline: none !important;
+          cursor: pointer !important;
+          overflow: hidden !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select-trigger:hover {
+          border-color: #c9dbff !important;
+          background: #fbfdff !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select-trigger:focus,
+        html body .software-inventory-module .ema-sw-select-trigger:focus-visible,
+        html body .software-inventory-module .ema-sw-select.is-open .ema-sw-select-trigger,
+        html body .software-inventory-module .ema-sw-select.open .ema-sw-select-trigger {
+          border-color: #93c5fd !important;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10) !important;
+          outline: none !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select-trigger span {
+          min-width: 0 !important;
+          max-width: 100% !important;
+          color: #0f2746 !important;
+          font-size: 11.8px !important;
+          font-weight: 600 !important;
+          line-height: 1 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select-trigger svg {
+          width: 15px !important;
+          height: 15px !important;
+          min-width: 15px !important;
+          color: #64748b !important;
+          justify-self: end !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select-menu {
+          position: absolute !important;
+          top: calc(100% + 6px) !important;
+          left: 0 !important;
+          right: 0 !important;
+          z-index: 2147482800 !important;
+          min-width: 100% !important;
+          max-height: 240px !important;
+          overflow: auto !important;
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          border-radius: 12px !important;
+          background: #ffffff !important;
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16) !important;
+          padding: 6px !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select-option {
+          width: 100% !important;
+          min-height: 32px !important;
+          border: 0 !important;
+          border-radius: 9px !important;
+          background: transparent !important;
+          color: #0f2746 !important;
+          padding: 0 10px !important;
+          margin: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-start !important;
+          text-align: left !important;
+          font-size: 11.5px !important;
+          font-weight: 500 !important;
+          line-height: 1 !important;
+          cursor: pointer !important;
+          box-shadow: none !important;
+          outline: none !important;
+        }
+
+        html body .software-inventory-module .ema-sw-select-option:hover,
+        html body .software-inventory-module .ema-sw-select-option.selected,
+        html body .software-inventory-module .ema-sw-select-option.is-selected {
+          background: #eef5ff !important;
+          color: #2563eb !important;
+        }
+
+        /* Remove old black-border dropdown class effect */
+        html body .software-inventory-module .software-filter-row--toolbar .setting-select-trigger,
+        html body .software-inventory-module .software-filter-row--toolbar .software-custom-select-trigger,
+        html body .software-inventory-module .software-filter-row--toolbar .ema-sw-select-trigger {
+          border: 1px solid rgba(203, 213, 225, 0.95) !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+          outline: none !important;
+        }
+
+        /* Table layout final wrap fix */
+        html body .software-inventory-module .software-device-table.software-standard-table {
+          width: calc(100% - 28px) !important;
+          max-width: calc(100% - 28px) !important;
+          margin-left: 14px !important;
+          margin-right: 14px !important;
+          overflow: auto !important;
+        }
+
+        html body .software-inventory-module .software-device-table .software-standard-row.software-device-table-row,
+        html body .software-inventory-module .software-device-table .software-device-table-row {
+          display: grid !important;
+          grid-template-columns:
+            56px
+            minmax(160px, 1.55fr)
+            minmax(160px, 1.45fr)
+            minmax(110px, 0.75fr)
+            minmax(130px, 0.95fr)
+            minmax(150px, 1.05fr)
+            minmax(140px, 1fr) !important;
+          min-width: 100% !important;
+          width: 100% !important;
+          align-items: stretch !important;
+        }
+
+        html body .software-inventory-module .software-device-table .software-standard-row.software-device-table-row:not(.head),
+        html body .software-inventory-module .software-device-table .software-device-table-row:not(.head),
+        html body .software-inventory-module .software-device-table .user-row:not(.head) {
+          height: auto !important;
+          min-height: 72px !important;
+        }
+
+        html body .software-inventory-module .software-device-table .user-cell {
+          min-width: 0 !important;
+          max-width: 100% !important;
+          min-height: 72px !important;
+          height: auto !important;
+          padding: 12px 12px !important;
+          display: flex !important;
+          align-items: center !important;
+          overflow: visible !important;
+          white-space: normal !important;
+        }
+
+        html body .software-inventory-module .software-device-table .head .user-cell,
+        html body .software-inventory-module .software-device-table .user-row.head .user-cell {
+          min-height: 50px !important;
+          height: 50px !important;
+          padding-top: 14px !important;
+          padding-bottom: 14px !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        /* Force long text to wrap, overriding old inline nowrap */
+        html body .software-inventory-module .software-device-table .user-row:not(.head) .user-cell,
+        html body .software-inventory-module .software-device-table .user-row:not(.head) .user-cell *,
+        html body .software-inventory-module .software-device-table .software-user-name,
+        html body .software-inventory-module .software-device-table .software-user-name *,
+        html body .software-inventory-module .software-device-table .software-device-cell,
+        html body .software-inventory-module .software-device-table .software-device-cell *,
+        html body .software-inventory-module .software-device-table .software-category-cell,
+        html body .software-inventory-module .software-device-table .software-category-cell *,
+        html body .software-inventory-module .software-device-table .software-type-cell,
+        html body .software-inventory-module .software-device-table .software-type-cell *,
+        html body .software-inventory-module .software-device-table .software-text-cell,
+        html body .software-inventory-module .software-device-table .software-model-text,
+        html body .software-inventory-module .software-device-table .software-date-cell {
+          white-space: normal !important;
+          overflow: visible !important;
+          text-overflow: unset !important;
+          overflow-wrap: anywhere !important;
+          word-break: break-word !important;
+          line-height: 1.35 !important;
+        }
+
+        html body .software-inventory-module .software-device-table .software-user-name,
+        html body .software-inventory-module .software-device-table .software-device-cell,
+        html body .software-inventory-module .software-device-table .software-category-cell,
+        html body .software-inventory-module .software-device-table .software-type-cell {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: flex-start !important;
+          justify-content: center !important;
+          gap: 3px !important;
+        }
+
+        html body .software-inventory-module .software-device-table .user-row:not(.head) .user-cell strong,
+        html body .software-inventory-module .software-device-table .user-row:not(.head) .user-cell span,
+        html body .software-inventory-module .software-device-table .user-row:not(.head) .user-cell small,
+        html body .software-inventory-module .software-device-table .user-row:not(.head) .user-cell em {
+          display: block !important;
+          max-width: 100% !important;
+          color: inherit !important;
+        }
+
+        /* Keep row number compact */
+        html body .software-inventory-module .software-device-table .row-index-pill,
+        html body .software-inventory-module .software-device-table .software-row-no {
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          word-break: normal !important;
+        }
+      `}</style>
+
+      {toast && (
+        <div>
+          <div>
+            <div>{toast.type === "error" ? <AlertTriangle size={18} /> : <ShieldCheck size={18} />}</div>
             <div><strong>{toast.title}</strong><span>{toast.message}</span></div>
             <button type="button" onClick={() => setToast(null)}><X size={15} /></button>
           </div>
         </div>
       )}
 
-      <div className="">
-        <aside className="">
-          <div className="">
+      <div>
+        <aside>
+          <div>
             <span>SOFTWARE</span>
             <strong>Software</strong>
             <small>Browse software records, devices and statistics.</small>
           </div>
 
-          <nav className="" id="softwareMenu" role="tablist" aria-label="Software navigation">
+          <nav id="softwareMenu" role="tablist" aria-label="Software navigation">
             <button
               type="button"
-              className=""
               onClick={() => setSidebarTab("organization")}
             >
-              <span className=""><FolderOpen size={16} /></span>
+              <span><FolderOpen size={16} /></span>
               <span><strong>Branch</strong><small>Branch endpoint scope</small></span>
             </button>
             <button
               type="button"
-              className=""
               onClick={() => setSidebarTab("statistic")}
             >
-              <span className=""><Database size={16} /></span>
+              <span><Database size={16} /></span>
               <span><strong>Statistics</strong><small>Software evidence views</small></span>
             </button>
           </nav>
 
-          <div className="">
-            <div className="">
-              <div className="">
+          <div>
+            <div>
+              <div>
                 <Search size={15} />
                 <input
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder={sidebarTab === "organization" ? "Search branches..." : "Search statistics..."}
                 />
-                {searchTerm && <button type="button" className="" onClick={() => setSearchTerm("")}><X size={14} /></button>}
+                {searchTerm && <button type="button" onClick={() => setSearchTerm("")}><X size={14} /></button>}
               </div>
 
               {sidebarTab === "organization" ? (
-                <div className="" aria-label="Software organization tree">
-                  {treeError ? <div className="">{treeError}</div> : null}
+                <div aria-label="Software organization tree">
+                  {treeError ? <div>{treeError}</div> : null}
                   {deviceTree && !treeError ? (
                     renderTree(deviceTree, 0, "organization")
                   ) : null}
                 </div>
               ) : (
-                <div className="" aria-label="Software statistics tree">
-                  <div className=""><Database size={15} /><span>Statistics</span></div>
+                <div aria-label="Software statistics tree">
+                  <div><Database size={15} /><span>Statistics</span></div>
                   {renderTree(statisticTree, 0, "statistic")}
                 </div>
               )}
@@ -1292,56 +2461,56 @@ export default function Software() {
 
         </aside>
 
-        <section className="">
-          <section className="">
+        <section>
+          <section>
             <div>
-              <span className="">SOFTWARE</span>
+              <span>SOFTWARE</span>
               <h2>Software</h2>
               <p>Manage installed software records, package statistics, file extension evidence and scan jobs from one locked workspace.</p>
             </div>
-            <div className="">
-            <button type="button" className="" onClick={() => activateView("all")}>
-              <div className=""><div className=""><Package size={18} /></div><span className="">Total Records</span><strong className="">{summary.totalRecords}</strong><small className="">{selected.tableKey === "registry" ? `${filteredRecords.length} shown` : "registry records"}</small></div>
+            <div>
+            <button type="button" onClick={() => activateView("all")}>
+              <div><div><Package size={18} /></div><span>Total Records</span><strong>{summary.totalRecords}</strong><small>{selected.tableKey === "registry" ? `${filteredRecords.length} shown` : "registry records"}</small></div>
             </button>
-            <button type="button" className="" onClick={() => activateView("unique")}>
-              <div className=""><div className=""><BarChart3 size={18} /></div><span className="">Unique Software</span><strong className="">{summary.uniqueSoftware}</strong><small className="">unique names</small></div>
+            <button type="button" onClick={() => activateView("unique")}>
+              <div><div><BarChart3 size={18} /></div><span>Unique Software</span><strong>{summary.uniqueSoftware}</strong><small>unique names</small></div>
             </button>
-            <button type="button" className="" onClick={() => activateView("installed")}>
-              <div className=""><div className=""><MonitorSmartphone size={18} /></div><span className="">Installed Devices</span><strong className="">{summary.uniqueDevices}</strong><small className="">linked devices</small></div>
+            <button type="button" onClick={() => activateView("installed")}>
+              <div><div><MonitorSmartphone size={18} /></div><span>Installed Devices</span><strong>{summary.uniqueDevices}</strong><small>linked devices</small></div>
             </button>
-            <button type="button" className="" onClick={() => activateView("categories")}>
-              <div className=""><div className=""><Layers size={18} /></div><span className="">Categories</span><strong className="">{summary.categories}</strong><small className="">class types</small></div>
+            <button type="button" onClick={() => activateView("categories")}>
+              <div><div><Layers size={18} /></div><span>Categories</span><strong>{summary.categories}</strong><small>class types</small></div>
             </button>
-            <button type="button" className="" onClick={() => activateView("unclassified")}>
-              <div className=""><div className=""><AlertTriangle size={18} /></div><span className="">Unclassified</span><strong className="">{summary.unclassified}</strong><small className="">no category</small></div>
+            <button type="button" onClick={() => activateView("unclassified")}>
+              <div><div><AlertTriangle size={18} /></div><span>Unclassified</span><strong>{summary.unclassified}</strong><small>no category</small></div>
             </button>
           </div>
           </section>
 
-          <section className="">
-            <div className="">
-              <div className="">
-                <button type="button" className="" onClick={() => setShowInsightsModal(true)}><FileText size={15} />Insights <span>{classificationCoverage}%</span></button>
-                <button type="button" className="" onClick={() => void handleSoftwareScan("device")} disabled={!selectedDevice || scanLoading}><MonitorSmartphone size={15} className="" />Scan Device</button>
-                <button type="button" className="" onClick={() => void handleSoftwareScan("folder")} disabled={!selectedFolder || scanLoading}><FolderOpen size={15} className="" />Scan Folder</button>
-                <button type="button" className="" onClick={() => void handleSoftwareScan("all")} disabled={scanLoading}><RefreshCw size={15} className="" />Scan All</button>
-                <div className=""><Search size={15} /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search software records..." />{searchTerm && <button type="button" className="" onClick={() => setSearchTerm("")}><X size={14} /></button>}</div>
-                <button type="button" className="" onClick={() => void refreshCurrentView()} title="Refresh" aria-label="Refresh software records"><RefreshCw size={15} /></button>
-                <button type="button" className="" onClick={exportCurrentView} disabled={isDataLoading || activeRowsCount === 0}><Download size={15} />Export</button>
+          <section>
+            <div>
+              <div>
+                <button type="button" onClick={() => setShowInsightsModal(true)}><FileText size={15} />Insights <span>{classificationCoverage}%</span></button>
+                <button type="button" onClick={() => void handleSoftwareScan("device")} disabled={!selectedDevice || scanLoading}><MonitorSmartphone size={15} />Scan Device</button>
+                <button type="button" onClick={() => void handleSoftwareScan("folder")} disabled={!selectedFolder || scanLoading}><FolderOpen size={15} />Scan Folder</button>
+                <button type="button" onClick={() => void handleSoftwareScan("all")} disabled={scanLoading}><RefreshCw size={15} />Scan All</button>
+                <div><Search size={15} /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search software records..." />{searchTerm && <button type="button" onClick={() => setSearchTerm("")}><X size={14} /></button>}</div>
+                <button type="button" onClick={() => void refreshCurrentView()} title="Refresh" aria-label="Refresh software records"><RefreshCw size={15} /></button>
+                <button type="button" onClick={exportCurrentView} disabled={isDataLoading || activeRowsCount === 0}><Download size={15} />Export</button>
               </div>
 
               {selected.tableKey === "registry" ? (
-                <div className="">
+                <div>
                   <FilterSelect selectKey="category" label="Category" value={categoryFilter} options={categoryOptions} allLabel="All category" onChange={(value) => { setCategoryFilter(value); setActiveView(value === "Unclassified" ? "unclassified" : "all"); }} />
                   <FilterSelect selectKey="os" label="Operating System" value={osFilter} options={osOptions} allLabel="All OS" onChange={setOsFilter} />
                 </div>
               ) : (
-                <div className="" aria-hidden="true" />
+                <div aria-hidden="true" />
               )}
             </div>
 
             {selected.tableKey !== "registry" && (
-              <div className="">
+              <div>
                 {selected.tableKey === "installedSoftware" && (
                   <>
                     <div><span>Software Titles</span><strong>{installedStats.totalSoftware}</strong><small>installed registry</small></div>
@@ -1366,60 +2535,60 @@ export default function Software() {
               </div>
             )}
 
-            {apiError && selected.tableKey === "registry" && <div className=""><AlertTriangle size={16} /><div><strong>Software API failed</strong><span>{apiError}</span></div></div>}
-            {tableError && selected.tableKey !== "registry" && <div className=""><AlertTriangle size={16} /><div><strong>View failed</strong><span>{tableError}</span></div></div>}
+            {apiError && selected.tableKey === "registry" && <div><AlertTriangle size={16} /><div><strong>Software API failed</strong><span>{apiError}</span></div></div>}
+            {tableError && selected.tableKey !== "registry" && <div><AlertTriangle size={16} /><div><strong>View failed</strong><span>{tableError}</span></div></div>}
 
-            <div className="" role="table" aria-label={tableTitle}>
+            <div role="table" aria-label={tableTitle}>
               {selected.tableKey === "registry" ? (
                 <>
-                  <div className="" role="row">
-                    <div className="">#</div>
-                    <div className=""><SortButton label="Software Name" columnKey="softwareName" /></div>
-                    <div className=""><SortButton label="Category" columnKey="category" /></div>
-                    <div className=""><SortButton label="Device" columnKey="deviceName" /></div>
-                    <div className=""><SortButton label="Version" columnKey="version" /></div>
-                    <div className=""><SortButton label="Type" columnKey="machineType" /></div>
-                    <div className=""><SortButton label="Last Updated" columnKey="lastUpdated" /></div>
+                  <div role="row">
+                    <div>#</div>
+                    <div><SortButton label="Software Name" columnKey="softwareName" /></div>
+                    <div><SortButton label="Category" columnKey="category" /></div>
+                    <div><SortButton label="Device" columnKey="deviceName" /></div>
+                    <div><SortButton label="Version" columnKey="version" /></div>
+                    <div><SortButton label="Type" columnKey="machineType" /></div>
+                    <div><SortButton label="Last Updated" columnKey="lastUpdated" /></div>
                   </div>
                   {!isDataLoading && pageRegistryRecords.map((record, index) => (
-                    <div className="" role="row" key={record.id}>
-                      <div className=""><span className="">{String((page - 1) * PAGE_SIZE + index + 1).padStart(2, "0")}</span></div>
-                      <div className=""><div className=""><span className="" /><div><strong title={record.softwareName}>{record.softwareName}</strong><small>{record.publisher || record.assetTag || "-"}</small></div></div></div>
-                      <div className=""><div className=""><strong>{record.category}</strong><small>{record.publisher || "Software category"}</small></div></div>
-                      <div className=""><div className=""><strong title={record.deviceName}>{record.deviceName}</strong><small>{record.ip || record.assetTag || "-"}</small></div></div>
-                      <div className=""><span className="">{record.version}</span></div>
-                      <div className=""><div className=""><strong>{record.machineType || "-"}</strong><small>{record.os || "-"}</small></div></div>
-                      <div className=""><span className="">{formatDateTime(record.lastUpdated)}</span></div>
+                    <div role="row" key={record.id}>
+                      <div><span>{String((page - 1) * PAGE_SIZE + index + 1).padStart(2, "0")}</span></div>
+                      <div><div><span /><div><strong title={record.softwareName}>{record.softwareName}</strong><small>{record.publisher || record.assetTag || "-"}</small></div></div></div>
+                      <div><div><strong>{record.category}</strong><small>{record.publisher || "Software category"}</small></div></div>
+                      <div><div><strong title={record.deviceName}>{record.deviceName}</strong><small>{record.ip || record.assetTag || "-"}</small></div></div>
+                      <div><span>{record.version}</span></div>
+                      <div><div><strong>{record.machineType || "-"}</strong><small>{record.os || "-"}</small></div></div>
+                      <div><span>{formatDateTime(record.lastUpdated)}</span></div>
                     </div>
                   ))}
-                  {!pageRegistryRecords.length && !isDataLoading && <div className=""><Package size={24} /><strong>No software records found</strong><span>No records match the current filter/search.</span></div>}
+                  {!pageRegistryRecords.length && !isDataLoading && <div><Package size={24} /><strong>No software records found</strong><span>No records match the current filter/search.</span></div>}
                 </>
               ) : (
                 <>
-                  <div className="" data-table-key={selected.tableKey} role="row">
-                    <div className="">#</div>
-                    {tableColumns[selected.tableKey].map((column, index) => <div className="" key={column}><TableSortButton label={column} index={index} /></div>)}
+                  <div data-table-key={selected.tableKey} role="row">
+                    <div>#</div>
+                    {tableColumns[selected.tableKey].map((column, index) => <div key={column}><TableSortButton label={column} index={index} /></div>)}
                   </div>
                   {!isDataLoading && pageTableRows.map((row, rowIndex) => (
-                    <div className="" data-table-key={selected.tableKey} role="row" key={`${selected.tableKey}-${rowIndex}`} style={{}}>
-                      <div className=""><span className="">{String((page - 1) * PAGE_SIZE + rowIndex + 1).padStart(2, "0")}</span></div>
-                      {row.slice(0, tableColumns[selected.tableKey].length).map((cell, cellIndex) => <div className="" key={cellIndex}>{cell}</div>)}
+                    <div data-table-key={selected.tableKey} role="row" key={`${selected.tableKey}-${rowIndex}`} style={{ gridTemplateColumns: `56px repeat(${tableColumns[selected.tableKey].length}, minmax(150px, 1fr))` }}>
+                      <div><span>{String((page - 1) * PAGE_SIZE + rowIndex + 1).padStart(2, "0")}</span></div>
+                      {row.slice(0, tableColumns[selected.tableKey].length).map((cell, cellIndex) => <div key={cellIndex}>{cell}</div>)}
                     </div>
                   ))}
-                  {!pageTableRows.length && !isDataLoading && <div className=""><Database size={24} /><strong>No software records loaded</strong><span>Choose a folder, device or statistic view to load data.</span></div>}
+                  {!pageTableRows.length && !isDataLoading && <div><Database size={24} /><strong>No software records loaded</strong><span>Choose a folder, device or statistic view to load data.</span></div>}
                 </>
               )}
             </div>
 
             {!isDataLoading && activeRowsCount > 0 && (
-              <div className="" aria-label="Software pagination">
-                <div className="">Page {page} of {totalPages}</div>
-                <div className="">
-                  <button className="" type="button" onClick={() => setPage(1)} disabled={page <= 1} aria-label="First page">&laquo;</button>
-                  <button className="" type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1} aria-label="Previous page">&lsaquo;</button>
-                  <span className="">{page}</span>
-                  <button className="" type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages} aria-label="Next page">&rsaquo;</button>
-                  <button className="" type="button" onClick={() => setPage(totalPages)} disabled={page >= totalPages} aria-label="Last page">&raquo;</button>
+              <div aria-label="Software pagination">
+                <div>Page {page} of {totalPages}</div>
+                <div>
+                  <button type="button" onClick={() => setPage(1)} disabled={page <= 1} aria-label="First page">&laquo;</button>
+                  <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1} aria-label="Previous page">&lsaquo;</button>
+                  <span>{page}</span>
+                  <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages} aria-label="Next page">&rsaquo;</button>
+                  <button type="button" onClick={() => setPage(totalPages)} disabled={page >= totalPages} aria-label="Last page">&raquo;</button>
                 </div>
               </div>
             )}
@@ -1428,25 +2597,25 @@ export default function Software() {
       </div>
 
       {showInsightsModal && (
-        <div className="" role="dialog" aria-modal="true" onClick={() => setShowInsightsModal(false)}>
-          <section className="" onClick={(event) => event.stopPropagation()}>
-            <div className="">
-              <div className=""><div className=""><FileText size={22} /></div><div><span>Software Insights</span><h2>Inventory Overview</h2><p>Computed from current inventory data without shrinking the registry table.</p></div></div>
-              <button type="button" className="" onClick={() => setShowInsightsModal(false)} aria-label="Close software insights"><X size={18} /></button>
+        <div role="dialog" aria-modal="true" onClick={() => setShowInsightsModal(false)}>
+          <section onClick={(event) => event.stopPropagation()}>
+            <div>
+              <div><div><FileText size={22} /></div><div><span>Software Insights</span><h2>Inventory Overview</h2><p>Computed from current inventory data without shrinking the registry table.</p></div></div>
+              <button type="button" onClick={() => setShowInsightsModal(false)} aria-label="Close software insights"><X size={18} /></button>
             </div>
-            <div className="">
-              <div className="">
-                <button type="button" className="" onClick={() => { activateView("all"); setShowInsightsModal(false); }}><span>Inventory Health</span><strong>{summary.totalRecords}</strong><small>{filteredRecords.length} visible records</small></button>
-                <button type="button" className="" onClick={() => { activateView("categories"); setShowInsightsModal(false); }}><span>Classified Coverage</span><strong>{classificationCoverage}%</strong><div className="" aria-hidden="true"><i style={{}} /></div><small>{summary.categories} class types</small></button>
-                <button type="button" className="" onClick={() => { activateView("unclassified"); setShowInsightsModal(false); }}><span>Needs Attention</span><strong>{summary.unclassified}</strong><small>records without category</small></button>
+            <div>
+              <div>
+                <button type="button" onClick={() => { activateView("all"); setShowInsightsModal(false); }}><span>Inventory Health</span><strong>{summary.totalRecords}</strong><small>{filteredRecords.length} visible records</small></button>
+                <button type="button" onClick={() => { activateView("categories"); setShowInsightsModal(false); }}><span>Classified Coverage</span><strong>{classificationCoverage}%</strong><div aria-hidden="true"><i style={{ width: `${classificationCoverage}%` }} /></div><small>{summary.categories} class types</small></button>
+                <button type="button" onClick={() => { activateView("unclassified"); setShowInsightsModal(false); }}><span>Needs Attention</span><strong>{summary.unclassified}</strong><small>records without category</small></button>
               </div>
-              <div className="">
-                <div className=""><div className=""><Package size={15} /><div><strong>Top Software</strong><small>Highest installed software names</small></div></div><div className="">{topSoftware.map((item) => <button type="button" key={item.label} className="" onClick={() => { setSearchTerm(item.label); setSelected({ mode: "registry", tableKey: "registry", label: "Software" }); setShowInsightsModal(false); }}><span>{item.label}</span><strong>{item.count}</strong></button>)}{!topSoftware.length && <div className="">No software data yet.</div>}</div></div>
-                <div className=""><div className=""><HardDrive size={15} /><div><strong>Device Mix</strong><small>Records grouped by device type</small></div></div><div className="">{typeCounts.slice(0, 6).map((item) => <button type="button" key={item.label} className="" onClick={() => { setTypeScope(item.label); setShowInsightsModal(false); }}><span>{item.label}</span><strong>{item.count}</strong></button>)}{!typeCounts.length && <div className="">No device data yet.</div>}</div></div>
-                <div className=""><div className=""><Layers size={15} /><div><strong>Categories</strong><small>Quick category drilldown</small></div></div><div className="">{categoryCounts.slice(0, 6).map((item) => <button type="button" key={item.label} className="" onClick={() => { setCategoryScope(item.label); setShowInsightsModal(false); }}><span>{item.label}</span><strong>{item.count}</strong></button>)}{!categoryCounts.length && <div className="">No category data yet.</div>}</div></div>
+              <div>
+                <div><div><Package size={15} /><div><strong>Top Software</strong><small>Highest installed software names</small></div></div><div>{topSoftware.map((item) => <button type="button" key={item.label} onClick={() => { setSearchTerm(item.label); setSelected({ mode: "registry", tableKey: "registry", label: "Software" }); setShowInsightsModal(false); }}><span>{item.label}</span><strong>{item.count}</strong></button>)}{!topSoftware.length && <div>No software data yet.</div>}</div></div>
+                <div><div><HardDrive size={15} /><div><strong>Device Mix</strong><small>Records grouped by device type</small></div></div><div>{typeCounts.slice(0, 6).map((item) => <button type="button" key={item.label} onClick={() => { setTypeScope(item.label); setShowInsightsModal(false); }}><span>{item.label}</span><strong>{item.count}</strong></button>)}{!typeCounts.length && <div>No device data yet.</div>}</div></div>
+                <div><div><Layers size={15} /><div><strong>Categories</strong><small>Quick category drilldown</small></div></div><div>{categoryCounts.slice(0, 6).map((item) => <button type="button" key={item.label} onClick={() => { setCategoryScope(item.label); setShowInsightsModal(false); }}><span>{item.label}</span><strong>{item.count}</strong></button>)}{!categoryCounts.length && <div>No category data yet.</div>}</div></div>
               </div>
             </div>
-            <div className=""><button type="button" className="" onClick={() => { resetFilters(); setShowInsightsModal(false); }}><X size={14} />Reset Filters</button><button type="button" className="" onClick={() => void handleSoftwareScan("all")} disabled={scanLoading}><RefreshCw size={15} className="" />Scan All</button></div>
+            <div><button type="button" onClick={() => { resetFilters(); setShowInsightsModal(false); }}><X size={14} />Reset Filters</button><button type="button" onClick={() => void handleSoftwareScan("all")} disabled={scanLoading}><RefreshCw size={15} />Scan All</button></div>
           </section>
         </div>
       )}

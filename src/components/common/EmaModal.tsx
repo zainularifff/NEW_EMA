@@ -44,29 +44,28 @@ export default function EmaModal({
   if (!open || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="ema-modal-layer" role="presentation">
+    <div role="presentation">
       <button
         type="button"
-        className="ema-modal-backdrop"
         aria-label="Close modal"
         onClick={closeOnOverlay ? onClose : undefined}
       />
 
-      <section className={"ema-modal ema-modal-" + size} role="dialog" aria-modal="true" aria-label={title}>
-        <header className="ema-modal-header">
+      <section role="dialog" aria-modal="true" aria-label={title}>
+        <header>
           <div>
             <h2>{title}</h2>
             {description && <p>{description}</p>}
           </div>
 
-          <button type="button" className="ema-modal-close" onClick={onClose} aria-label="Close">
+          <button type="button" onClick={onClose} aria-label="Close">
             <X size={16} />
           </button>
         </header>
 
-        <div className="ema-modal-body">{children}</div>
+        <div>{children}</div>
 
-        {footer && <footer className="ema-modal-footer">{footer}</footer>}
+        {footer && <footer>{footer}</footer>}
       </section>
     </div>,
     document.body
