@@ -2,6 +2,8 @@ import { DragEvent, useMemo, useState, type CSSProperties } from "react";
 import { previewReport } from "../services/reportService";
 import { buildBuilderReportHtml } from "../utils/reportPdfBuilderOutput";
 import { buildReportBlueprintPayload } from "../utils/reportBlueprintPayloads";
+import "../styles/report-builder-rules.css";
+
 type Pack = { id: string; title: string; subtitle: string; category: "Standard" | "Dynamic"; tone: string; icon: string; standalone?: boolean; dynamic?: boolean };
 type RangePreset = "today" | "this-week" | "this-month" | "last-30-days" | "custom";
 type Range = { preset: RangePreset; from: string; to: string };
