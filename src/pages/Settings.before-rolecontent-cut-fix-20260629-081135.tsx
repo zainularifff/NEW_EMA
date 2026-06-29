@@ -3308,20 +3308,91 @@ setModuleLoaded(true);
           </div>
 
           <div className="ema-settings-content-panel">
+            {false && (
+              <div >
+                {activeSection !== "audit" && (
+                  <div>
+                    <span  id="sectionTag">{active.tag}</span>
+                    <h3 id="sectionTitle">{active.title}</h3>
+                    <p id="sectionDesc">{active.desc}</p>
+                  </div>
+                )}
+                <div >
+                  {activeSection === "roles" ? (
+                    <>
+                      <button  type="button" onClick={loadAccessRoles} disabled={rolesLoading}>{rolesLoading ? "Loading..." : "Refresh"}</button>
+                      <button type="button" onClick={() => openAccessRoleModal(null)}>Add Role</button>
+                    </>
+                  ) : activeSection === "audit" ? (
+                    <button  type="button" onClick={exportAuditLogs} disabled={auditLoading || filteredAuditLogs.length === 0}>Export CSV</button>
+                  ) : (
+                    <>
+                      <button  id="resetBtn" type="button" onClick={resetSection} disabled={(activeSection === "pricing" && pricingSaving) || (activeSection === "aging" && pcAgingSaving) || (activeSection === "policy" && managementPolicySaving) || (activeSection === "incident" && incidentConfigSaving)}>Reset</button>
+                      {activeSection === "pricing" && (
+                        <button  type="button" onClick={addPricingRow}>+ Add Custom Pricing</button>
+                      )}
+                      <button  id="saveBtn" type="button" onClick={saveSection} disabled={(activeSection === "pricing" && pricingSaving) || (activeSection === "aging" && pcAgingSaving) || (activeSection === "policy" && managementPolicySaving) || (activeSection === "incident" && incidentConfigSaving)}>
+                        {activeSection === "pricing" ? (pricingSaving ? "Saving..." : "Save Pricing") : activeSection === "aging" ? (pcAgingSaving ? "Saving..." : "Save Changes") : activeSection === "incident" ? (incidentConfigSaving ? "Saving..." : "Save Incident Config") : activeSection === "policy" ? (managementPolicySaving ? "Saving..." : "Save Policy") : "Save Changes"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeSection !== "users" && activeSection !== "access" && activeSection !== "audit" && activeSection !== "incident" && activeSection !== "aging" && activeSection !== "policy" && activeSection !== "resources" && activeSection !== "notifications" && (
+              <div>
+                <label>
+                  <SearchSvg />
+                  <input
+                    id="sectionSearch"
+                    placeholder={activeSection === "users" ? "Search users by name, email or role..." : activeSection === "roles" ? "Search roles by name or description..." : activeSection === "modules" ? "Search modules by name or description..." : activeSection === "resources" ? "Search engineer, role, date or remarks..." : activeSection === "audit" ? "Search audit logs by user, module or action..." : "Search current settings..."}
+                    value={sectionSearch}
+                    onChange={(event) => setSectionSearch(event.target.value)}
+                  />
+                </label>
+                {activeSection === "roles" && (
+                  <div>
+                    <button type="button" onClick={loadAccessRoles} disabled={rolesLoading}>{rolesLoading ? "Loading..." : "Refresh"}</button>
+                    <button  type="button" onClick={() => openAccessRoleModal(null)}>Add Role</button>
+                  </div>
+                )}
+                {activeSection === "modules" && (
+                  <div >
+                    <button  type="button" onClick={loadModuleAccess} disabled={moduleLoading}>{moduleLoading ? "Loading..." : "Refresh"}</button>
+                  </div>
+                )}
+                {activeSection !== "users" && activeSection !== "roles" && activeSection !== "modules" && activeSection !== "audit" && activeSection !== "incident" && activeSection !== "resources" && (
+                  <div >
+                    <SettingSelect 
+                      value="all"
+                      options={[
+                        { value: "all", label: "All Status" },
+                        { value: "active", label: "Active" },
+                        { value: "review", label: "Review" },
+                        { value: "locked", label: "Locked" }]}
+                      onChange={() => undefined}
+                      ariaLabel="Section filter"
+                    />
+
+                    {(activeSection === "pricing" || activeSection === "aging" || activeSection === "policy") && (
+                      <div >
+                        <button  id="resetBtn" type="button" onClick={resetSection} disabled={(activeSection === "pricing" && pricingSaving) || (activeSection === "aging" && pcAgingSaving) || (activeSection === "policy" && managementPolicySaving) || (activeSection === "incident" && incidentConfigSaving)}>Reset</button>
+                        {activeSection === "pricing" && (
+                          <button  type="button" onClick={addPricingRow}>+ Add Custom Pricing</button>
+                        )}
+                        <button  id="saveBtn" type="button" onClick={saveSection} disabled={(activeSection === "pricing" && pricingSaving) || (activeSection === "aging" && pcAgingSaving) || (activeSection === "policy" && managementPolicySaving) || (activeSection === "incident" && incidentConfigSaving)}>
+                          {activeSection === "pricing" ? (pricingSaving ? "Saving..." : "Save Pricing") : activeSection === "aging" ? (pcAgingSaving ? "Saving..." : "Save Changes") : activeSection === "incident" ? (incidentConfigSaving ? "Saving..." : "Save Incident Config") : activeSection === "policy" ? (managementPolicySaving ? "Saving..." : "Save Policy") : "Save Changes"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div id="contentBody" className="ema-settings-body">
-              {activeSection === "roles" && (
-                <RoleContent
-                  roles={accessRoles}
-                  loading={rolesLoading}
-                  error={rolesError}
-                  search={sectionSearch}
-                  onSearchChange={setSectionSearch}
-                  onReload={loadAccessRoles}
-                  onAdd={() => openAccessRoleModal(null)}
-                  onEdit={openAccessRoleModal}
-                  onDelete={requestDeleteAccessRole}
-                />
-              )}
+              {activeSection === "roles" && <RoleContent roles={accessRoles} loading={rolesLoading} error={rolesError} search={filteredContentTerm} onEdit={openAccessRoleModal} onDelete={requestDeleteAccessRole} />}
               {activeSection === "users" && <UserAccessContent users={visibleUsers} sourceUsers={users} loading={usersLoading} error={usersError} search={sectionSearch} onSearchChange={setSectionSearch} onReload={loadUsers} onAdd={() => openUserModal(null)} onEdit={openUserModal} onDelete={requestDeleteUser} />}
               {activeSection === "modules" && <ModuleMatrixContent roles={accessRoles.filter((role) => role.status === "Active")} modules={moduleCatalog} permissions={modulePermissions} loading={moduleLoading} error={moduleError} search={filteredContentTerm} savingKey={moduleSavingKey} onReload={loadModuleAccess} onToggle={toggleRoleModuleAccess} />}
               {activeSection === "access" && <AccessControlContent policies={accessPolicies} loading={accessPoliciesLoading} error={accessPoliciesError} onReload={loadAccessPolicies} onAdd={() => openAccessPolicyModal(null)} onEdit={openAccessPolicyModal} />}
@@ -4296,33 +4367,9 @@ function SettingsMoreSvg() {
 }
 /* SETTINGS_V2_ROLE_HELPERS_END */
 
-﻿function RoleContent({
-  roles,
-  loading,
-  error,
-  search,
-  onSearchChange,
-  onReload,
-  onAdd,
-  onEdit,
-  onDelete
-}: {
-  roles: AccessRole[];
-  loading: boolean;
-  error: string;
-  search: string;
-  onSearchChange: (value: string) => void;
-  onReload: () => void;
-  onAdd: () => void;
-  onEdit: (index: number) => void;
-  onDelete: (index: number) => void;
-}) {
+﻿function RoleContent({ roles, loading, error, search, onEdit, onDelete }: { roles: AccessRole[]; loading: boolean; error: string; search: string; onEdit: (index: number) => void; onDelete: (index: number) => void }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(() => getSettingsRolePageSize());
-  const [roleDraft, setRoleDraft] = useState<AccessRole | null>(null);
-  const [editingRoleIndex, setEditingRoleIndex] = useState<number | null>(null);
-  const [roleSaving, setRoleSaving] = useState(false);
-  const [roleModalError, setRoleModalError] = useState("");
 
   useEffect(() => {
     const syncPageSize = () => setPageSize(getSettingsRolePageSize());
@@ -4332,7 +4379,6 @@ function SettingsMoreSvg() {
   }, []);
 
   const filterTerm = String(search || "").toLowerCase();
-
   const filteredRoles = roles.filter((role) => {
     const haystack = `${role.name} ${role.description} ${role.status} ${role.approvalRequired ? "approval required" : "standard"}`.toLowerCase();
     return !filterTerm || haystack.includes(filterTerm);
@@ -4355,182 +4401,15 @@ function SettingsMoreSvg() {
 
   const getActualIndex = (role: AccessRole) => {
     const roleId = role.id || role.roleID;
-
     if (roleId !== undefined && roleId !== null) {
       const byId = roles.findIndex((item) => String(item.id || item.roleID) === String(roleId));
       if (byId >= 0) return byId;
     }
-
     return roles.indexOf(role);
   };
 
-  const openRoleAddModal = () => {
-    setRoleModalError("");
-    setEditingRoleIndex(null);
-    setRoleDraft({
-      roleKey: "",
-      name: "",
-      description: "",
-      type: "Custom",
-      defaultAccess: "Read Only",
-      approvalRequired: false,
-      status: "Active",
-      assignedUsers: 0
-    });
-  };
-
-  const openRoleEditModal = (actualIndex: number) => {
-    const role = roles[actualIndex];
-    if (!role) return;
-
-    setRoleModalError("");
-    setEditingRoleIndex(actualIndex);
-    setRoleDraft({ ...role });
-  };
-
-  const closeRoleModal = () => {
-    if (roleSaving) return;
-    setRoleDraft(null);
-    setEditingRoleIndex(null);
-    setRoleModalError("");
-  };
-
-  const saveRoleDraft = async () => {
-    if (!roleDraft) return;
-
-    const roleName = String(roleDraft.name || "").trim();
-
-    if (!roleName) {
-      setRoleModalError("Role name is required.");
-      return;
-    }
-
-    const payload = {
-      name: roleName,
-      roleName,
-      description: roleDraft.description || "",
-      approvalRequired: Boolean(roleDraft.approvalRequired),
-      status: roleDraft.status === "Inactive" ? "Inactive" : "Active"
-    };
-
-    try {
-      setRoleSaving(true);
-      setRoleModalError("");
-
-      if (editingRoleIndex === null) {
-        await settingsRoles.create(payload);
-      } else {
-        const roleId = roleDraft.id || roleDraft.roleID || roles[editingRoleIndex]?.id || roles[editingRoleIndex]?.roleID;
-        if (!roleId) throw new Error("Role ID is missing. Reload role list and try again.");
-        await settingsRoles.update(roleId, payload);
-      }
-
-      setRoleDraft(null);
-      setEditingRoleIndex(null);
-      await onReload();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to save role.";
-      setRoleModalError(message);
-    } finally {
-      setRoleSaving(false);
-    }
-  };
-
-  const modalNode = roleDraft ? (
-    <div className="ema-role-self-backdrop" onClick={(event) => { if (event.target === event.currentTarget) closeRoleModal(); }}>
-      <section className="ema-role-self-modal" role="dialog" aria-modal="true" aria-labelledby="emaRoleSelfTitle">
-        <header className="ema-role-self-header">
-          <div>
-            <span>{editingRoleIndex === null ? "ADD ROLE" : "UPDATE ROLE"}</span>
-            <h3 id="emaRoleSelfTitle">{editingRoleIndex === null ? "Add New Role" : "Update Role"}</h3>
-            <p>Save role details directly to EMA_Roles.</p>
-          </div>
-
-          <button type="button" onClick={closeRoleModal} aria-label="Close role modal">×</button>
-        </header>
-
-        <div className="ema-role-self-body">
-          {roleModalError ? <div className="ema-role-self-error">{roleModalError}</div> : null}
-
-          <div className="ema-role-self-grid">
-            <label>
-              <span>Role Name</span>
-              <input
-                value={roleDraft.name}
-                onChange={(event) => setRoleDraft({ ...roleDraft, name: event.target.value })}
-                placeholder="Example: L1 Support"
-              />
-            </label>
-
-            <label>
-              <span>Status</span>
-              <select
-                value={roleDraft.status === "Inactive" ? "Inactive" : "Active"}
-                onChange={(event) => setRoleDraft({ ...roleDraft, status: event.target.value as RoleStatus })}
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-            </label>
-
-            <label className="full">
-              <span>Description</span>
-              <input
-                value={roleDraft.description}
-                onChange={(event) => setRoleDraft({ ...roleDraft, description: event.target.value })}
-                placeholder="Describe this role"
-              />
-            </label>
-
-            <label className="ema-role-self-check full">
-              <input
-                type="checkbox"
-                checked={Boolean(roleDraft.approvalRequired)}
-                onChange={(event) => setRoleDraft({ ...roleDraft, approvalRequired: event.target.checked })}
-              />
-              <span>
-                <strong>Require approval</strong>
-                <small>For sensitive role changes</small>
-              </span>
-            </label>
-          </div>
-        </div>
-
-        <footer className="ema-role-self-footer">
-          <button type="button" onClick={closeRoleModal} disabled={roleSaving}>Cancel</button>
-          <button type="button" className="primary" onClick={saveRoleDraft} disabled={roleSaving}>
-            {roleSaving ? "Saving..." : "Save Role"}
-          </button>
-        </footer>
-      </section>
-    </div>
-  ) : null;
-
   return (
     <div className="ema-role-content">
-      <div className="ema-role-toolbar">
-        <div className="ema-role-search">
-          <span aria-hidden="true">⌕</span>
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search roles by name or description..."
-            aria-label="Search roles"
-          />
-        </div>
-
-        <div className="ema-role-toolbar-actions">
-          <button className="ema-role-toolbar-btn" type="button" onClick={onReload} disabled={loading}>
-            {loading ? "Loading..." : "Refresh"}
-          </button>
-
-          <button className="ema-role-toolbar-btn primary" type="button" onClick={openRoleAddModal}>
-            + Add Role
-          </button>
-        </div>
-      </div>
-
       {error ? (
         <div className="ema-role-error">
           <strong>Role load error</strong>
@@ -4556,7 +4435,7 @@ function SettingsMoreSvg() {
           const approvalClass = role.approvalRequired ? "required" : "standard";
 
           return (
-            <div className={isInactive ? "ema-role-row is-inactive" : "ema-role-row"} key={`${role.id || role.roleID || role.roleKey}-${actualIndex}`}>
+            <div className={isInactive ? "ema-role-row is-inactive" : "ema-role-row"} key={`${role.id || role.roleKey}-${actualIndex}`}>
               <div>
                 <span className="ema-role-index">{String(pageStartIndex + index + 1).padStart(2, "0")}</span>
               </div>
@@ -4589,7 +4468,7 @@ function SettingsMoreSvg() {
 
               <div>
                 <div className="ema-role-actions">
-                  <button className="ema-role-action-btn" type="button" title="Edit role" aria-label="Edit role" onClick={() => openRoleEditModal(actualIndex)}>
+                  <button className="ema-role-action-btn" type="button" title="Edit role" aria-label="Edit role" onClick={() => onEdit(actualIndex)}>
                     <PencilSvg />
                   </button>
 
@@ -4611,7 +4490,9 @@ function SettingsMoreSvg() {
       </div>
 
       <div className="ema-role-pagination">
-        <span>Showing {showingFrom} to {showingTo} of {filteredRoles.length} roles</span>
+        <span>
+          Showing {showingFrom} to {showingTo} of {filteredRoles.length} roles
+        </span>
 
         <div className="ema-role-page-controls">
           <button className="ema-role-page-btn" type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage <= 1} aria-label="First page">
@@ -4631,11 +4512,377 @@ function SettingsMoreSvg() {
           </button>
         </div>
       </div>
+    </div>
+  );
+}: { roles: AccessRole[]; loading: boolean; error: string; search: string; onEdit: (index: number) => void; onDelete: (index: number) => void }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() => getSettingsRolePageSize());
 
-      {typeof document !== "undefined" && modalNode ? createPortal(modalNode, document.body) : modalNode}
+  useEffect(() => {
+    const syncPageSize = () => setPageSize(getSettingsRolePageSize());
+    syncPageSize();
+    window.addEventListener("resize", syncPageSize);
+    return () => window.removeEventListener("resize", syncPageSize);
+  }, []);
+
+  const filterTerm = String(search || "").toLowerCase();
+  const filteredRoles = roles.filter((role) => {
+    const haystack = `${role.name} ${role.description} ${role.status} ${role.approvalRequired ? "approval required" : "standard"}`.toLowerCase();
+    return !filterTerm || haystack.includes(filterTerm);
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredRoles.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safeCurrentPage - 1) * pageSize;
+  const paginatedRoles = filteredRoles.slice(pageStartIndex, pageStartIndex + pageSize);
+  const showingFrom = filteredRoles.length ? pageStartIndex + 1 : 0;
+  const showingTo = Math.min(pageStartIndex + paginatedRoles.length, filteredRoles.length);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, roles.length]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  const getActualIndex = (role: AccessRole) => {
+    const roleId = role.id || role.roleID;
+    if (roleId !== undefined && roleId !== null) {
+      const byId = roles.findIndex((item) => String(item.id || item.roleID) === String(roleId));
+      if (byId >= 0) return byId;
+    }
+    return roles.indexOf(role);
+  };
+
+  return (
+    <div>
+      {error && (
+        <div>
+          <strong>Role load error</strong>
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div>
+        <div>
+          <div>No</div>
+          <div>Role</div>
+          <div>Approval</div>
+          <div>Status</div>
+          <div>Action</div>
+        </div>
+
+        {loading && <div>Loading role records from EMA_Roles...</div>}
+        {!loading && filteredRoles.length === 0 && <div>No role records found.</div>}
+
+        {!loading && paginatedRoles.map((role, index) => {
+          const actualIndex = getActualIndex(role);
+          const isInactive = role.status === "Inactive";
+          const approvalClass = role.approvalRequired ? "required" : "standard";
+          const tone = getSettingsRoleTone(role, pageStartIndex + index);
+
+          return (
+            <div key={`${role.id || role.roleKey}-${actualIndex}`}>
+              <div>
+                <span>{String(pageStartIndex + index + 1).padStart(2, "0")}</span>
+              </div>
+
+              <div>
+                <div>
+                  <span>
+                    <SettingsRoleIcon role={role} />
+                  </span>
+                  <div>
+                    <strong>{role.name}</strong>
+                    <small>{role.description || "No description set"}</small>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <span>
+                  {role.approvalRequired ? "Required" : "Standard"}
+                </span>
+              </div>
+
+              <div>
+                <span>
+                  <span />
+                  {isInactive ? "Inactive" : "Active"}
+                </span>
+              </div>
+
+              <div>
+                <div>
+                  <button type="button" title="Edit role" aria-label="Edit role" onClick={() => onEdit(actualIndex)}>
+                    <PencilSvg />
+                  </button>
+                  <button
+                    type="button"
+                    title={isProtectedSuperAdminRole(role) ? "Super Admin is protected and cannot be deleted" : "Delete role"}
+                    aria-label={isProtectedSuperAdminRole(role) ? "Protected role" : "Delete role"}
+                    disabled={isProtectedSuperAdminRole(role)}
+                    onClick={() => onDelete(actualIndex)}
+                  >
+                    <TrashSvg />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {!loading && filteredRoles.length > 0 && (
+        <div>
+          <div>
+            Showing {showingFrom} to {showingTo} of {filteredRoles.length} roles
+          </div>
+
+          <div aria-label="Role based control pagination">
+            <button type="button" onClick={() => setCurrentPage(1)} disabled={safeCurrentPage === 1} aria-label="First page"><EmaPageFirstIcon /></button>
+            <button type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage === 1} aria-label="Previous page"><EmaPagePrevIcon /></button>
+            <span>{safeCurrentPage}</span>
+            <button type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages} aria-label="Next page"><EmaPageNextIcon /></button>
+            <button type="button" onClick={() => setCurrentPage(totalPages)} disabled={safeCurrentPage === totalPages} aria-label="Last page"><EmaPageLastIcon /></button>
+          </div>
+
+          <div>{pageSize} / page</div>
+        </div>
+      )}
     </div>
   );
 }
+
+function FilterDropdown({ label, value, options, open, onToggle, onSelect, onClose }: { label: string; value: string; options: string[]; open: boolean; onToggle: () => void; onSelect: (value: string) => void; onClose: () => void }) {
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
+
+  const updateMenuPosition = () => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const menuWidth = Math.max(rect.width, 220);
+    const safeGap = 12;
+    const viewportPadding = 16;
+    const optionHeight = 44;
+    const estimatedMenuHeight = Math.min(360, Math.max(56, options.length * optionHeight + 12));
+    const availableBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const availableAbove = rect.top - viewportPadding;
+    const shouldOpenAbove = availableBelow < estimatedMenuHeight && availableAbove > availableBelow;
+    const availableSpace = shouldOpenAbove ? availableAbove : availableBelow;
+    const finalMenuHeight = Math.max(120, Math.min(estimatedMenuHeight, availableSpace));
+    const left = Math.min(rect.left, window.innerWidth - menuWidth - viewportPadding);
+    const top = shouldOpenAbove
+      ? Math.max(viewportPadding, rect.top - finalMenuHeight - safeGap)
+      : Math.min(rect.bottom + safeGap, window.innerHeight - finalMenuHeight - viewportPadding);
+
+    setMenuStyle({
+      position: "fixed",
+      left: Math.max(viewportPadding, left),
+      top,
+      width: menuWidth,
+      maxHeight: finalMenuHeight,
+      zIndex: 2147483600
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    updateMenuPosition();
+
+    const handleReposition = () => updateMenuPosition();
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      onClose();
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    window.addEventListener("resize", handleReposition);
+    window.addEventListener("scroll", handleReposition, true);
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("resize", handleReposition);
+      window.removeEventListener("scroll", handleReposition, true);
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, value, options.length]);
+
+  const menuNode = open && typeof document !== "undefined" ? createPortal(
+    <div ref={menuRef}   role="listbox" aria-label={`${label} filter`}>
+      {options.map((option) => (
+        <button
+          key={option} 
+          type="button"
+          onClick={() => onSelect(option)}
+        >
+          <span>{option}</span>
+          {option === value && <span >âœ“</span>}
+        </button>
+      ))}
+    </div>,
+    document.body
+  ) : null;
+
+  return (
+    <div >
+      <button ref={triggerRef}  type="button" onClick={onToggle} aria-expanded={open}>
+        <span>{value}</span>
+        <ChevronDownSvg />
+      </button>
+      {menuNode}
+    </div>
+  );
+}
+
+
+type DropdownOption = string | { value: string; label: string };
+
+function dropdownOptionValue(option: DropdownOption) {
+  return typeof option === "string" ? option : option.value;
+}
+
+function dropdownOptionLabel(option: DropdownOption) {
+  return typeof option === "string" ? option : option.label;
+}
+
+function SettingSelect({
+  value,
+  options,
+  onChange,
+  disabled = false,
+  placeholder = "Select option",
+  ariaLabel}: {
+  value: string;
+  options: DropdownOption[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+  className?: string;
+  ariaLabel?: string;
+}) {
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
+
+  const selected = options.find((option) => dropdownOptionValue(option) === value);
+  const selectedLabel = selected ? dropdownOptionLabel(selected) : placeholder;
+
+  const updateMenuPosition = () => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const viewportPadding = 16;
+    const gap = 8;
+    const menuWidth = Math.max(rect.width, 210);
+    const optionHeight = 36;
+    const estimatedHeight = Math.min(288, Math.max(44, options.length * optionHeight + 10));
+    const availableBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const availableAbove = rect.top - viewportPadding;
+    const openAbove = availableBelow < estimatedHeight && availableAbove > availableBelow;
+    const maxHeight = Math.max(96, Math.min(estimatedHeight, openAbove ? availableAbove : availableBelow));
+    const left = Math.min(Math.max(viewportPadding, rect.left), window.innerWidth - menuWidth - viewportPadding);
+    const top = openAbove
+      ? Math.max(viewportPadding, rect.top - maxHeight - gap)
+      : Math.min(rect.bottom + gap, window.innerHeight - maxHeight - viewportPadding);
+
+    setMenuStyle({
+      position: "fixed",
+      left,
+      top,
+      width: menuWidth,
+      maxHeight,
+      zIndex: 2147483600});
+  };
+
+  useEffect(() => {
+    if (!open) return;
+
+    updateMenuPosition();
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    const handleResize = () => updateMenuPosition();
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleResize, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleResize, true);
+    };
+  }, [open, value, options.length]);
+
+  const menuNode = open && typeof document !== "undefined" ? createPortal(
+    <div ref={menuRef}   role="listbox" aria-label={ariaLabel || placeholder}>
+      {options.map((option) => {
+        const optionValue = dropdownOptionValue(option);
+        const optionLabel = dropdownOptionLabel(option);
+        const selectedOption = optionValue === value;
+
+        return (
+          <button
+            key={`${optionValue}-${optionLabel}`} 
+            type="button"
+            role="option"
+            aria-selected={selectedOption}
+            onClick={() => {
+              onChange(optionValue);
+              setOpen(false);
+            }}
+          >
+            <span>{optionLabel}</span>
+            {selectedOption && <span >âœ“</span>}
+          </button>
+        );
+      })}
+    </div>,
+    document.body
+  ) : null;
+
+  return (
+    <div >
+      <button
+        ref={triggerRef} 
+        type="button"
+        onClick={() => {
+          if (!disabled) setOpen((current) => !current);
+        }}
+        disabled={disabled}
+        aria-expanded={open}
+        aria-label={ariaLabel || placeholder}
+      >
+        <span>{selectedLabel}</span>
+        <ChevronDownSvg />
+      </button>
+      {menuNode}
+    </div>
+  );
+}
+
 
 function UserAccessContent({ users, sourceUsers, loading, error, search, onSearchChange, onReload, onAdd, onEdit, onDelete }: { users: UserAccess[]; sourceUsers: UserAccess[]; loading: boolean; error: string; search: string; onSearchChange: (value: string) => void; onReload: () => void; onAdd: () => void; onEdit: (index: number) => void; onDelete: (index: number) => void }) {
   const getPageSize = () => {

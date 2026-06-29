@@ -42,7 +42,9 @@ import "./styles/ema-confirm.css";
 import "./styles/ema-toast.css";
 import "./styles/ema-pagination.css";
 import "./styles/ema-icon.css";
+import "./styles/ema-settings-force.css";
 installEmaTablePaginationFinal();
+
 
 
 

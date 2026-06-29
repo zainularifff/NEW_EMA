@@ -1,0 +1,1210 @@
+﻿/* EMA SETTINGS FINAL CLEAN */
+
+body:not(:has(.login-page)) {
+  overflow: hidden !important;
+}
+
+body:not(:has(.login-page)) #root {
+  height: 100vh !important;
+  overflow: hidden !important;
+}
+
+.ema-settings-page {
+  width: 100% !important;
+  height: calc(100vh - 56px) !important;
+  max-height: calc(100vh - 56px) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  padding: 8px 10px !important;
+  margin: 0 !important;
+  background:
+    linear-gradient(rgba(37, 99, 235, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.035) 1px, transparent 1px),
+    #f8fafc !important;
+  background-size: 28px 28px !important;
+  color: #0f172a !important;
+  box-sizing: border-box !important;
+}
+
+.ema-settings-page *,
+.ema-settings-page *::before,
+.ema-settings-page *::after {
+  box-sizing: border-box !important;
+}
+
+.ema-settings-grid {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: 220px minmax(0, 1fr) !important;
+  gap: 10px !important;
+  overflow: hidden !important;
+  align-items: stretch !important;
+}
+
+/* LEFT TREE */
+.ema-settings-tree {
+  width: 220px !important;
+  min-width: 220px !important;
+  max-width: 220px !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  border-radius: 16px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.ema-settings-tree-head {
+  flex: 0 0 auto !important;
+  padding: 13px 16px 10px !important;
+  border-bottom: 1px solid #edf2f7 !important;
+}
+
+.ema-settings-tree-head span {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 21px !important;
+  padding: 0 10px !important;
+  border-radius: 999px !important;
+  background: #eef2ff !important;
+  color: #2563eb !important;
+  font-size: 9px !important;
+  line-height: 12px !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: uppercase !important;
+}
+
+.ema-settings-tree-head strong {
+  display: block !important;
+  margin-top: 10px !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
+  font-weight: 850 !important;
+  color: #0f172a !important;
+}
+
+.ema-settings-tree-head small {
+  display: block !important;
+  margin-top: 2px !important;
+  font-size: 10px !important;
+  line-height: 14px !important;
+  font-weight: 650 !important;
+  color: #64748b !important;
+}
+
+.ema-settings-menu-list {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 10px !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(100, 116, 139, 0.34) transparent !important;
+}
+
+.ema-settings-menu-list::-webkit-scrollbar {
+  width: 6px !important;
+}
+
+.ema-settings-menu-list::-webkit-scrollbar-thumb {
+  border-radius: 999px !important;
+  background: rgba(100, 116, 139, 0.32) !important;
+}
+
+.ema-setting-btn {
+  width: 100% !important;
+  min-height: 38px !important;
+  height: 38px !important;
+  display: grid !important;
+  grid-template-columns: 28px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 9px !important;
+  padding: 0 11px !important;
+  margin: 0 0 6px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  color: #0f172a !important;
+  text-align: left !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+}
+
+.ema-setting-btn:hover {
+  background: #f8fafc !important;
+}
+
+.ema-setting-btn.is-active {
+  background: #eef2ff !important;
+  color: #1d4ed8 !important;
+  position: relative !important;
+}
+
+.ema-setting-btn.is-active::before {
+  content: "" !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: 7px !important;
+  bottom: 7px !important;
+  width: 3px !important;
+  border-radius: 999px !important;
+  background: #2563eb !important;
+}
+
+.ema-setting-icon {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border-radius: 10px !important;
+  display: grid !important;
+  place-items: center !important;
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+}
+
+.ema-setting-btn.is-active .ema-setting-icon {
+  background: rgba(37, 99, 235, 0.12) !important;
+  color: #2563eb !important;
+}
+
+.ema-setting-icon svg,
+.ema-setting-btn svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.ema-setting-text {
+  min-width: 0 !important;
+}
+
+.ema-setting-text strong {
+  display: block !important;
+  font-size: 11px !important;
+  line-height: 14px !important;
+  font-weight: 750 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.ema-setting-text small {
+  display: none !important;
+}
+
+/* RIGHT CONTENT */
+.ema-settings-content {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.ema-settings-hero {
+  flex: 0 0 auto !important;
+  min-height: 84px !important;
+  padding: 12px 16px !important;
+  border-radius: 16px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: linear-gradient(180deg, #f8fbff 0%, #f5f8ff 100%) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.ema-settings-hero > div:first-child > span {
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 21px !important;
+  padding: 0 9px !important;
+  border-radius: 999px !important;
+  background: #eef2ff !important;
+  color: #2563eb !important;
+  font-size: 9px !important;
+  line-height: 12px !important;
+  font-weight: 850 !important;
+  text-transform: uppercase !important;
+}
+
+.ema-settings-hero h2 {
+  margin: 7px 0 0 !important;
+  font-size: 17px !important;
+  line-height: 21px !important;
+  font-weight: 900 !important;
+  color: #0f172a !important;
+}
+
+.ema-settings-hero p {
+  margin: 3px 0 0 !important;
+  font-size: 10.5px !important;
+  line-height: 14px !important;
+  font-weight: 650 !important;
+  color: #64748b !important;
+}
+
+.ema-settings-hero > div:last-child {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(98px, 1fr)) !important;
+  gap: 8px !important;
+}
+
+.ema-settings-hero > div:last-child > div {
+  min-width: 98px !important;
+  min-height: 58px !important;
+  padding: 8px 10px !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+}
+
+.ema-settings-hero > div:last-child svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.ema-settings-hero > div:last-child span {
+  display: block !important;
+  font-size: 9px !important;
+  line-height: 12px !important;
+  font-weight: 750 !important;
+  color: #64748b !important;
+}
+
+.ema-settings-hero > div:last-child strong {
+  display: block !important;
+  margin-top: 2px !important;
+  font-size: 17px !important;
+  line-height: 20px !important;
+  font-weight: 900 !important;
+  color: #0f172a !important;
+}
+
+.ema-settings-hero > div:last-child small {
+  display: block !important;
+  margin-top: 1px !important;
+  font-size: 8.5px !important;
+  line-height: 11px !important;
+  color: #64748b !important;
+}
+
+.ema-settings-content-panel {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.ema-settings-body {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+  padding: 0 !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(100, 116, 139, 0.42) transparent !important;
+}
+
+.ema-settings-body::-webkit-scrollbar {
+  width: 7px !important;
+}
+
+.ema-settings-body::-webkit-scrollbar-thumb {
+  border-radius: 999px !important;
+  background: rgba(100, 116, 139, 0.38) !important;
+}
+
+.ema-settings-content svg {
+  max-width: 16px !important;
+  max-height: 16px !important;
+}
+
+/* ROLE CONTENT */
+.ema-role-content {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+  overflow: hidden !important;
+}
+
+.ema-role-error {
+  margin: 12px 12px 0 !important;
+  padding: 9px 11px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(244, 63, 94, 0.25) !important;
+  background: rgba(244, 63, 94, 0.08) !important;
+  color: #be123c !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+
+.ema-role-error strong {
+  font-size: 11px !important;
+  line-height: 14px !important;
+  font-weight: 900 !important;
+}
+
+.ema-role-error span {
+  font-size: 10px !important;
+  line-height: 14px !important;
+}
+
+.ema-role-table-card {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+}
+
+.ema-role-table-head,
+.ema-role-row {
+  display: grid !important;
+  grid-template-columns: 56px minmax(300px, 1fr) 130px 120px 100px !important;
+  align-items: center !important;
+  min-width: 820px !important;
+}
+
+.ema-role-table-head {
+  height: 36px !important;
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+  font-size: 10px !important;
+  line-height: 13px !important;
+  font-weight: 900 !important;
+}
+
+.ema-role-table-head > div,
+.ema-role-row > div {
+  min-width: 0 !important;
+  padding: 0 12px !important;
+}
+
+.ema-role-row {
+  min-height: 46px !important;
+  background: #ffffff !important;
+  border-bottom: 1px solid #edf2f7 !important;
+  color: #0f172a !important;
+}
+
+.ema-role-row:hover {
+  background: rgba(37, 99, 235, 0.025) !important;
+}
+
+.ema-role-row.is-inactive {
+  opacity: 0.64 !important;
+}
+
+.ema-role-index {
+  font-size: 10.5px !important;
+  line-height: 14px !important;
+  font-weight: 850 !important;
+  color: #0f172a !important;
+}
+
+.ema-role-main {
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  min-width: 0 !important;
+}
+
+.ema-role-icon {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border-radius: 10px !important;
+  display: grid !important;
+  place-items: center !important;
+  background: #eef2ff !important;
+  color: #2563eb !important;
+}
+
+.ema-role-icon svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.ema-role-text {
+  min-width: 0 !important;
+}
+
+.ema-role-name {
+  display: block !important;
+  color: #0f172a !important;
+  font-size: 11px !important;
+  line-height: 14px !important;
+  font-weight: 850 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.ema-role-desc {
+  display: block !important;
+  margin-top: 2px !important;
+  color: #64748b !important;
+  font-size: 9.5px !important;
+  line-height: 12px !important;
+  font-weight: 650 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.ema-role-chip,
+.ema-role-status {
+  width: max-content !important;
+  max-width: 100% !important;
+  min-height: 21px !important;
+  padding: 0 8px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 9.5px !important;
+  line-height: 12px !important;
+  font-weight: 850 !important;
+  white-space: nowrap !important;
+}
+
+.ema-role-chip.standard {
+  background: rgba(37, 99, 235, 0.08) !important;
+  color: #1d4ed8 !important;
+}
+
+.ema-role-chip.required {
+  background: rgba(245, 158, 11, 0.13) !important;
+  color: #92400e !important;
+}
+
+.ema-role-status {
+  background: rgba(16, 185, 129, 0.1) !important;
+  color: #047857 !important;
+}
+
+.ema-role-status.is-inactive {
+  background: rgba(100, 116, 139, 0.1) !important;
+  color: #475569 !important;
+}
+
+.ema-role-dot {
+  width: 7px !important;
+  height: 7px !important;
+  min-width: 7px !important;
+  border-radius: 999px !important;
+  background: currentColor !important;
+}
+
+.ema-role-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 6px !important;
+}
+
+.ema-role-action-btn {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  padding: 0 !important;
+  border-radius: 9px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+  display: grid !important;
+  place-items: center !important;
+  cursor: pointer !important;
+}
+
+.ema-role-action-btn:hover {
+  background: #f8fafc !important;
+}
+
+.ema-role-action-btn.danger {
+  border-color: rgba(244, 63, 94, 0.25) !important;
+  color: #e11d48 !important;
+}
+
+.ema-role-action-btn:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+}
+
+.ema-role-action-btn svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+.ema-role-empty {
+  padding: 24px 14px !important;
+  text-align: center !important;
+  color: #64748b !important;
+  font-size: 11px !important;
+  line-height: 15px !important;
+  font-weight: 650 !important;
+  min-width: 820px !important;
+}
+
+.ema-role-pagination {
+  min-height: 48px !important;
+  padding: 9px 12px !important;
+  border-top: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  color: #64748b !important;
+  font-size: 10.5px !important;
+  line-height: 14px !important;
+  font-weight: 700 !important;
+}
+
+.ema-role-page-controls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+}
+
+.ema-role-page-btn {
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  padding: 0 !important;
+  border-radius: 9px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+  display: grid !important;
+  place-items: center !important;
+  cursor: pointer !important;
+}
+
+.ema-role-page-btn.is-active {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, #4f46e5, #2563eb) !important;
+  color: #ffffff !important;
+}
+
+.ema-role-page-btn:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+}
+
+.ema-role-page-btn svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+@media (max-width: 1180px) {
+  .ema-settings-grid {
+    grid-template-columns: 210px minmax(0, 1fr) !important;
+  }
+
+  .ema-settings-tree {
+    width: 210px !important;
+    min-width: 210px !important;
+    max-width: 210px !important;
+  }
+
+  .ema-settings-hero {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ema-settings-hero > div:last-child {
+    grid-template-columns: repeat(2, minmax(96px, 1fr)) !important;
+  }
+}
+
+/* FINAL SETTINGS CLEANUP - remove duplicate wrapper behavior */
+.ema-settings-content-panel {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.ema-settings-body {
+  padding: 0 !important;
+}
+
+.ema-role-content {
+  margin: 0 !important;
+}
+
+.ema-role-toolbar {
+  border-top-left-radius: 16px !important;
+  border-top-right-radius: 16px !important;
+}
+
+.ema-role-table-card {
+  border-top: 1px solid #e2e8f0 !important;
+}
+
+/* ACCESS ROLE MODAL FINAL */
+.ema-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 3000 !important;
+  background: rgba(15, 23, 42, 0.48) !important;
+  backdrop-filter: blur(6px) !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 18px !important;
+}
+
+.ema-role-modal {
+  width: min(520px, 100%) !important;
+  max-height: calc(100vh - 40px) !important;
+  overflow: hidden !important;
+  border-radius: 16px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.25) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.ema-role-modal-header {
+  min-height: 58px !important;
+  padding: 14px 16px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+.ema-role-modal-kicker {
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 21px !important;
+  padding: 0 9px !important;
+  border-radius: 999px !important;
+  background: #eef2ff !important;
+  color: #2563eb !important;
+  font-size: 9px !important;
+  line-height: 12px !important;
+  font-weight: 850 !important;
+}
+
+.ema-role-modal-header h3 {
+  margin: 8px 0 0 !important;
+  color: #0f172a !important;
+  font-size: 16px !important;
+  line-height: 20px !important;
+  font-weight: 900 !important;
+}
+
+.ema-role-modal-header p {
+  margin: 3px 0 0 !important;
+  color: #64748b !important;
+  font-size: 10.5px !important;
+  line-height: 14px !important;
+  font-weight: 650 !important;
+}
+
+.ema-role-modal-close {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  border-radius: 10px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #fff !important;
+  color: #334155 !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  display: grid !important;
+  place-items: center !important;
+  cursor: pointer !important;
+}
+
+.ema-role-modal-body {
+  padding: 16px !important;
+  overflow: auto !important;
+}
+
+.ema-role-form-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+.ema-role-field {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.ema-role-field-full {
+  grid-column: 1 / -1 !important;
+}
+
+.ema-role-field span {
+  color: #0f172a !important;
+  font-size: 10.5px !important;
+  line-height: 13px !important;
+  font-weight: 850 !important;
+}
+
+.ema-role-field input,
+.ema-role-field select {
+  height: 36px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #0f172a !important;
+  padding: 0 11px !important;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+  outline: 0 !important;
+}
+
+.ema-role-check {
+  min-height: 44px !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  padding: 9px 11px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  cursor: pointer !important;
+}
+
+.ema-role-check input {
+  width: 15px !important;
+  height: 15px !important;
+  accent-color: #2563eb !important;
+}
+
+.ema-role-check strong {
+  display: block !important;
+  color: #0f172a !important;
+  font-size: 11px !important;
+  line-height: 14px !important;
+}
+
+.ema-role-check small {
+  display: block !important;
+  color: #64748b !important;
+  font-size: 9.5px !important;
+  line-height: 12px !important;
+}
+
+.ema-role-modal-footer {
+  min-height: 56px !important;
+  padding: 12px 16px !important;
+  border-top: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  background: #f8fafc !important;
+}
+
+/* SETTINGS MODAL VISIBILITY FIX */
+.ema-modal-backdrop,
+.role-modal-backdrop,
+.user-modal-backdrop,
+.confirm-modal-backdrop,
+.settings-modal-backdrop,
+[class*="modal-backdrop"] {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 5000 !important;
+  display: grid !important;
+  place-items: center !important;
+  background: rgba(15, 23, 42, 0.48) !important;
+  backdrop-filter: blur(6px) !important;
+  padding: 18px !important;
+}
+
+.ema-role-modal,
+.role-modal,
+.user-modal,
+.confirm-modal,
+.settings-modal,
+[class*="role-modal"],
+[class*="user-modal"],
+[class*="confirm-modal"] {
+  z-index: 5001 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+body:has(.ema-modal-backdrop),
+body:has(.role-modal-backdrop),
+body:has(.user-modal-backdrop),
+body:has(.confirm-modal-backdrop) {
+  overflow: hidden !important;
+}
+
+/* SELF CONTAINED ROLE MODAL - guaranteed visible */
+.ema-role-self-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9000 !important;
+  background: rgba(15, 23, 42, 0.52) !important;
+  backdrop-filter: blur(6px) !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 18px !important;
+}
+
+.ema-role-self-modal {
+  width: min(520px, 100%) !important;
+  max-height: calc(100vh - 40px) !important;
+  overflow: hidden !important;
+  border-radius: 16px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.ema-role-self-header {
+  min-height: 58px !important;
+  padding: 14px 16px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+.ema-role-self-header span {
+  display: inline-flex !important;
+  height: 21px !important;
+  align-items: center !important;
+  padding: 0 9px !important;
+  border-radius: 999px !important;
+  background: #eef2ff !important;
+  color: #2563eb !important;
+  font-size: 9px !important;
+  font-weight: 850 !important;
+}
+
+.ema-role-self-header h3 {
+  margin: 8px 0 0 !important;
+  color: #0f172a !important;
+  font-size: 16px !important;
+  line-height: 20px !important;
+  font-weight: 900 !important;
+}
+
+.ema-role-self-header p {
+  margin: 3px 0 0 !important;
+  color: #64748b !important;
+  font-size: 10.5px !important;
+  line-height: 14px !important;
+}
+
+.ema-role-self-header button {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  border-radius: 10px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #fff !important;
+  color: #334155 !important;
+  font-size: 18px !important;
+  display: grid !important;
+  place-items: center !important;
+  cursor: pointer !important;
+}
+
+.ema-role-self-body {
+  padding: 16px !important;
+  overflow: auto !important;
+}
+
+.ema-role-self-error {
+  margin-bottom: 12px !important;
+  padding: 9px 11px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(244, 63, 94, 0.25) !important;
+  background: rgba(244, 63, 94, 0.08) !important;
+  color: #be123c !important;
+  font-size: 11px !important;
+  font-weight: 750 !important;
+}
+
+.ema-role-self-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+.ema-role-self-grid label {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.ema-role-self-grid label.full {
+  grid-column: 1 / -1 !important;
+}
+
+.ema-role-self-grid label > span {
+  color: #0f172a !important;
+  font-size: 10.5px !important;
+  line-height: 13px !important;
+  font-weight: 850 !important;
+}
+
+.ema-role-self-grid input,
+.ema-role-self-grid select {
+  height: 36px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #0f172a !important;
+  padding: 0 11px !important;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+  outline: 0 !important;
+}
+
+.ema-role-self-check {
+  min-height: 48px !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  padding: 9px 11px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.ema-role-self-check input {
+  width: 15px !important;
+  height: 15px !important;
+  accent-color: #2563eb !important;
+}
+
+.ema-role-self-check strong {
+  display: block !important;
+  font-size: 11px !important;
+  line-height: 14px !important;
+  color: #0f172a !important;
+}
+
+.ema-role-self-check small {
+  display: block !important;
+  font-size: 9.5px !important;
+  line-height: 12px !important;
+  color: #64748b !important;
+}
+
+.ema-role-self-footer {
+  min-height: 56px !important;
+  padding: 12px 16px !important;
+  border-top: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: #f8fafc !important;
+}
+
+.ema-role-self-footer button {
+  height: 34px !important;
+  min-height: 34px !important;
+  border-radius: 10px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #fff !important;
+  color: #0f172a !important;
+  padding: 0 12px !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  cursor: pointer !important;
+}
+
+.ema-role-self-footer button.primary {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, #4f46e5, #2563eb) !important;
+  color: #fff !important;
+}
+
+/* FINAL ROLE TOOLBAR UI FIX */
+.ema-role-content > .ema-role-toolbar {
+  width: 100% !important;
+  min-height: 58px !important;
+  height: 58px !important;
+  padding: 11px 14px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  box-shadow: none !important;
+}
+
+.ema-role-content > .ema-role-toolbar .ema-role-search {
+  width: 360px !important;
+  max-width: 42vw !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  margin: 0 !important;
+  padding: 0 11px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  color: #64748b !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.ema-role-content > .ema-role-toolbar .ema-role-search > span {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  display: grid !important;
+  place-items: center !important;
+  color: #64748b !important;
+  font-size: 14px !important;
+  line-height: 14px !important;
+}
+
+.ema-role-content > .ema-role-toolbar .ema-role-search input,
+.ema-role-content > .ema-role-toolbar input[type="search"] {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  width: 100% !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  color: #0f172a !important;
+  font-size: 11px !important;
+  line-height: 14px !important;
+  font-weight: 650 !important;
+}
+
+.ema-role-content > .ema-role-toolbar .ema-role-search input::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
+.ema-role-content > .ema-role-toolbar .ema-role-toolbar-actions {
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+
+.ema-role-content > .ema-role-toolbar .ema-role-toolbar-btn,
+.ema-role-content > .ema-role-toolbar button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  width: auto !important;
+  min-width: 82px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  margin: 0 !important;
+  padding: 0 13px !important;
+  border-radius: 10px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: none !important;
+  outline: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  font-size: 11px !important;
+  line-height: 14px !important;
+  font-weight: 850 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+}
+
+.ema-role-content > .ema-role-toolbar .ema-role-toolbar-btn:hover,
+.ema-role-content > .ema-role-toolbar button:hover {
+  background: #f8fafc !important;
+}
+
+.ema-role-content > .ema-role-toolbar .ema-role-toolbar-btn.primary,
+.ema-role-content > .ema-role-toolbar button.primary {
+  min-width: 92px !important;
+  border-color: transparent !important;
+  background: linear-gradient(135deg, #4f46e5, #2563eb) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18) !important;
+}
+
+.ema-role-content > .ema-role-toolbar .ema-role-toolbar-btn:disabled,
+.ema-role-content > .ema-role-toolbar button:disabled {
+  opacity: 0.58 !important;
+  cursor: not-allowed !important;
+}
+
+/* table top jangan overlap toolbar */
+.ema-role-table-card {
+  border-top: 0 !important;
+}
+
+.ema-role-table-head {
+  border-top: 0 !important;
+}
+
+/* small screen */
+@media (max-width: 900px) {
+  .ema-role-content > .ema-role-toolbar {
+    height: auto !important;
+    min-height: 0 !important;
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .ema-role-content > .ema-role-toolbar .ema-role-search {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .ema-role-content > .ema-role-toolbar .ema-role-toolbar-actions {
+    width: 100% !important;
+  }
+
+  .ema-role-content > .ema-role-toolbar .ema-role-toolbar-btn,
+  .ema-role-content > .ema-role-toolbar button {
+    flex: 1 1 auto !important;
+  }
+}
